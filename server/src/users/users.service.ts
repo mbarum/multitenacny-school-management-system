@@ -15,7 +15,6 @@ export class UsersService {
   ) {}
 
   async create(createUserDto: CreateUserDto, schoolId: string): Promise<User> {
-    // Check if email exists
     const existing = await this.usersRepository.findOne({ where: { email: createUserDto.email } });
     if (existing) {
         throw new ConflictException('Email already in use');
@@ -52,6 +51,7 @@ export class UsersService {
       .addSelect('user.password')
       .addSelect('user.schoolId')
       .addSelect('user.role')
+      .addSelect('user.status')
       .getOne();
   }
 
@@ -69,23 +69,23 @@ export class UsersService {
     return this.usersRepository.findOne({ where: { id } });
   }
 
-  async update(id: string, updateUserDto: UpdateUserDto, schoolId: string): Promise<User> {
-    // We allow updating self profile (passed via controller check) OR if admin updating others
-    // For simplicity, we check existence with schoolId. 
-    // If a user updates their own profile, schoolId matches.
+  async update(id: string, updateUserDto: Partial<UpdateUserDto>, schoolId: string): Promise<User> {
     const user = await this.usersRepository.findOne({ where: { id, schoolId: schoolId as any } });
     
     if (!user) {
       throw new NotFoundException(`User not found`);
     }
 
-    // Merge changes
-    Object.assign(user, updateUserDto);
-
+    // Hash password if provided
     if (updateUserDto.password) {
         const salt = await bcrypt.genSalt();
-        user.password = await bcrypt.hash(updateUserDto.password, salt);
+        updateUserDto.password = await bcrypt.hash(updateUserDto.password, salt);
+    } else {
+        delete updateUserDto.password; // Don't overwrite with undefined
     }
+
+    // Merge changes
+    Object.assign(user, updateUserDto);
     
     await this.usersRepository.save(user);
     

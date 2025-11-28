@@ -34,7 +34,10 @@ export class UsersController {
 
   @Patch('profile')
   updateProfile(@Request() req: any, @Body() updateUserDto: UpdateUserDto) {
-    return this.usersService.update(req.user.userId, updateUserDto, req.user.schoolId);
+    // SECURITY: Prevent privilege escalation. 
+    // Users cannot change their own Role, Status, or School association via this endpoint.
+    const { role, status, ...safeUpdates } = updateUserDto;
+    return this.usersService.update(req.user.userId, safeUpdates, req.user.schoolId);
   }
 
   @Post('upload-avatar')
@@ -52,11 +55,15 @@ export class UsersController {
         }
         cb(null, true);
     },
+    limits: { fileSize: 2 * 1024 * 1024 } // Limit to 2MB
   }))
   async uploadAvatar(@UploadedFile() file: any, @Request() req: any) {
     if (!file) throw new BadRequestException('File upload failed.');
     const avatarUrl = `/public/uploads/${file.filename}`;
-    await this.usersService.update(req.user.userId, { ...req.user, avatarUrl } as any, req.user.schoolId);
+    
+    // Update the user record with the new URL
+    await this.usersService.update(req.user.userId, { avatarUrl }, req.user.schoolId);
+    
     return { avatarUrl };
   }
 

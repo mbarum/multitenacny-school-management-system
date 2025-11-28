@@ -1,8 +1,6 @@
 
-// ... existing imports ...
 import React, { createContext, useState, useEffect, useContext, useCallback, useMemo } from 'react';
 import * as api from '../services/api';
-// ... types import ...
 import type { 
     User, Student, Staff, Transaction, Expense, Payroll, Subject, SchoolClass, ClassSubjectAssignment, 
     TimetableEntry, Exam, Grade, AttendanceRecord, SchoolEvent, SchoolInfo, GradingRule, FeeItem, 
@@ -16,7 +14,6 @@ import type { NavItem } from '../constants';
 import IDCardModal from '../components/common/IDCardModal';
 
 interface IDataContext {
-    // ... existing state ...
     isLoading: boolean;
     schoolInfo: SchoolInfo | null;
     currentUser: User | null;
@@ -118,7 +115,6 @@ interface IDataContext {
 
 const DataContext = createContext<IDataContext | undefined>(undefined);
 
-// ... helpers and constants ...
 const FALLBACK_SCHOOL_INFO: SchoolInfo = {
     name: 'School System (Offline Mode)',
     address: 'Local',
@@ -134,7 +130,6 @@ const clearAllData = (setters: any) => {
 };
 
 export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    // ... existing state initialization ...
     const [isLoading, setIsLoading] = useState(true);
     const [currentUser, setCurrentUser] = useState<User | null>(null);
     const [activeView, setActiveView] = useState(localStorage.getItem('activeView') || 'dashboard');
@@ -169,7 +164,6 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [isIdCardModalOpen, setIsIdCardModalOpen] = useState(false);
     const [idCardData, setIdCardData] = useState<{ type: 'student' | 'staff', data: Student | Staff } | null>(null);
 
-    // ... existing useEffects and loadAuthenticatedData ...
     useEffect(() => {
         localStorage.setItem('activeView', activeView);
     }, [activeView]);
@@ -274,7 +268,6 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         else setActiveView('dashboard');
     }, []);
 
-    // ... createApiAction, updateApiAction, deleteApiAction definitions ...
     const createApiAction = <P, S>(setter: React.Dispatch<React.SetStateAction<S[]>>, apiFn: (data: P) => Promise<S>, sortFn?: (a: S, b: S) => number) => 
         useCallback(async (data: P) => {
             const newItem = await apiFn(data);
@@ -298,7 +291,6 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setter(prev => prev.filter(item => item.id !== id));
         }, [setter]);
 
-    // ... actions bindings ...
     const addStudent = createApiAction(setStudents, api.createStudent, (a, b) => a.name.localeCompare(b.name));
     const updateStudent = updateApiAction(setStudents, api.updateStudent);
     const deleteStudent = deleteApiAction(setStudents, api.deleteStudent);
@@ -316,11 +308,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const updateUser = updateApiAction(setUsers, api.updateUser);
     const deleteUser = deleteApiAction(setUsers, api.deleteUser);
     
-    // New User Profile Actions
     const updateUserProfile = useCallback(async (data: Partial<User>) => {
         const updatedUser = await api.updateUserProfile(data);
         setCurrentUser(updatedUser);
-        // Also update the user in the users list if present
         setUsers(prev => prev.map(u => u.id === updatedUser.id ? updatedUser : u));
     }, []);
 

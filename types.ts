@@ -1,3 +1,4 @@
+
 // These types are derived from the backend's TypeORM entities.
 // Keeping them in sync is crucial for frontend type safety.
 
@@ -293,6 +294,7 @@ export interface SchoolInfo {
     phone: string;
     email: string;
     logoUrl?: string;
+    schoolCode: string;
     gradingSystem: GradingSystem;
 }
 

@@ -53,7 +53,8 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onClose }) 
         try {
             await updateUserProfile({
                 name,
-                email, // Note: Backend typically prevents email change or requires verification, but added here for completeness
+                // Email updates might be restricted by backend for security, but we send it
+                // Password will be hashed by backend if provided
                 password: password || undefined,
             });
             addNotification('Profile updated successfully', 'success');
@@ -121,6 +122,7 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onClose }) 
                                 onChange={(e) => setPassword(e.target.value)} 
                                 className="mt-1 block w-full p-2 border border-slate-300 rounded-md" 
                                 placeholder="Leave blank to keep current"
+                                minLength={8}
                             />
                         </div>
                         <div>

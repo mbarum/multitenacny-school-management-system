@@ -22,4 +22,8 @@ export class UpdateUserDto {
   @IsString()
   @IsOptional()
   status?: 'Active' | 'Disabled';
+
+  @IsString()
+  @IsOptional()
+  avatarUrl?: string;
 }

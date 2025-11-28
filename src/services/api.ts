@@ -1,5 +1,5 @@
 
-// ... existing imports ...
+// ... (imports remain the same)
 import type { 
     User, Student, Transaction, Expense, Staff, Payroll, Subject, SchoolClass, 
     ClassSubjectAssignment, TimetableEntry, Exam, Grade, AttendanceRecord, SchoolEvent, 
@@ -99,7 +99,7 @@ const apiFetchBlob = async (endpoint: string, options: RequestInit = {}) => {
 // Auth
 export const login = (credentials: {email: string, password: string}): Promise<{user: User, token: string}> => apiFetch('/auth/login', { method: 'POST', body: JSON.stringify(credentials) });
 export const registerSchool = (data: any): Promise<{user: User, token: string, school: any}> => apiFetch('/auth/register-school', { method: 'POST', body: JSON.stringify(data) });
-export const getAuthenticatedUser = (): Promise<User> => apiFetch('/auth/me');
+export const getAuthenticatedUser = (): Promise<User> => apiFetch('/users/me');
 
 // Dashboard
 export const getDashboardStats = (): Promise<any> => apiFetch('/dashboard/stats');
@@ -151,6 +151,7 @@ export const getUsers = list<User>('users');
 export const createUser = create<User>('users');
 export const updateUser = update<User>('users');
 export const deleteUser = remove('users');
+// Profile management endpoints
 export const updateUserProfile = (data: Partial<User>): Promise<User> => apiFetch('/users/profile', { method: 'PATCH', body: JSON.stringify(data) });
 export const uploadUserAvatar = (formData: FormData): Promise<{ avatarUrl: string }> => apiFileFetch('/users/upload-avatar', formData);
 
