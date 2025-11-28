@@ -16,16 +16,21 @@ import { AcademicsModule } from './academics/academics.module';
 import { PayrollModule } from './payroll/payroll.module';
 import { CommunicationsModule } from './communications/communications.module';
 import { DashboardModule } from './dashboard/dashboard.module';
+import { AuditModule } from './audit/audit.module'; // New
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
-import { APP_GUARD } from '@nestjs/core';
+import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { RolesGuard } from './auth/roles.guard';
+import { SubscriptionGuard } from './auth/subscription.guard'; // New
+import { AuditInterceptor } from './common/interceptors/audit.interceptor'; // New
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
+import { School } from './entities/school.entity'; // For SubGuard
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true, envFilePath: '.env' }),
     TypeOrmModule.forRootAsync(typeOrmAsyncConfig),
+    TypeOrmModule.forFeature([School]), // Needed for SubscriptionGuard
     // Rate Limiting: Max 100 requests per 60 seconds per IP
     ThrottlerModule.forRoot([{
       ttl: 60000,
@@ -48,6 +53,7 @@ import { join } from 'path';
     PayrollModule,
     CommunicationsModule,
     DashboardModule,
+    AuditModule, // Register Audit
   ],
   controllers: [AppController],
   providers: [
@@ -58,6 +64,14 @@ import { join } from 'path';
     {
       provide: APP_GUARD,
       useClass: RolesGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: SubscriptionGuard, // Enforce SaaS status
+    },
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: AuditInterceptor, // Auto-log actions
     },
   ],
 })

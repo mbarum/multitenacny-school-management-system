@@ -1,5 +1,5 @@
 
-// ... (imports remain the same)
+// ... (keep previous imports)
 import type { 
     User, Student, Transaction, Expense, Staff, Payroll, Subject, SchoolClass, 
     ClassSubjectAssignment, TimetableEntry, Exam, Grade, AttendanceRecord, SchoolEvent, 
@@ -7,7 +7,7 @@ import type {
     PayrollItem, DarajaSettings, NewStudent, NewStaff, 
     NewTransaction, NewExpense, NewPayrollItem, NewAnnouncement, NewCommunicationLog, 
     NewUser, NewGradingRule, NewFeeItem,
-    UpdateSchoolInfoDto, PaginatedResponse
+    UpdateSchoolInfoDto, PaginatedResponse, AuditLog
 } from '../types';
 
 // Custom error for API responses
@@ -280,6 +280,9 @@ export const updateAssignment = update<ClassSubjectAssignment>('academics/class-
 export const deleteAssignment = remove('academics/class-subject-assignments');
 export const updateExam = update<Exam>('academics/exams');
 export const deleteExam = remove('academics/exams');
+
+// Audit
+export const getAuditLogs = (limit: number = 50): Promise<AuditLog[]> => apiFetch(`/audit-logs?limit=${limit}`);
 
 // Helpers for type safety in batch update
 function batchUpdate<T extends {id?: string}>(resource: string) {

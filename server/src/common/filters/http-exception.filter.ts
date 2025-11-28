@@ -9,7 +9,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
   catch(exception: any, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
-    const request = ctx.getRequest<Request>();
+    const request = ctx.getRequest<any>(); // Use any to bypass strict typing on request properties like originalUrl if not detected
 
     const status =
       exception instanceof HttpException

@@ -77,7 +77,6 @@ export enum CheckStatus {
     Bounced = 'Bounced'
 }
 
-// Fix: Changed TransactionType from a type alias to an enum to fix assignment errors.
 export enum TransactionType {
     Invoice = 'Invoice',
     Payment = 'Payment',
@@ -119,7 +118,6 @@ export interface Expense {
 }
 export type NewExpense = Omit<Expense, 'id'>;
 
-// FIX: Updated to include user details for a complete staff profile, matching the backend response.
 export interface Staff {
     id: string;
     userId: string;
@@ -136,7 +134,6 @@ export interface Staff {
     nssfNumber: string;
     shaNumber: string;
 }
-// FIX: Updated to include all fields needed to create a User and a Staff profile simultaneously.
 export type NewStaff = Omit<Staff, 'id' | 'userId'> & { password?: string };
 
 export enum PayrollItemType {
@@ -169,13 +166,11 @@ export interface PayrollItem {
 }
 export type NewPayrollItem = Omit<PayrollItem, 'id'>;
 
-// Fix: Simplified PayrollEntry to match component logic.
 export interface PayrollEntry {
     name: string;
     amount: number;
 }
 
-// Fix: Updated Payroll interface to use earnings/deductions and staffName for consistency.
 export interface Payroll {
     id: string;
     staffId: string;
@@ -395,4 +390,17 @@ export interface Notification {
     id: number;
     message: string;
     type: 'success' | 'error' | 'info';
+}
+
+export interface AuditLog {
+    id: string;
+    action: string;
+    resource: string;
+    details: string;
+    ipAddress: string;
+    timestamp: string;
+    user?: {
+        name: string;
+        email: string;
+    }
 }

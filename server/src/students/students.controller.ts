@@ -1,7 +1,6 @@
 
 import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Query, UseInterceptors, UploadedFile, Res, Request } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { Response } from 'express';
 import { StudentsService } from './students.service';
 import { CreateStudentDto } from './dto/create-student.dto';
 import { UpdateStudentDto } from './dto/update-student.dto';
@@ -35,7 +34,7 @@ export class StudentsController {
 
   @Get('export')
   @Roles(Role.Admin, Role.Accountant)
-  async export(@Request() req: any, @Res() res: Response) {
+  async export(@Request() req: any, @Res() res: any) {
     const csv = await this.studentsService.exportStudents(req.user.schoolId);
     res.setHeader('Content-Type', 'text/csv');
     res.setHeader('Content-Disposition', 'attachment; filename="students.csv"');

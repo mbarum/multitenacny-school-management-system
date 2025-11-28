@@ -1,7 +1,6 @@
 
 import { Controller, Get, Post, Body, Patch, Param, UseGuards, Delete, UploadedFile, UseInterceptors, Res, Request } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { Response } from 'express';
 import { StaffService } from './staff.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CreateStaffDto } from './dto/create-staff.dto';
@@ -28,7 +27,7 @@ export class StaffController {
   
   @Get('export')
   @Roles(Role.Admin, Role.Accountant)
-  async export(@Request() req: any, @Res() res: Response) {
+  async export(@Request() req: any, @Res() res: any) {
     const csv = await this.staffService.exportStaff(req.user.schoolId);
     res.setHeader('Content-Type', 'text/csv');
     res.setHeader('Content-Disposition', 'attachment; filename="staff.csv"');
