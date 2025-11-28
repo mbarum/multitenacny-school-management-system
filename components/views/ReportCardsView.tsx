@@ -1,0 +1,107 @@
+
+
+import React, { useState, useMemo } from 'react';
+import type { Student, SchoolClass, Exam, Grade, Subject, GradingRule, SchoolInfo } from '../../types';
+import Modal from '../common/Modal';
+import { useData } from '../../contexts/DataContext';
+
+const ReportCardsView: React.FC = () => {
+    const { students, classes, exams, grades, subjects, gradingScale, schoolInfo } = useData();
+    const [selectedClassId, setSelectedClassId] = useState('');
+    const [selectedExamId, setSelectedExamId] = useState('');
+    const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+    const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+
+    const studentsInClass = useMemo(() => {
+        return students.filter(s => s.classId === selectedClassId);
+    }, [students, selectedClassId]);
+
+    const examsForClass = useMemo(() => {
+        return exams.filter(e => e.classId === selectedClassId);
+    }, [exams, selectedClassId]);
+    
+    const openReportCard = (student: Student) => {
+        setSelectedStudent(student);
+        setIsReportModalOpen(true);
+    };
+
+    const selectedExam = exams.find(e => e.id === selectedExamId);
+
+    return (
+        <div className="p-6 md:p-8">
+            <h2 className="text-3xl font-bold text-slate-800 mb-6">Generate Report Cards</h2>
+            <div className="bg-white p-6 rounded-xl shadow-lg">
+                <div className="flex space-x-4 mb-6">
+                    <select value={selectedClassId} onChange={e => {setSelectedClassId(e.target.value); setSelectedExamId('');}} className="p-2 border rounded">
+                        <option value="">Select Class</option>
+                        {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    </select>
+                    <select value={selectedExamId} onChange={e => setSelectedExamId(e.target.value)} className="p-2 border rounded" disabled={!selectedClassId}>
+                        <option value="">Select Exam</option>
+                        {examsForClass.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
+                    </select>
+                </div>
+                {selectedExamId && (
+                    <table className="w-full text-left">
+                        <thead><tr className="bg-slate-50 border-b"><th>Student Name</th><th>Actions</th></tr></thead>
+                        <tbody>{studentsInClass.map(student => (<tr key={student.id} className="border-b">
+                            <td className="p-2">{student.name}</td>
+                            <td className="p-2"><button onClick={() => openReportCard(student)} className="text-blue-600">View Report Card</button></td></tr>))}
+                        </tbody>
+                    </table>
+                )}
+            </div>
+            {isReportModalOpen && selectedExam && schoolInfo && (
+                <ReportCardModal 
+                    isOpen={isReportModalOpen} 
+                    onClose={() => setIsReportModalOpen(false)} 
+                    student={selectedStudent} 
+                    exam={selectedExam}
+                    grades={grades} 
+                    subjects={subjects} 
+                    gradingScale={gradingScale} 
+                    schoolInfo={schoolInfo} 
+                />
+            )}
+        </div>
+    );
+};
+
+interface ReportCardModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    student: Student | null;
+    exam: Exam;
+    grades: Grade[];
+    subjects: Subject[];
+    gradingScale: GradingRule[];
+    schoolInfo: SchoolInfo;
+}
+
+const ReportCardModal: React.FC<ReportCardModalProps> = ({ isOpen, onClose, student, exam, grades, subjects, gradingScale, schoolInfo }) => {
+    if (!isOpen || !student) {
+        return null;
+    }
+
+    const studentGrades = grades.filter((g: Grade) => g.studentId === student.id && g.examId === exam.id);
+    const subjectMap = new Map(subjects.map((s:Subject) => [s.id, s.name]));
+    const totalMarks = studentGrades.reduce((sum:number, g:Grade) => sum + (g.score || 0), 0);
+    const average = studentGrades.length > 0 ? totalMarks / studentGrades.length : 0;
+    const gradeLetter = gradingScale.find((r:GradingRule) => average >= r.minScore && average <= r.maxScore)?.grade || 'N/A';
+
+    return (
+        <Modal isOpen={isOpen} onClose={onClose} title="Report Card" size="2xl" footer={<button onClick={() => window.print()} className="px-4 py-2 bg-slate-600 text-white rounded">Print</button>}>
+            <div className="printable-area p-4 border rounded">
+                <div className="text-center mb-4"><img src={schoolInfo.logoUrl} className="h-16 w-16 mx-auto rounded-full" /><h2 className="text-2xl font-bold">{schoolInfo.name}</h2><p>{schoolInfo.address}</p><h3 className="text-xl font-semibold mt-2 border-y py-1">{exam.name} Report Card</h3></div>
+                <div className="grid grid-cols-2 gap-2 text-sm mb-4"><p><strong>Student:</strong> {student.name}</p><p><strong>Class:</strong> {student.class}</p><p><strong>Adm No:</strong> {student.admissionNumber}</p><p><strong>Date:</strong> {new Date().toLocaleDateString()}</p></div>
+                <table className="w-full text-left text-sm border-collapse border"><thead><tr className="bg-slate-100"><th className="p-2 border">Subject</th><th className="p-2 border">Score</th><th className="p-2 border">Grade</th><th className="p-2 border">Comments</th></tr></thead>
+                    <tbody>{studentGrades.map((g:Grade) => <tr key={g.id} className="border"><td className="p-2 border">{subjectMap.get(g.subjectId) || 'Unknown Subject'}</td><td className="p-2 border">{g.score !== null ? `${g.score}%` : 'N/A'}</td><td className="p-2 border">{g.score !== null ? (gradingScale.find((r:GradingRule) => g.score! >= r.minScore && g.score! <= r.maxScore)?.grade || 'N/A') : 'N/A'}</td><td className="p-2 border">{g.comments}</td></tr>)}</tbody>
+                </table>
+                <div className="grid grid-cols-3 gap-4 mt-4 text-center font-bold"><div className="bg-slate-100 p-2 rounded">Total Marks: {totalMarks}</div><div className="bg-slate-100 p-2 rounded">Average: {average.toFixed(2)}%</div><div className="bg-slate-100 p-2 rounded">Mean Grade: {gradeLetter}</div></div>
+                <div className="mt-4 text-sm"><p><strong>Teacher's Comment:</strong> Good progress, keep up the hard work.</p><p><strong>Principal's Comment:</strong> Excellent performance.</p></div>
+            </div>
+        </Modal>
+    )
+};
+
+export default ReportCardsView;

@@ -1,0 +1,3 @@
+name,email,password,userRole,role,salary,joinDate,bankName,accountNumber,kraPin,nssfNumber,shaNumber
+Peter Jones,peter.jones@example.com,password123,Teacher,"Math Teacher",50000,2022-01-10,Equity Bank,1234567890,A001234567Z,30001122,40001122
+Susan Benta,susan.b@example.com,,Receptionist,"Front Desk",35000,2023-03-15,KCB,0987654321,A009876543Y,30002233,40002233
