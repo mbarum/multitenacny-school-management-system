@@ -3,11 +3,11 @@ import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import Modal from '../components/common/Modal';
 import Pagination from '../components/common/Pagination';
 import { initiateSTKPush } from '../services/darajaService';
-import type { Transaction, NewTransaction, Student } from '../../types';
-import { PaymentMethod, TransactionType } from '../../types';
-import { useData } from '../../contexts/DataContext';
+import type { Transaction, NewTransaction, Student } from '../types';
+import { PaymentMethod, TransactionType } from '../types';
+import { useData } from '../contexts/DataContext';
 import GenerateInvoicesModal from '../components/common/GenerateInvoicesModal';
-import * as api from '../../services/api';
+import * as api from '../services/api';
 import Skeleton from '../components/common/Skeleton';
 
 const FeeManagementView: React.FC = () => {

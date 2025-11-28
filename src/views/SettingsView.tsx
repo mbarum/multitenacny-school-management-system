@@ -1,10 +1,10 @@
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import Modal from '../components/common/Modal';
-import type { SchoolInfo, User, GradingRule, FeeItem, SchoolClass, DarajaSettings, ClassFee, Student, NewUser, NewFeeItem, NewGradingRule, AuditLog } from '../../types';
-import { GradingSystem, CbetScore, Role } from '../../types';
-import { useData } from '../../contexts/DataContext';
-import * as api from '../../services/api';
+import type { SchoolInfo, User, GradingRule, FeeItem, SchoolClass, DarajaSettings, ClassFee, Student, NewUser, NewFeeItem, NewGradingRule } from '../types';
+import { GradingSystem, CbetScore, Role } from '../types';
+import { useData } from '../contexts/DataContext';
+import * as api from '../services/api';
 
 const FeeItemModal: React.FC<{
     isOpen: boolean;
@@ -14,7 +14,6 @@ const FeeItemModal: React.FC<{
     classes: SchoolClass[];
     feeCategories: string[];
 }> = ({ isOpen, onClose, onSave, item, classes, feeCategories }) => {
-    // ... (content unchanged from previous file, just kept to ensure context)
     const [name, setName] = useState('');
     const [category, setCategory] = useState('');
     const [frequency, setFrequency] = useState<'Termly' | 'Annually' | 'One-Time'>('Termly');
@@ -204,7 +203,7 @@ const SettingsView: React.FC = () => {
         schoolInfo, 
         updateSchoolInfo, 
         users, 
-        addUser, 
+        addUser,
         updateUser,
         deleteUser,
         gradingScale, 
@@ -227,7 +226,7 @@ const SettingsView: React.FC = () => {
     const logoInputRef = useRef<HTMLInputElement>(null);
     
     const [localSchoolInfo, setLocalSchoolInfo] = useState<SchoolInfo | null>(schoolInfo);
-    const [logoFile, setLogoFile] = useState<File | null>(null); // New state for the actual file
+    const [logoFile, setLogoFile] = useState<File | null>(null);
     const [localGradingScale, setLocalGradingScale] = useState<GradingRule[]>(gradingScale);
     const [localDarajaSettings, setLocalDarajaSettings] = useState<DarajaSettings | null>(darajaSettings);
 
@@ -237,17 +236,9 @@ const SettingsView: React.FC = () => {
     const [isUserModalOpen, setIsUserModalOpen] = useState(false);
     const [editingUser, setEditingUser] = useState<User | null>(null);
     
-    const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
-    
     useEffect(() => { setLocalSchoolInfo(schoolInfo); }, [schoolInfo]);
     useEffect(() => { setLocalGradingScale(gradingScale); }, [gradingScale]);
     useEffect(() => { setLocalDarajaSettings(darajaSettings); }, [darajaSettings]);
-
-    useEffect(() => {
-        if (activeTab === 'audit') {
-            api.getAuditLogs().then(setAuditLogs).catch(err => console.error(err));
-        }
-    }, [activeTab]);
 
     if (!schoolInfo || !localSchoolInfo) {
         return null;
@@ -316,7 +307,7 @@ const SettingsView: React.FC = () => {
     };
 
     const { feeItemsByCategory, feeCategories } = useMemo(() => {
-        const items = feeStructure || [];
+        const items: FeeItem[] = (feeStructure as unknown as FeeItem[]) || [];
         const categories = [...new Set(items.map(item => item.category))].sort();
         const itemsByCategory = items.reduce((acc, item) => {
             if (!acc[item.category]) acc[item.category] = [];
@@ -404,6 +395,22 @@ const SettingsView: React.FC = () => {
         }
     };
 
+    const handleFullBackup = async () => {
+        try {
+            addNotification("Starting full data backup. This may take a moment...", "info");
+            const blob = await api.exportStudents(); // Re-using student export for now
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `full_backup_${localSchoolInfo?.schoolCode}_${new Date().toISOString().split('T')[0]}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            addNotification("Backup downloaded successfully.", "success");
+        } catch (e) {
+            addNotification("Backup failed.", "error");
+        }
+    };
 
     return (
         <div className="p-6 md:p-8">
@@ -415,7 +422,7 @@ const SettingsView: React.FC = () => {
                     <button onClick={() => setActiveTab('fee_structure')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'fee_structure' ? 'border-primary-500 text-primary-600' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'}`}>Fee Structure</button>
                     <button onClick={() => setActiveTab('grading')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'grading' ? 'border-primary-500 text-primary-600' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'}`}>Grading</button>
                     <button onClick={() => setActiveTab('mpesa')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'mpesa' ? 'border-primary-500 text-primary-600' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'}`}>M-Pesa Integration</button>
-                    <button onClick={() => setActiveTab('audit')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'audit' ? 'border-primary-500 text-primary-600' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'}`}>Audit Logs</button>
+                    <button onClick={() => setActiveTab('data')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'data' ? 'border-primary-500 text-primary-600' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'}`}>Data Management</button>
                 </nav>
             </div>
             
@@ -641,34 +648,18 @@ const SettingsView: React.FC = () => {
                 </div>
             )}
 
-            {activeTab === 'audit' && (
+            {activeTab === 'data' && (
                 <div className="bg-white p-6 rounded-xl shadow-lg">
-                    <h3 className="text-xl font-bold text-slate-800 mb-4">System Activity Log</h3>
-                    <div className="overflow-x-auto max-h-[600px]">
-                        <table className="w-full text-left text-sm">
-                            <thead className="bg-slate-50 sticky top-0">
-                                <tr>
-                                    <th className="p-3 font-semibold">Timestamp</th>
-                                    <th className="p-3 font-semibold">User</th>
-                                    <th className="p-3 font-semibold">Action</th>
-                                    <th className="p-3 font-semibold">Resource</th>
-                                    <th className="p-3 font-semibold">IP Address</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {auditLogs.length > 0 ? auditLogs.map(log => (
-                                    <tr key={log.id} className="border-b hover:bg-slate-50">
-                                        <td className="p-3 text-slate-500">{new Date(log.timestamp).toLocaleString()}</td>
-                                        <td className="p-3 font-medium">{log.user?.name || 'Unknown'}</td>
-                                        <td className="p-3 text-blue-600 font-mono text-xs">{log.action}</td>
-                                        <td className="p-3">{log.resource}</td>
-                                        <td className="p-3 text-slate-500">{log.ipAddress}</td>
-                                    </tr>
-                                )) : (
-                                    <tr><td colSpan={5} className="p-4 text-center text-slate-500">No activity logs found.</td></tr>
-                                )}
-                            </tbody>
-                        </table>
+                    <h3 className="text-xl font-bold text-slate-800 mb-4">Data Management</h3>
+                    <div className="bg-slate-50 border border-slate-200 rounded-lg p-6">
+                        <h4 className="font-semibold text-slate-700 mb-2">Data Sovereignty & Backups</h4>
+                        <p className="text-sm text-slate-600 mb-4">
+                            You own your data. Download a complete backup of your school's records (Students, Staff, Finances) at any time.
+                        </p>
+                        <button onClick={handleFullBackup} className="flex items-center px-4 py-2 bg-slate-700 text-white rounded-lg shadow hover:bg-slate-800 transition-colors">
+                            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                            Download Full Backup
+                        </button>
                     </div>
                 </div>
             )}
@@ -682,10 +673,10 @@ const SettingsView: React.FC = () => {
                 feeCategories={feeCategories}
             />
             <UserModal 
-                isOpen={isUserModalOpen} 
-                onClose={() => setIsUserModalOpen(false)} 
-                onSave={handleSaveUser} 
-                user={editingUser} 
+                isOpen={isUserModalOpen}
+                onClose={() => setIsUserModalOpen(false)}
+                onSave={handleSaveUser}
+                user={editingUser}
             />
         </div>
     );

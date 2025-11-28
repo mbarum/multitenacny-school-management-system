@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from 'react';
 import type { SchoolEvent } from '../types';
 import { EventCategory } from '../types';

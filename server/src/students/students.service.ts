@@ -49,7 +49,9 @@ export class StudentsService {
 
     // Auto-generate Admission Number logic specific to school context...
     // (Simplified for brevity, assuming standard generation)
-    const admissionNumber = `ADM-${Date.now()}`; 
+    const count = await this.studentsRepository.count({ where: { schoolId: schoolId as any } });
+    const year = new Date().getFullYear();
+    const admissionNumber = `ADM-${year}-${String(count + 1).padStart(4, '0')}`; 
 
     const student = this.studentsRepository.create({
         ...studentData,
@@ -209,8 +211,71 @@ export class StudentsService {
   }
 
   async importStudents(buffer: Buffer, schoolId: string): Promise<{ imported: number; failed: number; errors: any[] }> {
-    // Logic similar to previous import, but inject schoolId into create DTO calls
-    // ... implementation ...
-    return { imported: 0, failed: 0, errors: [] }; // Placeholder for brevity
+    const records = await CsvUtil.parse(buffer);
+    let imported = 0;
+    let failed = 0;
+    const errors: any[] = [];
+
+    // Pre-fetch classes for this school to avoid N+1 queries
+    const classes = await this.classesRepository.find({ where: { schoolId: schoolId as any } });
+    const classMap = new Map(classes.map(c => [c.name.toLowerCase(), c]));
+
+    for (const [index, record] of records.entries()) {
+      try {
+        const rowNumber = index + 1;
+        
+        // Basic Validation
+        if (!record.name || !record.guardianName || !record.class) {
+            throw new Error('Missing required fields (name, guardianName, or class)');
+        }
+
+        // Find Class
+        const targetClass = classMap.get(record.class.toString().toLowerCase());
+        if (!targetClass) {
+            throw new Error(`Class '${record.class}' not found. Please create it first.`);
+        }
+
+        // Check for duplicates (Simple check by name + guardian contact)
+        const existing = await this.studentsRepository.findOne({
+            where: { 
+                name: record.name, 
+                guardianContact: record.guardianContact,
+                schoolId: schoolId as any 
+            }
+        });
+
+        if (existing) {
+            throw new Error('Student already exists (Name + Guardian Contact match)');
+        }
+
+        // Generate Admission Number
+        const count = await this.studentsRepository.count({ where: { schoolId: schoolId as any } });
+        const year = new Date().getFullYear();
+        // Add random suffix to avoid race conditions in simple imports
+        const admissionNumber = `ADM-${year}-${String(count + imported + 1).padStart(4, '0')}-${Math.floor(Math.random() * 1000)}`;
+
+        const student = this.studentsRepository.create({
+            name: record.name,
+            guardianName: record.guardianName,
+            guardianContact: record.guardianContact || '',
+            guardianAddress: record.guardianAddress || '',
+            guardianEmail: record.guardianEmail || '',
+            emergencyContact: record.emergencyContact || '',
+            dateOfBirth: record.dateOfBirth || new Date().toISOString().split('T')[0],
+            admissionNumber,
+            status: StudentStatus.Active,
+            schoolClass: targetClass,
+            school: { id: schoolId } as any
+        });
+        
+        await this.studentsRepository.save(student);
+        imported++;
+      } catch (err) {
+        failed++;
+        errors.push({ row: index + 1, name: record.name || 'Unknown', error: err instanceof Error ? err.message : 'Unknown error' });
+      }
+    }
+
+    return { imported, failed, errors };
   }
 }

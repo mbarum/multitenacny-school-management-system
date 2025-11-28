@@ -1,6 +1,6 @@
 
 import { ExceptionFilter, Catch, ArgumentsHost, HttpException, HttpStatus, Logger } from '@nestjs/common';
-import { Request, Response } from 'express';
+import { Request, Response as ExpressResponse } from 'express';
 
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
@@ -8,7 +8,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
 
   catch(exception: any, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
-    const response = ctx.getResponse<Response>();
+    const response = ctx.getResponse<ExpressResponse>();
     const request = ctx.getRequest<any>(); // Use any to bypass strict typing on request properties like originalUrl if not detected
 
     const status =

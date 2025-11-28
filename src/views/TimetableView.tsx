@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useEffect } from 'react';
 import type { TimetableEntry, SchoolClass, Subject, Staff } from '../types';
 import { DayOfWeek } from '../types';

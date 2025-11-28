@@ -1,10 +1,10 @@
 
 import React, { useState } from 'react';
-import type { Expense, NewExpense } from '../../types';
-import { ExpenseCategory } from '../../types';
+import type { Expense, NewExpense } from '../types';
+import { ExpenseCategory } from '../types';
 import Modal from '../components/common/Modal';
-import { useData } from '../../contexts/DataContext';
-import * as api from '../../services/api';
+import { useData } from '../contexts/DataContext';
+import * as api from '../services/api';
 
 const ExpensesView: React.FC = () => {
     const { expenses, addExpense, deleteExpense, refetchExpenses, addNotification } = useData();

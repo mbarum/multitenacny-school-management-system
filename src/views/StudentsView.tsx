@@ -315,22 +315,17 @@ const StudentsView: React.FC = () => {
         formData.append('file', file);
         try {
             const result = await api.importStudents(formData);
-            const { imported, failed, errors } = result;
-            let message = `${imported} students imported successfully.`;
-            if (failed > 0) {
-                message += ` ${failed} records failed.`;
-                console.error("Import Errors:", errors);
-            }
-            addNotification(message, failed > 0 ? 'info' : 'success');
-            if (imported > 0) {
+            // The modal now handles the detailed result display
+            if (result.imported > 0) {
                 fetchStudents(currentPage, searchTerm, selectedClass, statusFilter);
             }
+            return result;
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : "An unknown error occurred during import.";
             addNotification(errorMessage, 'error');
         } finally {
             setIsImporting(false);
-            setIsImportModalOpen(false);
+            // Don't close modal here, let user see results
         }
     };
 

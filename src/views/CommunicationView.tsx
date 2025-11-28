@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo } from 'react';
-import type { Announcement, NewAnnouncement } from '../../types';
+import type { Announcement, NewAnnouncement } from '../types';
 import Modal from '../components/common/Modal';
 import { useData } from '../contexts/DataContext';
 import { sendBulkEmail } from '../services/emailService';
