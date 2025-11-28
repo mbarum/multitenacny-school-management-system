@@ -19,8 +19,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(payload: any) {
-    // Check if user exists and is active using findById (returns null if not found)
-    // We avoid findOne here because it throws NotFoundException which bubbles as 404
+    // Check if user exists
     const user = await this.usersService.findById(payload.sub);
     
     if (!user) {
@@ -31,7 +30,12 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
         throw new UnauthorizedException('User account is disabled');
     }
 
-    // The payload is the decoded JWT. We attach this to the request object.
-    return { userId: payload.sub, email: payload.email, role: payload.role };
+    // Attach SchoolContext to the request
+    return { 
+        userId: payload.sub, 
+        email: payload.email, 
+        role: payload.role, 
+        schoolId: user.schoolId // CRITICAL: This is used by all services to filter data
+    };
   }
 }

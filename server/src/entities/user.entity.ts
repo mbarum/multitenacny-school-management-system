@@ -1,17 +1,19 @@
-import { Entity, PrimaryGeneratedColumn, Column, OneToOne, OneToMany } from 'typeorm';
+
+import { Entity, PrimaryGeneratedColumn, Column, OneToOne, OneToMany, ManyToOne, JoinColumn, Index } from 'typeorm';
 import { Staff } from './staff.entity';
 import { SchoolClass } from './school-class.entity';
 import { ClassSubjectAssignment } from './class-subject-assignment.entity';
+import { School } from './school.entity';
 
-export const Role = {
-  Admin: 'Admin',
-  Accountant: 'Accountant',
-  Teacher: 'Teacher',
-  Receptionist: 'Receptionist',
-  Auditor: 'Auditor',
-  Parent: 'Parent',
-} as const;
-export type Role = typeof Role[keyof typeof Role];
+export enum Role {
+  SuperAdmin = 'SuperAdmin', // Platform owner
+  Admin = 'Admin', // School Admin
+  Accountant = 'Accountant',
+  Teacher = 'Teacher',
+  Receptionist = 'Receptionist',
+  Auditor = 'Auditor',
+  Parent = 'Parent',
+}
 
 @Entity()
 export class User {
@@ -30,11 +32,20 @@ export class User {
   @Column({ type: 'enum', enum: Role })
   role!: Role;
 
-  @Column()
+  @Column({ nullable: true })
   avatarUrl!: string;
 
-  @Column()
+  @Column({ default: 'Active' })
   status!: string; // "Active" or "Disabled"
+
+  // Multi-Tenancy Link
+  @Index()
+  @Column({ type: 'uuid', nullable: true }) 
+  schoolId!: string | null; // Nullable only for SuperAdmin
+
+  @ManyToOne(() => School, (school) => school.users, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'schoolId' })
+  school!: School;
 
   @OneToOne(() => SchoolClass, (schoolClass) => schoolClass.formTeacher, { nullable: true })
   formClass!: SchoolClass | null;

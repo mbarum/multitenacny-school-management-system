@@ -1,14 +1,24 @@
-import { Entity, PrimaryGeneratedColumn, Column, OneToOne, JoinColumn, OneToMany } from 'typeorm';
+
+import { Entity, PrimaryGeneratedColumn, Column, OneToOne, JoinColumn, OneToMany, ManyToOne, Index } from 'typeorm';
 import { User } from './user.entity';
 import { Student } from './student.entity';
 import { ClassFee } from './class-fee.entity';
+import { School } from './school.entity';
 
 @Entity()
 export class SchoolClass {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
-  @Column({ unique: true })
+  @Index()
+  @Column({ type: 'uuid' })
+  schoolId!: string;
+
+  @ManyToOne(() => School, (school) => school.classes, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'schoolId' })
+  school!: School;
+
+  @Column()
   name!: string;
 
   @Column()

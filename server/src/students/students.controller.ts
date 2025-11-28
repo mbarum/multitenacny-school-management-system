@@ -1,5 +1,5 @@
 
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Query, UseInterceptors, UploadedFile, Res } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Query, UseInterceptors, UploadedFile, Res, Request } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Response } from 'express';
 import { StudentsService } from './students.service';
@@ -17,28 +17,26 @@ export class StudentsController {
 
   @Post()
   @Roles(Role.Admin, Role.Accountant)
-  create(@Body() createStudentDto: CreateStudentDto) {
-    return this.studentsService.create(createStudentDto);
+  create(@Request() req: any, @Body() createStudentDto: CreateStudentDto) {
+    return this.studentsService.create(createStudentDto, req.user.schoolId);
   }
 
   @Post('batch-update')
   @Roles(Role.Admin, Role.Accountant)
-  batchUpdate(@Body() updates: UpdateStudentDto[]) {
-    return this.studentsService.batchUpdate(updates);
+  batchUpdate(@Request() req: any, @Body() updates: UpdateStudentDto[]) {
+    return this.studentsService.batchUpdate(updates, req.user.schoolId);
   }
 
   @Get()
-  // Allow Teachers, Accountants, Admins to view students. 
-  // Parents are restricted by service logic if accessing specific data, or should rely on dedicated parent endpoints.
   @Roles(Role.Admin, Role.Accountant, Role.Teacher, Role.Receptionist)
-  findAll(@Query() query: GetStudentsDto) {
-    return this.studentsService.findAll(query);
+  findAll(@Request() req: any, @Query() query: GetStudentsDto) {
+    return this.studentsService.findAll(query, req.user.schoolId);
   }
 
   @Get('export')
   @Roles(Role.Admin, Role.Accountant)
-  async export(@Res() res: Response) {
-    const csv = await this.studentsService.exportStudents();
+  async export(@Request() req: any, @Res() res: Response) {
+    const csv = await this.studentsService.exportStudents(req.user.schoolId);
     res.header('Content-Type', 'text/csv');
     res.header('Content-Disposition', 'attachment; filename="students.csv"');
     res.send(csv);
@@ -47,26 +45,25 @@ export class StudentsController {
   @Post('import')
   @Roles(Role.Admin)
   @UseInterceptors(FileInterceptor('file'))
-  async import(@UploadedFile() file: any) {
-    return this.studentsService.importStudents(file.buffer);
+  async import(@Request() req: any, @UploadedFile() file: any) {
+    return this.studentsService.importStudents(file.buffer, req.user.schoolId);
   }
 
   @Get(':id')
   @Roles(Role.Admin, Role.Accountant, Role.Teacher, Role.Receptionist, Role.Parent)
-  findOne(@Param('id') id: string) {
-    // Note: In a strict environment, we'd add an ownership check here for Parents.
-    return this.studentsService.findOne(id);
+  findOne(@Request() req: any, @Param('id') id: string) {
+    return this.studentsService.findOne(id, req.user.schoolId);
   }
 
   @Patch(':id')
   @Roles(Role.Admin, Role.Accountant)
-  update(@Param('id') id: string, @Body() updateStudentDto: UpdateStudentDto) {
-    return this.studentsService.update(id, updateStudentDto);
+  update(@Request() req: any, @Param('id') id: string, @Body() updateStudentDto: UpdateStudentDto) {
+    return this.studentsService.update(id, updateStudentDto, req.user.schoolId);
   }
 
   @Delete(':id')
   @Roles(Role.Admin)
-  remove(@Param('id') id: string) {
-    return this.studentsService.remove(id);
+  remove(@Request() req: any, @Param('id') id: string) {
+    return this.studentsService.remove(id, req.user.schoolId);
   }
 }

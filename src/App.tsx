@@ -4,6 +4,7 @@ import Sidebar from './components/layout/Sidebar';
 import Header from './components/layout/Header';
 import Spinner from './components/common/Spinner';
 import Login from './components/auth/Login';
+import RegisterSchool from './components/auth/RegisterSchool';
 import type { Notification } from './types';
 import { useData } from './contexts/DataContext';
 
@@ -37,9 +38,6 @@ const ParentFinances = lazy(() => import('./components/parent/ParentFinances'));
 const ParentAnnouncementsView = lazy(() => import('./components/parent/ParentAnnouncementsView'));
 
 
-// =================================================================================
-// MAIN APP COMPONENT
-// =================================================================================
 const App: React.FC = () => {
     const {
         isLoading,
@@ -51,7 +49,9 @@ const App: React.FC = () => {
         notifications,
     } = useData();
 
-    // Sidebar collapse logic based on window size
+    // Simple routing check for registration
+    const isRegisterPage = window.location.pathname === '/register';
+
     useEffect(() => {
         const handleResize = () => {
             if (window.innerWidth < 1024) {
@@ -61,16 +61,14 @@ const App: React.FC = () => {
             }
         };
         window.addEventListener('resize', handleResize);
-        handleResize(); // Initial check
+        handleResize();
         return () => window.removeEventListener('resize', handleResize);
     }, [setIsSidebarCollapsed]);
 
-    // The renderView function is now much cleaner, as components fetch their own data and actions.
     const renderView = () => {
         if (!currentUser) return null;
 
         switch (activeView) {
-            // Admin/Main views
             case 'dashboard': return <Dashboard />;
             case 'students': return <StudentsView />;
             case 'fees': return <FeeManagementView />;
@@ -85,23 +83,22 @@ const App: React.FC = () => {
             case 'communication': return <CommunicationView />;
             case 'reporting': return <Reporting />;
             case 'settings': return <SettingsView />;
-
-            // Teacher views
             case 'teacher_dashboard': return <TeacherDashboard />;
             case 'my_class': return <MyClassView />;
             case 'teacher_attendance': return <TeacherAttendanceView />;
             case 'teacher_examinations': return <TeacherExaminationsView />;
             case 'teacher_communication': return <TeacherCommunicationView />;
-            
-            // Parent views
             case 'parent_dashboard': return <ParentDashboard />;
             case 'parent_child_details': return <ParentChildDetails />;
             case 'parent_finances': return <ParentFinances />;
             case 'parent_announcements': return <ParentAnnouncementsView />;
-                
             default: return <Dashboard />;
         }
     };
+
+    if (isRegisterPage) {
+        return <RegisterSchool />;
+    }
 
     if (isLoading || !schoolInfo) {
         return (
@@ -115,8 +112,7 @@ const App: React.FC = () => {
         return <Login />;
     }
 
-    // Notification container remains here as a global UI element
-    const NotificationContainer: React.FC<{ notifications: Notification[] }> = ({ notifications }) => (
+    const NotificationContainer: React.FC<{ notifications: any[] }> = ({ notifications }) => (
         <div className="fixed top-5 right-5 z-50 space-y-3 w-full max-w-sm">
             {notifications.map(n => {
                 const colors = {
@@ -125,19 +121,14 @@ const App: React.FC = () => {
                     info: 'bg-blue-100 border-blue-500 text-blue-700',
                 };
                 return (
-                    <div key={n.id} className={`p-4 border-l-4 rounded-r-lg shadow-lg ${colors[n.type]}`} role="alert" style={{ animation: 'fadeInRight 0.5s' }}>
+                    <div key={n.id} className={`p-4 border-l-4 rounded-r-lg shadow-lg ${colors[n.type as 'success'|'error'|'info']}`} role="alert" style={{ animation: 'fadeInRight 0.5s' }}>
                         <p className="font-bold">{n.type.charAt(0).toUpperCase() + n.type.slice(1)}</p>
                         <p>{n.message}</p>
                     </div>
                 );
             })}
              <style>
-                {`
-                @keyframes fadeInRight {
-                    from { opacity: 0; transform: translateX(100%); }
-                    to { opacity: 1; transform: translateX(0); }
-                }
-                `}
+                {`@keyframes fadeInRight { from { opacity: 0; transform: translateX(100%); } to { opacity: 1; transform: translateX(0); } }`}
             </style>
         </div>
     );
@@ -149,11 +140,7 @@ const App: React.FC = () => {
             <div className={`flex-1 flex flex-col transition-all duration-300 ease-in-out ${isSidebarCollapsed ? 'lg:ml-20' : 'lg:ml-64'}`}>
                 <Header />
                 <main className="flex-1 overflow-y-auto">
-                    <Suspense fallback={
-                        <div className="h-full w-full flex items-center justify-center">
-                            <Spinner />
-                        </div>
-                    }>
+                    <Suspense fallback={<div className="h-full w-full flex items-center justify-center"><Spinner /></div>}>
                         {renderView()}
                     </Suspense>
                 </main>

@@ -99,6 +99,7 @@ const apiFetchBlob = async (endpoint: string, options: RequestInit = {}) => {
 
 // Auth
 export const login = (credentials: {email: string, password: string}): Promise<{user: User, token: string}> => apiFetch('/auth/login', { method: 'POST', body: JSON.stringify(credentials) });
+export const registerSchool = (data: any): Promise<{user: User, token: string, school: any}> => apiFetch('/auth/register-school', { method: 'POST', body: JSON.stringify(data) });
 export const getAuthenticatedUser = (): Promise<User> => apiFetch('/auth/me');
 
 // Dashboard

@@ -1,5 +1,7 @@
 
 export * from './user.entity';
+export * from './school.entity';
+export * from './subscription.entity';
 export * from './student.entity';
 export * from './school-class.entity';
 export * from './transaction.entity';
@@ -22,5 +24,6 @@ export * from './communication-log.entity';
 export * from './announcement.entity';
 export * from './report-share-log.entity';
 export * from './mpesa-c2b.entity';
-export * from './school-setting.entity';
+// Deprecated: SchoolSetting is replaced by School entity
+export { SchoolSetting } from './school-setting.entity'; 
 export * from './daraja-setting.entity';

@@ -1,6 +1,7 @@
 
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, Index } from 'typeorm';
 import { Student } from './student.entity';
+import { School } from './school.entity';
 
 export const PaymentMethod = {
   MPesa: 'MPesa',
@@ -28,6 +29,14 @@ export type TransactionType = typeof TransactionType[keyof typeof TransactionTyp
 export class Transaction {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
+
+  @Index()
+  @Column({ type: 'uuid' })
+  schoolId!: string;
+
+  @ManyToOne(() => School, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'schoolId' })
+  school!: School;
 
   @ManyToOne(() => Student, (student) => student.transactions, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'studentId' })

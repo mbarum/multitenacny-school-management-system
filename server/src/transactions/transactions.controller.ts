@@ -1,5 +1,5 @@
 
-import { Controller, Get, Post, Body, UseGuards, Query } from '@nestjs/common';
+import { Controller, Get, Post, Body, UseGuards, Query, Request } from '@nestjs/common';
 import { TransactionsService } from './transactions.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { Transaction } from '../entities/transaction.entity';
@@ -14,27 +14,25 @@ export class TransactionsController {
   @UseGuards(JwtAuthGuard)
   @Roles(Role.Admin, Role.Accountant)
   @Post()
-  create(@Body() createTransactionDto: Omit<Transaction, 'id'>) {
-    return this.transactionsService.create(createTransactionDto);
+  create(@Request() req: any, @Body() createTransactionDto: Omit<Transaction, 'id'>) {
+    return this.transactionsService.create(createTransactionDto, req.user.schoolId);
   }
   
   @UseGuards(JwtAuthGuard)
   @Roles(Role.Admin, Role.Accountant)
   @Post('batch')
-  createBatch(@Body() createTransactionDtos: Omit<Transaction, 'id'>[]) {
-    return this.transactionsService.createBatch(createTransactionDtos);
+  createBatch(@Request() req: any, @Body() createTransactionDtos: Omit<Transaction, 'id'>[]) {
+    return this.transactionsService.createBatch(createTransactionDtos, req.user.schoolId);
   }
 
-  // Allow Parents/Teachers to view basic transactions related to their scope, 
-  // but fine-grained filtering is handled in service/guard logic if strictly needed.
-  // For now, we allow reading for authenticated users, but writing is restricted.
   @UseGuards(JwtAuthGuard)
   @Get()
-  findAll(@Query() query: GetTransactionsDto) {
-    return this.transactionsService.findAll(query);
+  findAll(@Request() req: any, @Query() query: GetTransactionsDto) {
+    return this.transactionsService.findAll(query, req.user.schoolId);
   }
 
-  // Public endpoint for Safaricom - No Guards
+  // Public endpoint for Safaricom - No Guards (Security handled by IP Whitelist/Signature validation in production)
+  // M-Pesa callbacks don't carry schoolId directly, but the reference (AccountReference) links to a Student who has a schoolId.
   @Post('mpesa/callback')
   async handleMpesaCallback(@Body() payload: any) {
       return this.transactionsService.handleMpesaCallback(payload);

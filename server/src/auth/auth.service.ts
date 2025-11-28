@@ -1,10 +1,16 @@
 
-import { Injectable, UnauthorizedException, NotFoundException, Logger } from '@nestjs/common';
+import { Injectable, UnauthorizedException, ConflictException, Logger } from '@nestjs/common';
 import { UsersService } from '../users/users.service';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import * as nodemailer from 'nodemailer';
 import { ConfigService } from '@nestjs/config';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository, EntityManager } from 'typeorm';
+import { School } from '../entities/school.entity';
+import { User, Role } from '../entities/user.entity';
+import { Subscription, SubscriptionPlan, SubscriptionStatus } from '../entities/subscription.entity';
+import { RegisterSchoolDto } from './dto/register-school.dto';
 
 @Injectable()
 export class AuthService {
@@ -15,6 +21,8 @@ export class AuthService {
     private usersService: UsersService,
     private jwtService: JwtService,
     private configService: ConfigService,
+    @InjectRepository(School) private schoolRepo: Repository<School>,
+    private entityManager: EntityManager
   ) {
     this.transporter = nodemailer.createTransport({
         host: this.configService.get<string>('SMTP_HOST'),
@@ -47,25 +55,79 @@ export class AuthService {
         throw new UnauthorizedException('Account is disabled');
     }
 
-    const payload = { email: user.email, sub: user.id, role: user.role };
+    // Check Subscription Status (Optional: Block login if subscription expired)
+    // For now, we allow login but UI might be restricted.
+
+    const payload = { email: user.email, sub: user.id, role: user.role, schoolId: user.schoolId };
     return {
       user,
       token: this.jwtService.sign(payload),
     };
   }
 
+  async registerSchool(dto: RegisterSchoolDto) {
+    // 1. Check if email exists
+    const existingUser = await this.usersService.findOneByEmail(dto.adminEmail);
+    if (existingUser) throw new ConflictException('User with this email already exists.');
+
+    return this.entityManager.transaction(async manager => {
+        // 2. Create School
+        const school = manager.create(School, {
+            name: dto.schoolName,
+            slug: dto.schoolName.toLowerCase().replace(/ /g, '-') + '-' + Date.now().toString().slice(-4), // Simple slug gen
+            email: dto.adminEmail,
+            phone: dto.phone,
+        });
+        const savedSchool = await manager.save(school);
+
+        // 3. Create Subscription (Trial)
+        const startDate = new Date();
+        const endDate = new Date();
+        endDate.setDate(endDate.getDate() + 14); // 14 Day Trial
+
+        const sub = manager.create(Subscription, {
+            school: savedSchool,
+            plan: SubscriptionPlan.FREE,
+            status: SubscriptionStatus.TRIAL,
+            startDate,
+            endDate
+        });
+        await manager.save(sub);
+
+        // 4. Create Admin User
+        const salt = await bcrypt.genSalt();
+        const hashedPassword = await bcrypt.hash(dto.password, salt);
+        
+        const user = manager.create(User, {
+            name: dto.adminName,
+            email: dto.adminEmail,
+            password: hashedPassword,
+            role: Role.Admin,
+            school: savedSchool,
+            status: 'Active',
+            avatarUrl: `https://i.pravatar.cc/150?u=${dto.adminEmail}`
+        });
+        const savedUser = await manager.save(user);
+
+        // Generate Token
+        const payload = { email: savedUser.email, sub: savedUser.id, role: savedUser.role, schoolId: savedSchool.id };
+        
+        return {
+            user: { ...savedUser, schoolId: savedSchool.id },
+            token: this.jwtService.sign(payload),
+            school: savedSchool
+        };
+    });
+  }
+
   async requestPasswordReset(email: string) {
     const user = await this.usersService.findOneByEmail(email);
     
-    // We behave as if success to prevent user enumeration
     if (!user) {
         return { success: true, message: 'If an account with this email exists, a reset link has been sent.' };
     }
 
-    // Generate a temporary token (valid for 15 mins)
     const resetToken = this.jwtService.sign({ sub: user.id, purpose: 'reset_password' }, { expiresIn: '15m' });
-    
-    // Use the FRONTEND_URL env var, fallback to localhost if not set
     const frontendUrl = this.configService.get('FRONTEND_URL', 'http://localhost:5173');
     const resetLink = `${frontendUrl}/reset-password?token=${resetToken}`;
 
@@ -76,19 +138,16 @@ export class AuthService {
         html: `
             <h3>Password Reset Request</h3>
             <p>Hello ${user.name},</p>
-            <p>You requested a password reset. Click the link below to reset your password:</p>
+            <p>Click the link below to reset your password:</p>
             <p><a href="${resetLink}">Reset Password</a></p>
-            <p>If you did not request this, please ignore this email.</p>
-            <p>This link expires in 15 minutes.</p>
+            <p>Link expires in 15 minutes.</p>
         `,
     };
 
     try {
         await this.transporter.sendMail(mailOptions);
-        this.logger.log(`Password reset email sent to ${email}`);
     } catch (error) {
         this.logger.error(`Failed to send email to ${email}`, error);
-        // We still return success to the frontend to not expose failure details
     }
 
     return {

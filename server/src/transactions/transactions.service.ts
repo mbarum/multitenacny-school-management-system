@@ -33,24 +33,24 @@ export class TransactionsService {
       return phone.replace(/^\+/, '').replace(/^0/, '254');
   }
 
-  async create(createTransactionDto: any): Promise<any> {
+  async create(createTransactionDto: any, schoolId: string): Promise<any> {
     const { studentId, ...rest } = createTransactionDto;
 
-    // Validate student existence to provide a clear error if missing
-    const student = await this.studentRepository.findOne({ where: { id: studentId } });
+    // Verify student exists AND belongs to the school
+    const student = await this.studentRepository.findOne({ where: { id: studentId, schoolId: schoolId as any } });
     if (!student) {
-        throw new NotFoundException(`Student with ID ${studentId} not found. Cannot create transaction.`);
+        throw new NotFoundException(`Student with ID ${studentId} not found in this school.`);
     }
 
-    // Create and save
+    // Create and save with schoolId
     const transaction = this.transactionsRepository.create({
         ...rest,
-        student: student
+        student: student,
+        school: { id: schoolId } as any
     } as DeepPartial<Transaction>);
     
     const savedTransaction = await this.transactionsRepository.save(transaction);
 
-    // Reload with relations to return a complete object to the frontend
     const reloadedTransaction = await this.transactionsRepository.findOne({
         where: { id: savedTransaction.id },
         relations: ['student']
@@ -63,30 +63,32 @@ export class TransactionsService {
     return this.mapTransactionToDto(reloadedTransaction);
   }
 
-  async createBatch(createTransactionDtos: any[]): Promise<Transaction[]> {
-    // For batch, we prioritize speed over individual reloading/mapping
+  async createBatch(createTransactionDtos: any[], schoolId: string): Promise<Transaction[]> {
     const transactions = createTransactionDtos.map(dto => {
         const { studentId, ...rest } = dto;
         return this.transactionsRepository.create({
             ...rest,
-            student: { id: studentId }
+            student: { id: studentId },
+            school: { id: schoolId } as any
         } as DeepPartial<Transaction>);
     });
     return this.transactionsRepository.save(transactions);
   }
 
-  async findAll(query?: GetTransactionsDto): Promise<any> {
+  async findAll(query: GetTransactionsDto | undefined, schoolId: string): Promise<any> {
     const { page = 1, limit = 10, search, startDate, endDate, type, studentId, pagination } = query || {};
     
     const qb = this.transactionsRepository.createQueryBuilder('transaction');
     qb.leftJoinAndSelect('transaction.student', 'student');
+    
+    // Multi-tenancy filter
+    qb.where('transaction.schoolId = :schoolId', { schoolId });
 
     if (search) {
         qb.andWhere('(student.name LIKE :search OR transaction.description LIKE :search OR transaction.transactionCode LIKE :search)', { search: `%${search}%` });
     }
 
     if (studentId) {
-        // Filter via relation alias since studentId column is removed
         qb.andWhere('student.id = :studentId', { studentId });
     }
 
@@ -103,7 +105,7 @@ export class TransactionsService {
     }
 
     qb.orderBy('transaction.date', 'DESC');
-    qb.addOrderBy('transaction.id', 'DESC'); // Stable sort
+    qb.addOrderBy('transaction.id', 'DESC');
 
     if (pagination === 'false') {
         const allTransactions = await qb.getMany();
@@ -128,7 +130,7 @@ export class TransactionsService {
 
   // --- M-Pesa Callback Handling ---
   async handleMpesaCallback(payload: any): Promise<any> {
-      this.logger.log('Received M-Pesa Callback', JSON.stringify(payload));
+      this.logger.log('Received M-Pesa Callback');
 
       const body = payload.Body.stkCallback;
       
@@ -147,13 +149,13 @@ export class TransactionsService {
       const rawPhone = phoneItem?.Value ? phoneItem.Value.toString() : '';
       const normalizedPhone = this.normalizePhone(rawPhone);
 
-      // Step 1: Log raw transaction
+      // Log raw transaction (MpesaC2BTransaction does not strictly need schoolId initially, but we link it if found)
       const rawTrans = this.mpesaRepo.create({
           transactionType: 'STK Push',
           transID: receipt,
           transTime: new Date().toISOString(),
           transAmount: amount.toString(),
-          businessShortCode: '174379', // Example
+          businessShortCode: '174379',
           billRefNumber: 'STK_PUSH',
           msisdn: rawPhone,
           firstName: 'Unknown',
@@ -162,8 +164,8 @@ export class TransactionsService {
       });
       await this.mpesaRepo.save(rawTrans);
 
-      // Step 2: Attempt to Auto-Reconcile using robust phone matching
-      // We look for students whose contact contains the main part of the number (last 9 digits)
+      // Auto-Reconcile: Find student by Guardian Contact across ALL schools (or specific paybill logic)
+      // Since phone numbers are unique identifiers here, we assume one student per phone mostly, or take the first match.
       const significantDigits = normalizedPhone.slice(-9); 
       
       const student = await this.studentRepository
@@ -174,6 +176,7 @@ export class TransactionsService {
       if (student) {
           const transaction = this.transactionsRepository.create({
               student: student,
+              school: { id: student.schoolId } as any, // Assign to student's school
               type: TransactionType.Payment,
               date: new Date().toISOString().split('T')[0],
               description: 'M-Pesa Fee Payment (Auto)',
@@ -184,12 +187,11 @@ export class TransactionsService {
           });
           await this.transactionsRepository.save(transaction);
           
-          // Mark as processed
           rawTrans.isProcessed = true;
-          rawTrans.firstName = student.guardianName.split(' ')[0]; // Approx name logic
+          rawTrans.firstName = student.guardianName.split(' ')[0];
           await this.mpesaRepo.save(rawTrans);
           
-          this.logger.log(`Auto-reconciled payment ${receipt} for student ${student.name}`);
+          this.logger.log(`Auto-reconciled payment ${receipt} for student ${student.name} in School ${student.schoolId}`);
       } else {
           this.logger.warn(`Could not auto-reconcile payment ${receipt}. Phone ${rawPhone} matched no guardian.`);
       }

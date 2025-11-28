@@ -1,5 +1,5 @@
 
-import { Controller, Get, Post, Body, UseGuards, Param, Delete } from '@nestjs/common';
+import { Controller, Get, Post, Body, UseGuards, Param, Delete, Request } from '@nestjs/common';
 import { ExpensesService } from './expenses.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { Expense } from '../entities/expense.entity';
@@ -13,19 +13,19 @@ export class ExpensesController {
 
   @Post()
   @Roles(Role.Admin, Role.Accountant)
-  create(@Body() createExpenseDto: Omit<Expense, 'id'>) {
-    return this.expensesService.create(createExpenseDto);
+  create(@Request() req: any, @Body() createExpenseDto: Omit<Expense, 'id'>) {
+    return this.expensesService.create(createExpenseDto, req.user.schoolId);
   }
 
   @Get()
   @Roles(Role.Admin, Role.Accountant)
-  findAll() {
-    return this.expensesService.findAll();
+  findAll(@Request() req: any) {
+    return this.expensesService.findAll(req.user.schoolId);
   }
 
   @Delete(':id')
   @Roles(Role.Admin, Role.Accountant)
-  remove(@Param('id') id: string) {
-    return this.expensesService.remove(id);
+  remove(@Request() req: any, @Param('id') id: string) {
+    return this.expensesService.remove(id, req.user.schoolId);
   }
 }

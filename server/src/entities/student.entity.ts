@@ -1,21 +1,29 @@
 
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, OneToMany, JoinColumn, CreateDateColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, OneToMany, JoinColumn, CreateDateColumn, Index } from 'typeorm';
 import { SchoolClass } from './school-class.entity';
 import { Transaction } from './transaction.entity';
+import { School } from './school.entity';
 
-export const StudentStatus = {
-  Active: 'Active',
-  Inactive: 'Inactive',
-  Graduated: 'Graduated',
-} as const;
-export type StudentStatus = typeof StudentStatus[keyof typeof StudentStatus];
+export enum StudentStatus {
+  Active = 'Active',
+  Inactive = 'Inactive',
+  Graduated = 'Graduated',
+}
 
 @Entity()
 export class Student {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
-  @Column({ unique: true })
+  @Index() // Index for performance
+  @Column({ type: 'uuid' })
+  schoolId!: string;
+
+  @ManyToOne(() => School, (school) => school.students, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'schoolId' })
+  school!: School;
+
+  @Column() 
   admissionNumber!: string;
 
   @Column()
@@ -24,7 +32,7 @@ export class Student {
   @Column({ type: 'enum', enum: StudentStatus, default: StudentStatus.Active })
   status!: StudentStatus;
 
-  @Column()
+  @Column({ nullable: true })
   profileImage!: string;
 
   @Column()
@@ -36,19 +44,19 @@ export class Student {
   @Column()
   guardianAddress!: string;
 
-  @Column()
+  @Column({ nullable: true })
   guardianEmail!: string;
 
-  @Column()
+  @Column({ nullable: true })
   emergencyContact!: string;
 
-  @Column({ type: 'date' })
+  @Column({ type: 'date', nullable: true })
   dateOfBirth!: string;
 
   @CreateDateColumn()
   createdAt!: Date;
 
-  @ManyToOne(() => SchoolClass, (schoolClass) => schoolClass.students, { onDelete: 'CASCADE' })
+  @ManyToOne(() => SchoolClass, (schoolClass) => schoolClass.students, { onDelete: 'SET NULL', nullable: true })
   @JoinColumn({ name: 'classId' })
   schoolClass!: SchoolClass;
 

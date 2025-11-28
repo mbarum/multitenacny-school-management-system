@@ -38,7 +38,7 @@ export class StaffService {
     };
   }
 
-  async create(createStaffDto: CreateStaffDto): Promise<any> {
+  async create(createStaffDto: CreateStaffDto, schoolId: string): Promise<any> {
     const existingUser = await this.userRepository.findOne({ where: { email: createStaffDto.email } });
     if (existingUser) {
       throw new ConflictException(`User with email ${createStaffDto.email} already exists.`);
@@ -55,6 +55,7 @@ export class StaffService {
         role: createStaffDto.userRole,
         avatarUrl: createStaffDto.photoUrl || `https://i.pravatar.cc/150?u=${createStaffDto.email}`,
         status: 'Active',
+        school: { id: schoolId } as any // Link User to School
       });
       const savedUser = await transactionalEntityManager.save(user);
 
@@ -70,35 +71,35 @@ export class StaffService {
         shaNumber: createStaffDto.shaNumber,
         photoUrl: savedUser.avatarUrl,
         user: savedUser,
+        school: { id: schoolId } as any // Link Staff to School
       });
       const savedStaff = await transactionalEntityManager.save(staffMember);
       return savedStaff.id;
     });
 
-    // Reload to get full relations for mapping
     const reloadedStaff = await this.staffRepository.findOne({ where: { id: newStaffId }, relations: ['user'] });
     return this.mapStaffToResponse(reloadedStaff);
   }
 
-  async findAll(): Promise<any[]> {
-    const staffList = await this.staffRepository.find({ relations: ['user'] });
+  async findAll(schoolId: string): Promise<any[]> {
+    const staffList = await this.staffRepository.find({ where: { schoolId: schoolId as any }, relations: ['user'] });
     return staffList.map(s => this.mapStaffToResponse(s));
   }
 
-  async findOne(id: string): Promise<any> {
-    const staff = await this.staffRepository.findOne({ where: { id }, relations: ['user'] });
+  async findOne(id: string, schoolId: string): Promise<any> {
+    const staff = await this.staffRepository.findOne({ where: { id, schoolId: schoolId as any }, relations: ['user'] });
     if (!staff) {
       throw new NotFoundException(`Staff member with ID "${id}" not found`);
     }
     return this.mapStaffToResponse(staff);
   }
 
-  async update(id: string, updateStaffDto: UpdateStaffDto): Promise<any> {
+  async update(id: string, updateStaffDto: UpdateStaffDto, schoolId: string): Promise<any> {
     await this.entityManager.transaction(async transactionalEntityManager => {
       const staffRepo = transactionalEntityManager.getRepository(Staff);
       const userRepo = transactionalEntityManager.getRepository(User);
       
-      const staffMember = await staffRepo.findOne({ where: { id }, relations: ['user'] });
+      const staffMember = await staffRepo.findOne({ where: { id, schoolId: schoolId as any }, relations: ['user'] });
       if (!staffMember) {
         throw new NotFoundException(`Staff with ID "${id}" not found`);
       }
@@ -112,7 +113,6 @@ export class StaffService {
         await userRepo.save(user);
       }
 
-      // Update staff fields
       staffMember.name = updateStaffDto.name ?? staffMember.name;
       staffMember.role = updateStaffDto.role ?? staffMember.role;
       staffMember.salary = updateStaffDto.salary ?? staffMember.salary;
@@ -131,19 +131,17 @@ export class StaffService {
     return this.mapStaffToResponse(reloadedStaff!);
   }
 
-  async remove(id: string): Promise<void> {
-    const staff = await this.staffRepository.findOne({ where: { id } });
+  async remove(id: string, schoolId: string): Promise<void> {
+    const staff = await this.staffRepository.findOne({ where: { id, schoolId: schoolId as any } });
     if (!staff) {
       throw new NotFoundException(`Staff member with ID "${id}" not found`);
     }
-
-    // By deleting the user, the staff profile will be cascade-deleted
-    // due to the `onDelete: 'CASCADE'` on the Staff entity's user relation.
-    await this.userRepository.delete(staff.userId);
+    // Delete user (cascades to staff)
+    await this.userRepository.delete({ id: staff.userId, schoolId: schoolId as any });
   }
 
-  async exportStaff(): Promise<string> {
-    const staffList = await this.staffRepository.find({ relations: ['user'] });
+  async exportStaff(schoolId: string): Promise<string> {
+    const staffList = await this.staffRepository.find({ where: { schoolId: schoolId as any }, relations: ['user'] });
     const data = staffList.map(s => ({
       Name: s.name,
       Email: s.user.email,
@@ -156,7 +154,7 @@ export class StaffService {
     return CsvUtil.generate(data, ['Name', 'Email', 'Role', 'UserRole', 'Salary', 'JoinDate', 'KRA']);
   }
 
-  async importStaff(buffer: Buffer): Promise<{ imported: number; failed: number; errors: any[] }> {
+  async importStaff(buffer: Buffer, schoolId: string): Promise<{ imported: number; failed: number; errors: any[] }> {
     const records = await CsvUtil.parse(buffer);
     let imported = 0;
     let failed = 0;
@@ -180,7 +178,7 @@ export class StaffService {
           photoUrl: ''
         };
         
-        await this.create(dto);
+        await this.create(dto, schoolId);
         imported++;
       } catch (err) {
         failed++;

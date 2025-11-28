@@ -107,7 +107,7 @@ export class AcademicsService {
   }
   async deleteClass(id: string) {
     // Updated to use relation query structure
-    const studentCount = await this.entityManager.getRepository(Student).count({ where: { schoolClass: { id } } });
+    const studentCount = await this.entityManager.getRepository(Student).count({ where: { schoolClass: { id } as any } });
     if (studentCount > 0) throw new BadRequestException('Cannot delete class with assigned students. Please re-assign students first.');
     const result = await this.classRepo.delete(id);
     if (result.affected === 0) throw new NotFoundException(`Class with ID ${id} not found`);
