@@ -1,8 +1,8 @@
 
+// ... existing imports ...
 import React, { createContext, useState, useEffect, useContext, useCallback, useMemo } from 'react';
 import * as api from '../services/api';
-import { ApiError } from '../services/api';
-import { Role, GradingSystem } from '../types';
+// ... types import ...
 import type { 
     User, Student, Staff, Transaction, Expense, Payroll, Subject, SchoolClass, ClassSubjectAssignment, 
     TimetableEntry, Exam, Grade, AttendanceRecord, SchoolEvent, SchoolInfo, GradingRule, FeeItem, 
@@ -10,12 +10,13 @@ import type {
     Notification, NewStudent, NewStaff, NewTransaction, NewExpense, NewPayrollItem, NewAnnouncement, 
     NewCommunicationLog, NewUser, NewGradingRule, NewFeeItem, UpdateSchoolInfoDto
 } from '../types';
+import { Role, GradingSystem } from '../types';
 import { NAVIGATION_ITEMS, TEACHER_NAVIGATION_ITEMS, PARENT_NAVIGATION_ITEMS } from '../constants';
 import type { NavItem } from '../constants';
 import IDCardModal from '../components/common/IDCardModal';
 
 interface IDataContext {
-    // State
+    // ... existing state ...
     isLoading: boolean;
     schoolInfo: SchoolInfo | null;
     currentUser: User | null;
@@ -44,27 +45,22 @@ interface IDataContext {
     parentChildren: Student[];
     selectedChild: Student | null;
 
-    // UI State
     isSidebarCollapsed: boolean;
     isMobileSidebarOpen: boolean;
     setIsSidebarCollapsed: React.Dispatch<React.SetStateAction<boolean>>;
     setIsMobileSidebarOpen: React.Dispatch<React.SetStateAction<boolean>>;
     
-    // Setters
     setActiveView: React.Dispatch<React.SetStateAction<string>>;
     setSelectedChild: React.Dispatch<React.SetStateAction<Student | null>>;
     
-    // Action Functions
     addNotification: (message: string, type?: 'success' | 'error' | 'info') => void;
     handleLogin: (user: User, token: string) => void;
     handleLogout: () => void;
     getNavigationItems: () => NavItem[];
     openIdCardModal: (person: Student | Staff, type: 'student' | 'staff') => void;
     
-    // Granular Actions
     addStudent: (studentData: NewStudent) => Promise<Student>;
     updateStudent: (studentId: string, updates: Partial<Student>) => Promise<Student>;
-    // Fix: Added deleteStudent method
     deleteStudent: (studentId: string) => Promise<void>;
     updateMultipleStudents: (updates: Array<Partial<Student> & { id: string }>) => Promise<void>;
     refetchStudents: () => Promise<void>;
@@ -86,11 +82,13 @@ interface IDataContext {
     deletePayrollItem: (itemId: string) => Promise<void>;
     
     updateSchoolInfo: (info: UpdateSchoolInfoDto) => Promise<void>;
-    // Fix: Added uploadLogo method
     uploadLogo: (formData: FormData) => Promise<{ logoUrl: string }>;
+    
     addUser: (userData: NewUser) => Promise<User>;
     updateUser: (userId: string, updates: Partial<User>) => Promise<User>;
     deleteUser: (userId: string) => Promise<void>;
+    updateUserProfile: (data: Partial<User>) => Promise<void>;
+    uploadUserAvatar: (formData: FormData) => Promise<{ avatarUrl: string }>;
     
     addGradingRule: (ruleData: NewGradingRule) => Promise<GradingRule>;
     updateGradingRule: (ruleId: string, updates: Partial<GradingRule>) => Promise<GradingRule>;
@@ -106,7 +104,6 @@ interface IDataContext {
     addCommunicationLog: (data: NewCommunicationLog) => Promise<CommunicationLog>;
     addBulkCommunicationLogs: (data: NewCommunicationLog[]) => Promise<void>;
 
-    // Batch update actions
     updateClasses: (data: SchoolClass[]) => Promise<void>;
     updateSubjects: (data: Subject[]) => Promise<void>;
     updateAssignments: (data: ClassSubjectAssignment[]) => Promise<void>;
@@ -121,11 +118,7 @@ interface IDataContext {
 
 const DataContext = createContext<IDataContext | undefined>(undefined);
 
-const clearAllData = (setters: any) => {
-    Object.values(setters).forEach((setter: any) => setter([]));
-};
-
-// Mock data to ensure UI renders even if backend is down
+// ... helpers and constants ...
 const FALLBACK_SCHOOL_INFO: SchoolInfo = {
     name: 'School System (Offline Mode)',
     address: 'Local',
@@ -136,15 +129,19 @@ const FALLBACK_SCHOOL_INFO: SchoolInfo = {
     logoUrl: 'https://i.imgur.com/pAEt4tQ.png'
 };
 
+const clearAllData = (setters: any) => {
+    Object.values(setters).forEach((setter: any) => setter([]));
+};
+
 export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+    // ... existing state initialization ...
     const [isLoading, setIsLoading] = useState(true);
     const [currentUser, setCurrentUser] = useState<User | null>(null);
-    // Initialize activeView from localStorage to persist across refreshes
     const [activeView, setActiveView] = useState(localStorage.getItem('activeView') || 'dashboard');
     const [assignedClass, setAssignedClass] = useState<SchoolClass | null>(null);
     const [parentChildren, setParentChildren] = useState<Student[]>([]);
     const [selectedChild, setSelectedChild] = useState<Student | null>(null);
-    // All data states
+    
     const [users, setUsers] = useState<User[]>([]);
     const [students, setStudents] = useState<Student[]>([]);
     const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -167,13 +164,12 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [mpesaC2BTransactions, setMpesaC2BTransactions] = useState<MpesaC2BTransaction[]>([]);
     const [notifications, setNotifications] = useState<Notification[]>([]);
     
-    // UI State
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
     const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
     const [isIdCardModalOpen, setIsIdCardModalOpen] = useState(false);
     const [idCardData, setIdCardData] = useState<{ type: 'student' | 'staff', data: Student | Staff } | null>(null);
 
-    // Effect to save activeView to localStorage whenever it changes
+    // ... existing useEffects and loadAuthenticatedData ...
     useEffect(() => {
         localStorage.setItem('activeView', activeView);
     }, [activeView]);
@@ -187,20 +183,18 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const handleLogout = useCallback(() => {
         localStorage.removeItem('authToken');
         localStorage.removeItem('currentUser');
-        localStorage.removeItem('activeView'); // Clear view preference
+        localStorage.removeItem('activeView');
         setCurrentUser(null);
         setActiveView('dashboard');
         const setters = { setUsers, setStudents, setTransactions, setExpenses, setStaff, setSubjects, setClasses, setClassSubjectAssignments, setTimetableEntries, setExams, setGrades, setAttendanceRecords, setEvents, setGradingScale, setFeeStructure, setAnnouncements, setPayrollItems, setDarajaSettings };
         clearAllData(setters);
     }, []);
 
-    // Core Session Check and Initial Data Load
     useEffect(() => {
         const initApp = async () => {
             setIsLoading(true);
             const token = localStorage.getItem('authToken');
             
-            // 1. Fetch Public Config (School Info)
             try {
                 const info = await api.getSchoolInfo();
                 setSchoolInfo(info);
@@ -209,14 +203,10 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
                  setSchoolInfo(FALLBACK_SCHOOL_INFO);
             }
 
-            // 2. Validate Session if Token Exists
             if (token) {
                 try {
-                    // Verify token with backend before trusting it
                     const validatedUser = await api.getAuthenticatedUser();
                     setCurrentUser(validatedUser);
-                    
-                    // 3. Load Application Data if Session is Valid
                     await loadAuthenticatedData(validatedUser);
                 } catch (error) {
                     console.error("Session invalid or expired:", error);
@@ -230,17 +220,13 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }, [handleLogout]);
 
     const loadAuthenticatedData = async (user: User) => {
-        // Use Promise.allSettled to allow partial data loading
         const results = await api.fetchInitialData();
-        
-        // Helper to extract data safely
         const getData = (index: number, fallback: any = []) => {
             const result = results[index];
             return result.status === 'fulfilled' ? result.value : fallback;
         };
 
         setUsers(getData(0));
-        
         const studentsData = getData(1);
         if (studentsData && Array.isArray(studentsData)) {
             setStudents(studentsData.sort((a: Student, b: Student) => a.name.localeCompare(b.name)));
@@ -260,8 +246,6 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setPayrollItems(getData(10));
         setAnnouncements(getData(11));
         
-        // School Info (Index 12) was already fetched, but refresh if needed
-        
         const darajaData = results[13].status === 'fulfilled' ? results[13].value : null;
         setDarajaSettings(darajaData);
 
@@ -269,7 +253,6 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setGrades([]);
         setAttendanceRecords([]);
 
-        // Load non-critical data in background
         api.getExpenses().then(setExpenses).catch(err => console.error("Failed to load expenses", err));
         api.getStaff().then(setStaff).catch(err => console.error("Failed to load staff", err));
 
@@ -284,17 +267,14 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         localStorage.setItem('authToken', token);
         localStorage.setItem('currentUser', JSON.stringify(user));
         setCurrentUser(user);
-        
-        // Load data immediately after login
         setIsLoading(true);
         loadAuthenticatedData(user).then(() => setIsLoading(false));
-
-        // Set view based on role
         if (user.role === Role.Teacher) setActiveView('teacher_dashboard');
         else if (user.role === Role.Parent) setActiveView('parent_dashboard');
         else setActiveView('dashboard');
     }, []);
 
+    // ... createApiAction, updateApiAction, deleteApiAction definitions ...
     const createApiAction = <P, S>(setter: React.Dispatch<React.SetStateAction<S[]>>, apiFn: (data: P) => Promise<S>, sortFn?: (a: S, b: S) => number) => 
         useCallback(async (data: P) => {
             const newItem = await apiFn(data);
@@ -317,18 +297,16 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
             await apiFn(id);
             setter(prev => prev.filter(item => item.id !== id));
         }, [setter]);
-    
+
+    // ... actions bindings ...
     const addStudent = createApiAction(setStudents, api.createStudent, (a, b) => a.name.localeCompare(b.name));
     const updateStudent = updateApiAction(setStudents, api.updateStudent);
-    // Fix: Added deleteStudent action
     const deleteStudent = deleteApiAction(setStudents, api.deleteStudent);
-    
     const addTransaction = useCallback(async (data: NewTransaction) => {
          const newTransaction = await api.createTransaction(data);
          setTransactions(prev => [...prev, newTransaction]); 
          return newTransaction;
     }, []);
-
     const addExpense = createApiAction(setExpenses, api.createExpense);
     const deleteExpense = deleteApiAction(setExpenses, api.deleteExpense);
     const addStaff = createApiAction(setStaff, api.createStaff);
@@ -337,6 +315,25 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const addUser = createApiAction(setUsers, api.createUser);
     const updateUser = updateApiAction(setUsers, api.updateUser);
     const deleteUser = deleteApiAction(setUsers, api.deleteUser);
+    
+    // New User Profile Actions
+    const updateUserProfile = useCallback(async (data: Partial<User>) => {
+        const updatedUser = await api.updateUserProfile(data);
+        setCurrentUser(updatedUser);
+        // Also update the user in the users list if present
+        setUsers(prev => prev.map(u => u.id === updatedUser.id ? updatedUser : u));
+    }, []);
+
+    const uploadUserAvatar = useCallback(async (formData: FormData) => {
+        const { avatarUrl } = await api.uploadUserAvatar(formData);
+        if (currentUser) {
+            const updatedUser = { ...currentUser, avatarUrl };
+            setCurrentUser(updatedUser);
+            setUsers(prev => prev.map(u => u.id === updatedUser.id ? updatedUser : u));
+        }
+        return { avatarUrl };
+    }, [currentUser]);
+
     const addPayrollItem = createApiAction(setPayrollItems, api.createPayrollItem);
     const updatePayrollItem = updateApiAction(setPayrollItems, api.updatePayrollItem);
     const deletePayrollItem = deleteApiAction(setPayrollItems, api.deletePayrollItem);
@@ -382,7 +379,6 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }, []);
     const updateSchoolInfo = useCallback(async (data: UpdateSchoolInfoDto) => { setSchoolInfo(await api.updateSchoolInfo(data)); }, []);
     
-    // Fix: Added uploadLogo implementation
     const uploadLogo = useCallback(async (formData: FormData) => {
         const result = await api.uploadLogo(formData);
         setSchoolInfo(prev => prev ? { ...prev, logoUrl: result.logoUrl } : null);
@@ -413,8 +409,6 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const studentFinancials = useMemo(() => {
         const financials: Record<string, { balance: number; overpayment: number; lastPaymentDate: string | null }> = {};
         students.forEach(student => {
-            // Basic calculation or mock, since full balance is now on student object or calculated via backend
-            // For legacy frontend components relying on this context calculation:
             const studentTransactions = transactions.filter(t => t.studentId === student.id).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
             let balance = 0; let lastPaymentDate: string | null = null;
             studentTransactions.forEach(t => {
@@ -438,7 +432,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }, []);
     
     const value: IDataContext = {
-        isLoading, schoolInfo, currentUser, activeView, users, students, transactions, expenses, staff, subjects, classes, classSubjectAssignments, timetableEntries, exams, grades, attendanceRecords, events, gradingScale, feeStructure, announcements, payrollItems, darajaSettings, mpesaC2BTransactions, notifications, assignedClass, parentChildren, selectedChild, isSidebarCollapsed, isMobileSidebarOpen, setIsSidebarCollapsed, setIsMobileSidebarOpen, setActiveView, setSelectedChild, addNotification, handleLogin, handleLogout, getNavigationItems, openIdCardModal, addStudent, updateStudent, deleteStudent, updateMultipleStudents, refetchStudents, refetchStaff, refetchExpenses, addTransaction, addMultipleTransactions, addExpense, deleteExpense, addStaff, updateStaff, deleteStaff, savePayrollRun, addPayrollItem, updatePayrollItem, deletePayrollItem, updateSchoolInfo, uploadLogo, addUser, updateUser, deleteUser, addGradingRule, updateGradingRule, deleteGradingRule, addFeeItem, updateFeeItem, deleteFeeItem, updateDarajaSettings, addAnnouncement, addCommunicationLog, addBulkCommunicationLogs, updateClasses, updateSubjects, updateAssignments, updateTimetable, updateExams, updateGrades, updateAttendance, updateEvents, studentFinancials
+        isLoading, schoolInfo, currentUser, activeView, users, students, transactions, expenses, staff, subjects, classes, classSubjectAssignments, timetableEntries, exams, grades, attendanceRecords, events, gradingScale, feeStructure, announcements, payrollItems, darajaSettings, mpesaC2BTransactions, notifications, assignedClass, parentChildren, selectedChild, isSidebarCollapsed, isMobileSidebarOpen, setIsSidebarCollapsed, setIsMobileSidebarOpen, setActiveView, setSelectedChild, addNotification, handleLogin, handleLogout, getNavigationItems, openIdCardModal, addStudent, updateStudent, deleteStudent, updateMultipleStudents, refetchStudents, refetchStaff, refetchExpenses, addTransaction, addMultipleTransactions, addExpense, deleteExpense, addStaff, updateStaff, deleteStaff, savePayrollRun, addPayrollItem, updatePayrollItem, deletePayrollItem, updateSchoolInfo, uploadLogo, addUser, updateUser, deleteUser, addGradingRule, updateGradingRule, deleteGradingRule, addFeeItem, updateFeeItem, deleteFeeItem, updateDarajaSettings, addAnnouncement, addCommunicationLog, addBulkCommunicationLogs, updateClasses, updateSubjects, updateAssignments, updateTimetable, updateExams, updateGrades, updateAttendance, updateEvents, studentFinancials, updateUserProfile, uploadUserAvatar
     };
 
     return (

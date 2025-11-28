@@ -37,8 +37,8 @@ export class StudentsController {
   @Roles(Role.Admin, Role.Accountant)
   async export(@Request() req: any, @Res() res: Response) {
     const csv = await this.studentsService.exportStudents(req.user.schoolId);
-    res.header('Content-Type', 'text/csv');
-    res.header('Content-Disposition', 'attachment; filename="students.csv"');
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', 'attachment; filename="students.csv"');
     res.send(csv);
   }
 

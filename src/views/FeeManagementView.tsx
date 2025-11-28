@@ -3,21 +3,22 @@ import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import Modal from '../components/common/Modal';
 import Pagination from '../components/common/Pagination';
 import { initiateSTKPush } from '../services/darajaService';
-import type { Transaction, NewTransaction } from '../types';
-import { PaymentMethod, TransactionType } from '../types';
-import { useData } from '../contexts/DataContext';
+import type { Transaction, NewTransaction, Student } from '../../types';
+import { PaymentMethod, TransactionType } from '../../types';
+import { useData } from '../../contexts/DataContext';
 import GenerateInvoicesModal from '../components/common/GenerateInvoicesModal';
-import * as api from '../services/api';
+import * as api from '../../services/api';
 import Skeleton from '../components/common/Skeleton';
 
 const FeeManagementView: React.FC = () => {
     const { addTransaction, students, darajaSettings, addNotification } = useData();
     const [isRecordModalOpen, setIsRecordModalOpen] = useState(false);
-    const [newPayment, setNewPayment] = useState<Partial<NewTransaction>>({
-        studentId: '', amount: 0, date: new Date().toISOString().split('T')[0], method: PaymentMethod.Cash, description: 'Fee Payment'
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
+    const [paymentForm, setPaymentForm] = useState<Partial<Transaction>>({
+        studentId: '', amount: 0, date: new Date().toISOString().split('T')[0], method: PaymentMethod.Cash, description: 'Fee Payment', type: TransactionType.Payment
     });
 
-    // Server-side Pagination State
     const [transactions, setTransactions] = useState<Transaction[]>([]);
     const [loading, setLoading] = useState(true);
     const [currentPage, setCurrentPage] = useState(1);
@@ -62,7 +63,7 @@ const FeeManagementView: React.FC = () => {
                 search: searchTerm,
                 startDate: start,
                 endDate: end,
-                type: 'Payment' // Only fetch payments for the main table, or remove to show all
+                // Removed type filter to show all transactions (Invoices & Payments) for better management
             });
             setTransactions(response.data);
             setTotalPages(response.last_page);
@@ -86,20 +87,39 @@ const FeeManagementView: React.FC = () => {
         }
     };
 
-    const closeRecordModal = () => {
-        setIsRecordModalOpen(false);
-        setNewPayment({
-            studentId: '', amount: 0, date: new Date().toISOString().split('T')[0], method: PaymentMethod.Cash, description: 'Fee Payment'
+    const openRecordModal = () => {
+        setSelectedTransaction(null);
+        setPaymentForm({
+            studentId: '', amount: 0, date: new Date().toISOString().split('T')[0], method: PaymentMethod.Cash, description: 'Fee Payment', type: TransactionType.Payment
         });
+        setIsRecordModalOpen(true);
     };
+
+    const openEditModal = (transaction: Transaction) => {
+        setSelectedTransaction(transaction);
+        setPaymentForm({ ...transaction });
+        setIsRecordModalOpen(true);
+    };
+
+    const handleDelete = async (id: string) => {
+        if(window.confirm("Are you sure you want to delete this transaction? This will affect the student's balance.")) {
+            try {
+                await api.deleteTransaction(id);
+                addNotification("Transaction deleted successfully.", "success");
+                fetchTransactions();
+            } catch (e) {
+                addNotification("Failed to delete transaction.", "error");
+            }
+        }
+    }
     
     const handleStkPush = async () => {
-        if (!newPayment.studentId || !newPayment.amount || newPayment.amount <= 0) {
+        if (!paymentForm.studentId || !paymentForm.amount || paymentForm.amount <= 0) {
             addNotification("Please select a student and enter a valid amount.", 'error');
             return;
         }
 
-        const student = students.find(s => s.id === newPayment.studentId);
+        const student = students.find(s => s.id === paymentForm.studentId);
         if (!student) {
             addNotification("Could not find selected student.", 'error');
             return;
@@ -108,9 +128,9 @@ const FeeManagementView: React.FC = () => {
         setIsPaying(true);
         addNotification("Sending payment request to guardian's phone...", 'info');
         try {
-            const response = await initiateSTKPush(newPayment.amount, student.guardianContact, student.admissionNumber);
+            const response = await initiateSTKPush(paymentForm.amount, student.guardianContact, student.admissionNumber);
             addNotification(response.CustomerMessage, 'info');
-            closeRecordModal();
+            setIsRecordModalOpen(false);
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
             addNotification(errorMessage, 'error');
@@ -119,25 +139,36 @@ const FeeManagementView: React.FC = () => {
         }
     };
 
-    const handleManualRecordPayment = (e: React.FormEvent) => {
+    const handleSaveTransaction = async (e: React.FormEvent) => {
         e.preventDefault();
-        const student = students.find(s => s.id === newPayment.studentId);
-        const paymentToAdd: NewTransaction = {
-            type: TransactionType.Payment,
-            studentId: newPayment.studentId!,
-            studentName: student?.name,
-            amount: newPayment.amount!,
-            date: newPayment.date!,
-            description: newPayment.description || 'Fee Payment',
-            method: newPayment.method,
-            transactionCode: newPayment.transactionCode,
-            checkNumber: newPayment.checkNumber,
-            checkBank: newPayment.checkBank,
-        };
-        addTransaction(paymentToAdd).then(() => {
-            closeRecordModal();
-            fetchTransactions(); // Refresh list
-        });
+        try {
+            if (selectedTransaction) {
+                // Edit
+                await api.updateTransaction(selectedTransaction.id, paymentForm);
+                addNotification("Transaction updated successfully.", "success");
+            } else {
+                // Create
+                const student = students.find(s => s.id === paymentForm.studentId);
+                const paymentToAdd: NewTransaction = {
+                    type: paymentForm.type || TransactionType.Payment,
+                    studentId: paymentForm.studentId!,
+                    studentName: student?.name,
+                    amount: paymentForm.amount!,
+                    date: paymentForm.date!,
+                    description: paymentForm.description || 'Fee Payment',
+                    method: paymentForm.method,
+                    transactionCode: paymentForm.transactionCode,
+                    checkNumber: paymentForm.checkNumber,
+                    checkBank: paymentForm.checkBank,
+                };
+                await addTransaction(paymentToAdd);
+                addNotification("Transaction recorded successfully.", "success");
+            }
+            setIsRecordModalOpen(false);
+            fetchTransactions();
+        } catch (error) {
+            addNotification("Failed to save transaction.", "error");
+        }
     };
 
     return (
@@ -154,7 +185,7 @@ const FeeManagementView: React.FC = () => {
                         M-Pesa Info
                     </button>
                     <button onClick={() => setIsGenerateInvoicesModalOpen(true)} className="px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700">Generate Invoices</button>
-                    <button onClick={() => setIsRecordModalOpen(true)} className="px-4 py-2 bg-primary-600 text-white font-semibold rounded-lg shadow-md hover:bg-primary-700">Record Payment</button>
+                    <button onClick={openRecordModal} className="px-4 py-2 bg-primary-600 text-white font-semibold rounded-lg shadow-md hover:bg-primary-700">Record Transaction</button>
                 </div>
             </div>
 
@@ -181,7 +212,7 @@ const FeeManagementView: React.FC = () => {
                 <div className="flex-grow">
                     <input 
                         type="text" 
-                        placeholder="Search student name or transaction code..." 
+                        placeholder="Search student name, description or code..." 
                         value={searchTerm} 
                         onChange={e => setSearchTerm(e.target.value)} 
                         className="w-full p-2 border border-slate-300 rounded-lg"
@@ -194,10 +225,12 @@ const FeeManagementView: React.FC = () => {
                     <thead>
                         <tr className="bg-slate-50 border-b border-slate-200">
                             <th className="px-4 py-3 font-semibold text-slate-600">Date</th>
+                            <th className="px-4 py-3 font-semibold text-slate-600">Type</th>
                             <th className="px-4 py-3 font-semibold text-slate-600">Student Name</th>
-                            <th className="px-4 py-3 font-semibold text-slate-600">Amount (KES)</th>
+                            <th className="px-4 py-3 font-semibold text-slate-600">Description</th>
+                            <th className="px-4 py-3 font-semibold text-slate-600 text-right">Amount (KES)</th>
                             <th className="px-4 py-3 font-semibold text-slate-600">Method</th>
-                            <th className="px-4 py-3 font-semibold text-slate-600">Details</th>
+                            <th className="px-4 py-3 font-semibold text-slate-600">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -205,62 +238,103 @@ const FeeManagementView: React.FC = () => {
                              Array.from({ length: 5 }).map((_, i) => (
                                 <tr key={i} className="border-b border-slate-100">
                                     <td className="px-4 py-4"><Skeleton className="h-4 w-24"/></td>
+                                    <td className="px-4 py-4"><Skeleton className="h-4 w-20"/></td>
                                     <td className="px-4 py-4"><Skeleton className="h-4 w-48"/></td>
+                                    <td className="px-4 py-4"><Skeleton className="h-4 w-32"/></td>
+                                    <td className="px-4 py-4"><Skeleton className="h-4 w-24"/></td>
                                     <td className="px-4 py-4"><Skeleton className="h-4 w-20"/></td>
                                     <td className="px-4 py-4"><Skeleton className="h-4 w-24"/></td>
-                                    <td className="px-4 py-4"><Skeleton className="h-4 w-32"/></td>
                                 </tr>
                             ))
                         ) : transactions.length === 0 ? (
-                             <tr><td colSpan={5} className="text-center py-8 text-slate-500">No transactions found.</td></tr>
+                             <tr><td colSpan={7} className="text-center py-8 text-slate-500">No transactions found.</td></tr>
                         ) : (
                             transactions.map(p => (
                                 <tr key={p.id} className="border-b border-slate-100 hover:bg-slate-50">
                                     <td className="px-4 py-3 text-slate-500">{new Date(p.date).toLocaleDateString()}</td>
+                                    <td className="px-4 py-3">
+                                        <span className={`px-2 py-1 rounded text-xs font-semibold ${p.type === TransactionType.Payment ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                                            {p.type}
+                                        </span>
+                                    </td>
                                     <td className="px-4 py-3 font-semibold text-slate-800">{p.studentName || 'Unknown'}</td>
-                                    <td className="px-4 py-3 text-slate-600">{p.amount.toLocaleString()}</td>
-                                    <td className="px-4 py-3 text-slate-600">{p.method}</td>
-                                    <td className="px-4 py-3 text-slate-500">{p.transactionCode || p.checkNumber || 'N/A'}</td>
+                                    <td className="px-4 py-3 text-slate-600">{p.description}</td>
+                                    <td className="px-4 py-3 text-right font-medium text-slate-800">{p.amount.toLocaleString()}</td>
+                                    <td className="px-4 py-3 text-slate-600">{p.method || '-'}</td>
+                                    <td className="px-4 py-3 space-x-2">
+                                        <button onClick={() => openEditModal(p)} className="text-blue-600 hover:underline">Edit</button>
+                                        <button onClick={() => handleDelete(p.id)} className="text-red-600 hover:underline">Delete</button>
+                                    </td>
                                 </tr>
                             ))
                         )}
                     </tbody>
                 </table>
             </div>
-            <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
+             <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
             
-            <Modal isOpen={isRecordModalOpen} onClose={closeRecordModal} title="Record New Payment">
-                <form onSubmit={handleManualRecordPayment} className="space-y-4">
-                    <select name="studentId" value={newPayment.studentId} onChange={e => setNewPayment(p => ({...p, studentId: e.target.value}))} required className="w-full p-2 border border-slate-300 rounded-lg">
+            <Modal isOpen={isRecordModalOpen} onClose={() => setIsRecordModalOpen(false)} title={selectedTransaction ? "Edit Transaction" : "Record New Transaction"}>
+                <form onSubmit={handleSaveTransaction} className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700">Transaction Type</label>
+                            <select 
+                                name="type" 
+                                value={paymentForm.type} 
+                                onChange={e => setPaymentForm(p => ({...p, type: e.target.value as TransactionType}))} 
+                                className="w-full p-2 border border-slate-300 rounded-lg"
+                            >
+                                <option value={TransactionType.Payment}>Payment</option>
+                                <option value={TransactionType.Invoice}>Invoice (Charge)</option>
+                                <option value={TransactionType.ManualCredit}>Credit Note (Waiver)</option>
+                                <option value={TransactionType.ManualDebit}>Debit Note (Fine)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700">Date</label>
+                            <input type="date" name="date" value={paymentForm.date} onChange={e => setPaymentForm(p => ({...p, date: e.target.value}))} required className="w-full p-2 border border-slate-300 rounded-lg" />
+                        </div>
+                    </div>
+
+                    <select name="studentId" value={paymentForm.studentId} onChange={e => setPaymentForm(p => ({...p, studentId: e.target.value}))} required className="w-full p-2 border border-slate-300 rounded-lg" disabled={!!selectedTransaction}>
                         <option value="">Select Student</option>
                         {students.map(s => <option key={s.id} value={s.id}>{s.name} ({s.admissionNumber})</option>)}
                     </select>
-                    <input type="number" name="amount" placeholder="Amount" value={newPayment.amount || ''} onChange={e => setNewPayment(p => ({...p, amount: parseFloat(e.target.value)}))} required className="w-full p-2 border border-slate-300 rounded-lg" />
-                    <input type="date" name="date" value={newPayment.date} onChange={e => setNewPayment(p => ({...p, date: e.target.value}))} required className="w-full p-2 border border-slate-300 rounded-lg" />
-                    <select name="method" value={newPayment.method} onChange={e => setNewPayment(p => ({...p, method: e.target.value as PaymentMethod, transactionCode: '', checkBank: '', checkNumber: ''}))} required className="w-full p-2 border border-slate-300 rounded-lg">
-                        {Object.values(PaymentMethod).map(m => <option key={m} value={m}>{m}</option>)}
-                    </select>
                     
-                    {newPayment.method === PaymentMethod.Cash && <input type="text" name="transactionCode" placeholder="Received by..." value={newPayment.transactionCode || ''} onChange={e => setNewPayment(p => ({...p, transactionCode: e.target.value}))} className="w-full p-2 border border-slate-300 rounded-lg" />}
-                    {newPayment.method === PaymentMethod.Check && (
-                        <div className="grid grid-cols-2 gap-2">
-                            <input type="text" name="checkNumber" placeholder="Check Number" value={newPayment.checkNumber || ''} onChange={e => setNewPayment(p => ({...p, checkNumber: e.target.value}))} className="w-full p-2 border border-slate-300 rounded-lg" />
-                            <input type="text" name="checkBank" placeholder="Bank Name" value={newPayment.checkBank || ''} onChange={e => setNewPayment(p => ({...p, checkBank: e.target.value}))} className="w-full p-2 border border-slate-300 rounded-lg" />
-                        </div>
+                    <input type="number" name="amount" placeholder="Amount" value={paymentForm.amount || ''} onChange={e => setPaymentForm(p => ({...p, amount: parseFloat(e.target.value)}))} required className="w-full p-2 border border-slate-300 rounded-lg" />
+                    <input type="text" name="description" placeholder="Description (e.g. Term 1 Fees)" value={paymentForm.description} onChange={e => setPaymentForm(p => ({...p, description: e.target.value}))} required className="w-full p-2 border border-slate-300 rounded-lg" />
+
+                    {(paymentForm.type === TransactionType.Payment) && (
+                        <>
+                            <select name="method" value={paymentForm.method} onChange={e => setPaymentForm(p => ({...p, method: e.target.value as PaymentMethod, transactionCode: '', checkBank: '', checkNumber: ''}))} className="w-full p-2 border border-slate-300 rounded-lg">
+                                {Object.values(PaymentMethod).map(m => <option key={m} value={m}>{m}</option>)}
+                            </select>
+                            
+                            {paymentForm.method === PaymentMethod.Cash && <input type="text" name="transactionCode" placeholder="Received by..." value={paymentForm.transactionCode || ''} onChange={e => setPaymentForm(p => ({...p, transactionCode: e.target.value}))} className="w-full p-2 border border-slate-300 rounded-lg" />}
+                            {paymentForm.method === PaymentMethod.Check && (
+                                <div className="grid grid-cols-2 gap-2">
+                                    <input type="text" name="checkNumber" placeholder="Check Number" value={paymentForm.checkNumber || ''} onChange={e => setPaymentForm(p => ({...p, checkNumber: e.target.value}))} className="w-full p-2 border border-slate-300 rounded-lg" />
+                                    <input type="text" name="checkBank" placeholder="Bank Name" value={paymentForm.checkBank || ''} onChange={e => setPaymentForm(p => ({...p, checkBank: e.target.value}))} className="w-full p-2 border border-slate-300 rounded-lg" />
+                                </div>
+                            )}
+                        </>
                     )}
 
-                    <div className="flex justify-end">
-                        {newPayment.method === PaymentMethod.MPesa ? (
+                    <div className="flex justify-end pt-4">
+                        {!selectedTransaction && paymentForm.method === PaymentMethod.MPesa && paymentForm.type === TransactionType.Payment ? (
                             <button type="button" onClick={handleStkPush} disabled={isPaying || !isMpesaConfigured} className="px-6 py-2 bg-green-600 text-white font-semibold rounded-lg shadow-md hover:bg-green-700 disabled:bg-slate-400 disabled:cursor-not-allowed">
                                 {isPaying ? 'Processing...' : 'Send STK Push'}
                             </button>
                         ) : (
-                            <button type="submit" className="px-6 py-2 bg-primary-600 text-white font-semibold rounded-lg shadow-md hover:bg-primary-700">Save Payment</button>
+                            <button type="submit" className="px-6 py-2 bg-primary-600 text-white font-semibold rounded-lg shadow-md hover:bg-primary-700">
+                                {selectedTransaction ? 'Update Transaction' : 'Save Transaction'}
+                            </button>
                         )}
                     </div>
-                     {!isMpesaConfigured && newPayment.method === PaymentMethod.MPesa && <p className="text-xs text-red-600 text-center mt-2">M-Pesa settings are not configured. Please update them in the Settings page to enable STK push.</p>}
+                     {!isMpesaConfigured && paymentForm.method === PaymentMethod.MPesa && <p className="text-xs text-red-600 text-center mt-2">M-Pesa settings are not configured. Please update them in the Settings page to enable STK push.</p>}
                 </form>
             </Modal>
+            
             <Modal isOpen={isSyncInfoModalOpen} onClose={() => setIsSyncInfoModalOpen(false)} title="M-Pesa Payment Confirmation">
                 <div className="space-y-4 text-slate-700">
                     <h3 className="text-lg font-semibold text-slate-800">Production-Ready Architecture</h3>

@@ -1,5 +1,5 @@
 
-import { Controller, Get, Post, Body, UseGuards, Query, Request } from '@nestjs/common';
+import { Controller, Get, Post, Body, UseGuards, Query, Request, Patch, Param, Delete } from '@nestjs/common';
 import { TransactionsService } from './transactions.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { Transaction } from '../entities/transaction.entity';
@@ -31,8 +31,21 @@ export class TransactionsController {
     return this.transactionsService.findAll(query, req.user.schoolId);
   }
 
+  @UseGuards(JwtAuthGuard)
+  @Roles(Role.Admin, Role.Accountant)
+  @Patch(':id')
+  update(@Request() req: any, @Param('id') id: string, @Body() updateTransactionDto: Partial<Transaction>) {
+    return this.transactionsService.update(id, updateTransactionDto, req.user.schoolId);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Roles(Role.Admin)
+  @Delete(':id')
+  remove(@Request() req: any, @Param('id') id: string) {
+    return this.transactionsService.remove(id, req.user.schoolId);
+  }
+
   // Public endpoint for Safaricom - No Guards (Security handled by IP Whitelist/Signature validation in production)
-  // M-Pesa callbacks don't carry schoolId directly, but the reference (AccountReference) links to a Student who has a schoolId.
   @Post('mpesa/callback')
   async handleMpesaCallback(@Body() payload: any) {
       return this.transactionsService.handleMpesaCallback(payload);

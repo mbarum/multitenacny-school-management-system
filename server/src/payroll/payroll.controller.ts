@@ -1,5 +1,5 @@
 
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Query } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Query, Request } from '@nestjs/common';
 import { PayrollService } from './payroll.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { PayrollItem } from '../entities/all-entities';
@@ -14,32 +14,32 @@ export class PayrollController {
   constructor(private readonly payrollService: PayrollService) {}
 
   @Post('generate')
-  generatePayrollRun(@Body() payrollData: any[]) {
-    return this.payrollService.savePayrollRun(payrollData);
+  generatePayrollRun(@Request() req: any, @Body() payrollData: any[]) {
+    return this.payrollService.savePayrollRun(payrollData, req.user.schoolId);
   }
 
   @Get('payroll-history')
-  getPayrollHistory(@Query() query: GetPayrollHistoryDto) {
-    return this.payrollService.getPayrollHistory(query);
+  getPayrollHistory(@Request() req: any, @Query() query: GetPayrollHistoryDto) {
+    return this.payrollService.getPayrollHistory(query, req.user.schoolId);
   }
 
   @Post('payroll-items')
-  createPayrollItem(@Body() itemData: Omit<PayrollItem, 'id'>) {
-    return this.payrollService.createPayrollItem(itemData);
+  createPayrollItem(@Request() req: any, @Body() itemData: Omit<PayrollItem, 'id'>) {
+    return this.payrollService.createPayrollItem(itemData, req.user.schoolId);
   }
 
   @Get('payroll-items')
-  getPayrollItems() {
-    return this.payrollService.getPayrollItems();
+  getPayrollItems(@Request() req: any) {
+    return this.payrollService.getPayrollItems(req.user.schoolId);
   }
 
   @Patch('payroll-items/:id')
-  updatePayrollItem(@Param('id') id: string, @Body() itemData: Partial<PayrollItem>) {
-    return this.payrollService.updatePayrollItem(id, itemData);
+  updatePayrollItem(@Request() req: any, @Param('id') id: string, @Body() itemData: Partial<PayrollItem>) {
+    return this.payrollService.updatePayrollItem(id, itemData, req.user.schoolId);
   }
 
   @Delete('payroll-items/:id')
-  deletePayrollItem(@Param('id') id: string) {
-    return this.payrollService.deletePayrollItem(id);
+  deletePayrollItem(@Request() req: any, @Param('id') id: string) {
+    return this.payrollService.deletePayrollItem(id, req.user.schoolId);
   }
 }

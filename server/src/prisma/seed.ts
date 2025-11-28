@@ -4,7 +4,6 @@ import 'dotenv/config';
 import { DataSource, DataSourceOptions } from 'typeorm';
 import { join } from 'path';
 import * as bcrypt from 'bcrypt';
-import { exit } from 'process';
 
 // Import all entities
 import { User, Role } from '../entities/user.entity';
@@ -181,7 +180,7 @@ const runSeed = async () => {
 
     } catch (error) {
         console.error('Seeding failed:', error);
-        exit(1);
+        (process as any).exit(1);
     } finally {
         if (AppDataSource.isInitialized) {
             await AppDataSource.destroy();

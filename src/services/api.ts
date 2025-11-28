@@ -1,9 +1,10 @@
 
+// ... existing imports ...
 import type { 
     User, Student, Transaction, Expense, Staff, Payroll, Subject, SchoolClass, 
     ClassSubjectAssignment, TimetableEntry, Exam, Grade, AttendanceRecord, SchoolEvent, 
-    SchoolInfo, GradingRule, FeeItem, CommunicationLog, Announcement, ReportShareLog, 
-    PayrollItem, DarajaSettings, MpesaC2BTransaction, NewStudent, NewStaff, 
+    SchoolInfo, GradingRule, FeeItem, CommunicationLog, Announcement, 
+    PayrollItem, DarajaSettings, NewStudent, NewStaff, 
     NewTransaction, NewExpense, NewPayrollItem, NewAnnouncement, NewCommunicationLog, 
     NewUser, NewGradingRule, NewFeeItem,
     UpdateSchoolInfoDto, PaginatedResponse
@@ -34,7 +35,6 @@ const apiFetch = async (endpoint: string, options: RequestInit = {}) => {
         headers.set('Authorization', `Bearer ${token}`);
     }
 
-    // All requests are proxied by Vite to the backend server (e.g., http://localhost:3000)
     const response = await fetch(`/api${endpoint}`, {
         ...options,
         headers,
@@ -45,7 +45,6 @@ const apiFetch = async (endpoint: string, options: RequestInit = {}) => {
         throw new ApiError(errorData.message || `API Error: ${response.status}`, response.status, errorData);
     }
 
-    // Handle responses with no content
     if (response.status === 204) {
         return null;
     }
@@ -114,8 +113,6 @@ export const fetchInitialData = () => {
         'academics/fee-structure', 'payroll/payroll-items', 'communications/announcements',
         'settings/school-info', 'settings/daraja'
     ];
-    
-    // Use Promise.allSettled so one failed endpoint doesn't crash the whole app
     return Promise.allSettled(endpoints.map(ep => apiFetch(`/${ep}`)));
 };
 
@@ -128,7 +125,6 @@ const remove = (resource: string) => (id: string): Promise<void> => apiFetch(`/$
 const list = <T>(resource: string) => (): Promise<T[]> => apiFetch(`/${resource}`);
 
 // Students
-// Fix: Updated getStudents to accept parameters for pagination and filtering
 export const getStudents = (params?: { page?: number; limit?: number; search?: string; classId?: string; status?: string, pagination?: boolean, mode?: string }): Promise<PaginatedResponse<Student>> => {
     const searchParams = new URLSearchParams();
     if (params) {
@@ -146,7 +142,6 @@ export const createStudent = create<Student>('students');
 export const updateStudent = update<Student>('students');
 export const deleteStudent = remove('students');
 export const updateMultipleStudents = (updates: Array<Partial<Student> & { id: string }>): Promise<Student[]> => apiFetch('/students/batch-update', { method: 'POST', body: JSON.stringify(updates) });
-// Fix: Added exportStudents and importStudents functions
 export const exportStudents = (): Promise<Blob> => apiFetchBlob('/students/export');
 export const importStudents = (formData: FormData): Promise<{ imported: number; failed: number; errors: any[] }> => apiFileFetch('/students/import', formData);
 
@@ -156,6 +151,8 @@ export const getUsers = list<User>('users');
 export const createUser = create<User>('users');
 export const updateUser = update<User>('users');
 export const deleteUser = remove('users');
+export const updateUserProfile = (data: Partial<User>): Promise<User> => apiFetch('/users/profile', { method: 'PATCH', body: JSON.stringify(data) });
+export const uploadUserAvatar = (formData: FormData): Promise<{ avatarUrl: string }> => apiFileFetch('/users/upload-avatar', formData);
 
 // Staff
 export const getStaff = list<Staff>('staff');
@@ -182,11 +179,14 @@ export const getTransactions = (params?: { page?: number; limit?: number; search
     return apiFetch(`/transactions?${searchParams.toString()}`);
 }
 export const createTransaction = create<Transaction>('transactions');
+export const updateTransaction = update<Transaction>('transactions');
+export const deleteTransaction = remove('transactions');
 export const createMultipleTransactions = (data: NewTransaction[]): Promise<Transaction[]> => apiFetch('/transactions/batch', { method: 'POST', body: JSON.stringify(data) });
 
 // Expenses
 export const getExpenses = (): Promise<Expense[]> => apiFetch('/expenses');
 export const createExpense = create<Expense>('expenses');
+export const updateExpense = update<Expense>('expenses');
 export const deleteExpense = remove('expenses');
 
 
@@ -210,7 +210,6 @@ export const deletePayrollItem = remove('payroll/payroll-items');
 export const getSchoolInfo = (): Promise<SchoolInfo> => apiFetch('/settings/school-info');
 export const updateSchoolInfo = (data: UpdateSchoolInfoDto): Promise<SchoolInfo> => apiFetch('/settings/school-info', { method: 'PUT', body: JSON.stringify(data) });
 export const updateDarajaSettings = (data: DarajaSettings): Promise<DarajaSettings> => apiFetch('/settings/daraja', { method: 'PUT', body: JSON.stringify(data) });
-// Fix: Added uploadLogo function
 export const uploadLogo = (formData: FormData): Promise<{ logoUrl: string }> => apiFileFetch('/settings/upload-logo', formData);
 
 
@@ -225,7 +224,6 @@ export const updateFeeItem = update<FeeItem>('academics/fee-structure');
 export const deleteFeeItem = remove('academics/fee-structure');
 
 // Communications
-// Fix: Added getCommunicationLogs function
 export const getCommunicationLogs = (params?: { page?: number; limit?: number; studentId?: string; type?: string }): Promise<PaginatedResponse<CommunicationLog>> => {
     const searchParams = new URLSearchParams();
     if (params) {
@@ -237,10 +235,21 @@ export const getCommunicationLogs = (params?: { page?: number; limit?: number; s
     return apiFetch(`/communications/communication-logs?${searchParams.toString()}`);
 };
 export const createAnnouncement = create<Announcement>('communications/announcements');
+export const updateAnnouncement = update<Announcement>('communications/announcements');
+export const deleteAnnouncement = remove('communications/announcements');
 export const createCommunicationLog = create<CommunicationLog>('communications/communication-logs');
 export const createBulkCommunicationLogs = (data: NewCommunicationLog[]): Promise<CommunicationLog[]> => apiFetch('/communications/communication-logs/batch', { method: 'POST', body: JSON.stringify(data) });
 
-// Academics
+// Academics (Batch updates)
+export const batchUpdateClasses = batchUpdate<SchoolClass>('academics/classes');
+export const batchUpdateSubjects = batchUpdate<Subject>('academics/subjects');
+export const batchUpdateAssignments = batchUpdate<ClassSubjectAssignment>('academics/class-subject-assignments');
+export const batchUpdateTimetable = batchUpdate<TimetableEntry>('academics/timetable-entries');
+export const batchUpdateExams = batchUpdate<Exam>('academics/exams');
+export const batchUpdateGrades = batchUpdate<Grade>('academics/grades');
+export const batchUpdateAttendance = batchUpdate<AttendanceRecord>('academics/attendance-records');
+export const batchUpdateEvents = batchUpdate<SchoolEvent>('academics/events');
+
 export const getAttendance = (params?: { classId?: string; studentId?: string; date?: string; startDate?: string; endDate?: string }): Promise<AttendanceRecord[]> => {
     const searchParams = new URLSearchParams();
     if (params) {
@@ -262,11 +271,16 @@ export const getGrades = (params?: { examId?: string; subjectId?: string; studen
     }
     return apiFetch(`/academics/grades?${searchParams.toString()}`);
 }
-export const batchUpdateClasses = (items: SchoolClass[]): Promise<SchoolClass[]> => apiFetch('academics/classes/batch', { method: 'PUT', body: JSON.stringify(items) });
-export const batchUpdateSubjects = (items: Subject[]): Promise<Subject[]> => apiFetch('academics/subjects/batch', { method: 'PUT', body: JSON.stringify(items) });
-export const batchUpdateAssignments = (items: ClassSubjectAssignment[]): Promise<ClassSubjectAssignment[]> => apiFetch('academics/class-subject-assignments/batch', { method: 'PUT', body: JSON.stringify(items) });
-export const batchUpdateExams = (items: Exam[]): Promise<Exam[]> => apiFetch('academics/exams/batch', { method: 'PUT', body: JSON.stringify(items) });
-export const batchUpdateTimetable = (items: TimetableEntry[]): Promise<TimetableEntry[]> => apiFetch(`academics/timetable-entries/batch`, { method: 'PUT', body: JSON.stringify(items) });
-export const batchUpdateGrades = (items: Grade[]): Promise<Grade[]> => apiFetch(`academics/grades/batch`, { method: 'PUT', body: JSON.stringify(items) });
-export const batchUpdateAttendance = (items: AttendanceRecord[]): Promise<AttendanceRecord[]> => apiFetch(`academics/attendance-records/batch`, { method: 'PUT', body: JSON.stringify(items) });
-export const batchUpdateEvents = (items: SchoolEvent[]): Promise<SchoolEvent[]> => apiFetch(`academics/events/batch`, { method: 'PUT', body: JSON.stringify(items) });
+export const updateClass = update<SchoolClass>('academics/classes');
+export const deleteClass = remove('academics/classes');
+export const updateSubject = update<Subject>('academics/subjects');
+export const deleteSubject = remove('academics/subjects');
+export const updateAssignment = update<ClassSubjectAssignment>('academics/class-subject-assignments');
+export const deleteAssignment = remove('academics/class-subject-assignments');
+export const updateExam = update<Exam>('academics/exams');
+export const deleteExam = remove('academics/exams');
+
+// Helpers for type safety in batch update
+function batchUpdate<T extends {id?: string}>(resource: string) {
+    return (items: T[]): Promise<T[]> => apiFetch(`/${resource}/batch`, { method: 'PUT', body: JSON.stringify(items) });
+}

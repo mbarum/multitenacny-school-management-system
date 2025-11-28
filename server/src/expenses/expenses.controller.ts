@@ -1,5 +1,5 @@
 
-import { Controller, Get, Post, Body, UseGuards, Param, Delete, Request } from '@nestjs/common';
+import { Controller, Get, Post, Body, UseGuards, Param, Delete, Request, Patch } from '@nestjs/common';
 import { ExpensesService } from './expenses.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { Expense } from '../entities/expense.entity';
@@ -21,6 +21,12 @@ export class ExpensesController {
   @Roles(Role.Admin, Role.Accountant)
   findAll(@Request() req: any) {
     return this.expensesService.findAll(req.user.schoolId);
+  }
+
+  @Patch(':id')
+  @Roles(Role.Admin, Role.Accountant)
+  update(@Request() req: any, @Param('id') id: string, @Body() updateExpenseDto: Partial<Expense>) {
+    return this.expensesService.update(id, updateExpenseDto, req.user.schoolId);
   }
 
   @Delete(':id')

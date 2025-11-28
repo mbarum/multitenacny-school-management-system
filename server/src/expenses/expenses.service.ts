@@ -20,7 +20,15 @@ export class ExpensesService {
   }
 
   findAll(schoolId: string): Promise<Expense[]> {
-    return this.expensesRepository.find({ where: { schoolId: schoolId as any } });
+    return this.expensesRepository.find({ where: { schoolId: schoolId as any }, order: { date: 'DESC' } });
+  }
+
+  async update(id: string, updateDto: Partial<Expense>, schoolId: string): Promise<Expense> {
+    const expense = await this.expensesRepository.findOne({ where: { id, schoolId: schoolId as any } });
+    if (!expense) throw new NotFoundException(`Expense with ID "${id}" not found`);
+    
+    Object.assign(expense, updateDto);
+    return this.expensesRepository.save(expense);
   }
 
   async remove(id: string, schoolId: string): Promise<void> {

@@ -1,4 +1,6 @@
-import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
+
+import { Entity, PrimaryGeneratedColumn, Column, Index, ManyToOne, JoinColumn } from 'typeorm';
+import { School } from './school.entity';
 
 export const EventCategory = {
   Holiday: 'Holiday',
@@ -13,6 +15,14 @@ export type EventCategory = typeof EventCategory[keyof typeof EventCategory];
 export class SchoolEvent {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
+
+  @Index()
+  @Column({ type: 'uuid' })
+  schoolId!: string;
+
+  @ManyToOne(() => School, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'schoolId' })
+  school!: School;
 
   @Column()
   title!: string;

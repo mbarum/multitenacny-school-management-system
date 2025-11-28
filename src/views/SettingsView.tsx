@@ -1,9 +1,9 @@
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import Modal from '../components/common/Modal';
-import type { SchoolInfo, User, GradingRule, FeeItem, SchoolClass, DarajaSettings, ClassFee, Student, NewUser, NewFeeItem, NewGradingRule } from '../types';
-import { GradingSystem, CbetScore, Role } from '../types';
-import { useData } from '../contexts/DataContext';
+import type { SchoolInfo, User, GradingRule, FeeItem, SchoolClass, DarajaSettings, ClassFee, Student, NewUser, NewFeeItem, NewGradingRule } from '../../types';
+import { GradingSystem, CbetScore, Role } from '../../types';
+import { useData } from '../../contexts/DataContext';
 
 const FeeItemModal: React.FC<{
     isOpen: boolean;

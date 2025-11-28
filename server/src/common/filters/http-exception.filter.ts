@@ -29,14 +29,14 @@ export class AllExceptionsFilter implements ExceptionFilter {
         exception instanceof Error ? exception.stack : '',
       );
     } else {
-        this.logger.warn(`Http Status: ${status} Error Message: ${JSON.stringify(message)} Path: ${request.url}`);
+        this.logger.warn(`Http Status: ${status} Error Message: ${JSON.stringify(message)} Path: ${request.originalUrl}`);
     }
 
     // Sanitize response for production (hide internal server details)
     const responseBody = {
       statusCode: status,
       timestamp: new Date().toISOString(),
-      path: request.url,
+      path: request.originalUrl,
       message: (typeof message === 'object' && message !== null) ? message : { message },
     };
 

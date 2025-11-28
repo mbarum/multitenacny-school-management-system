@@ -22,23 +22,25 @@ export class AiService {
     this.ai = new GoogleGenAI({ apiKey });
   }
 
-  async generateFinancialSummary(): Promise<{ summary: string }> {
+  async generateFinancialSummary(schoolId: string): Promise<{ summary: string }> {
     try {
-      // 1. Fetch Data directly from DB
       const revenueResult = await this.transactionRepo
         .createQueryBuilder('t')
         .select('SUM(t.amount)', 'total')
         .where('t.type = :type', { type: TransactionType.Payment })
+        .andWhere('t.schoolId = :schoolId', { schoolId })
         .getRawOne();
       const totalIncome = parseFloat(revenueResult.total) || 0;
 
       const expenseResult = await this.expenseRepo
         .createQueryBuilder('e')
         .select('SUM(e.amount)', 'total')
+        .where('e.schoolId = :schoolId', { schoolId })
         .getRawOne();
       const totalExpenses = parseFloat(expenseResult.total) || 0;
       
       const recentExpenses = await this.expenseRepo.find({
+          where: { schoolId: schoolId as any },
           order: { date: 'DESC' },
           take: 5
       });
@@ -59,10 +61,10 @@ export class AiService {
 
         **Your Task:**
         Generate a summary that includes the following sections:
-        1.  **Overall Status:** A brief sentence on the school's financial health (e.g., profitable, at a loss).
+        1.  **Overall Status:** A brief sentence on the school's financial health.
         2.  **Key Figures:** Clearly state the total income, total expenses, and the resulting net profit or loss.
-        3.  **Expense Insights:** Briefly mention the most significant expense categories based on the provided sample data.
-        4.  **Recommendation:** Provide one brief, actionable recommendation for the school administration based on this data.
+        3.  **Expense Insights:** Briefly mention significant expense categories based on the sample.
+        4.  **Recommendation:** Provide one brief, actionable recommendation.
 
         The response should be well-formatted using markdown with bold headings for each section.
       `;

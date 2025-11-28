@@ -1,11 +1,13 @@
+
 import React, { useState } from 'react';
 import type { SchoolClass, Subject, ClassSubjectAssignment, Staff } from '../types';
 import { Role } from '../types';
 import Modal from '../components/common/Modal';
 import { useData } from '../contexts/DataContext';
+import * as api from '../services/api';
 
 const AcademicsView: React.FC = () => {
-    const { classes, updateClasses, subjects, updateSubjects, classSubjectAssignments, updateAssignments, staff } = useData();
+    const { classes, updateClasses, subjects, updateSubjects, classSubjectAssignments, updateAssignments, staff, addNotification } = useData();
     const [activeTab, setActiveTab] = useState('classes');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalType, setModalType] = useState('');
@@ -22,6 +24,18 @@ const AcademicsView: React.FC = () => {
         setIsModalOpen(false);
     };
 
+    const handleDeleteClass = async (id: string) => {
+        if (!window.confirm("Delete this class? This will fail if students are assigned.")) return;
+        try {
+            await api.deleteClass(id);
+            // Refresh logic: filter out locally
+            updateClasses(classes.filter(c => c.id !== id));
+            addNotification("Class deleted.", "success");
+        } catch (e: any) {
+            addNotification(e.message || "Failed to delete class.", "error");
+        }
+    };
+
     const handleSaveSubject = (formData: any) => {
         let updatedSubjects;
         if (editingData) {
@@ -31,6 +45,17 @@ const AcademicsView: React.FC = () => {
         }
         updateSubjects(updatedSubjects);
         setIsModalOpen(false);
+    };
+
+    const handleDeleteSubject = async (id: string) => {
+        if (!window.confirm("Delete this subject?")) return;
+        try {
+            await api.deleteSubject(id);
+            updateSubjects(subjects.filter(s => s.id !== id));
+            addNotification("Subject deleted.", "success");
+        } catch (e: any) {
+            addNotification("Failed to delete subject. It may be assigned to a class.", "error");
+        }
     };
     
     const handleSaveAssignment = (formData: any) => {
@@ -42,6 +67,17 @@ const AcademicsView: React.FC = () => {
         }
         updateAssignments(updatedAssignments);
         setIsModalOpen(false);
+    };
+
+    const handleDeleteAssignment = async (id: string) => {
+        if (!window.confirm("Remove this teacher assignment?")) return;
+        try {
+            await api.deleteAssignment(id);
+            updateAssignments(classSubjectAssignments.filter(a => a.id !== id));
+            addNotification("Assignment removed.", "success");
+        } catch (e) {
+            addNotification("Failed to remove assignment.", "error");
+        }
     };
 
 
@@ -76,7 +112,10 @@ const AcademicsView: React.FC = () => {
                             <td className="p-2">{c.name}</td>
                             <td className="p-2">{c.classCode}</td>
                             <td className="p-2">{c.formTeacherName || 'Not Assigned'}</td>
-                            <td className="p-2"><button onClick={() => openModal('class', c)} className="text-blue-600">Edit</button></td></tr>))}</tbody>
+                            <td className="p-2 space-x-2">
+                                <button onClick={() => openModal('class', c)} className="text-blue-600 hover:underline">Edit</button>
+                                <button onClick={() => handleDeleteClass(c.id)} className="text-red-600 hover:underline">Delete</button>
+                            </td></tr>))}</tbody>
                     </table>
                 </div>
             )}
@@ -88,7 +127,12 @@ const AcademicsView: React.FC = () => {
                     </div>
                      <table className="w-full text-left table-auto">
                         <thead><tr className="bg-slate-50 border-b"><th className="p-2">Subject Name</th><th className="p-2">Actions</th></tr></thead>
-                        <tbody>{subjects.map(s => (<tr key={s.id} className="border-b"><td className="p-2">{s.name}</td><td className="p-2"><button onClick={() => openModal('subject', s)} className="text-blue-600">Edit</button></td></tr>))}</tbody>
+                        <tbody>{subjects.map(s => (<tr key={s.id} className="border-b">
+                            <td className="p-2">{s.name}</td>
+                            <td className="p-2 space-x-2">
+                                <button onClick={() => openModal('subject', s)} className="text-blue-600 hover:underline">Edit</button>
+                                <button onClick={() => handleDeleteSubject(s.id)} className="text-red-600 hover:underline">Delete</button>
+                            </td></tr>))}</tbody>
                     </table>
                 </div>
             )}
@@ -104,7 +148,10 @@ const AcademicsView: React.FC = () => {
                             <td className="p-2">{classes.find(c=>c.id === a.classId)?.name}</td>
                             <td className="p-2">{subjects.find(s=>s.id === a.subjectId)?.name}</td>
                             <td className="p-2">{staff.find(s=>s.userId === a.teacherId)?.name}</td>
-                            <td className="p-2"><button onClick={() => openModal('assignment', a)} className="text-blue-600">Edit</button></td></tr>))}</tbody>
+                            <td className="p-2 space-x-2">
+                                <button onClick={() => openModal('assignment', a)} className="text-blue-600 hover:underline">Edit</button>
+                                <button onClick={() => handleDeleteAssignment(a.id)} className="text-red-600 hover:underline">Delete</button>
+                            </td></tr>))}</tbody>
                     </table>
                 </div>
             )}

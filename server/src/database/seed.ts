@@ -3,7 +3,6 @@
 import 'dotenv/config';
 import { DataSource, DataSourceOptions, DeepPartial } from 'typeorm';
 import * as bcrypt from 'bcrypt';
-import { exit } from 'process';
 
 // Import all entities
 import { 
@@ -261,7 +260,7 @@ const runSeed = async () => {
 
     } catch (error) {
         console.error('Seeding failed:', error);
-        exit(1);
+        (process as any).exit(1);
     } finally {
         if (AppDataSource.isInitialized) {
             await AppDataSource.destroy();

@@ -128,6 +128,31 @@ export class TransactionsService {
     };
   }
 
+  async update(id: string, updateDto: any, schoolId: string): Promise<any> {
+    const transaction = await this.transactionsRepository.findOne({ 
+        where: { id, schoolId: schoolId as any },
+        relations: ['student']
+    });
+    if (!transaction) throw new NotFoundException('Transaction not found');
+
+    const { studentId, ...updates } = updateDto;
+    
+    if (studentId && studentId !== transaction.student.id) {
+        const student = await this.studentRepository.findOne({ where: { id: studentId, schoolId: schoolId as any } });
+        if (!student) throw new NotFoundException('New student not found');
+        transaction.student = student;
+    }
+
+    Object.assign(transaction, updates);
+    const saved = await this.transactionsRepository.save(transaction);
+    return this.mapTransactionToDto(saved);
+  }
+
+  async remove(id: string, schoolId: string): Promise<void> {
+    const result = await this.transactionsRepository.delete({ id, schoolId: schoolId as any });
+    if (result.affected === 0) throw new NotFoundException('Transaction not found');
+  }
+
   // --- M-Pesa Callback Handling ---
   async handleMpesaCallback(payload: any): Promise<any> {
       this.logger.log('Received M-Pesa Callback');
@@ -149,7 +174,7 @@ export class TransactionsService {
       const rawPhone = phoneItem?.Value ? phoneItem.Value.toString() : '';
       const normalizedPhone = this.normalizePhone(rawPhone);
 
-      // Log raw transaction (MpesaC2BTransaction does not strictly need schoolId initially, but we link it if found)
+      // Log raw transaction
       const rawTrans = this.mpesaRepo.create({
           transactionType: 'STK Push',
           transID: receipt,
@@ -164,8 +189,7 @@ export class TransactionsService {
       });
       await this.mpesaRepo.save(rawTrans);
 
-      // Auto-Reconcile: Find student by Guardian Contact across ALL schools (or specific paybill logic)
-      // Since phone numbers are unique identifiers here, we assume one student per phone mostly, or take the first match.
+      // Auto-Reconcile
       const significantDigits = normalizedPhone.slice(-9); 
       
       const student = await this.studentRepository
@@ -176,7 +200,7 @@ export class TransactionsService {
       if (student) {
           const transaction = this.transactionsRepository.create({
               student: student,
-              school: { id: student.schoolId } as any, // Assign to student's school
+              school: { id: student.schoolId } as any,
               type: TransactionType.Payment,
               date: new Date().toISOString().split('T')[0],
               description: 'M-Pesa Fee Payment (Auto)',

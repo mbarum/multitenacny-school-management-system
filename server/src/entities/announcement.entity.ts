@@ -1,10 +1,20 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
+
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, Index } from 'typeorm';
 import { User } from './user.entity';
+import { School } from './school.entity';
 
 @Entity()
 export class Announcement {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
+
+  @Index()
+  @Column({ type: 'uuid' })
+  schoolId!: string;
+
+  @ManyToOne(() => School, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'schoolId' })
+  school!: School;
 
   @Column()
   title!: string;

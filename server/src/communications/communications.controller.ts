@@ -1,5 +1,5 @@
 
-import { Controller, Get, Post, Body, UseGuards, Request, Query } from '@nestjs/common';
+import { Controller, Get, Post, Body, UseGuards, Request, Query, Patch, Param, Delete } from '@nestjs/common';
 import { CommunicationsService } from './communications.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { Announcement, CommunicationLog } from '../entities/all-entities';
@@ -16,13 +16,24 @@ export class CommunicationsController {
   @Roles(Role.Admin, Role.Teacher)
   createAnnouncement(@Request() req: any, @Body() data: Omit<Announcement, 'id' | 'sentBy' | 'sentById'>) {
     const userId = req.user.userId;
-    return this.communicationsService.createAnnouncement({ ...data, sentById: userId });
+    return this.communicationsService.createAnnouncement({ ...data, sentById: userId }, req.user.schoolId);
   }
 
   @Get('announcements')
-  // All authenticated users can view announcements, but frontend filters audience
-  findAllAnnouncements() {
-    return this.communicationsService.findAllAnnouncements();
+  findAllAnnouncements(@Request() req: any) {
+    return this.communicationsService.findAllAnnouncements(req.user.schoolId);
+  }
+
+  @Patch('announcements/:id')
+  @Roles(Role.Admin)
+  updateAnnouncement(@Request() req: any, @Param('id') id: string, @Body() data: Partial<Announcement>) {
+    return this.communicationsService.updateAnnouncement(id, data, req.user.schoolId);
+  }
+
+  @Delete('announcements/:id')
+  @Roles(Role.Admin)
+  deleteAnnouncement(@Request() req: any, @Param('id') id: string) {
+    return this.communicationsService.deleteAnnouncement(id, req.user.schoolId);
   }
 
   @Post('communication-logs')
@@ -42,7 +53,7 @@ export class CommunicationsController {
 
   @Get('communication-logs')
   @Roles(Role.Admin, Role.Teacher, Role.Parent)
-  findAllLogs(@Query() query: GetCommunicationLogsDto) {
-    return this.communicationsService.findAllLogs(query);
+  findAllLogs(@Request() req: any, @Query() query: GetCommunicationLogsDto) {
+    return this.communicationsService.findAllLogs(query, req.user.schoolId);
   }
 }

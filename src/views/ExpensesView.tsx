@@ -1,31 +1,71 @@
+
 import React, { useState } from 'react';
-import type { Expense, NewExpense } from '../types';
-import { ExpenseCategory } from '../types';
+import type { Expense, NewExpense } from '../../types';
+import { ExpenseCategory } from '../../types';
 import Modal from '../components/common/Modal';
-import { useData } from '../contexts/DataContext';
+import { useData } from '../../contexts/DataContext';
+import * as api from '../../services/api';
 
 const ExpensesView: React.FC = () => {
-    const { expenses, addExpense } = useData();
-    const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-    const [newExpense, setNewExpense] = useState<NewExpense>({
+    const { expenses, addExpense, deleteExpense, refetchExpenses, addNotification } = useData();
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
+    
+    const initialExpenseState: NewExpense = {
         category: ExpenseCategory.Utilities, description: '', amount: 0, date: new Date().toISOString().split('T')[0]
-    });
-
-    const handleAddExpense = (e: React.FormEvent) => {
-        e.preventDefault();
-        addExpense(newExpense).then(() => {
-            setIsAddModalOpen(false);
-        });
     };
+    const [formData, setFormData] = useState<NewExpense>(initialExpenseState);
+
+    const openAddModal = () => {
+        setEditingExpense(null);
+        setFormData(initialExpenseState);
+        setIsModalOpen(true);
+    };
+
+    const openEditModal = (expense: Expense) => {
+        setEditingExpense(expense);
+        setFormData({
+            category: expense.category,
+            description: expense.description,
+            amount: expense.amount,
+            date: expense.date
+        });
+        setIsModalOpen(true);
+    };
+
+    const handleSave = async (e: React.FormEvent) => {
+        e.preventDefault();
+        try {
+            if (editingExpense) {
+                await api.updateExpense(editingExpense.id, formData);
+                addNotification("Expense updated successfully.", "success");
+            } else {
+                await addExpense(formData);
+                addNotification("Expense added successfully.", "success");
+            }
+            setIsModalOpen(false);
+            refetchExpenses();
+        } catch (error) {
+            addNotification("Failed to save expense.", "error");
+        }
+    };
+
+    const handleDelete = async (id: string) => {
+        if(window.confirm("Are you sure you want to delete this expense record?")) {
+            try {
+                await deleteExpense(id);
+                addNotification("Expense deleted successfully.", "success");
+            } catch (error) {
+                addNotification("Failed to delete expense.", "error");
+            }
+        }
+    }
 
     return (
         <div className="p-6 md:p-8">
             <div className="flex justify-between items-center mb-6">
                 <h2 className="text-3xl font-bold text-slate-800">Expense Tracking</h2>
-                <button onClick={() => {
-                    setNewExpense({ category: ExpenseCategory.Utilities, description: '', amount: 0, date: new Date().toISOString().split('T')[0] });
-                    setIsAddModalOpen(true);
-                }} className="px-4 py-2 bg-primary-600 text-white font-semibold rounded-lg shadow-md hover:bg-primary-700">Add New Expense</button>
+                <button onClick={openAddModal} className="px-4 py-2 bg-primary-600 text-white font-semibold rounded-lg shadow-md hover:bg-primary-700">Add New Expense</button>
             </div>
             <div className="bg-white rounded-xl shadow-lg overflow-x-auto">
                  <table className="w-full text-left table-auto">
@@ -35,6 +75,7 @@ const ExpensesView: React.FC = () => {
                             <th className="px-4 py-3 font-semibold text-slate-600">Category</th>
                             <th className="px-4 py-3 font-semibold text-slate-600">Description</th>
                             <th className="px-4 py-3 font-semibold text-slate-600 text-right">Amount (KES)</th>
+                            <th className="px-4 py-3 font-semibold text-slate-600">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -44,19 +85,24 @@ const ExpensesView: React.FC = () => {
                                 <td className="px-4 py-3 text-slate-600">{exp.category}</td>
                                 <td className="px-4 py-3 text-slate-800">{exp.description}</td>
                                 <td className="px-4 py-3 text-right font-semibold text-slate-800">{exp.amount.toLocaleString()}</td>
+                                <td className="px-4 py-3 space-x-2">
+                                    <button onClick={() => openEditModal(exp)} className="text-blue-600 hover:underline">Edit</button>
+                                    <button onClick={() => handleDelete(exp.id)} className="text-red-600 hover:underline">Delete</button>
+                                </td>
                             </tr>
                         ))}
+                        {expenses.length === 0 && <tr><td colSpan={5} className="text-center py-8 text-slate-500">No expenses recorded.</td></tr>}
                     </tbody>
                 </table>
             </div>
-             <Modal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} title="Add New Expense">
-                <form onSubmit={handleAddExpense} className="space-y-4">
-                    <input type="date" value={newExpense.date} onChange={e => setNewExpense(ex => ({...ex, date: e.target.value}))} required className="w-full p-2 border border-slate-300 rounded-lg"/>
-                    <select value={newExpense.category} onChange={e => setNewExpense(ex => ({...ex, category: e.target.value as ExpenseCategory}))} className="w-full p-2 border border-slate-300 rounded-lg">
+             <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingExpense ? "Edit Expense" : "Add New Expense"}>
+                <form onSubmit={handleSave} className="space-y-4">
+                    <input type="date" value={formData.date} onChange={e => setFormData(ex => ({...ex, date: e.target.value}))} required className="w-full p-2 border border-slate-300 rounded-lg"/>
+                    <select value={formData.category} onChange={e => setFormData(ex => ({...ex, category: e.target.value as ExpenseCategory}))} className="w-full p-2 border border-slate-300 rounded-lg">
                          {Object.values(ExpenseCategory).map(cat => <option key={cat} value={cat}>{cat}</option>)}
                     </select>
-                    <input type="text" placeholder="Description" value={newExpense.description} onChange={e => setNewExpense(ex => ({...ex, description: e.target.value}))} required className="w-full p-2 border border-slate-300 rounded-lg"/>
-                    <input type="number" placeholder="Amount" value={newExpense.amount || ''} onChange={e => setNewExpense(ex => ({...ex, amount: parseFloat(e.target.value)}))} required className="w-full p-2 border border-slate-300 rounded-lg"/>
+                    <input type="text" placeholder="Description" value={formData.description} onChange={e => setFormData(ex => ({...ex, description: e.target.value}))} required className="w-full p-2 border border-slate-300 rounded-lg"/>
+                    <input type="number" placeholder="Amount" value={formData.amount || ''} onChange={e => setFormData(ex => ({...ex, amount: parseFloat(e.target.value)}))} required className="w-full p-2 border border-slate-300 rounded-lg"/>
                     <div className="flex justify-end"><button type="submit" className="px-6 py-2 bg-primary-600 text-white font-semibold rounded-lg shadow-md hover:bg-primary-700">Save Expense</button></div>
                 </form>
             </Modal>

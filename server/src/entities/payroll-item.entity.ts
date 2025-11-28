@@ -1,4 +1,6 @@
-import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
+
+import { Entity, PrimaryGeneratedColumn, Column, Index, ManyToOne, JoinColumn } from 'typeorm';
+import { School } from './school.entity';
 
 export const PayrollItemType = {
   Earning: 'Earning',
@@ -28,7 +30,15 @@ export class PayrollItem {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
-  @Column({ unique: true })
+  @Index()
+  @Column({ type: 'uuid' })
+  schoolId!: string;
+
+  @ManyToOne(() => School, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'schoolId' })
+  school!: School;
+
+  @Column()
   name!: string;
 
   @Column({ type: 'enum', enum: PayrollItemType })
