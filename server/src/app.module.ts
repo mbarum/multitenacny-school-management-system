@@ -19,7 +19,8 @@ import { DashboardModule } from './dashboard/dashboard.module';
 import { AuditModule } from './audit/audit.module';
 import { EventsModule } from './events/events.module';
 import { LibraryModule } from './library/library.module';
-import { TasksModule } from './tasks/tasks.module'; // New
+import { TasksModule } from './tasks/tasks.module';
+import { SuperAdminModule } from './super-admin/super-admin.module'; // Import
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { RolesGuard } from './auth/roles.guard';
@@ -27,7 +28,7 @@ import { SubscriptionGuard } from './auth/subscription.guard';
 import { AuditInterceptor } from './common/interceptors/audit.interceptor';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { CacheModule } from '@nestjs/cache-manager';
-import { ScheduleModule } from '@nestjs/schedule'; // New
+import { ScheduleModule } from '@nestjs/schedule';
 import { join } from 'path';
 import { School } from './entities/school.entity';
 
@@ -49,7 +50,7 @@ import { School } from './entities/school.entity';
       rootPath: join((process as any).cwd(), '..', 'dist'),
       exclude: ['/api/(.*)'],
     }),
-    ScheduleModule.forRoot(), // Enable Cron Jobs
+    ScheduleModule.forRoot(),
     AuthModule, 
     UsersModule, 
     StudentsModule, 
@@ -65,7 +66,8 @@ import { School } from './entities/school.entity';
     AuditModule,
     EventsModule,
     LibraryModule,
-    TasksModule, // Register Tasks Module
+    TasksModule,
+    SuperAdminModule, // Register
   ],
   controllers: [AppController],
   providers: [

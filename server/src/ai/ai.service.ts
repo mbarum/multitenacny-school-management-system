@@ -1,5 +1,5 @@
 
-import { Injectable, InternalServerErrorException } from '@nestjs/common';
+import { Injectable, InternalServerErrorException, Logger } from '@nestjs/common';
 import { GoogleGenAI } from '@google/genai';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -8,7 +8,8 @@ import { Expense, Transaction, TransactionType } from '../entities/all-entities'
 
 @Injectable()
 export class AiService {
-  private readonly ai: GoogleGenAI;
+  private readonly ai: GoogleGenAI | null = null;
+  private readonly logger = new Logger(AiService.name);
 
   constructor(
     private configService: ConfigService,
@@ -16,13 +17,18 @@ export class AiService {
     @InjectRepository(Expense) private expenseRepo: Repository<Expense>,
   ) {
     const apiKey = this.configService.get<string>('API_KEY');
-    if (!apiKey) {
-      throw new Error("API_KEY environment variable is not set for the backend.");
+    if (apiKey) {
+      this.ai = new GoogleGenAI({ apiKey });
+    } else {
+      this.logger.warn("API_KEY environment variable is not set. AI features (Financial Summary) will be disabled.");
     }
-    this.ai = new GoogleGenAI({ apiKey });
   }
 
   async generateFinancialSummary(schoolId: string): Promise<{ summary: string }> {
+    if (!this.ai) {
+        return { summary: "AI configuration is missing (API_KEY not set). Please contact the administrator." };
+    }
+
     try {
       const revenueResult = await this.transactionRepo
         .createQueryBuilder('t')
@@ -77,7 +83,7 @@ export class AiService {
       return { summary: response.text ?? 'AI summary could not be generated at this time.' };
 
     } catch (error) {
-      console.error("Error calling Gemini API:", error);
+      this.logger.error("Error calling Gemini API:", error);
       throw new InternalServerErrorException('Failed to generate AI summary.');
     }
   }

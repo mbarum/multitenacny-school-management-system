@@ -1,3 +1,4 @@
+
 import { Module } from '@nestjs/common';
 import { CommunicationsService } from './communications.service';
 import { CommunicationsController } from './communications.controller';
@@ -8,6 +9,7 @@ import { CommunicationLog } from '../entities/communication-log.entity';
 @Module({
   imports: [TypeOrmModule.forFeature([Announcement, CommunicationLog])],
   controllers: [CommunicationsController],
-  providers: [CommunicationsService]
+  providers: [CommunicationsService],
+  exports: [CommunicationsService] // Critical: Must export service to be used in TasksModule
 })
 export class CommunicationsModule {}

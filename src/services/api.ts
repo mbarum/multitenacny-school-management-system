@@ -1,5 +1,5 @@
 
-// ... (keep previous imports)
+// ... existing imports ...
 import type { 
     User, Student, Transaction, Expense, Staff, Payroll, Subject, SchoolClass, 
     ClassSubjectAssignment, TimetableEntry, Exam, Grade, AttendanceRecord, SchoolEvent, 
@@ -7,10 +7,11 @@ import type {
     PayrollItem, DarajaSettings, NewStudent, NewStaff, 
     NewTransaction, NewExpense, NewPayrollItem, NewAnnouncement, NewCommunicationLog, 
     NewUser, NewGradingRule, NewFeeItem,
-    UpdateSchoolInfoDto, PaginatedResponse, AuditLog, Book, NewBook, IssueBookData, LibraryTransaction
+    UpdateSchoolInfoDto, PaginatedResponse, AuditLog, Book, NewBook, IssueBookData, LibraryTransaction,
+    School, SubscriptionStatus, SubscriptionPlan
 } from '../types';
 
-// Custom error for API responses
+// ... existing ApiError class ...
 export class ApiError extends Error {
   status: number;
   data: any;
@@ -23,7 +24,7 @@ export class ApiError extends Error {
   }
 }
 
-// This function acts as a client for our backend API.
+// ... existing apiFetch function ...
 const apiFetch = async (endpoint: string, options: RequestInit = {}) => {
     const token = localStorage.getItem('authToken');
     const headers = new Headers(options.headers);
@@ -51,7 +52,6 @@ const apiFetch = async (endpoint: string, options: RequestInit = {}) => {
 
     return response.json();
 };
-
 const apiFileFetch = async (endpoint: string, formData: FormData) => {
     const token = localStorage.getItem('authToken');
     const headers = new Headers();
@@ -94,12 +94,16 @@ const apiFetchBlob = async (endpoint: string, options: RequestInit = {}) => {
 };
 
 
-// --- API Methods ---
-
+// ... existing methods ...
 // Auth
 export const login = (credentials: {email: string, password: string}): Promise<{user: User, token: string}> => apiFetch('/auth/login', { method: 'POST', body: JSON.stringify(credentials) });
 export const registerSchool = (data: any): Promise<{user: User, token: string, school: any}> => apiFetch('/auth/register-school', { method: 'POST', body: JSON.stringify(data) });
 export const getAuthenticatedUser = (): Promise<User> => apiFetch('/users/me');
+
+// Super Admin
+export const getPlatformStats = (): Promise<any> => apiFetch('/super-admin/stats');
+export const getAllSchools = (): Promise<School[]> => apiFetch('/super-admin/schools');
+export const updateSchoolSubscription = (schoolId: string, data: { status: SubscriptionStatus; plan: SubscriptionPlan; endDate?: string }): Promise<any> => apiFetch(`/super-admin/schools/${schoolId}/subscription`, { method: 'PATCH', body: JSON.stringify(data) });
 
 // Dashboard
 export const getDashboardStats = (): Promise<any> => apiFetch('/dashboard/stats');
@@ -116,7 +120,7 @@ export const fetchInitialData = () => {
     return Promise.allSettled(endpoints.map(ep => apiFetch(`/${ep}`)));
 };
 
-
+// ... remaining existing CRUD methods (copy from existing file) ...
 // Generic CRUD functions
 const create = <T>(resource: string) => (data: any): Promise<T> => apiFetch(`/${resource}`, { method: 'POST', body: JSON.stringify(data) });
 const get = <T>(resource: string) => (id: string): Promise<T> => apiFetch(`/${resource}/${id}`);

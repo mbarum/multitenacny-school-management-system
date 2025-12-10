@@ -17,11 +17,11 @@ export class SchoolEvent {
   id!: string;
 
   @Index()
-  @Column({ type: 'uuid' })
+  @Column({ name: 'school_id', type: 'uuid', nullable: true })
   schoolId!: string;
 
-  @ManyToOne(() => School, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'schoolId' })
+  @ManyToOne(() => School, { onDelete: 'CASCADE', nullable: true })
+  @JoinColumn({ name: 'school_id' })
   school!: School;
 
   @Column()

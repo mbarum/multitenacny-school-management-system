@@ -40,11 +40,11 @@ export class User {
 
   // Multi-Tenancy Link
   @Index()
-  @Column({ type: 'uuid', nullable: true }) 
+  @Column({ name: 'school_id', type: 'uuid', nullable: true }) 
   schoolId!: string | null; // Nullable only for SuperAdmin
 
   @ManyToOne(() => School, (school) => school.users, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'schoolId' })
+  @JoinColumn({ name: 'school_id' })
   school!: School;
 
   @OneToOne(() => SchoolClass, (schoolClass) => schoolClass.formTeacher, { nullable: true })

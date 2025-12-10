@@ -36,7 +36,7 @@ export class TasksService {
     for (const trans of overdueTransactions) {
         if (trans.student && trans.student.guardianContact) {
             const message = `Reminder: The book "${trans.book.title}" borrowed by ${trans.student.name} was due on ${trans.dueDate}. Please return it to the library.`;
-            // In a real system, send SMS
+            // In a real system, send SMS. For now, we log it.
             this.logger.log(`[SMS Simulation] To: ${trans.student.guardianContact}, Msg: ${message}`);
             
             // Mark as Overdue in DB
@@ -46,12 +46,11 @@ export class TasksService {
     }
   }
 
-  // Use standard Cron string for "Every Monday at 9:00 AM" instead of invalid constant
+  // Use standard Cron string for "Every Monday at 9:00 AM"
   @Cron('0 9 * * 1')
   async generateFeeReminders() {
     this.logger.log('Running automated fee reminder generation...');
     // This is a heavy operation, simplified here.
-    // In production, use Batches or Queues.
     
     const students = await this.studentRepo.find({ relations: ['school'] });
     

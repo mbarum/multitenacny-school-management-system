@@ -15,12 +15,12 @@ export class Student {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
-  @Index() // Index for performance
-  @Column({ type: 'uuid' })
+  @Index()
+  @Column({ name: 'school_id', type: 'uuid', nullable: true })
   schoolId!: string;
 
-  @ManyToOne(() => School, (school) => school.students, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'schoolId' })
+  @ManyToOne(() => School, (school) => school.students, { onDelete: 'CASCADE', nullable: true })
+  @JoinColumn({ name: 'school_id' })
   school!: School;
 
   @Column() 

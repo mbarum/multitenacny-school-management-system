@@ -30,10 +30,10 @@ export class Subscription {
   @Column({ type: 'enum', enum: SubscriptionStatus, default: SubscriptionStatus.TRIAL })
   status!: SubscriptionStatus;
 
-  @Column({ type: 'timestamp' })
+  @Column({ type: 'datetime', default: () => 'CURRENT_TIMESTAMP' })
   startDate!: Date;
 
-  @Column({ type: 'timestamp' })
+  @Column({ type: 'datetime', default: () => 'CURRENT_TIMESTAMP' })
   endDate!: Date;
 
   @CreateDateColumn()

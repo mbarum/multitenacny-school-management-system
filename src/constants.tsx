@@ -1,7 +1,7 @@
 
 import React from 'react';
 // Fix: Changed 'import type' to a value import to use the Role enum in the constants array.
-import { Role } from '../types';
+import { Role } from './types';
 
 export type NavItem = {
     label: string;
@@ -10,6 +10,16 @@ export type NavItem = {
     icon: React.ReactElement;
     allowedRoles: Role[];
 };
+
+export const SUPER_ADMIN_NAVIGATION_ITEMS: NavItem[] = [
+    {
+        label: 'Platform Dashboard',
+        view: 'super_admin_dashboard',
+        icon: <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>,
+        allowedRoles: [Role.SuperAdmin],
+    },
+    // Future: Add 'System Logs', 'Global Settings', etc.
+];
 
 export const NAVIGATION_ITEMS: NavItem[] = [
     {

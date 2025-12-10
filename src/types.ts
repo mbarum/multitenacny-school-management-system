@@ -1,8 +1,6 @@
 
-// These types are derived from the backend's TypeORM entities.
-// Keeping them in sync is crucial for frontend type safety.
-
 export enum Role {
+  SuperAdmin = 'SuperAdmin',
   Admin = 'Admin',
   Accountant = 'Accountant',
   Teacher = 'Teacher',
@@ -19,9 +17,41 @@ export interface User {
   role: Role;
   avatarUrl: string;
   status: 'Active' | 'Disabled';
-  schoolId?: string; // Added schoolId
+  schoolId?: string;
 }
 export type NewUser = Omit<User, 'id' | 'avatarUrl' | 'status'>;
+
+export enum SubscriptionPlan {
+  FREE = 'FREE',
+  BASIC = 'BASIC',
+  PREMIUM = 'PREMIUM'
+}
+
+export enum SubscriptionStatus {
+  ACTIVE = 'ACTIVE',
+  PAST_DUE = 'PAST_DUE',
+  CANCELLED = 'CANCELLED',
+  TRIAL = 'TRIAL'
+}
+
+export interface Subscription {
+    id: string;
+    plan: SubscriptionPlan;
+    status: SubscriptionStatus;
+    startDate: string;
+    endDate: string;
+}
+
+export interface School {
+    id: string;
+    name: string;
+    slug: string;
+    email?: string;
+    phone?: string;
+    adminName?: string;
+    subscription: Subscription;
+    createdAt: string;
+}
 
 export enum StudentStatus {
   Active = 'Active',
@@ -33,8 +63,8 @@ export interface Student {
   id: string;
   admissionNumber: string;
   name: string;
-  class: string; // Corresponds to SchoolClass.name for simplicity
-  classId: string; // Foreign key to SchoolClass
+  class: string; 
+  classId: string; 
   status: StudentStatus;
   profileImage: string;
   guardianName: string;
@@ -42,10 +72,9 @@ export interface Student {
   guardianAddress: string;
   guardianEmail: string;
   emergencyContact: string;
-  dateOfBirth: string; // YYYY-MM-DD
-  balance?: number; // Added virtual field for balance
+  dateOfBirth: string; 
+  balance?: number; 
 }
-// For creating a student, we only need the classId
 export type NewStudent = Omit<Student, 'id' | 'status' | 'admissionNumber' | 'balance'>;
 
 export interface PaginatedResponse<T> {
@@ -64,7 +93,6 @@ export interface SchoolClass {
     formTeacherName?: string;
 }
 export type NewSchoolClass = Omit<SchoolClass, 'id'>;
-
 
 export enum PaymentMethod {
     MPesa = 'MPesa',
@@ -88,9 +116,9 @@ export enum TransactionType {
 export interface Transaction {
   id: string;
   studentId: string;
-  studentName?: string; // Denormalized for easier display
+  studentName?: string; 
   type: TransactionType;
-  date: string; // YYYY-MM-DD
+  date: string; 
   description: string;
   amount: number;
   method?: PaymentMethod;
@@ -114,7 +142,7 @@ export interface Expense {
   category: ExpenseCategory;
   description: string;
   amount: number;
-  date: string; // YYYY-MM-DD
+  date: string; 
   attachmentUrl?: string;
 }
 export type NewExpense = Omit<Expense, 'id'>;
@@ -124,11 +152,11 @@ export interface Staff {
     userId: string;
     name: string;
     email: string;
-    role: string; // Descriptive role, e.g., "Head of Mathematics"
-    userRole: Role; // System role, e.g., "Teacher"
+    role: string; 
+    userRole: Role; 
     photoUrl: string;
     salary: number; 
-    joinDate: string; // YYYY-MM-DD
+    joinDate: string; 
     bankName: string;
     accountNumber: string;
     kraPin: string;
@@ -177,7 +205,7 @@ export interface Payroll {
     staffId: string;
     staffName: string;
     month: string; 
-    payDate: string; // YYYY-MM-DD
+    payDate: string; 
     grossPay: number;
     totalDeductions: number;
     netPay: number;
@@ -213,11 +241,10 @@ export interface TimetableEntry {
     subjectId: string;
     teacherId: string;
     day: DayOfWeek;
-    startTime: string; // "HH:MM"
-    endTime: string; // "HH:MM"
+    startTime: string; 
+    endTime: string; 
 }
 export type NewTimetableEntry = Omit<TimetableEntry, 'id'>;
-
 
 export enum ExamType {
     Traditional = 'Traditional',
@@ -238,7 +265,7 @@ export enum CbetScore {
 export interface Exam {
     id: string;
     name: string;
-    date: string; // YYYY-MM-DD
+    date: string; 
     classId: string;
     type: ExamType;
 }
@@ -266,7 +293,7 @@ export interface AttendanceRecord {
     id: string;
     studentId: string;
     classId: string;
-    date: string; // YYYY-MM-DD
+    date: string; 
     status: AttendanceStatus;
     remarks?: string;
 }
@@ -284,8 +311,8 @@ export interface SchoolEvent {
     id: string;
     title: string;
     description: string;
-    startDate: string; // YYYY-MM-DD
-    endDate?: string; // YYYY-MM-DD
+    startDate: string; 
+    endDate?: string; 
     category: EventCategory;
 }
 export type NewSchoolEvent = Omit<SchoolEvent, 'id'>;
@@ -305,7 +332,6 @@ export interface SchoolInfo {
     gradingSystem: GradingSystem;
 }
 export type UpdateSchoolInfoDto = Partial<Omit<SchoolInfo, 'logoUrl'>>;
-
 
 export interface GradingRule {
     id: string;
@@ -333,7 +359,7 @@ export type NewFeeItem = Omit<FeeItem, 'id'>;
 export enum CommunicationType {
     SMS = 'SMS',
     Email = 'Email',
-    PortalMessage = 'Portal Message'
+    PortalMessage = 'PortalMessage'
 }
 
 export interface CommunicationLog {
@@ -341,19 +367,18 @@ export interface CommunicationLog {
     studentId: string;
     type: CommunicationType;
     message: string;
-    date: string; // ISO String
-    sentBy: string; // User's name
+    date: string; 
+    sentBy: string; 
 }
 export type NewCommunicationLog = Omit<CommunicationLog, 'id'>;
-
 
 export interface Announcement {
     id: string;
     title: string;
     content: string;
-    date: string; // ISO String
-    audience: string; // 'all' or classId
-    sentBy: string; // User's name
+    date: string; 
+    audience: string; 
+    sentBy: string; 
 }
 export type NewAnnouncement = Omit<Announcement, 'id'>;
 
@@ -361,8 +386,8 @@ export interface ReportShareLog {
     id: string;
     studentId: string;
     examId: string;
-    sharedDate: string; // ISO String
-    sharedBy: string; // User's name
+    sharedDate: string; 
+    sharedBy: string; 
 }
 
 export interface DarajaSettings {
@@ -380,7 +405,7 @@ export interface MpesaC2BTransaction {
     transTime: string;
     transAmount: string;
     businessShortCode: string;
-    billRefNumber: string; // Student Admission Number
+    billRefNumber: string; 
     msisdn: string;
     firstName: string;
     lastName: string;
@@ -406,7 +431,6 @@ export interface AuditLog {
     }
 }
 
-// Library Types
 export enum LibraryStatus {
     BORROWED = 'Borrowed',
     RETURNED = 'Returned',
@@ -429,9 +453,9 @@ export type NewBook = Omit<Book, 'id' | 'availableQuantity'>;
 export interface LibraryTransaction {
     id: string;
     bookId: string;
-    bookTitle?: string; // Frontend helper
+    bookTitle?: string; 
     studentId: string;
-    studentName?: string; // Frontend helper
+    studentName?: string; 
     borrowerName: string;
     borrowDate: string;
     dueDate: string;

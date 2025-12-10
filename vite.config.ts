@@ -8,13 +8,17 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, '.', '');
   return {
     plugins: [react()],
+    optimizeDeps: {
+      include: ['socket.io-client'],
+    },
     server: {
       proxy: {
         // Proxy API requests to the backend server
         '/api': {
           target: 'http://localhost:3000',
           changeOrigin: true,
-          rewrite: (path) => path.replace(/^\/api/, ''),
+          // We DO NOT rewrite the path here because the NestJS backend 
+          // is configured with app.setGlobalPrefix('api'), so it EXPECTS the /api prefix.
         },
         // Proxy requests for public assets (like uploaded logos) to the backend
         '/public': {

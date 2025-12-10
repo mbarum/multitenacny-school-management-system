@@ -10,7 +10,7 @@ import { CommunicationsModule } from '../communications/communications.module';
 @Module({
   imports: [
     TypeOrmModule.forFeature([Student, Transaction, LibraryTransaction]),
-    CommunicationsModule,
+    CommunicationsModule, // Critical: Import module to access CommunicationsService
   ],
   providers: [TasksService],
 })

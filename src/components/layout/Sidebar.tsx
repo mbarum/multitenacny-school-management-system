@@ -1,19 +1,33 @@
+
 import React from 'react';
 import type { NavItem } from '../../constants';
-import type { Role, SchoolInfo } from '../../types';
+import { Role } from '../../types'; // Import Role
 import { useData } from '../../contexts/DataContext';
 
-const SaaslinkLogo: React.FC<{ schoolName: string; logoUrl?: string; isCollapsed: boolean; }> = ({ schoolName, logoUrl, isCollapsed }) => (
-    <div className="flex items-center justify-center py-5 px-4 border-b border-slate-200 h-16">
+const SaaslinkLogo: React.FC<{ schoolName: string; logoUrl?: string; isCollapsed: boolean; isOffline: boolean }> = ({ schoolName, logoUrl, isCollapsed, isOffline }) => (
+    <div className="flex items-center justify-center py-5 px-4 border-b border-slate-200 h-16 bg-white">
         <div className={`flex items-center ${isCollapsed ? 'justify-center' : ''} w-full`}>
-            {logoUrl ? (
-                <img src={logoUrl} alt="School Logo" className="h-10 w-10 rounded-full object-cover flex-shrink-0" />
+            {logoUrl && !isOffline ? (
+                <img src={logoUrl} alt="Logo" className="h-10 w-10 rounded-full object-cover flex-shrink-0" />
             ) : (
-                <svg className="h-10 w-10 text-primary-600 flex-shrink-0" viewBox="0 0 100 100" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M50 0C22.38 0 0 22.38 0 50C0 77.62 22.38 100 50 100C77.62 100 100 77.62 100 50C100 22.38 77.62 0 50 0ZM65.82 68.32C60.36 74.5 50 71.18 50 71.18C50 71.18 39.64 74.5 34.18 68.32C28.32 61.66 31.46 50 31.46 50C31.46 50 28.32 38.34 34.18 31.68C39.64 25.5 50 28.82 50 28.82C50 28.82 60.36 25.5 65.82 31.68C71.68 38.34 68.54 50 68.54 50C68.54 50 71.68 61.66 65.82 68.32Z"/>
-                </svg>
+                <div className={`h-10 w-10 flex-shrink-0 flex items-center justify-center rounded-full ${isOffline ? 'bg-red-100 text-red-600' : 'text-primary-600'}`}>
+                    {isOffline ? (
+                         <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                    ) : (
+                        <svg className="h-8 w-8" viewBox="0 0 100 100" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M50 0C22.38 0 0 22.38 0 50C0 77.62 22.38 100 50 100C77.62 100 100 77.62 100 50C100 22.38 77.62 0 50 0ZM65.82 68.32C60.36 74.5 50 71.18 50 71.18C50 71.18 39.64 74.5 34.18 68.32C28.32 61.66 31.46 50 31.46 50C31.46 50 28.32 38.34 34.18 31.68C39.64 25.5 50 28.82 50 28.82C50 28.82 60.36 25.5 65.82 31.68C71.68 38.34 68.54 50 68.54 50C68.54 50 71.68 61.66 65.82 68.32Z"/>
+                        </svg>
+                    )}
+                </div>
             )}
-            <span className={`ml-3 text-xl font-bold text-primary-800 transition-opacity duration-300 ease-in-out ${isCollapsed ? 'opacity-0 w-0' : 'opacity-100'}`}>{schoolName}</span>
+            <div className={`ml-3 transition-opacity duration-300 ease-in-out ${isCollapsed ? 'opacity-0 w-0' : 'opacity-100'}`}>
+                <h1 className={`text-lg font-bold truncate max-w-[150px] ${isOffline ? 'text-red-600' : 'text-primary-800'}`}>
+                    {isOffline ? 'Database Disconnected' : schoolName}
+                </h1>
+                {isOffline && <p className="text-xs text-red-500">Check server console</p>}
+            </div>
         </div>
     </div>
 );
@@ -27,14 +41,18 @@ const Sidebar: React.FC = () => {
         getNavigationItems,
         isSidebarCollapsed,
         isMobileSidebarOpen,
-        setIsMobileSidebarOpen
+        setIsMobileSidebarOpen,
+        isOffline // Use new flag
     } = useData();
 
-    if (!currentUser || !schoolInfo) return null;
+    if (!currentUser) return null;
 
     const navigationItems = getNavigationItems();
-
     const isAllowed = (navItem: NavItem) => navItem.allowedRoles.includes(currentUser.role);
+    
+    // Determine branding based on role and connection status
+    const displayLogo = currentUser.role === Role.SuperAdmin ? undefined : schoolInfo?.logoUrl;
+    const displayName = currentUser.role === Role.SuperAdmin ? "Saaslink Platform" : (schoolInfo?.name || "School System");
 
     return (
         <>
@@ -51,7 +69,13 @@ const Sidebar: React.FC = () => {
                 lg:translate-x-0 
                 ${isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}
             >
-                <SaaslinkLogo schoolName={schoolInfo.name} logoUrl={schoolInfo.logoUrl} isCollapsed={isSidebarCollapsed} />
+                <SaaslinkLogo 
+                    schoolName={displayName} 
+                    logoUrl={displayLogo} 
+                    isCollapsed={isSidebarCollapsed} 
+                    isOffline={isOffline}
+                />
+                
                 <nav className="flex-1 px-4 py-4 space-y-2 overflow-y-auto">
                     {navigationItems.filter(isAllowed).map(item => (
                         <a
