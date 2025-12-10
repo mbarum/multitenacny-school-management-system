@@ -56,4 +56,10 @@ export class CommunicationsController {
   findAllLogs(@Request() req: any, @Query() query: GetCommunicationLogsDto) {
     return this.communicationsService.findAllLogs(query, req.user.schoolId);
   }
+
+  @Post('send-sms')
+  @Roles(Role.Admin, Role.Teacher)
+  async sendSMS(@Request() req: any, @Body() body: { phone: string; message: string; studentId: string }) {
+      return this.communicationsService.sendSMS(body.phone, body.message, body.studentId, req.user.userId);
+  }
 }

@@ -23,6 +23,7 @@ const CalendarView = lazy(() => import('./views/CalendarView'));
 const ExaminationsView = lazy(() => import('./views/ExaminationsView'));
 const ReportCardsView = lazy(() => import('./views/ReportCardsView'));
 const CommunicationView = lazy(() => import('./views/CommunicationView'));
+const LibraryView = lazy(() => import('./components/views/LibraryView')); // Added Library View
 
 // Teacher Portal components
 const TeacherDashboard = lazy(() => import('./components/teacher/TeacherDashboard'));
@@ -83,6 +84,7 @@ const App: React.FC = () => {
             case 'communication': return <CommunicationView />;
             case 'reporting': return <Reporting />;
             case 'settings': return <SettingsView />;
+            case 'library': return <LibraryView />;
             case 'teacher_dashboard': return <TeacherDashboard />;
             case 'my_class': return <MyClassView />;
             case 'teacher_attendance': return <TeacherAttendanceView />;

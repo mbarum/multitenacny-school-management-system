@@ -5,7 +5,7 @@ import {
     User, Staff, SchoolClass, Student, Subject, ClassSubjectAssignment, MpesaC2BTransaction, 
     Announcement, AttendanceRecord, ClassFee, CommunicationLog, Exam, Expense, FeeItem, Grade, 
     GradingRule, Payroll, PayrollEntry, PayrollItem, ReportShareLog, SchoolEvent, TimetableEntry, 
-    Transaction, SchoolSetting, DarajaSetting
+    Transaction, SchoolSetting, DarajaSetting, Book, LibraryTransaction, School, Subscription
 } from '../entities/all-entities';
 
 export const typeOrmAsyncConfig: TypeOrmModuleAsyncOptions = {
@@ -25,7 +25,7 @@ export const typeOrmAsyncConfig: TypeOrmModuleAsyncOptions = {
         User, Staff, SchoolClass, Student, Subject, ClassSubjectAssignment, MpesaC2BTransaction, 
         Announcement, AttendanceRecord, ClassFee, CommunicationLog, Exam, Expense, FeeItem, Grade, 
         GradingRule, Payroll, PayrollEntry, PayrollItem, ReportShareLog, SchoolEvent, TimetableEntry, 
-        Transaction, SchoolSetting, DarajaSetting
+        Transaction, SchoolSetting, DarajaSetting, Book, LibraryTransaction, School, Subscription
       ],
       // CRITICAL: synchronize must be FALSE in production to avoid dropping data.
       // Use migrations for schema updates in production.

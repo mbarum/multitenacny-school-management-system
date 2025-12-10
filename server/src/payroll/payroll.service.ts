@@ -32,7 +32,7 @@ export class PayrollService {
     async savePayrollRun(payrollData: any[], schoolId: string): Promise<Payroll[]> {
         return this.entityManager.transaction(async transactionalEntityManager => {
             const currentMonth = new Date().toLocaleString('default', { month: 'long', year: 'numeric' });
-            let entriesToProcess = [];
+            let entriesToProcess: any[] = []; // Fix: Explicitly type as any[] or specific interface
 
             if (!payrollData || payrollData.length === 0) {
                 // Auto-Generate: Fetch staff ONLY for this school

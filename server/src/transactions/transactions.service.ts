@@ -6,6 +6,7 @@ import { Transaction, TransactionType, PaymentMethod } from '../entities/transac
 import { GetTransactionsDto } from './dto/get-transactions.dto';
 import { Student } from '../entities/student.entity';
 import { MpesaC2BTransaction } from '../entities/mpesa-c2b.entity';
+import { EventsGateway } from '../events/events.gateway';
 
 @Injectable()
 export class TransactionsService {
@@ -18,6 +19,7 @@ export class TransactionsService {
     private studentRepository: Repository<Student>,
     @InjectRepository(MpesaC2BTransaction)
     private mpesaRepo: Repository<MpesaC2BTransaction>,
+    private eventsGateway: EventsGateway,
   ) {}
 
   private mapTransactionToDto(transaction: Transaction): any {
@@ -215,7 +217,17 @@ export class TransactionsService {
           rawTrans.firstName = student.guardianName.split(' ')[0];
           await this.mpesaRepo.save(rawTrans);
           
-          this.logger.log(`Auto-reconciled payment ${receipt} for student ${student.name} in School ${student.schoolId}`);
+          this.logger.log(`Auto-reconciled payment ${receipt} for student ${student.name}`);
+          
+          // EMIT REAL-TIME EVENT
+          this.eventsGateway.server.emit('payment_received', {
+              studentName: student.name,
+              amount: Number(amount),
+              receipt,
+              timestamp: new Date().toISOString(),
+              schoolId: student.schoolId
+          });
+
       } else {
           this.logger.warn(`Could not auto-reconcile payment ${receipt}. Phone ${rawPhone} matched no guardian.`);
       }

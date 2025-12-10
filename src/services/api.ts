@@ -7,7 +7,7 @@ import type {
     PayrollItem, DarajaSettings, NewStudent, NewStaff, 
     NewTransaction, NewExpense, NewPayrollItem, NewAnnouncement, NewCommunicationLog, 
     NewUser, NewGradingRule, NewFeeItem,
-    UpdateSchoolInfoDto, PaginatedResponse, AuditLog
+    UpdateSchoolInfoDto, PaginatedResponse, AuditLog, Book, NewBook, IssueBookData, LibraryTransaction
 } from '../types';
 
 // Custom error for API responses
@@ -283,6 +283,15 @@ export const deleteExam = remove('academics/exams');
 
 // Audit
 export const getAuditLogs = (limit: number = 50): Promise<AuditLog[]> => apiFetch(`/audit-logs?limit=${limit}`);
+
+// Library
+export const getBooks = (): Promise<Book[]> => apiFetch('/library/books');
+export const createBook = create<Book>('library/books');
+export const updateBook = update<Book>('library/books');
+export const deleteBook = remove('library/books');
+export const issueBook = (data: IssueBookData): Promise<LibraryTransaction> => apiFetch('/library/issue', { method: 'POST', body: JSON.stringify(data) });
+export const returnBook = (transactionId: string): Promise<LibraryTransaction> => apiFetch(`/library/return/${transactionId}`, { method: 'POST' });
+export const getLibraryTransactions = (): Promise<LibraryTransaction[]> => apiFetch('/library/transactions');
 
 // Helpers for type safety in batch update
 function batchUpdate<T extends {id?: string}>(resource: string) {

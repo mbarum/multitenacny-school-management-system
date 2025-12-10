@@ -6,12 +6,13 @@ import type {
     TimetableEntry, Exam, Grade, AttendanceRecord, SchoolEvent, SchoolInfo, GradingRule, FeeItem, 
     CommunicationLog, Announcement, PayrollItem, DarajaSettings, MpesaC2BTransaction, 
     Notification, NewStudent, NewStaff, NewTransaction, NewExpense, NewPayrollItem, NewAnnouncement, 
-    NewCommunicationLog, NewUser, NewGradingRule, NewFeeItem, UpdateSchoolInfoDto
+    NewCommunicationLog, NewUser, NewGradingRule, NewFeeItem, UpdateSchoolInfoDto, Book, NewBook, LibraryTransaction, IssueBookData
 } from '../types';
 import { Role, GradingSystem } from '../types';
 import { NAVIGATION_ITEMS, TEACHER_NAVIGATION_ITEMS, PARENT_NAVIGATION_ITEMS } from '../constants';
 import type { NavItem } from '../constants';
 import IDCardModal from '../components/common/IDCardModal';
+import { connectSocket, disconnectSocket, getSocket } from '../services/socket';
 
 interface IDataContext {
     isLoading: boolean;
@@ -41,6 +42,8 @@ interface IDataContext {
     assignedClass: SchoolClass | null;
     parentChildren: Student[];
     selectedChild: Student | null;
+    books: Book[];
+    libraryTransactions: LibraryTransaction[];
 
     isSidebarCollapsed: boolean;
     isMobileSidebarOpen: boolean;
@@ -110,6 +113,14 @@ interface IDataContext {
     updateAttendance: (data: AttendanceRecord[]) => Promise<void>;
     updateEvents: (data: SchoolEvent[]) => Promise<void>;
 
+    // Library Actions
+    addBook: (data: NewBook) => Promise<Book>;
+    updateBook: (id: string, updates: Partial<Book>) => Promise<Book>;
+    deleteBook: (id: string) => Promise<void>;
+    issueBook: (data: IssueBookData) => Promise<LibraryTransaction>;
+    returnBook: (transactionId: string) => Promise<LibraryTransaction>;
+    refetchLibrary: () => Promise<void>;
+
     studentFinancials: Record<string, { balance: number; overpayment: number; lastPaymentDate: string | null }>;
 }
 
@@ -159,6 +170,10 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [mpesaC2BTransactions, setMpesaC2BTransactions] = useState<MpesaC2BTransaction[]>([]);
     const [notifications, setNotifications] = useState<Notification[]>([]);
     
+    // Library State
+    const [books, setBooks] = useState<Book[]>([]);
+    const [libraryTransactions, setLibraryTransactions] = useState<LibraryTransaction[]>([]);
+    
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
     const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
     const [isIdCardModalOpen, setIsIdCardModalOpen] = useState(false);
@@ -180,7 +195,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         localStorage.removeItem('activeView');
         setCurrentUser(null);
         setActiveView('dashboard');
-        const setters = { setUsers, setStudents, setTransactions, setExpenses, setStaff, setSubjects, setClasses, setClassSubjectAssignments, setTimetableEntries, setExams, setGrades, setAttendanceRecords, setEvents, setGradingScale, setFeeStructure, setAnnouncements, setPayrollItems, setDarajaSettings };
+        disconnectSocket(); 
+        const setters = { setUsers, setStudents, setTransactions, setExpenses, setStaff, setSubjects, setClasses, setClassSubjectAssignments, setTimetableEntries, setExams, setGrades, setAttendanceRecords, setEvents, setGradingScale, setFeeStructure, setAnnouncements, setPayrollItems, setDarajaSettings, setBooks, setLibraryTransactions };
         clearAllData(setters);
     }, []);
 
@@ -202,6 +218,20 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     const validatedUser = await api.getAuthenticatedUser();
                     setCurrentUser(validatedUser);
                     await loadAuthenticatedData(validatedUser);
+                    
+                    const socket = connectSocket();
+                    socket.on('payment_received', (data: any) => {
+                        if (data.schoolId === validatedUser.schoolId) {
+                            addNotification(`Payment of KES ${data.amount.toLocaleString()} received for ${data.studentName}!`, 'success');
+                            api.getTransactions({ limit: 10 }).then(res => {
+                                setTransactions(prev => {
+                                    const newTrans = res.data.filter(t => !prev.some(existing => existing.id === t.id));
+                                    return [...newTrans, ...prev];
+                                });
+                            });
+                        }
+                    });
+
                 } catch (error) {
                     console.error("Session invalid or expired:", error);
                     handleLogout();
@@ -211,7 +241,11 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         };
 
         initApp();
-    }, [handleLogout]);
+        
+        return () => {
+            disconnectSocket();
+        };
+    }, [handleLogout, addNotification]);
 
     const loadAuthenticatedData = async (user: User) => {
         const results = await api.fetchInitialData();
@@ -249,6 +283,10 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         api.getExpenses().then(setExpenses).catch(err => console.error("Failed to load expenses", err));
         api.getStaff().then(setStaff).catch(err => console.error("Failed to load staff", err));
+        
+        // Load Library Data
+        api.getBooks().then(setBooks).catch(err => console.error("Failed to load books", err));
+        api.getLibraryTransactions().then(setLibraryTransactions).catch(err => console.error("Failed to load library transactions", err));
 
         if (user.role === Role.Teacher) {
             setAssignedClass(classesData.find((c: SchoolClass) => c.formTeacherId === user.id) || null);
@@ -263,6 +301,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setCurrentUser(user);
         setIsLoading(true);
         loadAuthenticatedData(user).then(() => setIsLoading(false));
+        connectSocket();
+        
         if (user.role === Role.Teacher) setActiveView('teacher_dashboard');
         else if (user.role === Role.Parent) setActiveView('parent_dashboard');
         else setActiveView('dashboard');
@@ -291,6 +331,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setter(prev => prev.filter(item => item.id !== id));
         }, [setter]);
 
+    // ... existing actions ...
     const addStudent = createApiAction(setStudents, api.createStudent, (a, b) => a.name.localeCompare(b.name));
     const updateStudent = updateApiAction(setStudents, api.updateStudent);
     const deleteStudent = deleteApiAction(setStudents, api.deleteStudent);
@@ -396,6 +437,32 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }, []);
     const updateEvents = createBatchUpdateAction(setEvents, api.batchUpdateEvents);
 
+    // Library Actions
+    const addBook = createApiAction(setBooks, api.createBook, (a, b) => a.title.localeCompare(b.title));
+    const updateBook = updateApiAction(setBooks, api.updateBook);
+    const deleteBook = deleteApiAction(setBooks, api.deleteBook);
+    
+    const issueBook = useCallback(async (data: IssueBookData) => {
+        const transaction = await api.issueBook(data);
+        setLibraryTransactions(prev => [transaction, ...prev]);
+        // Update local book availability
+        setBooks(prev => prev.map(b => b.id === data.bookId ? { ...b, availableQuantity: b.availableQuantity - 1 } : b));
+        return transaction;
+    }, []);
+
+    const returnBook = useCallback(async (transactionId: string) => {
+        const transaction = await api.returnBook(transactionId);
+        setLibraryTransactions(prev => prev.map(t => t.id === transactionId ? transaction : t));
+        // Update local book availability
+        setBooks(prev => prev.map(b => b.id === transaction.bookId ? { ...b, availableQuantity: b.availableQuantity + 1 } : b));
+        return transaction;
+    }, []);
+
+    const refetchLibrary = useCallback(async () => {
+        setBooks(await api.getBooks());
+        setLibraryTransactions(await api.getLibraryTransactions());
+    }, []);
+
     const studentFinancials = useMemo(() => {
         const financials: Record<string, { balance: number; overpayment: number; lastPaymentDate: string | null }> = {};
         students.forEach(student => {
@@ -422,7 +489,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }, []);
     
     const value: IDataContext = {
-        isLoading, schoolInfo, currentUser, activeView, users, students, transactions, expenses, staff, subjects, classes, classSubjectAssignments, timetableEntries, exams, grades, attendanceRecords, events, gradingScale, feeStructure, announcements, payrollItems, darajaSettings, mpesaC2BTransactions, notifications, assignedClass, parentChildren, selectedChild, isSidebarCollapsed, isMobileSidebarOpen, setIsSidebarCollapsed, setIsMobileSidebarOpen, setActiveView, setSelectedChild, addNotification, handleLogin, handleLogout, getNavigationItems, openIdCardModal, addStudent, updateStudent, deleteStudent, updateMultipleStudents, refetchStudents, refetchStaff, refetchExpenses, addTransaction, addMultipleTransactions, addExpense, deleteExpense, addStaff, updateStaff, deleteStaff, savePayrollRun, addPayrollItem, updatePayrollItem, deletePayrollItem, updateSchoolInfo, uploadLogo, addUser, updateUser, deleteUser, addGradingRule, updateGradingRule, deleteGradingRule, addFeeItem, updateFeeItem, deleteFeeItem, updateDarajaSettings, addAnnouncement, addCommunicationLog, addBulkCommunicationLogs, updateClasses, updateSubjects, updateAssignments, updateTimetable, updateExams, updateGrades, updateAttendance, updateEvents, studentFinancials, updateUserProfile, uploadUserAvatar
+        isLoading, schoolInfo, currentUser, activeView, users, students, transactions, expenses, staff, subjects, classes, classSubjectAssignments, timetableEntries, exams, grades, attendanceRecords, events, gradingScale, feeStructure, announcements, payrollItems, darajaSettings, mpesaC2BTransactions, notifications, assignedClass, parentChildren, selectedChild, books, libraryTransactions, isSidebarCollapsed, isMobileSidebarOpen, setIsSidebarCollapsed, setIsMobileSidebarOpen, setActiveView, setSelectedChild, addNotification, handleLogin, handleLogout, getNavigationItems, openIdCardModal, addStudent, updateStudent, deleteStudent, updateMultipleStudents, refetchStudents, refetchStaff, refetchExpenses, addTransaction, addMultipleTransactions, addExpense, deleteExpense, addStaff, updateStaff, deleteStaff, savePayrollRun, addPayrollItem, updatePayrollItem, deletePayrollItem, updateSchoolInfo, uploadLogo, addUser, updateUser, deleteUser, addGradingRule, updateGradingRule, deleteGradingRule, addFeeItem, updateFeeItem, deleteFeeItem, updateDarajaSettings, addAnnouncement, addCommunicationLog, addBulkCommunicationLogs, updateClasses, updateSubjects, updateAssignments, updateTimetable, updateExams, updateGrades, updateAttendance, updateEvents, studentFinancials, updateUserProfile, uploadUserAvatar, addBook, updateBook, deleteBook, issueBook, returnBook, refetchLibrary
     };
 
     return (

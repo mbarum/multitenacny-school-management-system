@@ -1,13 +1,15 @@
 
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, DeepPartial } from 'typeorm';
 import { Announcement } from '../entities/announcement.entity';
-import { CommunicationLog } from '../entities/communication-log.entity';
+import { CommunicationLog, CommunicationType } from '../entities/communication-log.entity';
 import { GetCommunicationLogsDto } from './dto/get-logs.dto';
 
 @Injectable()
 export class CommunicationsService {
+    private readonly logger = new Logger(CommunicationsService.name);
+
     constructor(
         @InjectRepository(Announcement) private readonly announcementRepo: Repository<Announcement>,
         @InjectRepository(CommunicationLog) private readonly logRepo: Repository<CommunicationLog>,
@@ -46,13 +48,12 @@ export class CommunicationsService {
         if (result.affected === 0) throw new NotFoundException('Announcement not found');
     }
 
-    createLog(data: Omit<CommunicationLog, 'id' | 'sentBy'>): Promise<CommunicationLog> {
-        // Log is linked to student, so implicitly linked to school
+    createLog(data: DeepPartial<CommunicationLog>): Promise<CommunicationLog> {
         const log = this.logRepo.create(data);
         return this.logRepo.save(log);
     }
 
-    createLogs(data: Omit<CommunicationLog, 'id' | 'sentBy'>[]): Promise<CommunicationLog[]> {
+    createLogs(data: DeepPartial<CommunicationLog>[]): Promise<CommunicationLog[]> {
         const logs = this.logRepo.create(data);
         return this.logRepo.save(logs);
     }
@@ -63,7 +64,6 @@ export class CommunicationsService {
         qb.leftJoinAndSelect('log.sentBy', 'sentBy');
         qb.leftJoinAndSelect('log.student', 'student');
         
-        // Multi-tenancy filter via student
         qb.where('student.schoolId = :schoolId', { schoolId });
 
         if (studentId) {
@@ -94,5 +94,24 @@ export class CommunicationsService {
             limit,
             last_page: Math.ceil(total / limit),
         };
+    }
+
+    // --- SMS Capability ---
+    async sendSMS(phone: string, message: string, studentId: string, userId: string): Promise<void> {
+        // Integration with SMS Provider (e.g., Africa's Talking) would go here.
+        // For now, we simulate success and log it to DB.
+        
+        this.logger.log(`Sending SMS to ${phone}: "${message}"`);
+        
+        // Log to database
+        await this.createLog({
+            studentId,
+            type: CommunicationType.SMS,
+            message,
+            date: new Date(),
+            sentById: userId
+        } as DeepPartial<CommunicationLog>);
+        
+        return Promise.resolve();
     }
 }

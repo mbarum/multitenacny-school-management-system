@@ -16,31 +16,40 @@ import { AcademicsModule } from './academics/academics.module';
 import { PayrollModule } from './payroll/payroll.module';
 import { CommunicationsModule } from './communications/communications.module';
 import { DashboardModule } from './dashboard/dashboard.module';
-import { AuditModule } from './audit/audit.module'; // New
+import { AuditModule } from './audit/audit.module';
+import { EventsModule } from './events/events.module';
+import { LibraryModule } from './library/library.module';
+import { TasksModule } from './tasks/tasks.module'; // New
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { RolesGuard } from './auth/roles.guard';
-import { SubscriptionGuard } from './auth/subscription.guard'; // New
-import { AuditInterceptor } from './common/interceptors/audit.interceptor'; // New
+import { SubscriptionGuard } from './auth/subscription.guard';
+import { AuditInterceptor } from './common/interceptors/audit.interceptor';
 import { ServeStaticModule } from '@nestjs/serve-static';
+import { CacheModule } from '@nestjs/cache-manager';
+import { ScheduleModule } from '@nestjs/schedule'; // New
 import { join } from 'path';
-import { School } from './entities/school.entity'; // For SubGuard
+import { School } from './entities/school.entity';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true, envFilePath: '.env' }),
     TypeOrmModule.forRootAsync(typeOrmAsyncConfig),
-    TypeOrmModule.forFeature([School]), // Needed for SubscriptionGuard
-    // Rate Limiting: Max 100 requests per 60 seconds per IP
+    TypeOrmModule.forFeature([School]),
     ThrottlerModule.forRoot([{
       ttl: 60000,
       limit: 100,
     }]),
-    // Serve React Frontend (Build output)
-    ServeStaticModule.forRoot({
-      rootPath: join((process as any).cwd(), '..', 'dist'), // Points to the frontend build folder relative to server root
-      exclude: ['/api/(.*)'], // Don't serve index.html for API routes
+    CacheModule.register({
+      isGlobal: true,
+      ttl: 60000,
+      max: 100,
     }),
+    ServeStaticModule.forRoot({
+      rootPath: join((process as any).cwd(), '..', 'dist'),
+      exclude: ['/api/(.*)'],
+    }),
+    ScheduleModule.forRoot(), // Enable Cron Jobs
     AuthModule, 
     UsersModule, 
     StudentsModule, 
@@ -53,7 +62,10 @@ import { School } from './entities/school.entity'; // For SubGuard
     PayrollModule,
     CommunicationsModule,
     DashboardModule,
-    AuditModule, // Register Audit
+    AuditModule,
+    EventsModule,
+    LibraryModule,
+    TasksModule, // Register Tasks Module
   ],
   controllers: [AppController],
   providers: [
@@ -67,11 +79,11 @@ import { School } from './entities/school.entity'; // For SubGuard
     },
     {
       provide: APP_GUARD,
-      useClass: SubscriptionGuard, // Enforce SaaS status
+      useClass: SubscriptionGuard,
     },
     {
       provide: APP_INTERCEPTOR,
-      useClass: AuditInterceptor, // Auto-log actions
+      useClass: AuditInterceptor,
     },
   ],
 })

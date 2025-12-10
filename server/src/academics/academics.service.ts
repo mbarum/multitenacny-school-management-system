@@ -107,9 +107,9 @@ export class AcademicsService {
 
   // Generic batch update modified to accept schoolId for safety (though items usually have IDs)
   async batchUpdate<T extends { id?: string }>(repo: Repository<T>, items: T[], schoolId: string): Promise<T[]> {
-    return this.entityManager.transaction(async transactionalEntityManager => {
+    return this.entityManager.transaction(async (transactionalEntityManager: EntityManager) => {
         const savedItems: T[] = [];
-        const transactionalRepo = transactionalEntityManager.getRepository<T>(repo.target);
+        const transactionalRepo = transactionalEntityManager.getRepository(repo.target);
         for (const item of items) {
             // Check if item exists and belongs to school (if ID present)
             if (item.id) {

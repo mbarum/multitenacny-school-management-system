@@ -19,6 +19,7 @@ export interface User {
   role: Role;
   avatarUrl: string;
   status: 'Active' | 'Disabled';
+  schoolId?: string; // Added schoolId
 }
 export type NewUser = Omit<User, 'id' | 'avatarUrl' | 'status'>;
 
@@ -403,4 +404,42 @@ export interface AuditLog {
         name: string;
         email: string;
     }
+}
+
+// Library Types
+export enum LibraryStatus {
+    BORROWED = 'Borrowed',
+    RETURNED = 'Returned',
+    OVERDUE = 'Overdue',
+    LOST = 'Lost'
+}
+
+export interface Book {
+    id: string;
+    title: string;
+    author: string;
+    isbn?: string;
+    category: string;
+    totalQuantity: number;
+    availableQuantity: number;
+    shelfLocation?: string;
+}
+export type NewBook = Omit<Book, 'id' | 'availableQuantity'>;
+
+export interface LibraryTransaction {
+    id: string;
+    bookId: string;
+    bookTitle?: string; // Frontend helper
+    studentId: string;
+    studentName?: string; // Frontend helper
+    borrowerName: string;
+    borrowDate: string;
+    dueDate: string;
+    returnDate?: string | null;
+    status: LibraryStatus;
+}
+export interface IssueBookData {
+    bookId: string;
+    studentId: string;
+    dueDate: string;
 }

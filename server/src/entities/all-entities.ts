@@ -25,6 +25,8 @@ export * from './announcement.entity';
 export * from './report-share-log.entity';
 export * from './mpesa-c2b.entity';
 export * from './audit-log.entity';
+export * from './book.entity';
+export * from './library-transaction.entity';
 // Deprecated: SchoolSetting is replaced by School entity
 export { SchoolSetting } from './school-setting.entity'; 
 export * from './daraja-setting.entity';
