@@ -8,7 +8,7 @@ import {
     Expense, FeeItem, Grade, GradingRule, Payroll, PayrollEntry, PayrollItem, ReportShareLog, 
     SchoolEvent, TimetableEntry, Transaction, SchoolSetting, GradingSystem, DarajaSetting,
     School, Subscription, SubscriptionPlan, SubscriptionStatus,
-    Book, LibraryTransaction
+    Book, LibraryTransaction, PlatformSetting
 } from '../entities/all-entities';
 
 console.log('Starting seeder...');
@@ -24,7 +24,7 @@ const dataSourceOptions: DataSourceOptions = {
         User, Staff, SchoolClass, Student, Subject, ClassSubjectAssignment, MpesaC2BTransaction, 
         Announcement, AttendanceRecord, ClassFee, CommunicationLog, Exam, Expense, FeeItem, Grade, 
         GradingRule, Payroll, PayrollEntry, PayrollItem, ReportShareLog, SchoolEvent, TimetableEntry, 
-        Transaction, SchoolSetting, DarajaSetting, School, Subscription, Book, LibraryTransaction
+        Transaction, SchoolSetting, DarajaSetting, School, Subscription, Book, LibraryTransaction, PlatformSetting
     ],
     synchronize: true, // Use with caution in prod
     logging: ['error'],
@@ -50,6 +50,20 @@ const runSeed = async () => {
         const subjectRepo = AppDataSource.getRepository(Subject);
         const assignmentRepo = AppDataSource.getRepository(ClassSubjectAssignment);
         const darajaRepo = AppDataSource.getRepository(DarajaSetting);
+        const platformRepo = AppDataSource.getRepository(PlatformSetting);
+
+        // 0. Initialize Platform Pricing if not exists
+        let platformSettings = await platformRepo.findOne({ where: { id: 1 } });
+        if (!platformSettings) {
+            platformSettings = platformRepo.create({
+                basicMonthlyPrice: 3000,
+                basicAnnualPrice: 30000,
+                premiumMonthlyPrice: 5000,
+                premiumAnnualPrice: 50000
+            });
+            await platformRepo.save(platformSettings);
+            console.log('Platform pricing initialized.');
+        }
 
         // 1. Create a Default School
         let school = await schoolRepo.findOne({ where: { slug: 'springfield-elementary' } });

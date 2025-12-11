@@ -37,6 +37,9 @@ export class School {
   @Column({ default: 'SCH' })
   schoolCode!: string;
 
+  @Column({ default: 'KES' })
+  currency!: string;
+
   @Column({ type: 'enum', enum: GradingSystem, default: GradingSystem.Traditional })
   gradingSystem!: GradingSystem;
 

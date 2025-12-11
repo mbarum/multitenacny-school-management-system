@@ -1,4 +1,6 @@
+
 import { IsString, IsNotEmpty, IsOptional, IsUUID } from 'class-validator';
+import { Transform } from 'class-transformer';
 
 export class CreateClassDto {
   @IsString()
@@ -11,6 +13,7 @@ export class CreateClassDto {
 
   @IsUUID()
   @IsOptional()
+  @Transform(({ value }) => value === '' ? null : value)
   formTeacherId?: string;
 }
 
@@ -25,5 +28,6 @@ export class UpdateClassDto {
 
   @IsUUID()
   @IsOptional()
+  @Transform(({ value }) => value === '' ? null : value)
   formTeacherId?: string;
 }

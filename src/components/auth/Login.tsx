@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useData } from '../../contexts/DataContext';
 import Modal from '../common/Modal';
@@ -30,12 +31,6 @@ const Login: React.FC = () => {
         if (!validateForm()) return;
 
         setIsLoading(true);
-
-        if (!schoolInfo) {
-            setError("Application data is not loaded yet. Please wait a moment and try again.");
-            setIsLoading(false);
-            return;
-        }
 
         try {
             const { user, token } = await api.login({ email, password });
@@ -77,7 +72,7 @@ const Login: React.FC = () => {
                                  {schoolInfo?.logoUrl && (
                                     <img src={schoolInfo.logoUrl} alt="School Logo" className="h-14 w-14 rounded-full object-cover" />
                                  )}
-                                <span className="ml-4 text-4xl font-bold text-primary-700 tracking-tight">{schoolInfo?.name}</span>
+                                <span className="ml-4 text-4xl font-bold text-primary-700 tracking-tight">{schoolInfo?.name || 'Saaslink'}</span>
                              </div>
                              <h1 className="mt-8 text-3xl font-extrabold text-slate-900">Welcome Back</h1>
                              <p className="mt-2 text-slate-600">Please sign in to continue.</p>
@@ -157,14 +152,15 @@ const Login: React.FC = () => {
                  <div className="hidden lg:block relative">
                     <img 
                         className="absolute inset-0 h-full w-full object-cover"
-                        src="https://images.unsplash.com/photo-1577896851231-70ef18881754?q=80&w=2070&auto=format&fit=crop"
-                        alt="A bright classroom with students"
+                        src="https://images.unsplash.com/photo-1542810634-71277d95dcbb?q=80&w=2070&auto=format&fit=crop"
+                        alt="Students in an African classroom setting"
+                        aria-label="African classroom setting with students learning"
                     />
-                    <div className="absolute inset-0 bg-slate-900 bg-opacity-60 flex items-center justify-center p-12">
+                    <div className="absolute inset-0 bg-slate-900 bg-opacity-50 flex items-center justify-center p-12">
                          <div className="text-white max-w-md">
                             <h2 className="text-4xl font-bold">Empowering Education,</h2>
                             <h2 className="text-4xl font-bold text-primary-300 mt-2">Connecting Communities.</h2>
-                            <p className="mt-4 text-slate-300">Our platform provides a seamless, integrated experience for administrators, teachers, parents, and students.</p>
+                            <p className="mt-4 text-slate-200">Our platform provides a seamless, integrated experience for administrators, teachers, parents, and students across Africa.</p>
                         </div>
                     </div>
                 </div>

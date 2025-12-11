@@ -4,6 +4,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { School } from '../entities/school.entity';
 import { DarajaSetting } from '../entities/daraja-setting.entity';
+import { PlatformSetting } from '../entities/platform-setting.entity';
 import { UpdateSchoolInfoDto } from './dto/update-school-info.dto';
 import { UpdateDarajaSettingsDto } from './dto/update-daraja-settings.dto';
 
@@ -16,6 +17,8 @@ export class SettingsService {
     private readonly schoolRepository: Repository<School>,
     @InjectRepository(DarajaSetting)
     private readonly darajaSettingRepository: Repository<DarajaSetting>,
+    @InjectRepository(PlatformSetting)
+    private readonly platformSettingRepository: Repository<PlatformSetting>,
   ) {}
 
   async getPublicSchoolInfo(): Promise<School> {
@@ -47,6 +50,15 @@ export class SettingsService {
         schoolCode: school.schoolCode,
         gradingSystem: school.gradingSystem
     } as School;
+  }
+  
+  async getPlatformPricing(): Promise<PlatformSetting> {
+      const setting = await this.platformSettingRepository.findOne({ where: {} });
+      if (!setting) {
+          // Return defaults if not initialized (though seed should handle this)
+          return { id: 0, basicMonthlyPrice: 3000, basicAnnualPrice: 30000, premiumMonthlyPrice: 5000, premiumAnnualPrice: 50000 };
+      }
+      return setting;
   }
 
   async getSchoolInfo(schoolId: string): Promise<any> {

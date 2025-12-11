@@ -7,7 +7,7 @@ import {
     User, Staff, SchoolClass, Student, Subject, ClassSubjectAssignment, MpesaC2BTransaction, 
     Announcement, AttendanceRecord, ClassFee, CommunicationLog, Exam, Expense, FeeItem, Grade, 
     GradingRule, Payroll, PayrollEntry, PayrollItem, ReportShareLog, SchoolEvent, TimetableEntry, 
-    Transaction, SchoolSetting, DarajaSetting, Book, LibraryTransaction, School, Subscription
+    Transaction, SchoolSetting, DarajaSetting, Book, LibraryTransaction, School, Subscription, PlatformSetting
 } from '../entities/all-entities';
 
 config(); // Load .env file
@@ -25,7 +25,7 @@ export default new DataSource({
     User, Staff, SchoolClass, Student, Subject, ClassSubjectAssignment, MpesaC2BTransaction, 
     Announcement, AttendanceRecord, ClassFee, CommunicationLog, Exam, Expense, FeeItem, Grade, 
     GradingRule, Payroll, PayrollEntry, PayrollItem, ReportShareLog, SchoolEvent, TimetableEntry, 
-    Transaction, SchoolSetting, DarajaSetting, Book, LibraryTransaction, School, Subscription
+    Transaction, SchoolSetting, DarajaSetting, Book, LibraryTransaction, School, Subscription, PlatformSetting
   ],
   migrations: [join((process as any).cwd(), 'src', 'migrations', '*.{ts,js}')],
 });

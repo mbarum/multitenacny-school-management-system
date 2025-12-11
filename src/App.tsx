@@ -4,10 +4,11 @@ import Sidebar from './components/layout/Sidebar';
 import Header from './components/layout/Header';
 import Spinner from './components/common/Spinner';
 import Login from './components/auth/Login';
+import LandingPage from './components/landing/LandingPage';
 import { useData } from './contexts/DataContext';
 import { Notification } from './types';
 
-// Lazily load view components for code-splitting
+// Lazily load view components
 const Dashboard = lazy(() => import('./views/Dashboard'));
 const Reporting = lazy(() => import('./views/Reporting'));
 const StudentsView = lazy(() => import('./views/StudentsView'));
@@ -24,14 +25,14 @@ const ReportCardsView = lazy(() => import('./views/ReportCardsView'));
 const CommunicationView = lazy(() => import('./views/CommunicationView'));
 const LibraryView = lazy(() => import('./components/views/LibraryView'));
 
-// Teacher Portal components
+// Teacher Portal
 const TeacherDashboard = lazy(() => import('./components/teacher/TeacherDashboard'));
 const MyClassView = lazy(() => import('./components/teacher/MyClassView'));
 const TeacherAttendanceView = lazy(() => import('./components/teacher/TeacherAttendanceView'));
 const TeacherExaminationsView = lazy(() => import('./components/teacher/TeacherExaminationsView'));
 const TeacherCommunicationView = lazy(() => import('./components/teacher/TeacherCommunicationView'));
 
-// Parent Portal components
+// Parent Portal
 const ParentDashboard = lazy(() => import('./components/parent/ParentDashboard'));
 const ParentChildDetails = lazy(() => import('./components/parent/ParentChildDetails'));
 const ParentFinances = lazy(() => import('./components/parent/ParentFinances'));
@@ -41,13 +42,9 @@ const ParentAnnouncementsView = lazy(() => import('./components/parent/ParentAnn
 const SuperAdminDashboard = lazy(() => import('./components/super-admin/SuperAdminDashboard'));
 const RegisterSchool = lazy(() => import('./components/auth/RegisterSchool'));
 
-// =================================================================================
-// MAIN APP COMPONENT
-// =================================================================================
 const App: React.FC = () => {
     const {
         isLoading,
-        schoolInfo,
         currentUser,
         activeView,
         isSidebarCollapsed,
@@ -55,7 +52,6 @@ const App: React.FC = () => {
         notifications,
     } = useData();
 
-    // Sidebar collapse logic based on window size
     useEffect(() => {
         const handleResize = () => {
             if (window.innerWidth < 1024) {
@@ -65,29 +61,59 @@ const App: React.FC = () => {
             }
         };
         window.addEventListener('resize', handleResize);
-        handleResize(); // Initial check
+        handleResize(); 
         return () => window.removeEventListener('resize', handleResize);
     }, [setIsSidebarCollapsed]);
 
-    // Check URL for registration route
-    const isRegisterRoute = window.location.pathname === '/register';
+    // Handle Route Navigation manually since we aren't using React Router (yet) for simplicity of the prompt's architecture
+    const path = window.location.pathname;
 
-    if (isRegisterRoute) {
-        return (
-            <Suspense fallback={<Spinner />}>
-                <RegisterSchool />
-            </Suspense>
-        );
+    const navigate = (path: string, state?: any) => {
+        window.history.pushState(state, '', path);
+        // Force re-render is handled by reloading in this simple architecture, 
+        // or we could use a state variable for currentPath.
+        // For smoother UX, we update the URL and force the component to re-evaluate.
+        window.dispatchEvent(new PopStateEvent('popstate'));
+    };
+    
+    // Simple router logic using state
+    const [currentPath, setCurrentPath] = React.useState(window.location.pathname);
+    const [routeState, setRouteState] = React.useState<any>(window.history.state);
+
+    useEffect(() => {
+        const onLocationChange = () => {
+            setCurrentPath(window.location.pathname);
+            setRouteState(window.history.state);
+        };
+        window.addEventListener('popstate', onLocationChange);
+        return () => window.removeEventListener('popstate', onLocationChange);
+    }, []);
+
+
+    if (isLoading) {
+        return <div className="h-screen w-screen flex justify-center items-center"><Spinner /></div>;
     }
 
+    // Public Routes
+    if (!currentUser) {
+        if (currentPath === '/register') {
+            return (
+                <Suspense fallback={<Spinner />}>
+                    <RegisterSchool initialState={routeState} />
+                </Suspense>
+            );
+        }
+        if (currentPath === '/login') {
+             return <Login />;
+        }
+        // Default to Landing Page for root
+        return <LandingPage onNavigate={navigate} />;
+    }
+
+    // Authenticated App Structure
     const renderView = () => {
-        if (!currentUser) return null;
-
         switch (activeView) {
-            // Super Admin
             case 'super_admin_dashboard': return <SuperAdminDashboard />;
-
-            // Admin/Main views
             case 'dashboard': return <Dashboard />;
             case 'students': return <StudentsView />;
             case 'fees': return <FeeManagementView />;
@@ -103,37 +129,19 @@ const App: React.FC = () => {
             case 'reporting': return <Reporting />;
             case 'library': return <LibraryView />;
             case 'settings': return <SettingsView />;
-
-            // Teacher views
             case 'teacher_dashboard': return <TeacherDashboard />;
             case 'my_class': return <MyClassView />;
             case 'teacher_attendance': return <TeacherAttendanceView />;
             case 'teacher_examinations': return <TeacherExaminationsView />;
             case 'teacher_communication': return <TeacherCommunicationView />;
-            
-            // Parent views
             case 'parent_dashboard': return <ParentDashboard />;
             case 'parent_child_details': return <ParentChildDetails />;
             case 'parent_finances': return <ParentFinances />;
             case 'parent_announcements': return <ParentAnnouncementsView />;
-                
             default: return <Dashboard />;
         }
     };
 
-    if (isLoading) {
-        return (
-            <div className="h-screen w-screen flex justify-center items-center">
-                <Spinner />
-            </div>
-        );
-    }
-    
-    if (!currentUser) {
-        return <Login />;
-    }
-
-    // Notification container
     const NotificationContainer: React.FC<{ notifications: Notification[] }> = ({ notifications }) => (
         <div className="fixed top-5 right-5 z-50 space-y-3 w-full max-w-sm pointer-events-none">
             {notifications.map(n => {
@@ -149,14 +157,7 @@ const App: React.FC = () => {
                     </div>
                 );
             })}
-             <style>
-                {`
-                @keyframes fadeInRight {
-                    from { opacity: 0; transform: translateX(100%); }
-                    to { opacity: 1; transform: translateX(0); }
-                }
-                `}
-            </style>
+             <style>{`@keyframes fadeInRight { from { opacity: 0; transform: translateX(100%); } to { opacity: 1; transform: translateX(0); } }`}</style>
         </div>
     );
 
@@ -167,11 +168,7 @@ const App: React.FC = () => {
             <div className={`flex-1 flex flex-col transition-all duration-300 ease-in-out ${isSidebarCollapsed ? 'lg:ml-20' : 'lg:ml-64'}`}>
                 <Header />
                 <main className="flex-1 overflow-y-auto">
-                    <Suspense fallback={
-                        <div className="h-full w-full flex items-center justify-center">
-                            <Spinner />
-                        </div>
-                    }>
+                    <Suspense fallback={<div className="h-full w-full flex items-center justify-center"><Spinner /></div>}>
                         {renderView()}
                     </Suspense>
                 </main>

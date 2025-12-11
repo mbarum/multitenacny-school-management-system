@@ -1,5 +1,5 @@
 
-import { Controller, Get, Post, Body, Query, Request, Patch, Param, Delete } from '@nestjs/common';
+import { Controller, Get, Post, Body, Query, Request, Patch, Param, Delete, Res } from '@nestjs/common';
 import { TransactionsService } from './transactions.service';
 import { Transaction } from '../entities/transaction.entity';
 import { GetTransactionsDto } from './dto/get-transactions.dto';
@@ -26,6 +26,15 @@ export class TransactionsController {
   @Get()
   findAll(@Request() req: any, @Query() query: GetTransactionsDto) {
     return this.transactionsService.findAll(query, req.user.schoolId);
+  }
+
+  @Get('export')
+  @Roles(Role.Admin, Role.Accountant)
+  async export(@Request() req: any, @Res() res: any) {
+    const csv = await this.transactionsService.exportTransactions(req.user.schoolId);
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', 'attachment; filename="transactions.csv"');
+    res.send(csv);
   }
 
   @Roles(Role.Admin, Role.Accountant)

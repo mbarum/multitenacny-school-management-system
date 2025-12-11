@@ -23,6 +23,12 @@ export class SettingsController {
     return this.settingsService.getPublicSchoolInfo();
   }
 
+  @Public()
+  @Get('public/pricing')
+  getPlatformPricing() {
+    return this.settingsService.getPlatformPricing();
+  }
+
   @Post('upload-logo')
   @Roles(Role.Admin)
   @UseInterceptors(FileInterceptor('logo', {

@@ -37,6 +37,9 @@ export class Book {
   @Column({ nullable: true })
   shelfLocation!: string;
 
+  @Column('float', { default: 0 })
+  price!: number;
+
   @CreateDateColumn()
   createdAt!: Date;
 

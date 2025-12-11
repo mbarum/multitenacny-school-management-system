@@ -5,6 +5,7 @@ import { Repository, DataSource, LessThan } from 'typeorm';
 import { Book } from '../entities/book.entity';
 import { LibraryTransaction, LibraryStatus } from '../entities/library-transaction.entity';
 import { Student } from '../entities/student.entity';
+import { Transaction, TransactionType } from '../entities/transaction.entity';
 import { CreateBookDto } from './dto/create-book.dto';
 import { IssueBookDto } from './dto/issue-book.dto';
 
@@ -14,6 +15,7 @@ export class LibraryService {
     @InjectRepository(Book) private bookRepo: Repository<Book>,
     @InjectRepository(LibraryTransaction) private transactionRepo: Repository<LibraryTransaction>,
     @InjectRepository(Student) private studentRepo: Repository<Student>,
+    @InjectRepository(Transaction) private financeRepo: Repository<Transaction>,
     private dataSource: DataSource
   ) {}
 
@@ -34,6 +36,11 @@ export class LibraryService {
     const book = await this.bookRepo.findOne({ where: { id, schoolId: schoolId as any } });
     if (!book) throw new NotFoundException('Book not found');
     Object.assign(book, updates);
+    // Recalculate available if total changed (simplified logic)
+    if (updates.totalQuantity) {
+        const borrowed = book.totalQuantity - book.availableQuantity;
+        book.availableQuantity = updates.totalQuantity - borrowed;
+    }
     return this.bookRepo.save(book);
   }
 
@@ -80,6 +87,7 @@ export class LibraryService {
       
       if (!transaction) throw new NotFoundException('Transaction not found');
       if (transaction.status === LibraryStatus.RETURNED) throw new BadRequestException('Book already returned');
+      if (transaction.status === LibraryStatus.LOST) throw new BadRequestException('Book marked as lost. Cannot return normally.');
 
       transaction.status = LibraryStatus.RETURNED;
       transaction.returnDate = new Date().toISOString().split('T')[0];
@@ -89,6 +97,45 @@ export class LibraryService {
       const book = transaction.book;
       book.availableQuantity += 1;
       await manager.save(book);
+
+      return transaction;
+    });
+  }
+
+  async markLost(transactionId: string, schoolId: string) {
+    return this.dataSource.transaction(async manager => {
+      const transaction = await manager.findOne(LibraryTransaction, { 
+        where: { id: transactionId, schoolId: schoolId as any },
+        relations: ['book', 'student']
+      });
+      
+      if (!transaction) throw new NotFoundException('Transaction not found');
+      if (transaction.status === LibraryStatus.RETURNED) throw new BadRequestException('Book already returned');
+      if (transaction.status === LibraryStatus.LOST) throw new BadRequestException('Book already marked as lost');
+
+      // 1. Update Library Status
+      transaction.status = LibraryStatus.LOST;
+      transaction.remarks = 'Book reported lost. Fine imposed.';
+      await manager.save(transaction);
+
+      // 2. Update Book Inventory (Reduce Total Count permanently as it is gone)
+      const book = transaction.book;
+      book.totalQuantity = Math.max(0, book.totalQuantity - 1);
+      // availableQuantity stays same because it wasn't returned
+      await manager.save(book);
+
+      // 3. Create Fine (Invoice) if price exists
+      if (book.price && book.price > 0 && transaction.student) {
+          const fine = manager.create(Transaction, {
+              school: { id: schoolId } as any,
+              student: transaction.student,
+              type: TransactionType.Invoice, // Invoice
+              amount: book.price,
+              date: new Date().toISOString().split('T')[0],
+              description: `Lost Book Fine: ${book.title}`,
+          });
+          await manager.save(fine);
+      }
 
       return transaction;
     });

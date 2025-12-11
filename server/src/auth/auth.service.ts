@@ -82,15 +82,27 @@ export class AuthService {
         const savedSchool = await manager.save(school);
         this.logger.log(`School created with ID: ${savedSchool.id}`);
 
-        // 2. Create Subscription (Trial)
+        // 2. Create Subscription
+        // Calculate dates
         const startDate = new Date();
         const endDate = new Date();
-        endDate.setDate(endDate.getDate() + 14); // 14 Day Trial
+        
+        let status = SubscriptionStatus.TRIAL;
+        
+        if (dto.plan === SubscriptionPlan.FREE) {
+            endDate.setFullYear(endDate.getFullYear() + 10); // Free forever-ish
+            status = SubscriptionStatus.ACTIVE;
+        } else {
+             // For paid plans, we start in TRIAL mode until payment is confirmed via M-Pesa Callback.
+             // We give 24h grace period for payment processing before 'locking' features if needed, 
+             // or just standard 14 day trial.
+             endDate.setDate(endDate.getDate() + 14); 
+        }
 
         const sub = manager.create(Subscription, {
             school: savedSchool,
-            plan: SubscriptionPlan.FREE,
-            status: SubscriptionStatus.TRIAL,
+            plan: dto.plan || SubscriptionPlan.FREE,
+            status: status,
             startDate,
             endDate
         });

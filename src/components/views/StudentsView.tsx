@@ -1,18 +1,21 @@
 
+// ... existing imports ...
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import Modal from '../common/Modal';
-import WebcamCaptureModal from '../common/WebcamCaptureModal';
+import Modal from '../components/common/Modal';
+import WebcamCaptureModal from '../components/common/WebcamCaptureModal';
 import type { Student, Transaction, CommunicationLog, User, FeeItem, SchoolInfo, NewStudent, NewCommunicationLog, NewTransaction, SchoolClass } from '../../types';
 import { CommunicationType, StudentStatus, TransactionType } from '../../types';
-import StudentBillingModal from '../common/StudentBillingModal';
-import BulkMessageModal from '../common/BulkMessageModal';
-import PromotionModal from '../common/PromotionModal';
+import StudentBillingModal from '../components/common/StudentBillingModal';
+import BulkMessageModal from '../components/common/BulkMessageModal';
+import PromotionModal from '../components/common/PromotionModal';
 import { useData } from '../../contexts/DataContext';
 import { calculateAge, debounce } from '../../utils/helpers';
-import ImportModal from '../common/ImportModal';
-import Pagination from '../common/Pagination';
-import Skeleton from '../common/Skeleton';
+import ImportModal from '../components/common/ImportModal';
+import Pagination from '../components/common/Pagination';
+import Skeleton from '../components/common/Skeleton';
 import * as api from '../../services/api';
+
+// ... StudentProfileModal component remains the same ...
 
 interface StudentProfileModalProps {
     isOpen: boolean;
@@ -57,6 +60,8 @@ const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ isOpen, onClo
         e.preventDefault();
         if (!student) return;
         
+        // Remove 'class' property which causes 400 Bad Request on backend validation
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { class: _, ...updates } = formData;
         
         updateStudent(student.id, updates).then(() => {
@@ -165,6 +170,7 @@ const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ isOpen, onClo
 const StudentsView: React.FC = () => {
     const { students, updateStudent, deleteStudent, addStudent, addMultipleTransactions, addBulkCommunicationLogs, classes, currentUser, feeStructure, studentFinancials, addNotification, openIdCardModal, updateMultipleStudents } = useData();
 
+    // ... [Rest of state variables] ...
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedClass, setSelectedClass] = useState('all');
     const [statusFilter, setStatusFilter] = useState<StudentStatus | 'all'>(StudentStatus.Active);
@@ -239,7 +245,14 @@ const StudentsView: React.FC = () => {
 
     const handleAddStudent = async (e: React.FormEvent) => {
         e.preventDefault();
-        const studentToAdd = await addStudent(newStudent);
+        
+        // Remove 'class' property which causes 400 Bad Request on backend validation
+        // 'class' is a display property on frontend, but backend DTO is strict
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { class: className, ...payload } = newStudent;
+
+        // Ensure we pass the sanitized object
+        const studentToAdd = await addStudent(payload as NewStudent);
         addNotification(`Student ${studentToAdd.name} added successfully!`, 'success');
 
         const initialTransactions: NewTransaction[] = feeStructure
@@ -315,22 +328,17 @@ const StudentsView: React.FC = () => {
         formData.append('file', file);
         try {
             const result = await api.importStudents(formData);
-            const { imported, failed, errors } = result;
-            let message = `${imported} students imported successfully.`;
-            if (failed > 0) {
-                message += ` ${failed} records failed.`;
-                console.error("Import Errors:", errors);
-            }
-            addNotification(message, failed > 0 ? 'info' : 'success');
-            if (imported > 0) {
+            // The modal now handles the detailed result display
+            if (result.imported > 0) {
                 fetchStudents(currentPage, searchTerm, selectedClass, statusFilter);
             }
+            return result;
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : "An unknown error occurred during import.";
             addNotification(errorMessage, 'error');
         } finally {
             setIsImporting(false);
-            setIsImportModalOpen(false);
+            // Don't close modal here, let user see results
         }
     };
 
@@ -461,7 +469,13 @@ const StudentsView: React.FC = () => {
                             ))
                         ) : studentsList.length === 0 ? (
                             <tr>
-                                <td colSpan={7} className="text-center py-8 text-slate-500">No students found matching your criteria.</td>
+                                <td colSpan={7} className="text-center py-12 text-slate-500 flex flex-col items-center justify-center w-full">
+                                    <svg className="w-12 h-12 text-slate-300 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M15 21a6 6 0 00-9-5.197m0 0A5.975 5.975 0 0112 13a5.975 5.975 0 013 5.197M15 21a6 6 0 00-9-5.197" />
+                                    </svg>
+                                    <p className="font-medium text-lg">No students found</p>
+                                    <p className="text-sm">Try adjusting your filters or search terms.</p>
+                                </td>
                             </tr>
                         ) : (
                             studentsList.map(student => {

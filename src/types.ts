@@ -21,38 +21,6 @@ export interface User {
 }
 export type NewUser = Omit<User, 'id' | 'avatarUrl' | 'status'>;
 
-export enum SubscriptionPlan {
-  FREE = 'FREE',
-  BASIC = 'BASIC',
-  PREMIUM = 'PREMIUM'
-}
-
-export enum SubscriptionStatus {
-  ACTIVE = 'ACTIVE',
-  PAST_DUE = 'PAST_DUE',
-  CANCELLED = 'CANCELLED',
-  TRIAL = 'TRIAL'
-}
-
-export interface Subscription {
-    id: string;
-    plan: SubscriptionPlan;
-    status: SubscriptionStatus;
-    startDate: string;
-    endDate: string;
-}
-
-export interface School {
-    id: string;
-    name: string;
-    slug: string;
-    email?: string;
-    phone?: string;
-    adminName?: string;
-    subscription: Subscription;
-    createdAt: string;
-}
-
 export enum StudentStatus {
   Active = 'Active',
   Inactive = 'Inactive',
@@ -64,7 +32,7 @@ export interface Student {
   admissionNumber: string;
   name: string;
   class: string; 
-  classId: string; 
+  classId: string;
   status: StudentStatus;
   profileImage: string;
   guardianName: string;
@@ -72,25 +40,17 @@ export interface Student {
   guardianAddress: string;
   guardianEmail: string;
   emergencyContact: string;
-  dateOfBirth: string; 
-  balance?: number; 
+  dateOfBirth: string; // YYYY-MM-DD
+  balance?: number; // Calculated field
 }
 export type NewStudent = Omit<Student, 'id' | 'status' | 'admissionNumber' | 'balance'>;
-
-export interface PaginatedResponse<T> {
-  data: T[];
-  total: number;
-  page: number;
-  limit: number;
-  last_page: number;
-}
 
 export interface SchoolClass {
     id: string;
     name: string;
     classCode: string;
-    formTeacherId?: string;
-    formTeacherName?: string;
+    formTeacherId?: string | null;
+    formTeacherName?: string | null;
 }
 export type NewSchoolClass = Omit<SchoolClass, 'id'>;
 
@@ -116,9 +76,9 @@ export enum TransactionType {
 export interface Transaction {
   id: string;
   studentId: string;
-  studentName?: string; 
+  studentName?: string;
   type: TransactionType;
-  date: string; 
+  date: string; // YYYY-MM-DD
   description: string;
   amount: number;
   method?: PaymentMethod;
@@ -142,7 +102,7 @@ export interface Expense {
   category: ExpenseCategory;
   description: string;
   amount: number;
-  date: string; 
+  date: string; // YYYY-MM-DD
   attachmentUrl?: string;
 }
 export type NewExpense = Omit<Expense, 'id'>;
@@ -152,11 +112,11 @@ export interface Staff {
     userId: string;
     name: string;
     email: string;
-    role: string; 
-    userRole: Role; 
+    role: string;
+    userRole: Role;
     photoUrl: string;
     salary: number; 
-    joinDate: string; 
+    joinDate: string; // YYYY-MM-DD
     bankName: string;
     accountNumber: string;
     kraPin: string;
@@ -198,6 +158,7 @@ export type NewPayrollItem = Omit<PayrollItem, 'id'>;
 export interface PayrollEntry {
     name: string;
     amount: number;
+    type?: PayrollItemType;
 }
 
 export interface Payroll {
@@ -205,7 +166,7 @@ export interface Payroll {
     staffId: string;
     staffName: string;
     month: string; 
-    payDate: string; 
+    payDate: string; // YYYY-MM-DD
     grossPay: number;
     totalDeductions: number;
     netPay: number;
@@ -241,8 +202,8 @@ export interface TimetableEntry {
     subjectId: string;
     teacherId: string;
     day: DayOfWeek;
-    startTime: string; 
-    endTime: string; 
+    startTime: string; // "HH:MM"
+    endTime: string; // "HH:MM"
 }
 export type NewTimetableEntry = Omit<TimetableEntry, 'id'>;
 
@@ -265,7 +226,7 @@ export enum CbetScore {
 export interface Exam {
     id: string;
     name: string;
-    date: string; 
+    date: string; // YYYY-MM-DD
     classId: string;
     type: ExamType;
 }
@@ -293,7 +254,7 @@ export interface AttendanceRecord {
     id: string;
     studentId: string;
     classId: string;
-    date: string; 
+    date: string; // YYYY-MM-DD
     status: AttendanceStatus;
     remarks?: string;
 }
@@ -311,8 +272,8 @@ export interface SchoolEvent {
     id: string;
     title: string;
     description: string;
-    startDate: string; 
-    endDate?: string; 
+    startDate: string; // YYYY-MM-DD
+    endDate?: string; // YYYY-MM-DD
     category: EventCategory;
 }
 export type NewSchoolEvent = Omit<SchoolEvent, 'id'>;
@@ -322,7 +283,17 @@ export enum GradingSystem {
     CBC = 'CBC'
 }
 
+export enum Currency {
+    KES = 'KES',
+    UGX = 'UGX',
+    TZS = 'TZS',
+    RWF = 'RWF',
+    BIF = 'BIF',
+    USD = 'USD'
+}
+
 export interface SchoolInfo {
+    id: string;
     name: string;
     address: string;
     phone: string;
@@ -330,8 +301,25 @@ export interface SchoolInfo {
     logoUrl?: string;
     schoolCode: string;
     gradingSystem: GradingSystem;
+    currency?: Currency;
 }
-export type UpdateSchoolInfoDto = Partial<Omit<SchoolInfo, 'logoUrl'>>;
+
+export interface School {
+    id: string;
+    name: string;
+    slug: string;
+    email?: string;
+    phone?: string;
+    logoUrl?: string;
+    createdAt?: string;
+    adminName?: string;
+    studentCount?: number;
+    subscription?: {
+        plan: SubscriptionPlan;
+        status: SubscriptionStatus;
+        endDate?: string;
+    };
+}
 
 export interface GradingRule {
     id: string;
@@ -367,8 +355,8 @@ export interface CommunicationLog {
     studentId: string;
     type: CommunicationType;
     message: string;
-    date: string; 
-    sentBy: string; 
+    date: string; // ISO String
+    sentBy: string; // User's name
 }
 export type NewCommunicationLog = Omit<CommunicationLog, 'id'>;
 
@@ -376,9 +364,10 @@ export interface Announcement {
     id: string;
     title: string;
     content: string;
-    date: string; 
-    audience: string; 
-    sentBy: string; 
+    date: string; // ISO String
+    audience: string; // 'all' or classId
+    sentBy: string; // User's name
+    sentById?: string;
 }
 export type NewAnnouncement = Omit<Announcement, 'id'>;
 
@@ -386,8 +375,8 @@ export interface ReportShareLog {
     id: string;
     studentId: string;
     examId: string;
-    sharedDate: string; 
-    sharedBy: string; 
+    sharedDate: string; // ISO String
+    sharedBy: string; // User's name
 }
 
 export interface DarajaSettings {
@@ -400,12 +389,12 @@ export interface DarajaSettings {
 
 export interface MpesaC2BTransaction {
     id: string;
-    transactionType: 'Pay Bill';
+    transactionType: 'Pay Bill' | 'STK Push';
     transID: string;
     transTime: string;
     transAmount: string;
     businessShortCode: string;
-    billRefNumber: string; 
+    billRefNumber: string; // Student Admission Number
     msisdn: string;
     firstName: string;
     lastName: string;
@@ -418,26 +407,7 @@ export interface Notification {
     type: 'success' | 'error' | 'info';
 }
 
-export interface AuditLog {
-    id: string;
-    action: string;
-    resource: string;
-    details: string;
-    ipAddress: string;
-    timestamp: string;
-    user?: {
-        name: string;
-        email: string;
-    }
-}
-
-export enum LibraryStatus {
-    BORROWED = 'Borrowed',
-    RETURNED = 'Returned',
-    OVERDUE = 'Overdue',
-    LOST = 'Lost'
-}
-
+// Library Types
 export interface Book {
     id: string;
     title: string;
@@ -447,23 +417,53 @@ export interface Book {
     totalQuantity: number;
     availableQuantity: number;
     shelfLocation?: string;
+    price?: number;
 }
 export type NewBook = Omit<Book, 'id' | 'availableQuantity'>;
+
+export enum LibraryStatus {
+    BORROWED = 'Borrowed',
+    RETURNED = 'Returned',
+    OVERDUE = 'Overdue',
+    LOST = 'Lost'
+}
 
 export interface LibraryTransaction {
     id: string;
     bookId: string;
-    bookTitle?: string; 
+    bookTitle: string;
     studentId: string;
-    studentName?: string; 
     borrowerName: string;
     borrowDate: string;
     dueDate: string;
-    returnDate?: string | null;
+    returnDate?: string;
     status: LibraryStatus;
 }
+
 export interface IssueBookData {
     bookId: string;
     studentId: string;
     dueDate: string;
+}
+
+// Subscription Types
+export enum SubscriptionPlan {
+  FREE = 'FREE',
+  BASIC = 'BASIC',
+  PREMIUM = 'PREMIUM'
+}
+
+export enum SubscriptionStatus {
+  ACTIVE = 'ACTIVE',
+  PAST_DUE = 'PAST_DUE',
+  CANCELLED = 'CANCELLED',
+  TRIAL = 'TRIAL'
+}
+
+export interface PlatformPricing {
+    id: number;
+    basicMonthlyPrice: number;
+    basicAnnualPrice: number;
+    premiumMonthlyPrice: number;
+    premiumAnnualPrice: number;
 }

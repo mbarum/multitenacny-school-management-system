@@ -1,5 +1,5 @@
 
-import { Controller, Get, Post, Body, Param, Delete, Request, Patch } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Delete, Request, Patch, Res } from '@nestjs/common';
 import { ExpensesService } from './expenses.service';
 import { Expense } from '../entities/expense.entity';
 import { Roles } from '../auth/roles.decorator';
@@ -19,6 +19,15 @@ export class ExpensesController {
   @Roles(Role.Admin, Role.Accountant)
   findAll(@Request() req: any) {
     return this.expensesService.findAll(req.user.schoolId);
+  }
+
+  @Get('export')
+  @Roles(Role.Admin, Role.Accountant)
+  async export(@Request() req: any, @Res() res: any) {
+    const csv = await this.expensesService.exportExpenses(req.user.schoolId);
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', 'attachment; filename="expenses.csv"');
+    res.send(csv);
   }
 
   @Patch(':id')

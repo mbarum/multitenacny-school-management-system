@@ -3,6 +3,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Expense } from '../entities/expense.entity';
+import { CsvUtil } from '../utils/csv.util';
 
 @Injectable()
 export class ExpensesService {
@@ -36,5 +37,19 @@ export class ExpensesService {
     if (result.affected === 0) {
       throw new NotFoundException(`Expense with ID "${id}" not found`);
     }
+  }
+
+  async exportExpenses(schoolId: string): Promise<string> {
+    const expenses = await this.expensesRepository.find({ 
+        where: { schoolId: schoolId as any },
+        order: { date: 'DESC' }
+    });
+    const data = expenses.map(e => ({
+        Date: e.date,
+        Category: e.category,
+        Description: e.description,
+        Amount: e.amount
+    }));
+    return CsvUtil.generate(data, ['Date', 'Category', 'Description', 'Amount']);
   }
 }

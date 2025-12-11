@@ -7,6 +7,7 @@ import { GetTransactionsDto } from './dto/get-transactions.dto';
 import { Student } from '../entities/student.entity';
 import { MpesaC2BTransaction } from '../entities/mpesa-c2b.entity';
 import { EventsGateway } from '../events/events.gateway';
+import { CsvUtil } from '../utils/csv.util';
 
 @Injectable()
 export class TransactionsService {
@@ -153,6 +154,27 @@ export class TransactionsService {
   async remove(id: string, schoolId: string): Promise<void> {
     const result = await this.transactionsRepository.delete({ id, schoolId: schoolId as any });
     if (result.affected === 0) throw new NotFoundException('Transaction not found');
+  }
+
+  async exportTransactions(schoolId: string): Promise<string> {
+      const transactions = await this.transactionsRepository.find({
+          where: { schoolId: schoolId as any },
+          relations: ['student'],
+          order: { date: 'DESC' }
+      });
+
+      const data = transactions.map(t => ({
+          Date: t.date,
+          Student: t.student ? t.student.name : 'Unknown',
+          AdmissionNo: t.student ? t.student.admissionNumber : 'N/A',
+          Type: t.type,
+          Amount: t.amount,
+          Description: t.description,
+          Method: t.method || '',
+          Reference: t.transactionCode || t.checkNumber || '',
+      }));
+
+      return CsvUtil.generate(data, ['Date', 'Student', 'AdmissionNo', 'Type', 'Amount', 'Description', 'Method', 'Reference']);
   }
 
   // --- M-Pesa Callback Handling ---

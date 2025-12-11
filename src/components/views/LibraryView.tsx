@@ -5,7 +5,7 @@ import { LibraryStatus, Book, NewBook } from '../../types';
 import Modal from '../common/Modal';
 
 const LibraryView: React.FC = () => {
-    const { books, libraryTransactions, students, addBook, updateBook, deleteBook, issueBook, returnBook, addNotification } = useData();
+    const { books, libraryTransactions, students, addBook, updateBook, deleteBook, issueBook, returnBook, markBookLost, addNotification, formatCurrency } = useData();
     const [activeTab, setActiveTab] = useState<'catalog' | 'circulation' | 'history'>('catalog');
     
     // Catalog State
@@ -13,7 +13,7 @@ const LibraryView: React.FC = () => {
     const [isBookModalOpen, setIsBookModalOpen] = useState(false);
     const [editingBook, setEditingBook] = useState<Book | null>(null);
     const [newBook, setNewBook] = useState<NewBook>({
-        title: '', author: '', category: '', isbn: '', totalQuantity: 1, shelfLocation: ''
+        title: '', author: '', category: '', isbn: '', totalQuantity: 1, shelfLocation: '', price: 0
     });
 
     // Circulation State
@@ -44,7 +44,7 @@ const LibraryView: React.FC = () => {
                 addNotification('Book added successfully', 'success');
             }
             setIsBookModalOpen(false);
-            setNewBook({ title: '', author: '', category: '', isbn: '', totalQuantity: 1, shelfLocation: '' });
+            setNewBook({ title: '', author: '', category: '', isbn: '', totalQuantity: 1, shelfLocation: '', price: 0 });
         } catch (error) {
             addNotification('Failed to save book', 'error');
         }
@@ -86,6 +86,17 @@ const LibraryView: React.FC = () => {
             addNotification('Failed to return book', 'error');
         }
     };
+    
+    const handleMarkLost = async (transactionId: string) => {
+        if (window.confirm("Mark this book as LOST? This will remove it from inventory and fine the student.")) {
+            try {
+                await markBookLost(transactionId);
+                addNotification('Book marked as lost. Fine invoice created.', 'success');
+            } catch (error) {
+                addNotification('Failed to mark as lost.', 'error');
+            }
+        }
+    };
 
     const openBookModal = (book: Book | null = null) => {
         setEditingBook(book);
@@ -96,10 +107,11 @@ const LibraryView: React.FC = () => {
                 category: book.category,
                 isbn: book.isbn || '',
                 totalQuantity: book.totalQuantity,
-                shelfLocation: book.shelfLocation || ''
+                shelfLocation: book.shelfLocation || '',
+                price: book.price || 0
             });
         } else {
-            setNewBook({ title: '', author: '', category: '', isbn: '', totalQuantity: 1, shelfLocation: '' });
+            setNewBook({ title: '', author: '', category: '', isbn: '', totalQuantity: 1, shelfLocation: '', price: 0 });
         }
         setIsBookModalOpen(true);
     };
@@ -135,7 +147,8 @@ const LibraryView: React.FC = () => {
                                     <th className="px-4 py-3 font-semibold text-slate-600">Author</th>
                                     <th className="px-4 py-3 font-semibold text-slate-600">Category</th>
                                     <th className="px-4 py-3 font-semibold text-slate-600">Location</th>
-                                    <th className="px-4 py-3 font-semibold text-slate-600 text-center">Available / Total</th>
+                                    <th className="px-4 py-3 font-semibold text-slate-600">Cost</th>
+                                    <th className="px-4 py-3 font-semibold text-slate-600 text-center">Qty</th>
                                     <th className="px-4 py-3 font-semibold text-slate-600 text-center">Actions</th>
                                 </tr>
                             </thead>
@@ -146,6 +159,7 @@ const LibraryView: React.FC = () => {
                                         <td className="px-4 py-2 text-slate-600">{book.author}</td>
                                         <td className="px-4 py-2 text-slate-600">{book.category}</td>
                                         <td className="px-4 py-2 text-slate-600">{book.shelfLocation || '-'}</td>
+                                        <td className="px-4 py-2 text-slate-600">{formatCurrency(book.price || 0)}</td>
                                         <td className="px-4 py-2 text-center">
                                             <span className={`font-bold ${book.availableQuantity > 0 ? 'text-green-600' : 'text-red-600'}`}>{book.availableQuantity}</span> / {book.totalQuantity}
                                         </td>
@@ -155,7 +169,7 @@ const LibraryView: React.FC = () => {
                                         </td>
                                     </tr>
                                 ))}
-                                {filteredBooks.length === 0 && <tr><td colSpan={6} className="text-center py-4 text-slate-500">No books found.</td></tr>}
+                                {filteredBooks.length === 0 && <tr><td colSpan={7} className="text-center py-4 text-slate-500">No books found.</td></tr>}
                             </tbody>
                         </table>
                     </div>
@@ -229,12 +243,18 @@ const LibraryView: React.FC = () => {
                                                 <td className={`p-2 font-semibold ${isOverdue ? 'text-red-600' : 'text-slate-600'}`}>
                                                     {new Date(t.dueDate).toLocaleDateString()} {isOverdue && '(Overdue)'}
                                                 </td>
-                                                <td className="p-2 text-center">
+                                                <td className="p-2 text-center space-x-2">
                                                     <button 
                                                         onClick={() => handleReturnBook(t.id)} 
                                                         className="px-3 py-1 bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 text-xs font-semibold"
                                                     >
                                                         Return
+                                                    </button>
+                                                    <button 
+                                                        onClick={() => handleMarkLost(t.id)} 
+                                                        className="px-3 py-1 bg-red-100 text-red-700 rounded-md hover:bg-red-200 text-xs font-semibold"
+                                                    >
+                                                        Mark Lost
                                                     </button>
                                                 </td>
                                             </tr>
@@ -270,7 +290,8 @@ const LibraryView: React.FC = () => {
                                     <td className="px-4 py-2">
                                         <span className={`px-2 py-1 text-xs rounded-full ${
                                             t.status === LibraryStatus.RETURNED ? 'bg-green-100 text-green-800' :
-                                            t.status === LibraryStatus.OVERDUE ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'
+                                            t.status === LibraryStatus.OVERDUE ? 'bg-red-100 text-red-800' : 
+                                            t.status === LibraryStatus.LOST ? 'bg-slate-800 text-white' : 'bg-blue-100 text-blue-800'
                                         }`}>{t.status}</span>
                                     </td>
                                 </tr>
@@ -297,6 +318,10 @@ const LibraryView: React.FC = () => {
                             <label className="text-xs text-slate-500">Shelf Location</label>
                             <input name="shelfLocation" value={newBook.shelfLocation} onChange={e => setNewBook({...newBook, shelfLocation: e.target.value})} placeholder="e.g. A4" className="w-full p-2 border rounded" />
                         </div>
+                    </div>
+                     <div>
+                        <label className="text-xs text-slate-500">Book Price (for lost charges)</label>
+                        <input type="number" name="price" value={newBook.price} onChange={e => setNewBook({...newBook, price: parseFloat(e.target.value)})} className="w-full p-2 border rounded" placeholder="0" min={0} />
                     </div>
                     <div className="flex justify-end pt-4">
                         <button type="submit" className="px-6 py-2 bg-primary-600 text-white rounded font-bold shadow hover:bg-primary-700">Save Book</button>

@@ -1,10 +1,12 @@
 
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, MoreThan } from 'typeorm';
 import { School } from '../entities/school.entity';
 import { Subscription, SubscriptionStatus, SubscriptionPlan } from '../entities/subscription.entity';
 import { User } from '../entities/user.entity';
+import { PlatformSetting } from '../entities/platform-setting.entity';
+import * as os from 'os';
 
 @Injectable()
 export class SuperAdminService {
@@ -12,6 +14,7 @@ export class SuperAdminService {
     @InjectRepository(School) private schoolRepo: Repository<School>,
     @InjectRepository(Subscription) private subRepo: Repository<Subscription>,
     @InjectRepository(User) private userRepo: Repository<User>,
+    @InjectRepository(PlatformSetting) private platformSettingRepo: Repository<PlatformSetting>,
   ) {}
 
   async findAllSchools() {
@@ -42,18 +45,80 @@ export class SuperAdminService {
     const activeSubs = await this.subRepo.count({ where: { status: SubscriptionStatus.ACTIVE } });
     const trialSubs = await this.subRepo.count({ where: { status: SubscriptionStatus.TRIAL } });
     
-    // Simulate MRR (Monthly Recurring Revenue) based on active plans
-    // Basic = 3000, Premium = 5000
+    // Recent Growth (Last 30 Days)
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const newSchoolsLast30Days = await this.schoolRepo.count({
+        where: { createdAt: MoreThan(thirtyDaysAgo) }
+    });
+
+    // Get Current Pricing
+    let pricing = await this.platformSettingRepo.findOne({ where: {} });
+    if (!pricing) pricing = { basicMonthlyPrice: 3000, premiumMonthlyPrice: 5000 } as PlatformSetting;
+
     const basicCount = await this.subRepo.count({ where: { plan: SubscriptionPlan.BASIC, status: SubscriptionStatus.ACTIVE } });
     const premiumCount = await this.subRepo.count({ where: { plan: SubscriptionPlan.PREMIUM, status: SubscriptionStatus.ACTIVE } });
-    const mrr = (basicCount * 3000) + (premiumCount * 5000);
+    const mrr = (basicCount * pricing.basicMonthlyPrice) + (premiumCount * pricing.premiumMonthlyPrice);
 
     return {
       totalSchools,
       activeSubs,
       trialSubs,
-      mrr
+      mrr,
+      newSchoolsLast30Days,
+      planDistribution: {
+          basic: basicCount,
+          premium: premiumCount,
+          free: totalSchools - (basicCount + premiumCount)
+      },
+      pricing
     };
+  }
+  
+  async getSystemHealth() {
+      // 1. Database Check & Latency
+      const start = Date.now();
+      let dbStatus = 'down';
+      try {
+          await this.schoolRepo.query('SELECT 1');
+          dbStatus = 'up';
+      } catch (e) {
+          dbStatus = 'down';
+      }
+      const dbLatency = Date.now() - start;
+
+      // 2. System Resources
+      const memoryUsage = (process as any).memoryUsage();
+      const freeMem = os.freemem();
+      const totalMem = os.totalmem();
+      const memPercentage = ((totalMem - freeMem) / totalMem) * 100;
+
+      return {
+          status: dbStatus === 'up' ? 'healthy' : 'critical',
+          timestamp: new Date().toISOString(),
+          uptime: (process as any).uptime(), // Seconds
+          database: {
+              status: dbStatus,
+              latency: `${dbLatency}ms`,
+              type: 'MySQL'
+          },
+          server: {
+              platform: (process as any).platform,
+              nodeVersion: (process as any).version,
+              memoryUsage: `${(memoryUsage.rss / 1024 / 1024).toFixed(2)} MB`,
+              systemMemoryLoad: `${memPercentage.toFixed(1)}%`
+          }
+      };
+  }
+  
+  async updatePricing(settings: Partial<PlatformSetting>) {
+      let pricing = await this.platformSettingRepo.findOne({ where: {} });
+      if (!pricing) {
+          pricing = this.platformSettingRepo.create(settings);
+      } else {
+          Object.assign(pricing, settings);
+      }
+      return this.platformSettingRepo.save(pricing);
   }
 
   async updateSubscription(schoolId: string, dto: { status: SubscriptionStatus; plan: SubscriptionPlan; endDate?: string }) {

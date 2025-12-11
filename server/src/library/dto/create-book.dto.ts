@@ -25,4 +25,9 @@ export class CreateBookDto {
   @IsString()
   @IsOptional()
   shelfLocation?: string;
+
+  @IsNumber()
+  @IsOptional()
+  @Min(0)
+  price?: number;
 }

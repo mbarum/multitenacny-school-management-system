@@ -1,9 +1,10 @@
 
-import { Controller, Get, Body, Patch, Param, Post } from '@nestjs/common';
+import { Controller, Get, Body, Patch, Param, Post, Put } from '@nestjs/common';
 import { SuperAdminService } from './super-admin.service';
 import { Roles } from '../auth/roles.decorator';
 import { Role } from '../entities/user.entity';
 import { SubscriptionStatus, SubscriptionPlan } from '../entities/subscription.entity';
+import { PlatformSetting } from '../entities/platform-setting.entity';
 
 @Controller('super-admin')
 export class SuperAdminController {
@@ -19,6 +20,18 @@ export class SuperAdminController {
   @Roles(Role.SuperAdmin)
   getPlatformStats() {
     return this.superAdminService.getPlatformStats();
+  }
+  
+  @Get('health')
+  @Roles(Role.SuperAdmin)
+  getSystemHealth() {
+      return this.superAdminService.getSystemHealth();
+  }
+  
+  @Put('pricing')
+  @Roles(Role.SuperAdmin)
+  updatePricing(@Body() settings: Partial<PlatformSetting>) {
+      return this.superAdminService.updatePricing(settings);
   }
 
   @Patch('schools/:schoolId/subscription')

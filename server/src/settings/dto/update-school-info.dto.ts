@@ -1,3 +1,4 @@
+
 import { IsString, IsOptional, IsEnum, IsEmail } from 'class-validator';
 import { GradingSystem } from '../../entities/school-setting.entity';
 
@@ -29,4 +30,8 @@ export class UpdateSchoolInfoDto {
   @IsEnum(GradingSystem)
   @IsOptional()
   gradingSystem?: GradingSystem;
+
+  @IsString()
+  @IsOptional()
+  currency?: string;
 }

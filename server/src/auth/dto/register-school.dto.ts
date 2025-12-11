@@ -1,5 +1,6 @@
 
-import { IsEmail, IsNotEmpty, IsString, MinLength } from 'class-validator';
+import { IsEmail, IsNotEmpty, IsString, MinLength, IsEnum, IsOptional } from 'class-validator';
+import { SubscriptionPlan } from '../../entities/subscription.entity';
 
 export class RegisterSchoolDto {
   @IsString()
@@ -20,4 +21,12 @@ export class RegisterSchoolDto {
   @IsString()
   @IsNotEmpty()
   phone!: string;
+
+  @IsEnum(SubscriptionPlan)
+  @IsOptional()
+  plan?: SubscriptionPlan = SubscriptionPlan.FREE;
+
+  @IsString()
+  @IsOptional()
+  billingCycle?: 'MONTHLY' | 'ANNUALLY' = 'MONTHLY';
 }

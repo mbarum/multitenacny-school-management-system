@@ -44,6 +44,12 @@ export class LibraryController {
   returnBook(@Request() req: any, @Param('id') id: string) {
     return this.libraryService.returnBook(id, req.user.schoolId);
   }
+  
+  @Post('lost/:id')
+  @Roles(Role.Admin, Role.Teacher)
+  markLost(@Request() req: any, @Param('id') id: string) {
+    return this.libraryService.markLost(id, req.user.schoolId);
+  }
 
   @Get('transactions')
   getTransactions(@Request() req: any) {
