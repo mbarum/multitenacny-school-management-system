@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect, useRef } from 'react';
 import type { Expense, NewExpense } from '../../types';
 import { ExpenseCategory } from '../../types';
@@ -127,7 +128,7 @@ const ExpensesView: React.FC = () => {
                             <th className="px-4 py-3 font-semibold text-slate-600">Date</th>
                             <th className="px-4 py-3 font-semibold text-slate-600">Category</th>
                             <th className="px-4 py-3 font-semibold text-slate-600">Description</th>
-                            <th className="px-4 py-3 font-semibold text-slate-600 text-right">Amount</th>
+                            <th className="px-4 py-3 font-semibold text-slate-600 text-right">Amount (KES)</th>
                             <th className="px-4 py-3 font-semibold text-slate-600">Receipt</th>
                             <th className="px-4 py-3 font-semibold text-slate-600">Actions</th>
                         </tr>

@@ -47,11 +47,25 @@ export class StudentsService {
         throw new NotFoundException(`Class not found or does not belong to this school.`);
     }
 
-    // Auto-generate Admission Number logic specific to school context...
-    // (Simplified for brevity, assuming standard generation)
-    const count = await this.studentsRepository.count({ where: { schoolId: schoolId as any } });
+    // Robust Admission Number Generation
     const year = new Date().getFullYear();
-    const admissionNumber = `ADM-${year}-${String(count + 1).padStart(4, '0')}`; 
+    const lastStudent = await this.studentsRepository.findOne({
+      where: { schoolId: schoolId as any },
+      order: { createdAt: 'DESC' }
+    });
+
+    let nextSequence = 1;
+    if (lastStudent && lastStudent.admissionNumber) {
+        // Try to parse format ADM-YYYY-0001
+        const parts = lastStudent.admissionNumber.split('-');
+        if (parts.length >= 3) {
+            const lastSeq = parseInt(parts[2]);
+            if (!isNaN(lastSeq)) {
+                nextSequence = lastSeq + 1;
+            }
+        }
+    }
+    const admissionNumber = `ADM-${year}-${String(nextSequence).padStart(4, '0')}`;
 
     const student = this.studentsRepository.create({
         ...studentData,
