@@ -30,6 +30,7 @@ export class Subscription {
   @Column({ type: 'enum', enum: SubscriptionStatus, default: SubscriptionStatus.TRIAL })
   status!: SubscriptionStatus;
 
+  // Changed from 'timestamp' to 'datetime' to resolve "Invalid default value" errors in MySQL
   @Column({ type: 'datetime', default: () => 'CURRENT_TIMESTAMP' })
   startDate!: Date;
 

@@ -2,9 +2,9 @@
 import type { 
     User, Student, Transaction, Expense, Staff, Payroll, Subject, SchoolClass, 
     ClassSubjectAssignment, TimetableEntry, Exam, Grade, AttendanceRecord, SchoolEvent, 
-    SchoolInfo, GradingRule, FeeItem, CommunicationLog, Announcement, PayrollItem, 
-    DarajaSettings, NewStudent, NewTransaction, NewExpense, 
-    NewAnnouncement, NewCommunicationLog, NewUser, Book, LibraryTransaction, IssueBookData,
+    SchoolInfo, GradingRule, FeeItem, CommunicationLog, Announcement, ReportShareLog, 
+    PayrollItem, DarajaSettings, MpesaC2BTransaction, NewStudent, NewStaff, 
+    NewTransaction, NewExpense, NewAnnouncement, NewCommunicationLog, NewUser, Book, LibraryTransaction, IssueBookData,
     School, PlatformPricing
 } from '../types';
 
@@ -51,16 +51,46 @@ export const uploadUserAvatar = (formData: FormData): Promise<{ avatarUrl: strin
 // Dashboard
 export const getDashboardStats = (): Promise<any> => apiFetch('/dashboard/stats');
 
-// Initial Data Load
-export const fetchInitialData = () => {
-    const endpoints = [
-        'users', 'students', 'transactions', 'expenses', 'staff', 'payroll/payroll-history',
-        'academics/subjects', 'academics/classes', 'academics/class-subject-assignments', 'academics/timetable-entries',
-        'academics/exams', 'academics/grades', 'academics/attendance-records', 'academics/events', 'academics/grading-scale',
-        'academics/fee-structure', 'payroll/payroll-items', 'communications/communication-logs', 'communications/announcements',
-        'settings/school-info', 'settings/daraja'
+// Initial Data Load - Robust Implementation
+export const fetchInitialData = async () => {
+    const definitions = [
+        { endpoint: 'users', default: [] },
+        { endpoint: 'students', default: [] },
+        { endpoint: 'transactions', default: [] },
+        { endpoint: 'expenses', default: [] },
+        { endpoint: 'staff', default: [] },
+        { endpoint: 'payroll/payroll-history', default: { data: [], total: 0 } },
+        { endpoint: 'academics/subjects', default: [] },
+        { endpoint: 'academics/classes', default: [] },
+        { endpoint: 'academics/class-subject-assignments', default: [] },
+        { endpoint: 'academics/timetable-entries', default: [] },
+        { endpoint: 'academics/exams', default: [] },
+        { endpoint: 'academics/grades', default: [] },
+        { endpoint: 'academics/attendance-records', default: [] },
+        { endpoint: 'academics/events', default: [] },
+        { endpoint: 'academics/grading-scale', default: [] },
+        { endpoint: 'academics/fee-structure', default: [] },
+        { endpoint: 'payroll/payroll-items', default: [] },
+        { endpoint: 'communications/communication-logs', default: { data: [], total: 0 } },
+        { endpoint: 'communications/announcements', default: [] },
+        { endpoint: 'settings/school-info', default: null, critical: true },
+        { endpoint: 'settings/daraja', default: null }
     ];
-    return Promise.all(endpoints.map(ep => apiFetch(`/${ep}`)));
+
+    const results = await Promise.allSettled(definitions.map(def => apiFetch(`/${def.endpoint}`)));
+    
+    return results.map((result, index) => {
+        const def = definitions[index];
+        if (result.status === 'fulfilled') {
+            return result.value;
+        } else {
+            console.warn(`Failed to fetch ${def.endpoint}:`, result.reason);
+            if (def.critical) {
+                throw result.reason; 
+            }
+            return def.default;
+        }
+    });
 };
 
 // Generic Helpers
@@ -109,6 +139,17 @@ export const createExpense = create<Expense>('expenses');
 export const updateExpense = update<Expense>('expenses');
 export const deleteExpense = remove('expenses');
 export const exportExpenses = (): Promise<Blob> => fetch('/api/expenses/export', { headers: { 'Authorization': `Bearer ${localStorage.getItem('authToken')}` } }).then(res => res.blob());
+export const uploadExpenseReceipt = (formData: FormData): Promise<{ url: string }> => {
+    const token = localStorage.getItem('authToken');
+    return fetch('/api/expenses/upload-receipt', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` },
+        body: formData
+    }).then(async res => {
+        if (!res.ok) throw new Error('Upload failed');
+        return res.json();
+    });
+};
 
 // Staff
 export const createStaff = create<Staff>('staff');

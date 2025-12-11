@@ -94,8 +94,6 @@ export class AuthService {
             status = SubscriptionStatus.ACTIVE;
         } else {
              // For paid plans, we start in TRIAL mode until payment is confirmed via M-Pesa Callback.
-             // We give 24h grace period for payment processing before 'locking' features if needed, 
-             // or just standard 14 day trial.
              endDate.setDate(endDate.getDate() + 14); 
         }
 
@@ -125,10 +123,17 @@ export class AuthService {
         this.logger.log(`Admin user created with ID: ${savedUser.id}`);
 
         // Generate Token
+        // Ensure schoolId is available on the user object returned to frontend
+        const userResponse = { ...savedUser, schoolId: savedSchool.id };
+        // Remove password
+        delete (userResponse as any).password;
+
         const payload = { email: savedUser.email, sub: savedUser.id, role: savedUser.role, schoolId: savedSchool.id };
         
+        this.logger.log(`[AuthService] REGISTRATION COMPLETE. Data committed to database for ${dto.schoolName}`);
+
         return {
-            user: { ...savedUser, schoolId: savedSchool.id },
+            user: userResponse,
             token: this.jwtService.sign(payload),
             school: savedSchool
         };

@@ -24,9 +24,9 @@ const SaaslinkLogo: React.FC<{ schoolName: string; logoUrl?: string; isCollapsed
             )}
             <div className={`ml-3 transition-opacity duration-300 ease-in-out ${isCollapsed ? 'opacity-0 w-0' : 'opacity-100'}`}>
                 <h1 className={`text-lg font-bold truncate max-w-[150px] ${isOffline ? 'text-red-600' : 'text-primary-800'}`}>
-                    {isOffline ? 'Database Disconnected' : schoolName}
+                    {isOffline ? 'Connection Error' : schoolName}
                 </h1>
-                {isOffline && <p className="text-xs text-red-500">Check server console</p>}
+                {isOffline && <p className="text-xs text-red-500">Please refresh page</p>}
             </div>
         </div>
     </div>

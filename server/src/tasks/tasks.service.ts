@@ -6,6 +6,7 @@ import { Repository, LessThan } from 'typeorm';
 import { Student } from '../entities/student.entity';
 import { Transaction, TransactionType } from '../entities/transaction.entity';
 import { LibraryTransaction, LibraryStatus } from '../entities/library-transaction.entity';
+import { User, Role } from '../entities/user.entity';
 import { CommunicationsService } from '../communications/communications.service';
 
 @Injectable()
@@ -16,15 +17,22 @@ export class TasksService {
     @InjectRepository(Student) private studentRepo: Repository<Student>,
     @InjectRepository(Transaction) private transactionRepo: Repository<Transaction>,
     @InjectRepository(LibraryTransaction) private libTransRepo: Repository<LibraryTransaction>,
+    @InjectRepository(User) private userRepo: Repository<User>,
     private communicationsService: CommunicationsService,
   ) {}
+
+  // Helper to find a system sender (Admin) for a specific school
+  private async getSystemSenderId(schoolId: string): Promise<string | null> {
+      const admin = await this.userRepo.findOne({ where: { schoolId: schoolId as any, role: Role.Admin } });
+      return admin ? admin.id : null;
+  }
 
   @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
   async checkLibraryOverdue() {
     this.logger.log('Running automated check for overdue library books...');
     const today = new Date().toISOString().split('T')[0];
     
-    // Find books due today or earlier that are not returned
+    // Find books borrowed and due before today
     const overdueTransactions = await this.libTransRepo.find({
         where: { 
             status: LibraryStatus.BORROWED,
@@ -35,30 +43,41 @@ export class TasksService {
 
     for (const trans of overdueTransactions) {
         if (trans.student && trans.student.guardianContact) {
-            const message = `Reminder: The book "${trans.book.title}" borrowed by ${trans.student.name} was due on ${trans.dueDate}. Please return it to the library.`;
-            // In a real system, send SMS. For now, we log it.
-            this.logger.log(`[SMS Simulation] To: ${trans.student.guardianContact}, Msg: ${message}`);
-            
-            // Mark as Overdue in DB
+            // 1. Mark as Overdue in DB
             trans.status = LibraryStatus.OVERDUE;
             await this.libTransRepo.save(trans);
+
+            // 2. Send SMS Notification
+            const senderId = await this.getSystemSenderId(trans.schoolId);
+            if (senderId) {
+                const message = `Reminder: The book "${trans.book.title}" borrowed by ${trans.student.name} was due on ${trans.dueDate}. Please return it to the library.`;
+                await this.communicationsService.sendSMS(trans.student.guardianContact, message, trans.student.id, senderId);
+            } else {
+                this.logger.warn(`No admin found for school ${trans.schoolId} to send overdue SMS.`);
+            }
         }
     }
   }
 
-  // Use standard Cron string for "Every Monday at 9:00 AM"
+  // Run weekly on Monday at 9:00 AM
   @Cron('0 9 * * 1')
   async generateFeeReminders() {
     this.logger.log('Running automated fee reminder generation...');
-    // This is a heavy operation, simplified here.
     
-    const students = await this.studentRepo.find({ relations: ['school'] });
+    const students = await this.studentRepo.find({ 
+        where: { status: 'Active' } as any,
+        relations: ['school'] 
+    });
     
     for (const student of students) {
         const balance = await this.calculateBalance(student.id);
-        if (balance > 1000) { // Threshold for reminder
-             const message = `Dear Parent, outstanding fee balance for ${student.name} is KES ${balance.toLocaleString()}. Please pay via M-Pesa.`;
-             this.logger.log(`[SMS Simulation] To: ${student.guardianContact}, Msg: ${message}`);
+        // Configurable threshold, hardcoded to 1000 for now
+        if (balance > 1000) { 
+             const senderId = await this.getSystemSenderId(student.schoolId);
+             if (senderId) {
+                const message = `Dear Parent, outstanding fee balance for ${student.name} is KES ${balance.toLocaleString()}. Please pay via M-Pesa.`;
+                await this.communicationsService.sendSMS(student.guardianContact, message, student.id, senderId);
+             }
         }
     }
   }

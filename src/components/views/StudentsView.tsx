@@ -1,5 +1,4 @@
 
-// ... existing imports ...
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import Modal from '../components/common/Modal';
 import WebcamCaptureModal from '../components/common/WebcamCaptureModal';
@@ -14,8 +13,6 @@ import ImportModal from '../components/common/ImportModal';
 import Pagination from '../components/common/Pagination';
 import Skeleton from '../components/common/Skeleton';
 import * as api from '../../services/api';
-
-// ... StudentProfileModal component remains the same ...
 
 interface StudentProfileModalProps {
     isOpen: boolean;

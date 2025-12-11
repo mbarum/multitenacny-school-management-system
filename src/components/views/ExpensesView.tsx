@@ -1,21 +1,24 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import type { Expense, NewExpense } from '../../types';
 import { ExpenseCategory } from '../../types';
 import Modal from '../common/Modal';
 import { useData } from '../../contexts/DataContext';
 import * as api from '../../services/api';
 import Skeleton from '../common/Skeleton';
+import WebcamCaptureModal from '../common/WebcamCaptureModal';
 
 const ExpensesView: React.FC = () => {
     const { addNotification, formatCurrency } = useData();
     const [expenses, setExpenses] = useState<Expense[]>([]);
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isCaptureModalOpen, setIsCaptureModalOpen] = useState(false);
     const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
     
     const initialExpenseState: NewExpense = {
-        category: ExpenseCategory.Utilities, description: '', amount: 0, date: new Date().toISOString().split('T')[0]
+        category: ExpenseCategory.Utilities, description: '', amount: 0, date: new Date().toISOString().split('T')[0], attachmentUrl: ''
     };
     const [formData, setFormData] = useState<NewExpense>(initialExpenseState);
 
@@ -48,9 +51,38 @@ const ExpensesView: React.FC = () => {
             category: expense.category,
             description: expense.description,
             amount: expense.amount,
-            date: expense.date
+            date: expense.date,
+            attachmentUrl: expense.attachmentUrl
         });
         setIsModalOpen(true);
+    };
+
+    const handleFileUpload = async (file: File) => {
+        const formData = new FormData();
+        formData.append('file', file);
+        try {
+            const res = await api.uploadExpenseReceipt(formData);
+            setFormData(prev => ({ ...prev, attachmentUrl: res.url }));
+            addNotification("Receipt uploaded successfully.", "success");
+        } catch (e) {
+            addNotification("Failed to upload receipt.", "error");
+        }
+    };
+
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0]) {
+            handleFileUpload(e.target.files[0]);
+        }
+    };
+
+    const handlePhotoCapture = (imageDataUrl: string) => {
+        // Convert base64 to blob/file
+        fetch(imageDataUrl)
+            .then(res => res.blob())
+            .then(blob => {
+                const file = new File([blob], `receipt_${Date.now()}.jpg`, { type: "image/jpeg" });
+                handleFileUpload(file);
+            });
     };
 
     const handleSave = async (e: React.FormEvent) => {
@@ -96,6 +128,7 @@ const ExpensesView: React.FC = () => {
                             <th className="px-4 py-3 font-semibold text-slate-600">Category</th>
                             <th className="px-4 py-3 font-semibold text-slate-600">Description</th>
                             <th className="px-4 py-3 font-semibold text-slate-600 text-right">Amount</th>
+                            <th className="px-4 py-3 font-semibold text-slate-600">Receipt</th>
                             <th className="px-4 py-3 font-semibold text-slate-600">Actions</th>
                         </tr>
                     </thead>
@@ -107,11 +140,12 @@ const ExpensesView: React.FC = () => {
                                     <td className="px-4 py-4"><Skeleton className="h-4 w-32"/></td>
                                     <td className="px-4 py-4"><Skeleton className="h-4 w-48"/></td>
                                     <td className="px-4 py-4"><Skeleton className="h-4 w-24"/></td>
+                                    <td className="px-4 py-4"><Skeleton className="h-4 w-10"/></td>
                                     <td className="px-4 py-4"><Skeleton className="h-4 w-20"/></td>
                                 </tr>
                             ))
                         ) : expenses.length === 0 ? (
-                            <tr><td colSpan={5} className="text-center py-8 text-slate-500">No expenses recorded.</td></tr>
+                            <tr><td colSpan={6} className="text-center py-8 text-slate-500">No expenses recorded.</td></tr>
                         ) : (
                             expenses.map(exp => (
                                 <tr key={exp.id} className="border-b border-slate-100 hover:bg-slate-50">
@@ -119,6 +153,13 @@ const ExpensesView: React.FC = () => {
                                     <td className="px-4 py-3 text-slate-600">{exp.category}</td>
                                     <td className="px-4 py-3 text-slate-800">{exp.description}</td>
                                     <td className="px-4 py-3 text-right font-semibold text-slate-800">{formatCurrency(exp.amount)}</td>
+                                    <td className="px-4 py-3">
+                                        {exp.attachmentUrl && (
+                                            <a href={exp.attachmentUrl} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline text-xs">
+                                                View
+                                            </a>
+                                        )}
+                                    </td>
                                     <td className="px-4 py-3 space-x-2">
                                         <button onClick={() => openEditModal(exp)} className="text-blue-600 hover:underline">Edit</button>
                                         <button onClick={() => handleDelete(exp.id)} className="text-red-600 hover:underline">Delete</button>
@@ -137,9 +178,34 @@ const ExpensesView: React.FC = () => {
                     </select>
                     <input type="text" placeholder="Description" value={formData.description} onChange={e => setFormData(ex => ({...ex, description: e.target.value}))} required className="w-full p-2 border border-slate-300 rounded-lg"/>
                     <input type="number" placeholder="Amount" value={formData.amount || ''} onChange={e => setFormData(ex => ({...ex, amount: parseFloat(e.target.value)}))} required className="w-full p-2 border border-slate-300 rounded-lg"/>
-                    <div className="flex justify-end"><button type="submit" className="px-6 py-2 bg-primary-600 text-white font-semibold rounded-lg shadow-md hover:bg-primary-700">Save Expense</button></div>
+                    
+                    <div className="border-t pt-4">
+                        <label className="block text-sm font-medium text-slate-700 mb-2">Receipt / Invoice</label>
+                        <div className="flex items-center space-x-3">
+                             {formData.attachmentUrl && (
+                                <img src={formData.attachmentUrl} alt="Receipt Preview" className="h-16 w-16 object-cover rounded border" />
+                             )}
+                            <input 
+                                type="file" 
+                                accept="image/*,application/pdf"
+                                ref={fileInputRef}
+                                onChange={handleFileChange}
+                                className="hidden"
+                            />
+                            <button type="button" onClick={() => fileInputRef.current?.click()} className="px-3 py-1.5 bg-slate-200 text-slate-700 text-sm font-semibold rounded hover:bg-slate-300">Upload File</button>
+                            <span className="text-slate-400">or</span>
+                            <button type="button" onClick={() => setIsCaptureModalOpen(true)} className="px-3 py-1.5 bg-slate-200 text-slate-700 text-sm font-semibold rounded hover:bg-slate-300">Capture</button>
+                        </div>
+                    </div>
+
+                    <div className="flex justify-end mt-4"><button type="submit" className="px-6 py-2 bg-primary-600 text-white font-semibold rounded-lg shadow-md hover:bg-primary-700">Save Expense</button></div>
                 </form>
             </Modal>
+            <WebcamCaptureModal 
+                isOpen={isCaptureModalOpen} 
+                onClose={() => setIsCaptureModalOpen(false)} 
+                onCapture={handlePhotoCapture} 
+            />
         </div>
     );
 };

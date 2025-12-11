@@ -36,6 +36,14 @@ const RegisterSchool: React.FC<RegisterSchoolProps> = ({ initialState }) => {
                 setPricing(data);
             } catch (error) {
                 console.error("Failed to fetch pricing", error);
+                // Fallback pricing if API fails
+                setPricing({
+                    id: 0,
+                    basicMonthlyPrice: 3000,
+                    basicAnnualPrice: 30000,
+                    premiumMonthlyPrice: 5000,
+                    premiumAnnualPrice: 50000
+                });
             }
         };
         fetchPricing();
@@ -63,7 +71,8 @@ const RegisterSchool: React.FC<RegisterSchoolProps> = ({ initialState }) => {
 
         try {
             // 1. Register the school and user
-            const { user, token } = await api.registerSchool(formData);
+            const response = await api.registerSchool(formData);
+            const { user, token } = response;
             
             // 2. If Paid Plan, Trigger Payment
             if (formData.plan !== SubscriptionPlan.FREE) {
@@ -71,14 +80,18 @@ const RegisterSchool: React.FC<RegisterSchoolProps> = ({ initialState }) => {
                 const price = calculatePrice();
                 try {
                     // Trigger STK Push to the registered phone number
-                    // We use the school/admin phone for payment
-                    const stkResponse = await initiateSTKPush(price, formData.phone, 'SUB_' + user.schoolId?.substring(0, 8));
-                    addNotification(stkResponse.CustomerMessage, 'info');
-                    setPaymentStatus('success'); // In real app, wait for callback
-                } catch (payErr) {
+                    // Ensure we handle network errors gracefully here
+                    if (user && user.schoolId) {
+                        const stkResponse = await initiateSTKPush(price, formData.phone, 'SUB_' + user.schoolId.substring(0, 8));
+                        addNotification(stkResponse.CustomerMessage, 'info');
+                        setPaymentStatus('success'); 
+                    } else {
+                         throw new Error("Invalid user data returned from registration.");
+                    }
+                } catch (payErr: any) {
                     console.error("Payment trigger failed", payErr);
                     addNotification("Account created, but payment trigger failed. Please pay via settings.", "error");
-                    // Still proceed to login, account will be in TRIAL
+                    // Important: Don't stop the flow. The account is created.
                 }
             }
             
@@ -86,10 +99,11 @@ const RegisterSchool: React.FC<RegisterSchoolProps> = ({ initialState }) => {
             setTimeout(() => {
                 handleLogin(user, token);
                 addNotification('Welcome to Saaslink! Your school account is ready.', 'success');
-            }, 3000); // Give user time to see success message
+            }, 3000); 
 
         } catch (err) {
-            setError(err instanceof Error ? err.message : 'Registration failed');
+            console.error("Registration error:", err);
+            setError(err instanceof Error ? err.message : 'Registration failed. Please check your internet connection.');
             setIsLoading(false);
             setPaymentStatus('idle');
         }

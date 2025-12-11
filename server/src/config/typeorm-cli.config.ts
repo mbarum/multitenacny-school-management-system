@@ -10,7 +10,8 @@ import {
     Transaction, SchoolSetting, DarajaSetting, Book, LibraryTransaction, School, Subscription, PlatformSetting
 } from '../entities/all-entities';
 
-config(); // Load .env file
+// Load .env from the server root directory
+config({ path: join((process as any).cwd(), '.env') });
 
 const configService = new ConfigService();
 
@@ -27,5 +28,6 @@ export default new DataSource({
     GradingRule, Payroll, PayrollEntry, PayrollItem, ReportShareLog, SchoolEvent, TimetableEntry, 
     Transaction, SchoolSetting, DarajaSetting, Book, LibraryTransaction, School, Subscription, PlatformSetting
   ],
-  migrations: [join((process as any).cwd(), 'src', 'migrations', '*.{ts,js}')],
+  migrations: [join((process as any).cwd(), 'src/migrations/*.{ts,js}')],
+  synchronize: false, 
 });

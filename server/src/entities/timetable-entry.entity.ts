@@ -1,4 +1,6 @@
-import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
+
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
+import { SchoolClass } from './school-class.entity';
 
 export const DayOfWeek = {
   Monday: 'Monday',
@@ -16,6 +18,10 @@ export class TimetableEntry {
 
   @Column()
   classId!: string;
+
+  @ManyToOne(() => SchoolClass, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'classId' })
+  class!: SchoolClass;
 
   @Column()
   subjectId!: string;

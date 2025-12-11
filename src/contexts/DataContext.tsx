@@ -214,7 +214,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 setIsOffline(false);
             } catch (error) {
                  console.error("Could not load school information", error);
-                 setIsOffline(true);
+                 // Don't set offline true here, allowing landing page to render
             }
             setIsLoading(false);
         };
@@ -233,28 +233,29 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     announcementsData, schoolInfoData, darajaData
                 ] = data;
 
-                setUsers(usersData); 
-                setStudents(studentsData.sort((a: Student,b: Student) => a.name.localeCompare(b.name))); 
-                setTransactions(transactionsData); 
-                setExpenses(expensesData); 
-                setStaff(staffData); 
-                setPayrollHistory(payrollHistoryData.data || []); 
-                setSubjects(subjectsData); 
-                setClasses(classesData); 
-                setClassSubjectAssignments(assignmentsData); 
-                setTimetableEntries(timetableData); 
-                setExams(examsData); 
-                setGrades(gradesData); 
-                setAttendanceRecords(attendanceData); 
-                setEvents(eventsData); 
-                setGradingScale(gradingData); 
-                setFeeStructure(feeData); 
-                setPayrollItems(payrollItemsData); 
-                setCommunicationLogs(logsData.data || []); 
-                setAnnouncements(announcementsData); 
+                // Handle Arrays safely in case of API failure defaults
+                setUsers(Array.isArray(usersData) ? usersData : []); 
+                setStudents(Array.isArray(studentsData) ? studentsData.sort((a: Student,b: Student) => a.name.localeCompare(b.name)) : []); 
+                setTransactions(Array.isArray(transactionsData) ? transactionsData : []); 
+                setExpenses(Array.isArray(expensesData) ? expensesData : []); 
+                setStaff(Array.isArray(staffData) ? staffData : []); 
+                setPayrollHistory(payrollHistoryData?.data || []); 
+                setSubjects(Array.isArray(subjectsData) ? subjectsData : []); 
+                setClasses(Array.isArray(classesData) ? classesData : []); 
+                setClassSubjectAssignments(Array.isArray(assignmentsData) ? assignmentsData : []); 
+                setTimetableEntries(Array.isArray(timetableData) ? timetableData : []); 
+                setExams(Array.isArray(examsData) ? examsData : []); 
+                setGrades(Array.isArray(gradesData) ? gradesData : []); 
+                setAttendanceRecords(Array.isArray(attendanceData) ? attendanceData : []); 
+                setEvents(Array.isArray(eventsData) ? eventsData : []); 
+                setGradingScale(Array.isArray(gradingData) ? gradingData : []); 
+                setFeeStructure(Array.isArray(feeData) ? feeData : []); 
+                setPayrollItems(Array.isArray(payrollItemsData) ? payrollItemsData : []); 
+                setCommunicationLogs(logsData?.data || []); 
+                setAnnouncements(Array.isArray(announcementsData) ? announcementsData : []); 
                 
                 // This updates the school info to the logged-in school's specific data
-                setSchoolInfo(schoolInfoData); 
+                if (schoolInfoData) setSchoolInfo(schoolInfoData); 
                 
                 setDarajaSettings(darajaData);
                 
@@ -263,9 +264,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 api.getLibraryTransactions().then(setLibraryTransactions).catch(console.error);
 
                  if (currentUser.role === Role.Teacher) {
-                    setAssignedClass(classesData.find((c: SchoolClass) => c.formTeacherId === currentUser.id) || null);
+                    setAssignedClass((Array.isArray(classesData) ? classesData : []).find((c: SchoolClass) => c.formTeacherId === currentUser.id) || null);
                 } else if (currentUser.role === Role.Parent) {
-                    setParentChildren(studentsData.filter((s: Student) => s.guardianEmail === currentUser.email));
+                    setParentChildren((Array.isArray(studentsData) ? studentsData : []).filter((s: Student) => s.guardianEmail === currentUser.email));
                 }
                 setIsLoading(false);
                 setIsOffline(false);
@@ -273,7 +274,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 console.error("Data fetch error:", error);
                 setIsOffline(true);
                 setIsLoading(false);
-                if (error.message.includes('401') || error.message.includes('Unauthorized')) {
+                if (error.message && (error.message.includes('401') || error.message.includes('Unauthorized'))) {
                     handleLogout();
                 }
             });

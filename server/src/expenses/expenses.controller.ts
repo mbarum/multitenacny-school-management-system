@@ -1,9 +1,12 @@
 
-import { Controller, Get, Post, Body, Param, Delete, Request, Patch, Res } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Delete, Request, Patch, Res, UseInterceptors, UploadedFile, BadRequestException } from '@nestjs/common';
 import { ExpensesService } from './expenses.service';
 import { Expense } from '../entities/expense.entity';
 import { Roles } from '../auth/roles.decorator';
 import { Role } from '../entities/user.entity';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { diskStorage } from 'multer';
+import { extname, join, resolve } from 'path';
 
 @Controller('expenses')
 export class ExpensesController {
@@ -13,6 +16,31 @@ export class ExpensesController {
   @Roles(Role.Admin, Role.Accountant)
   create(@Request() req: any, @Body() createExpenseDto: Omit<Expense, 'id'>) {
     return this.expensesService.create(createExpenseDto, req.user.schoolId);
+  }
+
+  @Post('upload-receipt')
+  @Roles(Role.Admin, Role.Accountant)
+  @UseInterceptors(FileInterceptor('file', {
+    storage: diskStorage({
+      destination: join(resolve('.'), 'public', 'uploads'),
+      filename: (req: any, file: any, cb: (error: Error | null, filename: string) => void) => {
+        const randomName = Array(16).fill(null).map(() => (Math.round(Math.random() * 16)).toString(16)).join('');
+        return cb(null, `${randomName}${extname(file.originalname)}`);
+      },
+    }),
+    fileFilter: (req: any, file: any, cb: (error: Error | null, acceptFile: boolean) => void) => {
+        if (!file.originalname.match(/\.(jpg|jpeg|png|pdf)$/)) {
+            return cb(new BadRequestException('Only image files (jpg, jpeg, png) and PDFs are allowed!'), false);
+        }
+        cb(null, true);
+    },
+    limits: { fileSize: 5 * 1024 * 1024 } // Limit to 5MB
+  }))
+  async uploadReceipt(@UploadedFile() file: any) {
+    if (!file) {
+      throw new BadRequestException('File upload failed.');
+    }
+    return { url: `/public/uploads/${file.filename}` };
   }
 
   @Get()

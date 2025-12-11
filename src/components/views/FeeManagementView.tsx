@@ -1,14 +1,14 @@
 
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import Modal from '../common/Modal';
-import Pagination from '../common/Pagination';
+import Modal from '../components/common/Modal';
+import Pagination from '../components/common/Pagination';
 import { initiateSTKPush } from '../../services/darajaService';
 import type { Transaction, NewTransaction, Student } from '../../types';
 import { PaymentMethod, TransactionType } from '../../types';
 import { useData } from '../../contexts/DataContext';
-import GenerateInvoicesModal from '../common/GenerateInvoicesModal';
+import GenerateInvoicesModal from '../components/common/GenerateInvoicesModal';
 import * as api from '../../services/api';
-import Skeleton from '../common/Skeleton';
+import Skeleton from '../components/common/Skeleton';
 
 const FeeManagementView: React.FC = () => {
     const { addTransaction, students, darajaSettings, addNotification, formatCurrency } = useData();
@@ -61,8 +61,8 @@ const FeeManagementView: React.FC = () => {
                 page: currentPage,
                 limit: 10,
                 search: searchTerm,
-                startDate: start,
-                endDate: end,
+                startDate: start || undefined, // Ensure empty strings are undefined
+                endDate: end || undefined,     // Ensure empty strings are undefined
             });
             setTransactions(response.data);
             setTotalPages(response.last_page);
@@ -227,7 +227,7 @@ const FeeManagementView: React.FC = () => {
                             <th className="px-4 py-3 font-semibold text-slate-600">Type</th>
                             <th className="px-4 py-3 font-semibold text-slate-600">Student Name</th>
                             <th className="px-4 py-3 font-semibold text-slate-600">Description</th>
-                            <th className="px-4 py-3 font-semibold text-slate-600 text-right">Amount</th>
+                            <th className="px-4 py-3 font-semibold text-slate-600 text-right">Amount (KES)</th>
                             <th className="px-4 py-3 font-semibold text-slate-600">Method</th>
                             <th className="px-4 py-3 font-semibold text-slate-600">Actions</th>
                         </tr>

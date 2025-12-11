@@ -52,12 +52,10 @@ export class AcademicsService {
   }
 
   findAllTimetableEntries(schoolId: string) {
-      // NOTE: TimetableEntry doesn't have schoolId directly but Class does. 
+      // Correctly query with the relation alias 'class' which now exists in the entity
       return this.timetableRepo.createQueryBuilder('tt')
-        .leftJoin('tt.class', 'class') // Assuming relation exists or join via classId is manually mapped in query if entity definition doesn't have it
-        // The TimetableEntry entity defined in Phase 1 didn't have relation mapping, assuming it will be fixed or we query by classId list.
-        // For safety, we query classes first.
-        .where('tt.classId IN (SELECT id FROM school_class WHERE schoolId = :schoolId)', { schoolId })
+        .leftJoinAndSelect('tt.class', 'class')
+        .where('class.schoolId = :schoolId', { schoolId })
         .getMany();
   }
 
