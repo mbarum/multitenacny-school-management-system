@@ -1,17 +1,19 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { AttendanceStatus, ExamType, Grade, AttendanceRecord, Subject } from '../../types';
+import { AttendanceStatus, ExamType, Grade, AttendanceRecord, Subject, Transaction } from '../../types';
 import { useData } from '../../contexts/DataContext';
 import * as api from '../../services/api';
 import Skeleton from '../common/Skeleton';
 
 const ParentChildDetails: React.FC = () => {
-    const { selectedChild, transactions, subjects, exams, setActiveView } = useData();
+    const { selectedChild, subjects, exams, setActiveView } = useData();
     const [activeTab, setActiveTab] = useState('academics');
     const [grades, setGrades] = useState<Grade[]>([]);
     const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
+    const [transactions, setTransactions] = useState<Transaction[]>([]);
     const [loadingGrades, setLoadingGrades] = useState(false);
     const [loadingAttendance, setLoadingAttendance] = useState(false);
+    const [loadingFinance, setLoadingFinance] = useState(false);
 
     useEffect(() => {
         if (selectedChild) {
@@ -26,6 +28,12 @@ const ParentChildDetails: React.FC = () => {
                 .then(setAttendanceRecords)
                 .catch(err => console.error("Failed to load attendance", err))
                 .finally(() => setLoadingAttendance(false));
+                
+            setLoadingFinance(true);
+            api.getTransactions({ studentId: selectedChild.id, limit: 50 })
+                .then(res => setTransactions(res.data))
+                .catch(err => console.error("Failed to load transactions", err))
+                .finally(() => setLoadingFinance(false));
         }
     }, [selectedChild]);
 
@@ -42,8 +50,6 @@ const ParentChildDetails: React.FC = () => {
     }
     const onBack = () => setActiveView('parent_dashboard');
 
-    const childTransactions = transactions.filter(p => p.studentId === selectedChild.id).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-    
     const childGradesByExam = useMemo((): Record<string, Grade[]> => {
         const gradesByExam: Record<string, Grade[]> = {};
         grades.forEach(grade => {
@@ -122,6 +128,7 @@ const ParentChildDetails: React.FC = () => {
              {activeTab === 'finance' && (
                 <div className="bg-white p-6 rounded-xl shadow-lg">
                     <h3 className="text-xl font-bold text-slate-800 mb-4">Financial History</h3>
+                     {loadingFinance ? <Skeleton className="h-40 w-full" /> : 
                      <table className="w-full text-left table-auto">
                         <thead>
                             <tr className="bg-slate-50 border-b">
@@ -132,7 +139,7 @@ const ParentChildDetails: React.FC = () => {
                             </tr>
                         </thead>
                         <tbody>
-                            {childTransactions.map(t => (
+                            {transactions.map(t => (
                                 <tr key={t.id} className="border-b">
                                     <td className="px-4 py-2">{new Date(t.date).toLocaleDateString()}</td>
                                     <td className="px-4 py-2">{t.description}</td>
@@ -144,8 +151,9 @@ const ParentChildDetails: React.FC = () => {
                                     </td>
                                 </tr>
                             ))}
+                            {transactions.length === 0 && <tr><td colSpan={4} className="text-center p-4 text-slate-500">No transactions found.</td></tr>}
                         </tbody>
-                     </table>
+                     </table>}
                 </div>
             )}
              {activeTab === 'attendance' && (

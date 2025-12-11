@@ -1,14 +1,12 @@
 
-import { Controller, Get, Post, Body, Patch, Param, UseGuards, Delete, UploadedFile, UseInterceptors, Res, Request } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UploadedFile, UseInterceptors, Res, Request } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { StaffService } from './staff.service';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CreateStaffDto } from './dto/create-staff.dto';
 import { UpdateStaffDto } from './dto/update-staff.dto';
 import { Roles } from '../auth/roles.decorator';
 import { Role } from '../entities/user.entity';
 
-@UseGuards(JwtAuthGuard)
 @Controller('staff')
 export class StaffController {
   constructor(private readonly staffService: StaffService) {}

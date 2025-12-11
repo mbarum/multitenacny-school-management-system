@@ -1,7 +1,6 @@
 
-import { Controller, Get, Put, Body, UseGuards, Post, Patch, Param, Delete, Query, Request } from '@nestjs/common';
+import { Controller, Get, Put, Body, Post, Patch, Param, Delete, Query, Request } from '@nestjs/common';
 import { AcademicsService } from './academics.service';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { AttendanceRecord, Grade, SchoolEvent, SchoolClass, Subject, ClassSubjectAssignment, TimetableEntry, Exam } from '../entities/all-entities';
 import { CreateGradingRuleDto, UpdateGradingRuleDto } from './dto/grading-rule.dto';
 import { CreateFeeItemDto, UpdateFeeItemDto } from './dto/fee-item.dto';
@@ -14,7 +13,6 @@ import { GetGradesDto } from './dto/get-grades.dto';
 import { Roles } from '../auth/roles.decorator';
 import { Role } from '../entities/user.entity';
 
-@UseGuards(JwtAuthGuard)
 @Controller('academics')
 export class AcademicsController {
   constructor(private readonly academicsService: AcademicsService) {}

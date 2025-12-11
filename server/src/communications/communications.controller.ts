@@ -1,13 +1,11 @@
 
-import { Controller, Get, Post, Body, UseGuards, Request, Query, Patch, Param, Delete } from '@nestjs/common';
+import { Controller, Get, Post, Body, Request, Query, Patch, Param, Delete } from '@nestjs/common';
 import { CommunicationsService } from './communications.service';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { Announcement, CommunicationLog } from '../entities/all-entities';
 import { GetCommunicationLogsDto } from './dto/get-logs.dto';
 import { Roles } from '../auth/roles.decorator';
 import { Role } from '../entities/user.entity';
 
-@UseGuards(JwtAuthGuard)
 @Controller('communications')
 export class CommunicationsController {
   constructor(private readonly communicationsService: CommunicationsService) {}

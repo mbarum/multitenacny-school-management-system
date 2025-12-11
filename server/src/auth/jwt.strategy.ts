@@ -26,7 +26,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(payload: any) {
-    // Check if user exists
+    // Always fetch the latest user record from the database to check for role changes or bans
     const user = await this.usersService.findById(payload.sub);
     
     if (!user) {
@@ -37,12 +37,12 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
         throw new UnauthorizedException('User account is disabled');
     }
 
-    // Attach SchoolContext to the request
+    // Return the role from the DB, not the token. This allows immediate role updates (like promoting to SuperAdmin)
     return { 
         userId: payload.sub, 
         email: payload.email, 
-        role: payload.role, 
-        schoolId: user.schoolId // CRITICAL: This is used by all services to filter data
+        role: user.role, 
+        schoolId: user.schoolId 
     };
   }
 }

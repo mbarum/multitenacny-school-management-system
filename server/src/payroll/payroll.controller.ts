@@ -1,13 +1,11 @@
 
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Query, Request } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Query, Request } from '@nestjs/common';
 import { PayrollService } from './payroll.service';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { PayrollItem } from '../entities/all-entities';
 import { GetPayrollHistoryDto } from './dto/get-payroll-history.dto';
 import { Roles } from '../auth/roles.decorator';
 import { Role } from '../entities/user.entity';
 
-@UseGuards(JwtAuthGuard)
 @Roles(Role.Admin, Role.Accountant)
 @Controller('payroll')
 export class PayrollController {

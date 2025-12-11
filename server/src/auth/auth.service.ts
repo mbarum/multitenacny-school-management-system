@@ -55,9 +55,6 @@ export class AuthService {
         throw new UnauthorizedException('Account is disabled');
     }
 
-    // Check Subscription Status (Optional: Block login if subscription expired)
-    // For now, we allow login but UI might be restricted.
-
     const payload = { email: user.email, sub: user.id, role: user.role, schoolId: user.schoolId };
     return {
       user,
@@ -66,21 +63,26 @@ export class AuthService {
   }
 
   async registerSchool(dto: RegisterSchoolDto) {
-    // 1. Check if email exists
+    this.logger.log(`Attempting to register school: ${dto.schoolName} with admin: ${dto.adminEmail}`);
+    
     const existingUser = await this.usersService.findOneByEmail(dto.adminEmail);
-    if (existingUser) throw new ConflictException('User with this email already exists.');
+    if (existingUser) {
+        this.logger.warn(`Registration failed: Email ${dto.adminEmail} already exists`);
+        throw new ConflictException('User with this email already exists.');
+    }
 
     return this.entityManager.transaction(async manager => {
-        // 2. Create School
+        // 1. Create School
         const school = manager.create(School, {
             name: dto.schoolName,
-            slug: dto.schoolName.toLowerCase().replace(/ /g, '-') + '-' + Date.now().toString().slice(-4), // Simple slug gen
+            slug: dto.schoolName.toLowerCase().replace(/[^a-z0-9]/g, '-') + '-' + Date.now().toString().slice(-4),
             email: dto.adminEmail,
             phone: dto.phone,
         });
         const savedSchool = await manager.save(school);
+        this.logger.log(`School created with ID: ${savedSchool.id}`);
 
-        // 3. Create Subscription (Trial)
+        // 2. Create Subscription (Trial)
         const startDate = new Date();
         const endDate = new Date();
         endDate.setDate(endDate.getDate() + 14); // 14 Day Trial
@@ -94,7 +96,7 @@ export class AuthService {
         });
         await manager.save(sub);
 
-        // 4. Create Admin User
+        // 3. Create Admin User
         const salt = await bcrypt.genSalt();
         const hashedPassword = await bcrypt.hash(dto.password, salt);
         
@@ -108,6 +110,7 @@ export class AuthService {
             avatarUrl: `https://i.pravatar.cc/150?u=${dto.adminEmail}`
         });
         const savedUser = await manager.save(user);
+        this.logger.log(`Admin user created with ID: ${savedUser.id}`);
 
         // Generate Token
         const payload = { email: savedUser.email, sub: savedUser.id, role: savedUser.role, schoolId: savedSchool.id };

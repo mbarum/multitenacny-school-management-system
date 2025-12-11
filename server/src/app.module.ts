@@ -20,10 +20,11 @@ import { AuditModule } from './audit/audit.module';
 import { EventsModule } from './events/events.module';
 import { LibraryModule } from './library/library.module';
 import { TasksModule } from './tasks/tasks.module';
-import { SuperAdminModule } from './super-admin/super-admin.module'; // Import
+import { SuperAdminModule } from './super-admin/super-admin.module';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { RolesGuard } from './auth/roles.guard';
+import { JwtAuthGuard } from './auth/jwt-auth.guard';
 import { SubscriptionGuard } from './auth/subscription.guard';
 import { AuditInterceptor } from './common/interceptors/audit.interceptor';
 import { ServeStaticModule } from '@nestjs/serve-static';
@@ -67,7 +68,7 @@ import { School } from './entities/school.entity';
     EventsModule,
     LibraryModule,
     TasksModule,
-    SuperAdminModule, // Register
+    SuperAdminModule,
   ],
   controllers: [AppController],
   providers: [
@@ -77,7 +78,11 @@ import { School } from './entities/school.entity';
     },
     {
       provide: APP_GUARD,
-      useClass: RolesGuard,
+      useClass: JwtAuthGuard, // Global Auth Guard runs first
+    },
+    {
+      provide: APP_GUARD,
+      useClass: RolesGuard,   // Role Guard runs second (user is now attached)
     },
     {
       provide: APP_GUARD,

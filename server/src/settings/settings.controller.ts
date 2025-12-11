@@ -2,23 +2,28 @@
 import type {} from 'multer';
 import 'express';
 
-import { Controller, Get, Put, Body, UseGuards, Post, UseInterceptors, UploadedFile, BadRequestException, Request } from '@nestjs/common';
+import { Controller, Get, Put, Body, Post, UseInterceptors, UploadedFile, BadRequestException, Request } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname, join, resolve } from 'path';
 import { SettingsService } from './settings.service';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { UpdateSchoolInfoDto } from './dto/update-school-info.dto';
 import { UpdateDarajaSettingsDto } from './dto/update-daraja-settings.dto';
 import { Roles } from '../auth/roles.decorator';
 import { Role } from '../entities/user.entity';
+import { Public } from '../auth/public.decorator';
 
 @Controller('settings')
 export class SettingsController {
   constructor(private readonly settingsService: SettingsService) {}
 
+  @Public()
+  @Get('public/school-info')
+  getPublicSchoolInfo() {
+    return this.settingsService.getPublicSchoolInfo();
+  }
+
   @Post('upload-logo')
-  @UseGuards(JwtAuthGuard)
   @Roles(Role.Admin)
   @UseInterceptors(FileInterceptor('logo', {
     storage: diskStorage({
@@ -44,30 +49,26 @@ export class SettingsController {
     return { logoUrl };
   }
 
-  @UseGuards(JwtAuthGuard)
   @Get('school-info')
   getSchoolInfo(@Request() req: any) {
     return this.settingsService.getSchoolInfo(req.user.schoolId);
   }
   
-  @UseGuards(JwtAuthGuard)
   @Roles(Role.Admin)
   @Put('school-info')
   updateSchoolInfo(@Request() req: any, @Body() schoolInfo: UpdateSchoolInfoDto) {
     return this.settingsService.updateSchoolInfo(req.user.schoolId, schoolInfo);
   }
 
-  @UseGuards(JwtAuthGuard)
   @Roles(Role.Admin)
   @Get('daraja')
-  getDarajaSettings() {
-    return this.settingsService.getDarajaSettings();
+  getDarajaSettings(@Request() req: any) {
+    return this.settingsService.getDarajaSettings(req.user.schoolId);
   }
 
-  @UseGuards(JwtAuthGuard)
   @Roles(Role.Admin)
   @Put('daraja')
-  updateDarajaSettings(@Body() darajaSettings: UpdateDarajaSettingsDto) {
-    return this.settingsService.updateDarajaSettings(darajaSettings);
+  updateDarajaSettings(@Request() req: any, @Body() darajaSettings: UpdateDarajaSettingsDto) {
+    return this.settingsService.updateDarajaSettings(req.user.schoolId, darajaSettings);
   }
 }

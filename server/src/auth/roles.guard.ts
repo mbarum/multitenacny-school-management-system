@@ -1,3 +1,4 @@
+
 import { Injectable, CanActivate, ExecutionContext } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { Role } from '../entities/user.entity';
@@ -12,16 +13,30 @@ export class RolesGuard implements CanActivate {
       context.getHandler(),
       context.getClass(),
     ]);
+
+    // If no roles are required, allow access
     if (!requiredRoles) {
       return true;
     }
+
     const { user } = context.switchToHttp().getRequest();
-    
-    // Admin can access everything
-    if (user && user.role === Role.Admin) {
+    if (!user) return false;
+
+    // SuperAdmin has God Mode (can access everything)
+    if (user.role === Role.SuperAdmin) {
         return true;
     }
 
-    return requiredRoles.some((role) => user?.role === role);
+    // Protection for SuperAdmin routes: Only SuperAdmin can access
+    if (requiredRoles.includes(Role.SuperAdmin)) {
+        return user.role === Role.SuperAdmin;
+    }
+
+    // Admin can access all School-level routes
+    if (user.role === Role.Admin) {
+        return true;
+    }
+
+    return requiredRoles.some((role) => user.role === role);
   }
 }

@@ -18,6 +18,37 @@ export class SettingsService {
     private readonly darajaSettingRepository: Repository<DarajaSetting>,
   ) {}
 
+  async getPublicSchoolInfo(): Promise<School> {
+    const school = await this.schoolRepository.findOne({ 
+        where: {}, 
+        order: { createdAt: 'ASC' } 
+    });
+    
+    if (!school) {
+        return { 
+            name: 'Saaslink School System', 
+            logoUrl: '', 
+            address: '', 
+            phone: '', 
+            email: '', 
+            id: '', 
+            slug: '', 
+            schoolCode: 'SIS', 
+            gradingSystem: 'Traditional' 
+        } as unknown as School;
+    }
+    
+    return {
+        name: school.name,
+        logoUrl: school.logoUrl,
+        address: school.address,
+        phone: school.phone,
+        email: school.email,
+        schoolCode: school.schoolCode,
+        gradingSystem: school.gradingSystem
+    } as School;
+  }
+
   async getSchoolInfo(schoolId: string): Promise<any> {
     const school = await this.schoolRepository.findOne({ where: { id: schoolId } });
     if (!school) {
@@ -35,24 +66,27 @@ export class SettingsService {
     return this.schoolRepository.save(updatedSchool);
   }
   
-  // NOTE: DarajaSetting is currently global/singleton in this schema. 
-  // For true multi-tenancy, Daraja credentials should move to the School entity.
-  // We will assume for now we return global settings or update the entity to be school-linked later.
-  // Ideally: Add schoolId to DarajaSetting.
-  async getDarajaSettings(): Promise<DarajaSetting> {
-    // Return mock for now or implement multi-tenant table
-    const setting = await this.darajaSettingRepository.findOne({ where: {} });
-    if (!setting) return { id: 0, consumerKey: '', consumerSecret: '', shortCode: '', passkey: '', paybillNumber: '' } as DarajaSetting;
+  async getDarajaSettings(schoolId: string): Promise<DarajaSetting> {
+    const setting = await this.darajaSettingRepository.findOne({ where: { schoolId: schoolId as any } });
+    if (!setting) {
+        // Return blank object if not set yet, preserving the structure
+        return { id: 0, consumerKey: '', consumerSecret: '', shortCode: '', passkey: '', paybillNumber: '', schoolId } as DarajaSetting;
+    }
     return setting;
   }
 
-  async updateDarajaSettings(data: UpdateDarajaSettingsDto): Promise<DarajaSetting> {
-    let setting = await this.darajaSettingRepository.findOne({ where: {} });
-     if (!setting) {
-        setting = this.darajaSettingRepository.create({});
-        await this.darajaSettingRepository.save(setting);
+  async updateDarajaSettings(schoolId: string, data: UpdateDarajaSettingsDto): Promise<DarajaSetting> {
+    let setting = await this.darajaSettingRepository.findOne({ where: { schoolId: schoolId as any } });
+    
+    if (!setting) {
+        setting = this.darajaSettingRepository.create({
+            school: { id: schoolId } as any,
+            ...data
+        });
+    } else {
+        this.darajaSettingRepository.merge(setting, data);
     }
-    const updatedSetting = this.darajaSettingRepository.merge(setting, data);
-    return this.darajaSettingRepository.save(updatedSetting);
+    
+    return this.darajaSettingRepository.save(setting);
   }
 }

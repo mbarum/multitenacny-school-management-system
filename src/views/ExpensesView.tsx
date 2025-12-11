@@ -1,13 +1,16 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import type { Expense, NewExpense } from '../types';
 import { ExpenseCategory } from '../types';
 import Modal from '../components/common/Modal';
 import { useData } from '../contexts/DataContext';
 import * as api from '../services/api';
+import Skeleton from '../components/common/Skeleton';
 
 const ExpensesView: React.FC = () => {
-    const { expenses, addExpense, deleteExpense, refetchExpenses, addNotification } = useData();
+    const { addNotification } = useData();
+    const [expenses, setExpenses] = useState<Expense[]>([]);
+    const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
     
@@ -15,6 +18,23 @@ const ExpensesView: React.FC = () => {
         category: ExpenseCategory.Utilities, description: '', amount: 0, date: new Date().toISOString().split('T')[0]
     };
     const [formData, setFormData] = useState<NewExpense>(initialExpenseState);
+
+    const fetchExpenses = async () => {
+        setLoading(true);
+        try {
+            const data = await api.getExpenses();
+            setExpenses(data);
+        } catch (error) {
+            console.error(error);
+            addNotification("Failed to load expenses.", "error");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchExpenses();
+    }, []);
 
     const openAddModal = () => {
         setEditingExpense(null);
@@ -40,11 +60,11 @@ const ExpensesView: React.FC = () => {
                 await api.updateExpense(editingExpense.id, formData);
                 addNotification("Expense updated successfully.", "success");
             } else {
-                await addExpense(formData);
+                await api.createExpense(formData);
                 addNotification("Expense added successfully.", "success");
             }
             setIsModalOpen(false);
-            refetchExpenses();
+            fetchExpenses();
         } catch (error) {
             addNotification("Failed to save expense.", "error");
         }
@@ -53,8 +73,9 @@ const ExpensesView: React.FC = () => {
     const handleDelete = async (id: string) => {
         if(window.confirm("Are you sure you want to delete this expense record?")) {
             try {
-                await deleteExpense(id);
+                await api.deleteExpense(id);
                 addNotification("Expense deleted successfully.", "success");
+                setExpenses(prev => prev.filter(e => e.id !== id));
             } catch (error) {
                 addNotification("Failed to delete expense.", "error");
             }
@@ -79,19 +100,32 @@ const ExpensesView: React.FC = () => {
                         </tr>
                     </thead>
                     <tbody>
-                        {expenses.map(exp => (
-                            <tr key={exp.id} className="border-b border-slate-100 hover:bg-slate-50">
-                                <td className="px-4 py-3 text-slate-500">{exp.date}</td>
-                                <td className="px-4 py-3 text-slate-600">{exp.category}</td>
-                                <td className="px-4 py-3 text-slate-800">{exp.description}</td>
-                                <td className="px-4 py-3 text-right font-semibold text-slate-800">{exp.amount.toLocaleString()}</td>
-                                <td className="px-4 py-3 space-x-2">
-                                    <button onClick={() => openEditModal(exp)} className="text-blue-600 hover:underline">Edit</button>
-                                    <button onClick={() => handleDelete(exp.id)} className="text-red-600 hover:underline">Delete</button>
-                                </td>
-                            </tr>
-                        ))}
-                        {expenses.length === 0 && <tr><td colSpan={5} className="text-center py-8 text-slate-500">No expenses recorded.</td></tr>}
+                        {loading ? (
+                             Array.from({ length: 5 }).map((_, i) => (
+                                <tr key={i} className="border-b border-slate-100">
+                                    <td className="px-4 py-4"><Skeleton className="h-4 w-24"/></td>
+                                    <td className="px-4 py-4"><Skeleton className="h-4 w-32"/></td>
+                                    <td className="px-4 py-4"><Skeleton className="h-4 w-48"/></td>
+                                    <td className="px-4 py-4"><Skeleton className="h-4 w-24"/></td>
+                                    <td className="px-4 py-4"><Skeleton className="h-4 w-20"/></td>
+                                </tr>
+                            ))
+                        ) : expenses.length === 0 ? (
+                            <tr><td colSpan={5} className="text-center py-8 text-slate-500">No expenses recorded.</td></tr>
+                        ) : (
+                            expenses.map(exp => (
+                                <tr key={exp.id} className="border-b border-slate-100 hover:bg-slate-50">
+                                    <td className="px-4 py-3 text-slate-500">{new Date(exp.date).toLocaleDateString()}</td>
+                                    <td className="px-4 py-3 text-slate-600">{exp.category}</td>
+                                    <td className="px-4 py-3 text-slate-800">{exp.description}</td>
+                                    <td className="px-4 py-3 text-right font-semibold text-slate-800">{exp.amount.toLocaleString()}</td>
+                                    <td className="px-4 py-3 space-x-2">
+                                        <button onClick={() => openEditModal(exp)} className="text-blue-600 hover:underline">Edit</button>
+                                        <button onClick={() => handleDelete(exp.id)} className="text-red-600 hover:underline">Delete</button>
+                                    </td>
+                                </tr>
+                            ))
+                        )}
                     </tbody>
                 </table>
             </div>
