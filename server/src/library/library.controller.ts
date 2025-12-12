@@ -1,18 +1,20 @@
 
-import { Controller, Get, Post, Body, Patch, Param, Delete, Request } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Request, Query } from '@nestjs/common';
 import { LibraryService } from './library.service';
 import { Roles } from '../auth/roles.decorator';
 import { Role } from '../entities/user.entity';
 import { CreateBookDto } from './dto/create-book.dto';
 import { IssueBookDto } from './dto/issue-book.dto';
+import { GetBooksDto } from './dto/get-books.dto';
+import { GetLibraryTransactionsDto } from './dto/get-library-transactions.dto';
 
 @Controller('library')
 export class LibraryController {
   constructor(private readonly libraryService: LibraryService) {}
 
   @Get('books')
-  findAllBooks(@Request() req: any) {
-    return this.libraryService.findAllBooks(req.user.schoolId);
+  findAllBooks(@Request() req: any, @Query() query: GetBooksDto) {
+    return this.libraryService.findAllBooks(query, req.user.schoolId);
   }
 
   @Post('books')
@@ -52,7 +54,7 @@ export class LibraryController {
   }
 
   @Get('transactions')
-  getTransactions(@Request() req: any) {
-    return this.libraryService.getTransactions(req.user.schoolId);
+  getTransactions(@Request() req: any, @Query() query: GetLibraryTransactionsDto) {
+    return this.libraryService.getTransactions(query, req.user.schoolId);
   }
 }

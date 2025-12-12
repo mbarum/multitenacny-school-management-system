@@ -1,8 +1,8 @@
 
-import { IsOptional, IsUUID, IsDateString, IsString, IsInt, Min } from 'class-validator';
+import { IsOptional, IsInt, Min, IsString, IsDateString } from 'class-validator';
 import { Type } from 'class-transformer';
 
-export class GetAttendanceDto {
+export class GetExpensesDto {
   @IsOptional()
   @IsInt()
   @Min(1)
@@ -20,22 +20,14 @@ export class GetAttendanceDto {
   pagination?: string;
 
   @IsOptional()
-  @IsString() // Changed from IsUUID to allow flexible filtering
-  classId?: string;
-
-  @IsOptional()
-  @IsString() // Changed from IsUUID
-  studentId?: string;
-
-  @IsOptional()
-  @IsDateString()
-  date?: string;
-
-  @IsOptional()
   @IsDateString()
   startDate?: string;
 
   @IsOptional()
   @IsDateString()
   endDate?: string;
+    
+  @IsOptional()
+  @IsString()
+  category?: string;
 }

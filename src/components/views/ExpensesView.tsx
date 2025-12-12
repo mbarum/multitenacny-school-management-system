@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import type { Expense, NewExpense } from '../../types';
 import { ExpenseCategory } from '../../types';
 import Modal from '../common/Modal';
@@ -7,6 +7,7 @@ import { useData } from '../../contexts/DataContext';
 import * as api from '../../services/api';
 import Skeleton from '../common/Skeleton';
 import WebcamCaptureModal from '../common/WebcamCaptureModal';
+import Pagination from '../common/Pagination';
 
 const ExpensesView: React.FC = () => {
     const { addNotification, formatCurrency } = useData();
@@ -17,27 +18,47 @@ const ExpensesView: React.FC = () => {
     const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     
+    // Pagination and Filtering State
+    const [currentPage, setCurrentPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(1);
+    const [startDate, setStartDate] = useState('');
+    const [endDate, setEndDate] = useState('');
+    const [selectedCategory, setSelectedCategory] = useState('');
+    
     const initialExpenseState: NewExpense = {
         category: ExpenseCategory.Utilities, description: '', amount: 0, date: new Date().toISOString().split('T')[0], attachmentUrl: ''
     };
     const [formData, setFormData] = useState<NewExpense>(initialExpenseState);
 
-    const fetchExpenses = async () => {
+    const fetchExpenses = useCallback(async () => {
         setLoading(true);
         try {
-            const data = await api.getExpenses();
-            setExpenses(data);
+            const data = await api.getExpenses({
+                page: currentPage,
+                limit: 10,
+                startDate: startDate || undefined,
+                endDate: endDate || undefined,
+                category: selectedCategory || undefined
+            });
+            // Handle array response (if pagination disabled or legacy) vs paginated response
+            if (Array.isArray(data)) {
+                setExpenses(data);
+                setTotalPages(1);
+            } else {
+                setExpenses(data.data);
+                setTotalPages(data.last_page);
+            }
         } catch (error) {
             console.error(error);
             addNotification("Failed to load expenses.", "error");
         } finally {
             setLoading(false);
         }
-    };
+    }, [currentPage, startDate, endDate, selectedCategory, addNotification]);
 
     useEffect(() => {
         fetchExpenses();
-    }, []);
+    }, [fetchExpenses]);
 
     const openAddModal = () => {
         setEditingExpense(null);
@@ -107,7 +128,7 @@ const ExpensesView: React.FC = () => {
             try {
                 await api.deleteExpense(id);
                 addNotification("Expense deleted successfully.", "success");
-                setExpenses(prev => prev.filter(e => e.id !== id));
+                fetchExpenses();
             } catch (error) {
                 addNotification("Failed to delete expense.", "error");
             }
@@ -122,6 +143,22 @@ const ExpensesView: React.FC = () => {
                 <h2 className="text-3xl font-bold text-slate-800">Expense Tracking</h2>
                 <button onClick={openAddModal} className="px-4 py-2 bg-primary-600 text-white font-semibold rounded-lg shadow-md hover:bg-primary-700">Add New Expense</button>
             </div>
+
+            {/* Filters */}
+            <div className="mb-4 bg-white p-4 rounded-xl shadow-lg flex flex-col sm:flex-row items-center gap-4">
+                <div className="flex items-center space-x-2 w-full sm:w-auto">
+                    <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="p-2 border border-slate-300 rounded-lg w-full" placeholder="Start Date"/>
+                    <span className="text-slate-500">to</span>
+                    <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="p-2 border border-slate-300 rounded-lg w-full" placeholder="End Date"/>
+                </div>
+                 <div className="flex-grow">
+                    <select value={selectedCategory} onChange={e => setSelectedCategory(e.target.value)} className="w-full p-2 border border-slate-300 rounded-lg">
+                        <option value="">All Categories</option>
+                        {Object.values(ExpenseCategory).map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                    </select>
+                </div>
+            </div>
+
             <div className="bg-white rounded-xl shadow-lg overflow-x-auto">
                  <table className="w-full text-left table-auto">
                     <thead>
@@ -179,6 +216,8 @@ const ExpensesView: React.FC = () => {
                     </tbody>
                 </table>
             </div>
+             <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
+
              <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingExpense ? "Edit Expense" : "Add New Expense"}>
                 <form onSubmit={handleSave} className="space-y-4">
                     <input type="date" value={formData.date} onChange={e => setFormData(ex => ({...ex, date: e.target.value}))} required className="w-full p-2 border border-slate-300 rounded-lg"/>

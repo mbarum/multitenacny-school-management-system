@@ -42,6 +42,7 @@ const TeacherDashboard: React.FC = () => {
         );
     }
     
+    // Ensure we filter correctly based on string IDs
     const studentsInClass = students.filter(s => s.classId === assignedClass.id);
     const attendancePercentage = studentsInClass.length > 0 ? Math.round((todayAttendance / studentsInClass.length) * 100) : 0;
 

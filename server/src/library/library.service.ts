@@ -1,13 +1,15 @@
 
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource, LessThan } from 'typeorm';
+import { Repository, DataSource, LessThan, Like } from 'typeorm';
 import { Book } from '../entities/book.entity';
 import { LibraryTransaction, LibraryStatus } from '../entities/library-transaction.entity';
 import { Student } from '../entities/student.entity';
 import { Transaction, TransactionType } from '../entities/transaction.entity';
 import { CreateBookDto } from './dto/create-book.dto';
 import { IssueBookDto } from './dto/issue-book.dto';
+import { GetBooksDto } from './dto/get-books.dto';
+import { GetLibraryTransactionsDto } from './dto/get-library-transactions.dto';
 
 @Injectable()
 export class LibraryService {
@@ -19,8 +21,32 @@ export class LibraryService {
     private dataSource: DataSource
   ) {}
 
-  async findAllBooks(schoolId: string) {
-    return this.bookRepo.find({ where: { schoolId: schoolId as any }, order: { title: 'ASC' } });
+  async findAllBooks(query: GetBooksDto, schoolId: string) {
+    const { page = 1, limit = 10, search, pagination } = query;
+    const qb = this.bookRepo.createQueryBuilder('book');
+    qb.where('book.schoolId = :schoolId', { schoolId });
+
+    if (search) {
+        qb.andWhere('(book.title LIKE :search OR book.author LIKE :search OR book.isbn LIKE :search)', { search: `%${search}%` });
+    }
+
+    qb.orderBy('book.title', 'ASC');
+
+    if (pagination === 'false') {
+        return qb.getMany();
+    }
+
+    const skip = (page - 1) * limit;
+    qb.skip(skip).take(limit);
+
+    const [data, total] = await qb.getManyAndCount();
+    return {
+        data,
+        total,
+        page,
+        limit,
+        last_page: Math.ceil(total / limit)
+    };
   }
 
   async createBook(dto: CreateBookDto, schoolId: string) {
@@ -141,11 +167,32 @@ export class LibraryService {
     });
   }
 
-  async getTransactions(schoolId: string) {
-    return this.transactionRepo.find({
-      where: { schoolId: schoolId as any },
-      relations: ['book', 'student'],
-      order: { borrowDate: 'DESC' }
-    });
+  async getTransactions(query: GetLibraryTransactionsDto, schoolId: string) {
+    const { page = 1, limit = 10, status, studentId, pagination } = query;
+    const qb = this.transactionRepo.createQueryBuilder('trans');
+    qb.leftJoinAndSelect('trans.book', 'book');
+    qb.leftJoinAndSelect('trans.student', 'student');
+    qb.where('trans.schoolId = :schoolId', { schoolId });
+
+    if (status) qb.andWhere('trans.status = :status', { status });
+    if (studentId) qb.andWhere('trans.studentId = :studentId', { studentId });
+
+    qb.orderBy('trans.borrowDate', 'DESC');
+
+    if (pagination === 'false') {
+        return qb.getMany();
+    }
+
+    const skip = (page - 1) * limit;
+    qb.skip(skip).take(limit);
+
+    const [data, total] = await qb.getManyAndCount();
+    return {
+        data,
+        total,
+        page,
+        limit,
+        last_page: Math.ceil(total / limit)
+    };
   }
 }

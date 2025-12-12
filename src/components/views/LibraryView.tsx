@@ -1,15 +1,24 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { useData } from '../../contexts/DataContext';
-import { LibraryStatus, Book, NewBook } from '../../types';
+import { LibraryStatus, Book, NewBook, LibraryTransaction } from '../../types';
 import Modal from '../common/Modal';
+import * as api from '../../services/api';
+import Pagination from '../common/Pagination';
+import Skeleton from '../common/Skeleton';
 
 const LibraryView: React.FC = () => {
-    const { books, libraryTransactions, students, addBook, updateBook, deleteBook, issueBook, returnBook, markBookLost, addNotification, formatCurrency } = useData();
+    // Removed direct use of `books` and `libraryTransactions` from context to use local state with pagination
+    const { students, addBook, updateBook, deleteBook, issueBook, returnBook, markBookLost, addNotification, formatCurrency } = useData();
     const [activeTab, setActiveTab] = useState<'catalog' | 'circulation' | 'history'>('catalog');
     
     // Catalog State
+    const [books, setBooks] = useState<Book[]>([]);
+    const [booksLoading, setBooksLoading] = useState(false);
+    const [booksPage, setBooksPage] = useState(1);
+    const [booksTotalPages, setBooksTotalPages] = useState(1);
     const [searchTerm, setSearchTerm] = useState('');
+    
     const [isBookModalOpen, setIsBookModalOpen] = useState(false);
     const [editingBook, setEditingBook] = useState<Book | null>(null);
     const [newBook, setNewBook] = useState<NewBook>({
@@ -20,18 +29,86 @@ const LibraryView: React.FC = () => {
     const [issueStudentId, setIssueStudentId] = useState('');
     const [issueBookId, setIssueBookId] = useState('');
     const [dueDate, setDueDate] = useState('');
+    const [activeLoans, setActiveLoans] = useState<LibraryTransaction[]>([]); // Need a way to fetch just active loans efficiently
 
-    const filteredBooks = useMemo(() => {
-        return books.filter(b => 
-            b.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
-            b.author.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            b.isbn?.includes(searchTerm)
-        );
-    }, [books, searchTerm]);
+    // History State
+    const [transactions, setTransactions] = useState<LibraryTransaction[]>([]);
+    const [transLoading, setTransLoading] = useState(false);
+    const [transPage, setTransPage] = useState(1);
+    const [transTotalPages, setTransTotalPages] = useState(1);
 
-    const activeLoans = useMemo(() => {
-        return libraryTransactions.filter(t => t.status === LibraryStatus.BORROWED || t.status === LibraryStatus.OVERDUE);
-    }, [libraryTransactions]);
+    // Fetch Books
+    const fetchBooks = useCallback(async () => {
+        setBooksLoading(true);
+        try {
+            const res = await api.getBooks({ page: booksPage, search: searchTerm, limit: 10 });
+            if (Array.isArray(res)) {
+                setBooks(res);
+                setBooksTotalPages(1);
+            } else {
+                setBooks(res.data);
+                setBooksTotalPages(res.last_page);
+            }
+        } catch (error) {
+            console.error("Failed to fetch books", error);
+        } finally {
+            setBooksLoading(false);
+        }
+    }, [booksPage, searchTerm]);
+
+    useEffect(() => {
+        if (activeTab === 'catalog' || activeTab === 'circulation') {
+            fetchBooks();
+        }
+    }, [activeTab, fetchBooks]);
+
+    // Fetch Transactions
+    const fetchTransactions = useCallback(async () => {
+        setTransLoading(true);
+        try {
+            const res = await api.getLibraryTransactions({ page: transPage, limit: 10 });
+             if (Array.isArray(res)) {
+                setTransactions(res);
+                setTransTotalPages(1);
+            } else {
+                setTransactions(res.data);
+                setTransTotalPages(res.last_page);
+            }
+        } catch (error) {
+            console.error("Failed to fetch transactions", error);
+        } finally {
+            setTransLoading(false);
+        }
+    }, [transPage]);
+
+    useEffect(() => {
+        if (activeTab === 'history') {
+            fetchTransactions();
+        }
+    }, [activeTab, fetchTransactions]);
+
+    // Fetch Active Loans for Circulation (Simplified: fetch all active loans, assumes reasonable number, otherwise needs pagination too)
+    const fetchActiveLoans = useCallback(async () => {
+        // We can reuse getLibraryTransactions with status filter if supported, otherwise fetch recent
+        // Assuming we update the API to support filtering by status
+        // For now, let's just fetch recent and filter in client or use a dedicated endpoint
+        try {
+             // Temporary hack: Fetch a large number of recent transactions and filter. 
+             // Ideal: API supports status filter. Added status support in backend DTO.
+             const res = await api.getLibraryTransactions({ limit: 100, status: 'Borrowed' });
+             const list = Array.isArray(res) ? res : res.data;
+             setActiveLoans(list);
+        } catch (error) {
+            console.error("Failed to fetch active loans", error);
+        }
+    }, []);
+
+    useEffect(() => {
+        if (activeTab === 'circulation') {
+            fetchActiveLoans();
+        }
+    }, [activeTab, fetchActiveLoans]);
+
 
     const handleSaveBook = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -45,6 +122,7 @@ const LibraryView: React.FC = () => {
             }
             setIsBookModalOpen(false);
             setNewBook({ title: '', author: '', category: '', isbn: '', totalQuantity: 1, shelfLocation: '', price: 0 });
+            fetchBooks();
         } catch (error) {
             addNotification('Failed to save book', 'error');
         }
@@ -55,6 +133,7 @@ const LibraryView: React.FC = () => {
             try {
                 await deleteBook(id);
                 addNotification('Book deleted', 'success');
+                fetchBooks();
             } catch (error) {
                 addNotification('Cannot delete book with active transactions', 'error');
             }
@@ -73,6 +152,8 @@ const LibraryView: React.FC = () => {
             setIssueStudentId('');
             setIssueBookId('');
             setDueDate('');
+            fetchActiveLoans();
+            fetchBooks(); // Update quantity
         } catch (error: any) {
             addNotification(error.message || 'Failed to issue book', 'error');
         }
@@ -82,6 +163,7 @@ const LibraryView: React.FC = () => {
         try {
             await returnBook(transactionId);
             addNotification('Book returned successfully', 'success');
+            fetchActiveLoans();
         } catch (error) {
             addNotification('Failed to return book', 'error');
         }
@@ -92,6 +174,7 @@ const LibraryView: React.FC = () => {
             try {
                 await markBookLost(transactionId);
                 addNotification('Book marked as lost. Fine invoice created.', 'success');
+                fetchActiveLoans();
             } catch (error) {
                 addNotification('Failed to mark as lost.', 'error');
             }
@@ -153,26 +236,42 @@ const LibraryView: React.FC = () => {
                                 </tr>
                             </thead>
                             <tbody>
-                                {filteredBooks.map(book => (
-                                    <tr key={book.id} className="border-b border-slate-100 hover:bg-slate-50">
-                                        <td className="px-4 py-2 font-medium text-slate-800">{book.title}</td>
-                                        <td className="px-4 py-2 text-slate-600">{book.author}</td>
-                                        <td className="px-4 py-2 text-slate-600">{book.category}</td>
-                                        <td className="px-4 py-2 text-slate-600">{book.shelfLocation || '-'}</td>
-                                        <td className="px-4 py-2 text-slate-600">{formatCurrency(book.price || 0)}</td>
-                                        <td className="px-4 py-2 text-center">
-                                            <span className={`font-bold ${book.availableQuantity > 0 ? 'text-green-600' : 'text-red-600'}`}>{book.availableQuantity}</span> / {book.totalQuantity}
-                                        </td>
-                                        <td className="px-4 py-2 text-center space-x-2">
-                                            <button onClick={() => openBookModal(book)} className="text-blue-600 hover:underline">Edit</button>
-                                            <button onClick={() => handleDeleteBook(book.id)} className="text-red-600 hover:underline">Delete</button>
-                                        </td>
-                                    </tr>
-                                ))}
-                                {filteredBooks.length === 0 && <tr><td colSpan={7} className="text-center py-4 text-slate-500">No books found.</td></tr>}
+                                {booksLoading ? (
+                                    Array.from({ length: 5 }).map((_, i) => (
+                                        <tr key={i} className="border-b border-slate-100">
+                                            <td className="p-2"><Skeleton className="h-4 w-32"/></td>
+                                            <td className="p-2"><Skeleton className="h-4 w-24"/></td>
+                                            <td className="p-2"><Skeleton className="h-4 w-20"/></td>
+                                            <td className="p-2"><Skeleton className="h-4 w-10"/></td>
+                                            <td className="p-2"><Skeleton className="h-4 w-16"/></td>
+                                            <td className="p-2"><Skeleton className="h-4 w-12"/></td>
+                                            <td className="p-2"><Skeleton className="h-4 w-16"/></td>
+                                        </tr>
+                                    ))
+                                ) : books.length === 0 ? (
+                                    <tr><td colSpan={7} className="text-center py-4 text-slate-500">No books found.</td></tr>
+                                ) : (
+                                    books.map(book => (
+                                        <tr key={book.id} className="border-b border-slate-100 hover:bg-slate-50">
+                                            <td className="px-4 py-2 font-medium text-slate-800">{book.title}</td>
+                                            <td className="px-4 py-2 text-slate-600">{book.author}</td>
+                                            <td className="px-4 py-2 text-slate-600">{book.category}</td>
+                                            <td className="px-4 py-2 text-slate-600">{book.shelfLocation || '-'}</td>
+                                            <td className="px-4 py-2 text-slate-600">{formatCurrency(book.price || 0)}</td>
+                                            <td className="px-4 py-2 text-center">
+                                                <span className={`font-bold ${book.availableQuantity > 0 ? 'text-green-600' : 'text-red-600'}`}>{book.availableQuantity}</span> / {book.totalQuantity}
+                                            </td>
+                                            <td className="px-4 py-2 text-center space-x-2">
+                                                <button onClick={() => openBookModal(book)} className="text-blue-600 hover:underline">Edit</button>
+                                                <button onClick={() => handleDeleteBook(book.id)} className="text-red-600 hover:underline">Delete</button>
+                                            </td>
+                                        </tr>
+                                    ))
+                                )}
                             </tbody>
                         </table>
                     </div>
+                    <Pagination currentPage={booksPage} totalPages={booksTotalPages} onPageChange={setBooksPage} />
                 </div>
             )}
 
@@ -269,35 +368,52 @@ const LibraryView: React.FC = () => {
             )}
 
             {activeTab === 'history' && (
-                <div className="bg-white p-6 rounded-xl shadow-lg overflow-x-auto">
-                    <table className="w-full text-left table-auto">
-                        <thead>
-                            <tr className="bg-slate-50 border-b border-slate-200">
-                                <th className="px-4 py-3 font-semibold text-slate-600">Book</th>
-                                <th className="px-4 py-3 font-semibold text-slate-600">Borrower</th>
-                                <th className="px-4 py-3 font-semibold text-slate-600">Issued</th>
-                                <th className="px-4 py-3 font-semibold text-slate-600">Returned</th>
-                                <th className="px-4 py-3 font-semibold text-slate-600">Status</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {libraryTransactions.map(t => (
-                                <tr key={t.id} className="border-b border-slate-100">
-                                    <td className="px-4 py-2 font-medium">{t.bookTitle}</td>
-                                    <td className="px-4 py-2">{t.borrowerName}</td>
-                                    <td className="px-4 py-2">{new Date(t.borrowDate).toLocaleDateString()}</td>
-                                    <td className="px-4 py-2">{t.returnDate ? new Date(t.returnDate).toLocaleDateString() : '-'}</td>
-                                    <td className="px-4 py-2">
-                                        <span className={`px-2 py-1 text-xs rounded-full ${
-                                            t.status === LibraryStatus.RETURNED ? 'bg-green-100 text-green-800' :
-                                            t.status === LibraryStatus.OVERDUE ? 'bg-red-100 text-red-800' : 
-                                            t.status === LibraryStatus.LOST ? 'bg-slate-800 text-white' : 'bg-blue-100 text-blue-800'
-                                        }`}>{t.status}</span>
-                                    </td>
+                <div>
+                     <div className="bg-white p-6 rounded-xl shadow-lg overflow-x-auto">
+                        <table className="w-full text-left table-auto">
+                            <thead>
+                                <tr className="bg-slate-50 border-b border-slate-200">
+                                    <th className="px-4 py-3 font-semibold text-slate-600">Book</th>
+                                    <th className="px-4 py-3 font-semibold text-slate-600">Borrower</th>
+                                    <th className="px-4 py-3 font-semibold text-slate-600">Issued</th>
+                                    <th className="px-4 py-3 font-semibold text-slate-600">Returned</th>
+                                    <th className="px-4 py-3 font-semibold text-slate-600">Status</th>
                                 </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody>
+                                {transLoading ? (
+                                    Array.from({ length: 5 }).map((_, i) => (
+                                        <tr key={i} className="border-b border-slate-100">
+                                            <td className="p-2"><Skeleton className="h-4 w-32"/></td>
+                                            <td className="p-2"><Skeleton className="h-4 w-24"/></td>
+                                            <td className="p-2"><Skeleton className="h-4 w-20"/></td>
+                                            <td className="p-2"><Skeleton className="h-4 w-20"/></td>
+                                            <td className="p-2"><Skeleton className="h-4 w-16"/></td>
+                                        </tr>
+                                    ))
+                                ) : transactions.length === 0 ? (
+                                     <tr><td colSpan={5} className="text-center p-4 text-slate-500">No transaction history.</td></tr>
+                                ) : (
+                                    transactions.map(t => (
+                                        <tr key={t.id} className="border-b border-slate-100">
+                                            <td className="px-4 py-2 font-medium">{t.bookTitle}</td>
+                                            <td className="px-4 py-2">{t.borrowerName}</td>
+                                            <td className="px-4 py-2">{new Date(t.borrowDate).toLocaleDateString()}</td>
+                                            <td className="px-4 py-2">{t.returnDate ? new Date(t.returnDate).toLocaleDateString() : '-'}</td>
+                                            <td className="px-4 py-2">
+                                                <span className={`px-2 py-1 text-xs rounded-full ${
+                                                    t.status === LibraryStatus.RETURNED ? 'bg-green-100 text-green-800' :
+                                                    t.status === LibraryStatus.OVERDUE ? 'bg-red-100 text-red-800' : 
+                                                    t.status === LibraryStatus.LOST ? 'bg-slate-800 text-white' : 'bg-blue-100 text-blue-800'
+                                                }`}>{t.status}</span>
+                                            </td>
+                                        </tr>
+                                    ))
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                    <Pagination currentPage={transPage} totalPages={transTotalPages} onPageChange={setTransPage} />
                 </div>
             )}
 

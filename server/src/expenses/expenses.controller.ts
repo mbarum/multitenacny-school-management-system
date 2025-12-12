@@ -1,10 +1,11 @@
 
-import { Controller, Get, Post, Body, Param, Delete, Request, Patch, Res, UseInterceptors, UploadedFile, BadRequestException } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Delete, Request, Patch, Res, UseInterceptors, UploadedFile, BadRequestException, Query } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { ExpensesService } from './expenses.service';
 import { Expense } from '../entities/expense.entity';
+import { GetExpensesDto } from './dto/get-expenses.dto';
 import { Roles } from '../auth/roles.decorator';
 import { Role } from '../entities/user.entity';
-import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname, join, resolve } from 'path';
 
@@ -45,8 +46,8 @@ export class ExpensesController {
 
   @Get()
   @Roles(Role.Admin, Role.Accountant)
-  findAll(@Request() req: any) {
-    return this.expensesService.findAll(req.user.schoolId);
+  findAll(@Request() req: any, @Query() query: GetExpensesDto) {
+    return this.expensesService.findAll(query, req.user.schoolId);
   }
 
   @Get('export')

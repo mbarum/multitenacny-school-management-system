@@ -236,9 +236,15 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 ] = data;
 
                 const classesList = Array.isArray(classesData) ? classesData : [];
+                
+                // FIX: Robust handling for students data which might come as {data: [], total: ...} or just []
+                // This ensures we don't accidentally set an empty array if the API returns an object
+                const validStudents: Student[] = Array.isArray(studentsData) 
+                    ? studentsData 
+                    : (studentsData && Array.isArray(studentsData.data) ? studentsData.data : []);
 
                 setUsers(Array.isArray(usersData) ? usersData : []); 
-                setStudents(Array.isArray(studentsData) ? studentsData.sort((a: Student,b: Student) => a.name.localeCompare(b.name)) : []); 
+                setStudents(validStudents.sort((a: Student,b: Student) => a.name.localeCompare(b.name)));
                 setTransactions(Array.isArray(transactionsData) ? transactionsData : []); 
                 setExpenses(Array.isArray(expensesData) ? expensesData : []); 
                 setStaff(Array.isArray(staffData) ? staffData : []); 
@@ -268,7 +274,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     const teacherClass = classesList.find((c: SchoolClass) => c.formTeacherId === currentUser.id);
                     setAssignedClass(teacherClass || null);
                 } else if (currentUser.role === Role.Parent) {
-                    setParentChildren((Array.isArray(studentsData) ? studentsData : []).filter((s: Student) => s.guardianEmail === currentUser.email));
+                    setParentChildren(validStudents.filter((s: Student) => s.guardianEmail === currentUser.email));
                 }
                 setIsLoading(false);
                 setIsOffline(false);

@@ -68,11 +68,12 @@ export const getDashboardStats = (): Promise<any> => apiFetch('/dashboard/stats'
 export const fetchInitialData = async (role?: Role) => {
     // Define endpoints and restrict them by role if necessary.
     // If 'roles' is undefined, the endpoint is fetched for everyone.
+    // NOTE: Append ?pagination=false to endpoints that now support pagination but need full data for context init.
     const definitions: { endpoint: string, default: any, critical?: boolean, roles?: Role[] }[] = [
         { endpoint: 'users', default: [], roles: [Role.Admin] },
-        { endpoint: 'students', default: [], roles: [Role.Admin, Role.Accountant, Role.Teacher, Role.Receptionist] },
-        { endpoint: 'transactions', default: [] }, // Access controlled by backend filters, safe to call
-        { endpoint: 'expenses', default: [], roles: [Role.Admin, Role.Accountant] },
+        { endpoint: 'students?pagination=false', default: [], roles: [Role.Admin, Role.Accountant, Role.Teacher, Role.Receptionist] },
+        { endpoint: 'transactions?pagination=false', default: [] }, // Fetches all for simple calculations, though not scalable long term.
+        { endpoint: 'expenses?pagination=false', default: [], roles: [Role.Admin, Role.Accountant] },
         { endpoint: 'staff', default: [], roles: [Role.Admin, Role.Accountant] },
         { endpoint: 'payroll/payroll-history', default: { data: [], total: 0 }, roles: [Role.Admin, Role.Accountant] },
         { endpoint: 'academics/subjects', default: [] },
@@ -81,7 +82,7 @@ export const fetchInitialData = async (role?: Role) => {
         { endpoint: 'academics/timetable-entries', default: [] },
         { endpoint: 'academics/exams', default: [] },
         { endpoint: 'academics/grades', default: [] },
-        { endpoint: 'academics/attendance-records', default: [] },
+        { endpoint: 'academics/attendance-records?pagination=false', default: [] }, // Initial attendance fetch
         { endpoint: 'academics/events', default: [] },
         { endpoint: 'academics/grading-scale', default: [] },
         { endpoint: 'academics/fee-structure', default: [], roles: [Role.Admin, Role.Accountant] },

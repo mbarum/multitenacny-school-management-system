@@ -88,6 +88,8 @@ export class AcademicsService {
       qb.leftJoin('attendance.student', 'student');
       qb.where('student.schoolId = :schoolId', { schoolId });
 
+      const { page = 1, limit = 10, pagination } = query || {};
+
       if (query) {
           if (query.classId) qb.andWhere('attendance.classId = :classId', { classId: query.classId });
           if (query.studentId) qb.andWhere('attendance.studentId = :studentId', { studentId: query.studentId });
@@ -97,7 +99,22 @@ export class AcademicsService {
       }
 
       qb.orderBy('attendance.date', 'DESC');
-      return qb.getMany();
+
+      if (pagination === 'false') {
+          return qb.getMany();
+      }
+
+      const skip = (page - 1) * limit;
+      qb.skip(skip).take(limit);
+
+      const [data, total] = await qb.getManyAndCount();
+      return {
+          data,
+          total,
+          page,
+          limit,
+          last_page: Math.ceil(total / limit)
+      };
   }
 
   findAllEvents = (schoolId: string) => this.eventRepo.find({ where: { schoolId: schoolId as any } });
@@ -118,7 +135,11 @@ export class AcademicsService {
                 entityData.id.startsWith('evt-') || 
                 entityData.id.startsWith('temp-') || 
                 entityData.id.startsWith('tt-') ||
-                entityData.id.startsWith('grd-') // Added grd- prefix for grades
+                entityData.id.startsWith('grd-') ||
+                entityData.id.startsWith('exam-') ||
+                entityData.id.startsWith('cls-') ||
+                entityData.id.startsWith('sub-') ||
+                entityData.id.startsWith('csa-')
             )) {
                 delete entityData.id;
             }

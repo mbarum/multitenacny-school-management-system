@@ -3,6 +3,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Expense } from '../entities/expense.entity';
+import { GetExpensesDto } from './dto/get-expenses.dto';
 import { CsvUtil } from '../utils/csv.util';
 
 @Injectable()
@@ -20,8 +21,32 @@ export class ExpensesService {
     return this.expensesRepository.save(expense);
   }
 
-  findAll(schoolId: string): Promise<Expense[]> {
-    return this.expensesRepository.find({ where: { schoolId: schoolId as any }, order: { date: 'DESC' } });
+  async findAll(query: GetExpensesDto, schoolId: string): Promise<any> {
+    const { page = 1, limit = 10, pagination, startDate, endDate, category } = query;
+    const qb = this.expensesRepository.createQueryBuilder('expense');
+    qb.where('expense.schoolId = :schoolId', { schoolId });
+
+    if (startDate) qb.andWhere('expense.date >= :startDate', { startDate });
+    if (endDate) qb.andWhere('expense.date <= :endDate', { endDate });
+    if (category) qb.andWhere('expense.category = :category', { category });
+
+    qb.orderBy('expense.date', 'DESC');
+
+    if (pagination === 'false') {
+        return qb.getMany();
+    }
+
+    const skip = (page - 1) * limit;
+    qb.skip(skip).take(limit);
+    const [data, total] = await qb.getManyAndCount();
+
+    return {
+        data,
+        total,
+        page,
+        limit,
+        last_page: Math.ceil(total / limit)
+    };
   }
 
   async update(id: string, updateDto: Partial<Expense>, schoolId: string): Promise<Expense> {
