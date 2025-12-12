@@ -1,8 +1,8 @@
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import Modal from '../common/Modal';
 import type { Student, CommunicationLog, User, SchoolClass, NewCommunicationLog } from '../../types';
-import { CommunicationType } from '../../types';
+import { CommunicationType, StudentStatus, TransactionType } from '../../types';
 import { useData } from '../../contexts/DataContext';
 import * as api from '../../services/api';
 import Skeleton from '../common/Skeleton';
@@ -119,11 +119,20 @@ const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ isOpen, onClo
 };
 
 const MyClassView: React.FC = () => {
-    const { students, assignedClass, openIdCardModal } = useData();
+    const { students, assignedClass, openIdCardModal, isLoading } = useData();
     const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
     const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
 
-    if (!assignedClass) return null;
+    if (isLoading) return <div className="p-8 text-center">Loading class data...</div>;
+
+    if (!assignedClass) {
+        return (
+             <div className="p-8 text-center text-slate-500 bg-white rounded-xl shadow m-8">
+                <h3 className="text-xl font-bold mb-2">No Class Assigned</h3>
+                <p>You need to be assigned to a class by the administrator to view students here.</p>
+            </div>
+        );
+    }
 
     const studentsInClass = students.filter(s => s.classId === assignedClass.id);
 
@@ -147,7 +156,7 @@ const MyClassView: React.FC = () => {
                         </tr>
                     </thead>
                     <tbody>
-                        {studentsInClass.map(student => (
+                        {studentsInClass.length > 0 ? studentsInClass.map(student => (
                             <tr key={student.id} className="border-b border-slate-100 hover:bg-slate-50">
                                 <td className="px-4 py-2 flex items-center space-x-3">
                                     <img src={student.profileImage} alt={student.name} className="h-10 w-10 rounded-full object-cover"/>
@@ -160,7 +169,9 @@ const MyClassView: React.FC = () => {
                                     <button onClick={() => handleViewProfile(student)} className="text-primary-600 hover:underline">View Profile</button>
                                 </td>
                             </tr>
-                        ))}
+                        )) : (
+                            <tr><td colSpan={5} className="text-center py-6 text-slate-500">No students found in this class.</td></tr>
+                        )}
                     </tbody>
                 </table>
             </div>

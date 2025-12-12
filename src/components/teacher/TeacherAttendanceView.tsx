@@ -6,12 +6,21 @@ import { useData } from '../../contexts/DataContext';
 import * as api from '../../services/api';
 
 const TeacherAttendanceView: React.FC = () => {
-    const { students, updateAttendance, assignedClass } = useData();
+    const { students, updateAttendance, assignedClass, isLoading } = useData();
     const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
     const [dailyRecords, setDailyRecords] = useState<Map<string, AttendanceStatus>>(new Map());
     const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
 
-    if (!assignedClass) return <div>No class assigned.</div>;
+    if (isLoading) return <div className="p-8 text-center">Loading...</div>;
+
+    if (!assignedClass) {
+        return (
+            <div className="p-8 text-center text-slate-500 bg-white rounded-xl shadow m-8">
+                <h3 className="text-xl font-bold mb-2">No Class Assigned</h3>
+                <p>You need to be assigned to a class to mark attendance.</p>
+            </div>
+        );
+    }
 
     const studentsInClass = useMemo(() => students.filter(s => s.classId === assignedClass.id), [students, assignedClass]);
 
@@ -69,7 +78,7 @@ const TeacherAttendanceView: React.FC = () => {
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
                 <div>
                     <h2 className="text-3xl font-bold text-slate-800">Take Attendance</h2>
-                    <p className="text-slate-600">Class: {assignedClass.name}</p>
+                    <p className="text-slate-600">Class: <span className="font-semibold text-primary-700">{assignedClass.name}</span></p>
                 </div>
                 <div className="flex items-center space-x-4 mt-2 sm:mt-0">
                     <input 

@@ -4,9 +4,11 @@ import type {
     ClassSubjectAssignment, TimetableEntry, Exam, Grade, AttendanceRecord, SchoolEvent, 
     SchoolInfo, GradingRule, FeeItem, CommunicationLog, Announcement, ReportShareLog, 
     PayrollItem, DarajaSettings, MpesaC2BTransaction, NewStudent, NewStaff, 
-    NewTransaction, NewExpense, NewAnnouncement, NewCommunicationLog, NewUser, Book, LibraryTransaction, IssueBookData,
+    NewTransaction, NewExpense, NewPayrollItem, NewAnnouncement, NewCommunicationLog, 
+    NewUser, NewGradingRule, NewFeeItem, Book, LibraryTransaction, IssueBookData,
     School, PlatformPricing
 } from '../types';
+import { Role } from '../types';
 
 const apiFetch = async (endpoint: string, options: RequestInit = {}) => {
     const token = localStorage.getItem('authToken');
@@ -47,19 +49,32 @@ export const uploadUserAvatar = (formData: FormData): Promise<{ avatarUrl: strin
         body: formData
     }).then(res => res.json());
 };
+export const adminUploadUserPhoto = (formData: FormData): Promise<{ url: string }> => {
+    const token = localStorage.getItem('authToken');
+    return fetch('/api/users/upload-photo', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` },
+        body: formData
+    }).then(async res => {
+        if (!res.ok) throw new Error('Photo upload failed');
+        return res.json();
+    });
+};
 
 // Dashboard
 export const getDashboardStats = (): Promise<any> => apiFetch('/dashboard/stats');
 
 // Initial Data Load
-export const fetchInitialData = async () => {
-    const definitions = [
-        { endpoint: 'users', default: [] },
-        { endpoint: 'students', default: [] },
-        { endpoint: 'transactions', default: [] },
-        { endpoint: 'expenses', default: [] },
-        { endpoint: 'staff', default: [] },
-        { endpoint: 'payroll/payroll-history', default: { data: [], total: 0 } },
+export const fetchInitialData = async (role?: Role) => {
+    // Define endpoints and restrict them by role if necessary.
+    // If 'roles' is undefined, the endpoint is fetched for everyone.
+    const definitions: { endpoint: string, default: any, critical?: boolean, roles?: Role[] }[] = [
+        { endpoint: 'users', default: [], roles: [Role.Admin] },
+        { endpoint: 'students', default: [], roles: [Role.Admin, Role.Accountant, Role.Teacher, Role.Receptionist] },
+        { endpoint: 'transactions', default: [] }, // Access controlled by backend filters, safe to call
+        { endpoint: 'expenses', default: [], roles: [Role.Admin, Role.Accountant] },
+        { endpoint: 'staff', default: [], roles: [Role.Admin, Role.Accountant] },
+        { endpoint: 'payroll/payroll-history', default: { data: [], total: 0 }, roles: [Role.Admin, Role.Accountant] },
         { endpoint: 'academics/subjects', default: [] },
         { endpoint: 'academics/classes', default: [] },
         { endpoint: 'academics/class-subject-assignments', default: [] },
@@ -69,15 +84,22 @@ export const fetchInitialData = async () => {
         { endpoint: 'academics/attendance-records', default: [] },
         { endpoint: 'academics/events', default: [] },
         { endpoint: 'academics/grading-scale', default: [] },
-        { endpoint: 'academics/fee-structure', default: [] },
-        { endpoint: 'payroll/payroll-items', default: [] },
+        { endpoint: 'academics/fee-structure', default: [], roles: [Role.Admin, Role.Accountant] },
+        { endpoint: 'payroll/payroll-items', default: [], roles: [Role.Admin, Role.Accountant] },
         { endpoint: 'communications/communication-logs', default: { data: [], total: 0 } },
         { endpoint: 'communications/announcements', default: [] },
         { endpoint: 'settings/school-info', default: null, critical: true },
-        { endpoint: 'settings/daraja', default: null }
+        { endpoint: 'settings/daraja', default: null, roles: [Role.Admin] }
     ];
 
-    const results = await Promise.allSettled(definitions.map(def => apiFetch(`/${def.endpoint}`)));
+    const results = await Promise.allSettled(definitions.map(def => {
+        // If a role is provided and the definition has restricted roles, check access
+        if (role && def.roles && !def.roles.includes(role)) {
+            // Skip fetching and return default immediately
+            return Promise.resolve(def.default);
+        }
+        return apiFetch(`/${def.endpoint}`);
+    }));
     
     return results.map((result, index) => {
         const def = definitions[index];

@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import Modal from '../components/common/Modal';
+import Modal from '../common/Modal';
 import type { SchoolInfo, User, GradingRule, FeeItem, SchoolClass, DarajaSettings, ClassFee, Student, NewUser, NewFeeItem, NewGradingRule } from '../../types';
 import { GradingSystem, CbetScore, Role, Currency } from '../../types';
 import { useData } from '../../contexts/DataContext';
@@ -136,22 +136,37 @@ const UserModal: React.FC<{
     onSave: (user: NewUser | (Partial<NewUser> & { id: string })) => void;
     user: User | null;
 }> = ({ isOpen, onClose, onSave, user }) => {
-    
+    const { addNotification, adminUploadUserPhoto } = useData();
     const [formData, setFormData] = useState({
-        name: '', email: '', password: '', role: Role.Parent
+        name: '', email: '', password: '', role: Role.Parent, avatarUrl: ''
     });
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
         if (user) {
-            setFormData({ name: user.name, email: user.email, password: '', role: user.role });
+            setFormData({ name: user.name, email: user.email, password: '', role: user.role, avatarUrl: user.avatarUrl });
         } else {
-            setFormData({ name: '', email: '', password: '', role: Role.Parent });
+            setFormData({ name: '', email: '', password: '', role: Role.Parent, avatarUrl: '' });
         }
     }, [user, isOpen]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
+    };
+
+    const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0]) {
+            const uploadData = new FormData();
+            uploadData.append('file', e.target.files[0]);
+            try {
+                const res = await adminUploadUserPhoto(uploadData);
+                setFormData(prev => ({ ...prev, avatarUrl: res.url }));
+                addNotification('Photo uploaded successfully', 'success');
+            } catch (error) {
+                addNotification('Failed to upload photo', 'error');
+            }
+        }
     };
 
     const handleSubmit = (e: React.FormEvent) => {
@@ -171,6 +186,29 @@ const UserModal: React.FC<{
     return (
         <Modal isOpen={isOpen} onClose={onClose} title={user ? 'Edit User' : 'Add New User'}>
             <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="flex flex-col items-center mb-6">
+                    <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
+                        <img 
+                            src={formData.avatarUrl || 'https://i.pravatar.cc/150'} 
+                            alt="Profile" 
+                            className="w-24 h-24 rounded-full object-cover border-4 border-slate-200 group-hover:opacity-75 transition-opacity"
+                        />
+                        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                            <span className="bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded">Change</span>
+                        </div>
+                    </div>
+                    <input 
+                        type="file" 
+                        ref={fileInputRef} 
+                        className="hidden" 
+                        accept="image/*" 
+                        onChange={handlePhotoUpload}
+                    />
+                    <button type="button" onClick={() => fileInputRef.current?.click()} className="mt-2 text-sm text-blue-600 hover:underline">
+                        Upload Photo
+                    </button>
+                </div>
+
                 <div>
                     <label className="block text-sm font-medium text-slate-700">Full Name</label>
                     <input type="text" name="name" value={formData.name} onChange={handleChange} className="mt-1 block w-full p-2 border border-slate-300 rounded-md" required />
@@ -196,6 +234,7 @@ const UserModal: React.FC<{
         </Modal>
     );
 };
+
 
 const SettingsView: React.FC = () => {
     const { 
@@ -504,7 +543,7 @@ const SettingsView: React.FC = () => {
                                 {(users || []).map((user: User) => (
                                     <tr key={user.id} className="border-b border-slate-100 hover:bg-slate-50">
                                         <td className="px-4 py-2 flex items-center space-x-3">
-                                            <img src={user.avatarUrl} alt={user.name} className="h-10 w-10 rounded-full object-cover"/>
+                                            <img src={user.avatarUrl || 'https://i.pravatar.cc/150'} alt={user.name} className="h-10 w-10 rounded-full object-cover"/>
                                             <span className="font-semibold">{user.name}</span>
                                         </td>
                                         <td className="px-4 py-2 text-slate-600">{user.email}</td>
@@ -593,26 +632,28 @@ const SettingsView: React.FC = () => {
                         </label>
                     </div>
 
-                    <div>
-                        <h4 className="text-lg font-semibold text-slate-700 mb-2">Grading Scale</h4>
-                         <table className="w-full max-w-lg text-left table-auto">
-                            <thead><tr className="bg-slate-50 border-b"><th className="p-2">Grade</th><th className="p-2">Min (%)</th><th className="p-2">Max (%)</th><th className="p-2"></th></tr></thead>
-                            <tbody>
-                                {localGradingScale.map(rule => (
-                                    <tr key={rule.id} className="border-b">
-                                        <td className="p-1"><input type="text" value={rule.grade} onChange={e => handleGradingRuleChange(rule.id, 'grade', e.target.value)} className="w-full p-1 border rounded" /></td>
-                                        <td className="p-1"><input type="number" value={rule.minScore} onChange={e => handleGradingRuleChange(rule.id, 'minScore', e.target.value)} className="w-full p-1 border rounded" /></td>
-                                        <td className="p-1"><input type="number" value={rule.maxScore} onChange={e => handleGradingRuleChange(rule.id, 'maxScore', e.target.value)} className="w-full p-1 border rounded" /></td>
-                                        <td className="p-1 text-center"><button onClick={() => deleteGradingRule(rule.id)} className="text-red-500 hover:text-red-700 font-bold text-lg">&times;</button></td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                         <button onClick={() => addGradingRule({ grade: '', minScore: 0, maxScore: 0 })} className="mt-4 px-4 py-2 bg-slate-200 text-slate-700 rounded-lg text-sm font-semibold hover:bg-slate-300">Add New Rule</button>
-                         <div className="flex justify-end mt-4 pt-4 border-t">
-                            <button onClick={handleSaveGradingChanges} className="px-6 py-2 bg-primary-600 text-white font-semibold rounded-lg shadow-md hover:bg-primary-700">Save Grading Scale</button>
+                    {localSchoolInfo.gradingSystem === GradingSystem.Traditional && (
+                        <div>
+                            <h4 className="text-lg font-semibold text-slate-700 mb-2">Traditional Grade Scale</h4>
+                             <table className="w-full max-w-lg text-left table-auto">
+                                <thead><tr className="bg-slate-50 border-b"><th className="p-2">Grade</th><th className="p-2">Min (%)</th><th className="p-2">Max (%)</th><th className="p-2"></th></tr></thead>
+                                <tbody>
+                                    {localGradingScale.map(rule => (
+                                        <tr key={rule.id} className="border-b">
+                                            <td className="p-1"><input type="text" value={rule.grade} onChange={e => handleGradingRuleChange(rule.id, 'grade', e.target.value)} className="w-full p-1 border rounded" /></td>
+                                            <td className="p-1"><input type="number" value={rule.minScore} onChange={e => handleGradingRuleChange(rule.id, 'minScore', e.target.value)} className="w-full p-1 border rounded" /></td>
+                                            <td className="p-1"><input type="number" value={rule.maxScore} onChange={e => handleGradingRuleChange(rule.id, 'maxScore', e.target.value)} className="w-full p-1 border rounded" /></td>
+                                            <td className="p-1 text-center"><button onClick={() => deleteGradingRule(rule.id)} className="text-red-500 hover:text-red-700 font-bold text-lg">&times;</button></td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                             <button onClick={() => addGradingRule({ grade: 'New', minScore: 0, maxScore: 0 })} className="mt-4 px-4 py-2 bg-slate-200 text-slate-700 rounded-lg text-sm font-semibold hover:bg-slate-300">Add New Rule</button>
+                             <div className="flex justify-end mt-4 pt-4 border-t">
+                                <button onClick={handleSaveGradingChanges} className="px-6 py-2 bg-primary-600 text-white font-semibold rounded-lg shadow-md hover:bg-primary-700">Save Grading Scale</button>
+                            </div>
                         </div>
-                    </div>
+                    )}
 
                     {localSchoolInfo.gradingSystem === GradingSystem.CBC && (
                         <div className="mt-6 pt-6 border-t">

@@ -1,13 +1,23 @@
+
 import React, { useState, useMemo } from 'react';
 import type { Announcement, NewAnnouncement } from '../../types';
 import { useData } from '../../contexts/DataContext';
 
 const TeacherCommunicationView: React.FC = () => {
-    const { announcements, addAnnouncement, assignedClass, currentUser } = useData();
+    const { announcements, addAnnouncement, assignedClass, currentUser, isLoading } = useData();
     const [title, setTitle] = useState('');
     const [content, setContent] = useState('');
 
-    if (!assignedClass || !currentUser) return null;
+    if (isLoading) return <div className="p-8 text-center">Loading...</div>;
+
+    if (!assignedClass || !currentUser) {
+         return (
+            <div className="p-8 text-center text-slate-500 bg-white rounded-xl shadow m-8">
+                <h3 className="text-xl font-bold mb-2">No Class Assigned</h3>
+                <p>You need to be assigned to a class to communicate with parents.</p>
+            </div>
+        );
+    }
 
     const classAnnouncements = useMemo(() => {
         return announcements

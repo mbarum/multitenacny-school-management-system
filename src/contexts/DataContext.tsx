@@ -92,6 +92,7 @@ interface IDataContext {
     updateUser: (userId: string, updates: Partial<User>) => Promise<User>;
     updateUserProfile: (data: Partial<User>) => Promise<void>;
     uploadUserAvatar: (formData: FormData) => Promise<{avatarUrl: string}>;
+    adminUploadUserPhoto: (formData: FormData) => Promise<{url: string}>;
     deleteUser: (userId: string) => Promise<void>;
     
     addGradingRule: (ruleData: NewGradingRule) => Promise<GradingRule>;
@@ -188,6 +189,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         localStorage.removeItem('authToken');
         localStorage.removeItem('currentUser');
         setCurrentUser(null);
+        setAssignedClass(null); // Reset assigned class
         // Clear all sensitive data
         setUsers([]); setStudents([]); setTransactions([]); setExpenses([]); setStaff([]); setPayrollHistory([]); 
         setSubjects([]); setClasses([]); setClassSubjectAssignments([]); setTimetableEntries([]); setExams([]); 
@@ -224,13 +226,16 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     useEffect(() => {
         if (currentUser && currentUser.role !== Role.SuperAdmin) {
             setIsLoading(true);
-            api.fetchInitialData().then(data => {
+            // Pass the user role to fetchInitialData so it knows which endpoints to skip
+            api.fetchInitialData(currentUser.role).then(data => {
                 const [
                     usersData, studentsData, transactionsData, expensesData, staffData, payrollHistoryData, 
                     subjectsData, classesData, assignmentsData, timetableData, examsData, gradesData, 
                     attendanceData, eventsData, gradingData, feeData, payrollItemsData, logsData, 
                     announcementsData, schoolInfoData, darajaData
                 ] = data;
+
+                const classesList = Array.isArray(classesData) ? classesData : [];
 
                 setUsers(Array.isArray(usersData) ? usersData : []); 
                 setStudents(Array.isArray(studentsData) ? studentsData.sort((a: Student,b: Student) => a.name.localeCompare(b.name)) : []); 
@@ -239,7 +244,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 setStaff(Array.isArray(staffData) ? staffData : []); 
                 setPayrollHistory(payrollHistoryData?.data || []); 
                 setSubjects(Array.isArray(subjectsData) ? subjectsData : []); 
-                setClasses(Array.isArray(classesData) ? classesData : []); 
+                setClasses(classesList); 
                 setClassSubjectAssignments(Array.isArray(assignmentsData) ? assignmentsData : []); 
                 setTimetableEntries(Array.isArray(timetableData) ? timetableData : []); 
                 setExams(Array.isArray(examsData) ? examsData : []); 
@@ -259,7 +264,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 api.getLibraryTransactions().then(setLibraryTransactions).catch(console.error);
 
                  if (currentUser.role === Role.Teacher) {
-                    setAssignedClass((Array.isArray(classesData) ? classesData : []).find((c: SchoolClass) => c.formTeacherId === currentUser.id) || null);
+                    // Find the class where this user is the form teacher
+                    const teacherClass = classesList.find((c: SchoolClass) => c.formTeacherId === currentUser.id);
+                    setAssignedClass(teacherClass || null);
                 } else if (currentUser.role === Role.Parent) {
                     setParentChildren((Array.isArray(studentsData) ? studentsData : []).filter((s: Student) => s.guardianEmail === currentUser.email));
                 }
@@ -374,6 +381,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }, []);
     const updateUserProfile = useCallback(async (data: Partial<User>) => { const updated = await api.updateUserProfile(data); setCurrentUser(updated); }, []);
     const uploadUserAvatar = useCallback(async (formData: FormData) => { const res = await api.uploadUserAvatar(formData); setCurrentUser(prev => prev ? ({...prev, avatarUrl: res.avatarUrl}) : null); return res; }, []);
+    const adminUploadUserPhoto = useCallback(async (formData: FormData) => { return api.adminUploadUserPhoto(formData); }, []);
 
     const createBatchUpdateAction = (setter: Function, apiFn: Function) => useCallback(async (data: any[]) => { const result = await apiFn(data); setter(result); }, [setter, apiFn]);
     const updateClasses = createBatchUpdateAction(setClasses, api.batchUpdateClasses);
@@ -431,7 +439,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         addTransaction, addMultipleTransactions, 
         addExpense, 
         addStaff, updateStaff, savePayrollRun, addPayrollItem, updatePayrollItem, deletePayrollItem, 
-        updateSchoolInfo, uploadLogo, addUser, updateUser, updateUserProfile, uploadUserAvatar, deleteUser, 
+        updateSchoolInfo, uploadLogo, addUser, updateUser, updateUserProfile, uploadUserAvatar, adminUploadUserPhoto, deleteUser, 
         addGradingRule, updateGradingRule, deleteGradingRule, 
         addFeeItem, updateFeeItem, deleteFeeItem, 
         updateDarajaSettings, 

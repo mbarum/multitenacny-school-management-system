@@ -72,6 +72,36 @@ export class UsersController {
     return { avatarUrl };
   }
 
+  // Generic upload for Admin managing users (does not auto-update requester's profile)
+  @Post('upload-photo')
+  @Roles(Role.Admin)
+  @UseInterceptors(FileInterceptor('file', {
+    storage: diskStorage({
+      destination: (req, file, cb) => {
+        const path = join(resolve('.'), 'public', 'uploads', 'users');
+        if (!fs.existsSync(path)) {
+          fs.mkdirSync(path, { recursive: true });
+        }
+        cb(null, path);
+      },
+      filename: (req: any, file: any, cb: (error: Error | null, filename: string) => void) => {
+        const randomName = Array(16).fill(null).map(() => (Math.round(Math.random() * 16)).toString(16)).join('');
+        return cb(null, `${randomName}${extname(file.originalname)}`);
+      },
+    }),
+    fileFilter: (req: any, file: any, cb: (error: Error | null, acceptFile: boolean) => void) => {
+        if (!file.originalname.match(/\.(jpg|jpeg|png|gif|webp)$/)) {
+            return cb(new BadRequestException('Only image files are allowed!'), false);
+        }
+        cb(null, true);
+    },
+    limits: { fileSize: 2 * 1024 * 1024 }
+  }))
+  async uploadPhoto(@UploadedFile() file: any) {
+    if (!file) throw new BadRequestException('File upload failed.');
+    return { url: `/public/uploads/users/${file.filename}` };
+  }
+
   @Get(':id')
   @Roles(Role.Admin)
   findOne(@Request() req: any, @Param('id') id: string) {

@@ -6,13 +6,22 @@ import { useData } from '../../contexts/DataContext';
 import * as api from '../../services/api';
 
 const TeacherExaminationsView: React.FC = () => {
-    const { exams, updateGrades, assignedClass, students, classSubjectAssignments, subjects, currentUser } = useData();
+    const { exams, updateGrades, assignedClass, students, classSubjectAssignments, subjects, currentUser, isLoading } = useData();
     const [selectedExamId, setSelectedExamId] = useState<string>('');
     const [selectedSubjectId, setSelectedSubjectId] = useState<string>('');
     const [gradeEntries, setGradeEntries] = useState<Map<string, { score: number | null, cbetScore: CbetScore | null, comments: string }>>(new Map());
     const [currentGrades, setCurrentGrades] = useState<Grade[]>([]);
 
-    if (!assignedClass || !currentUser) return null;
+    if (isLoading) return <div className="p-8 text-center">Loading...</div>;
+
+    if (!assignedClass || !currentUser) {
+         return (
+            <div className="p-8 text-center text-slate-500 bg-white rounded-xl shadow m-8">
+                <h3 className="text-xl font-bold mb-2">No Class Assigned</h3>
+                <p>You need to be assigned to a class to enter grades.</p>
+            </div>
+        );
+    }
 
     const assignedSubjects = useMemo(() => {
         return classSubjectAssignments

@@ -37,7 +37,8 @@ export class AcademicsService {
       id: c.id,
       name: c.name,
       classCode: c.classCode,
-      formTeacherId: c.formTeacherId,
+      // Robustly get the ID. If the column is null (due to TypeORM hydration behavior), get it from the relation object.
+      formTeacherId: c.formTeacherId || (c.formTeacher ? c.formTeacher.id : null),
       formTeacherName: c.formTeacher?.name || null,
     }));
   }
