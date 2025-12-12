@@ -275,7 +275,11 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 setIsOffline(true);
                 setIsLoading(false);
                 if (error.message && (error.message.includes('401') || error.message.includes('Unauthorized'))) {
-                    handleLogout();
+                    // Force clear token immediately to break the loop
+                    localStorage.removeItem('authToken');
+                    localStorage.removeItem('currentUser');
+                    setCurrentUser(null);
+                    window.location.href = '/login'; // Force redirect to login
                 }
             });
         } else if (currentUser && currentUser.role === Role.SuperAdmin) {

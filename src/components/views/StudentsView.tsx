@@ -59,7 +59,7 @@ const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ isOpen, onClo
         
         // Remove 'class' property which causes 400 Bad Request on backend validation
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const { class: _, ...updates } = formData;
+        const { class: _, balance, ...updates } = formData;
         
         updateStudent(student.id, updates).then(() => {
             addNotification(`${student.name}'s profile updated successfully.`, 'success');
