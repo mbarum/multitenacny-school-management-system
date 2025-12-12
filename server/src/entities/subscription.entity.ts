@@ -1,6 +1,7 @@
 
-import { Entity, PrimaryGeneratedColumn, Column, OneToOne, JoinColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import { Entity, Column, OneToOne, JoinColumn } from 'typeorm';
 import { School } from './school.entity';
+import { BaseEntity } from './base.entity';
 
 export enum SubscriptionPlan {
   FREE = 'FREE',
@@ -16,10 +17,7 @@ export enum SubscriptionStatus {
 }
 
 @Entity('subscriptions')
-export class Subscription {
-  @PrimaryGeneratedColumn('uuid')
-  id!: string;
-
+export class Subscription extends BaseEntity {
   @OneToOne(() => School, (school) => school.subscription, { onDelete: 'CASCADE' })
   @JoinColumn()
   school!: School;
@@ -36,10 +34,4 @@ export class Subscription {
 
   @Column({ type: 'datetime', default: () => 'CURRENT_TIMESTAMP' })
   endDate!: Date;
-
-  @CreateDateColumn()
-  createdAt!: Date;
-
-  @UpdateDateColumn()
-  updatedAt!: Date;
 }

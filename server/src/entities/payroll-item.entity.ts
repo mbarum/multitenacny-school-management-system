@@ -1,6 +1,7 @@
 
-import { Entity, PrimaryGeneratedColumn, Column, Index, ManyToOne, JoinColumn } from 'typeorm';
+import { Entity, Column, Index, ManyToOne, JoinColumn } from 'typeorm';
 import { School } from './school.entity';
+import { BaseEntity } from './base.entity';
 
 export const PayrollItemType = {
   Earning: 'Earning',
@@ -25,11 +26,8 @@ export const CalculationType = {
 } as const;
 export type CalculationType = typeof CalculationType[keyof typeof CalculationType];
 
-@Entity()
-export class PayrollItem {
-  @PrimaryGeneratedColumn('uuid')
-  id!: string;
-
+@Entity('payroll_items')
+export class PayrollItem extends BaseEntity {
   @Index()
   @Column({ name: 'school_id', type: 'uuid', nullable: true })
   schoolId!: string;
@@ -50,7 +48,7 @@ export class PayrollItem {
   @Column({ type: 'enum', enum: CalculationType })
   calculationType!: CalculationType;
 
-  @Column('float')
+  @Column('decimal', { precision: 12, scale: 2, default: 0 })
   value!: number;
 
   @Column({ default: false })

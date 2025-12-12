@@ -1,20 +1,19 @@
 
-import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
+import { Entity, Column } from 'typeorm';
+import { BaseEntity } from './base.entity';
+import { ColumnNumericTransformer } from '../utils/transformers';
 
-@Entity()
-export class PlatformSetting {
-  @PrimaryGeneratedColumn()
-  id!: number;
-
-  @Column('float', { default: 3000 })
+@Entity('platform_settings')
+export class PlatformSetting extends BaseEntity {
+  @Column('decimal', { precision: 12, scale: 2, default: 3000, transformer: new ColumnNumericTransformer() })
   basicMonthlyPrice!: number;
 
-  @Column('float', { default: 30000 })
+  @Column('decimal', { precision: 12, scale: 2, default: 30000, transformer: new ColumnNumericTransformer() })
   basicAnnualPrice!: number;
 
-  @Column('float', { default: 5000 })
+  @Column('decimal', { precision: 12, scale: 2, default: 5000, transformer: new ColumnNumericTransformer() })
   premiumMonthlyPrice!: number;
 
-  @Column('float', { default: 50000 })
+  @Column('decimal', { precision: 12, scale: 2, default: 50000, transformer: new ColumnNumericTransformer() })
   premiumAnnualPrice!: number;
 }

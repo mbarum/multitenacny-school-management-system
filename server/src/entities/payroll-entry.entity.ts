@@ -1,12 +1,12 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne } from 'typeorm';
+
+import { Entity, Column, ManyToOne } from 'typeorm';
 import { Payroll } from './payroll.entity';
 import { PayrollItemType } from './payroll-item.entity';
+import { BaseEntity } from './base.entity';
+import { ColumnNumericTransformer } from '../utils/transformers';
 
-@Entity()
-export class PayrollEntry {
-  @PrimaryGeneratedColumn('uuid')
-  id!: string;
-
+@Entity('payroll_entries')
+export class PayrollEntry extends BaseEntity {
   @Column()
   payrollId!: string;
   
@@ -16,7 +16,7 @@ export class PayrollEntry {
   @Column()
   name!: string;
 
-  @Column('float')
+  @Column('decimal', { precision: 12, scale: 2, default: 0, transformer: new ColumnNumericTransformer() })
   amount!: number;
 
   @Column({ type: 'enum', enum: PayrollItemType })

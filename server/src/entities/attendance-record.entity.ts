@@ -1,6 +1,8 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, Unique } from 'typeorm';
+
+import { Entity, Column, ManyToOne, Unique } from 'typeorm';
 import { Student } from './student.entity';
 import { SchoolClass } from './school-class.entity';
+import { BaseEntity } from './base.entity';
 
 export const AttendanceStatus = {
   Present: 'Present',
@@ -10,12 +12,9 @@ export const AttendanceStatus = {
 } as const;
 export type AttendanceStatus = typeof AttendanceStatus[keyof typeof AttendanceStatus];
 
-@Entity()
+@Entity('attendance_records')
 @Unique(['studentId', 'date'])
-export class AttendanceRecord {
-  @PrimaryGeneratedColumn('uuid')
-  id!: string;
-
+export class AttendanceRecord extends BaseEntity {
   @Column()
   studentId!: string;
 

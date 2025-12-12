@@ -56,7 +56,13 @@ export class SettingsService {
       const setting = await this.platformSettingRepository.findOne({ where: {} });
       if (!setting) {
           // Return defaults if not initialized (though seed should handle this)
-          return { id: 0, basicMonthlyPrice: 3000, basicAnnualPrice: 30000, premiumMonthlyPrice: 5000, premiumAnnualPrice: 50000 };
+          return { 
+              id: 'default', 
+              basicMonthlyPrice: 3000, 
+              basicAnnualPrice: 30000, 
+              premiumMonthlyPrice: 5000, 
+              premiumAnnualPrice: 50000 
+          } as unknown as PlatformSetting;
       }
       return setting;
   }
@@ -82,7 +88,15 @@ export class SettingsService {
     const setting = await this.darajaSettingRepository.findOne({ where: { schoolId: schoolId as any } });
     if (!setting) {
         // Return blank object if not set yet, preserving the structure
-        return { id: 0, consumerKey: '', consumerSecret: '', shortCode: '', passkey: '', paybillNumber: '', schoolId } as DarajaSetting;
+        return { 
+            id: 'default', 
+            consumerKey: '', 
+            consumerSecret: '', 
+            shortCode: '', 
+            passkey: '', 
+            paybillNumber: '', 
+            schoolId 
+        } as unknown as DarajaSetting;
     }
     return setting;
   }

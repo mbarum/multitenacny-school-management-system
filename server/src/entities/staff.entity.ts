@@ -1,14 +1,13 @@
 
-import { Entity, PrimaryGeneratedColumn, Column, OneToOne, JoinColumn, OneToMany, ManyToOne, Index } from 'typeorm';
+import { Entity, Column, OneToOne, JoinColumn, OneToMany, ManyToOne, Index } from 'typeorm';
 import { User } from './user.entity';
 import { Payroll } from './payroll.entity';
 import { School } from './school.entity';
+import { BaseEntity } from './base.entity';
+import { ColumnNumericTransformer } from '../utils/transformers';
 
-@Entity()
-export class Staff {
-  @PrimaryGeneratedColumn('uuid')
-  id!: string;
-
+@Entity('staff')
+export class Staff extends BaseEntity {
   @Index()
   @Column({ name: 'school_id', type: 'uuid', nullable: true })
   schoolId!: string;
@@ -17,7 +16,7 @@ export class Staff {
   @JoinColumn({ name: 'school_id' })
   school!: School;
 
-  @Column({ unique: true })
+  @Column({ type: 'uuid', unique: true, nullable: true })
   userId!: string;
   
   @OneToOne(() => User, (user) => user.staffProfile, { onDelete: 'CASCADE' })
@@ -30,28 +29,28 @@ export class Staff {
   @Column()
   role!: string;
 
-  @Column()
+  @Column({ nullable: true })
   photoUrl!: string;
 
-  @Column('float')
+  @Column('decimal', { precision: 12, scale: 2, default: 0, transformer: new ColumnNumericTransformer() })
   salary!: number;
 
   @Column({ type: 'date' })
   joinDate!: string;
 
-  @Column()
+  @Column({ nullable: true })
   bankName!: string;
 
-  @Column()
+  @Column({ nullable: true })
   accountNumber!: string;
 
-  @Column()
+  @Column({ nullable: true })
   kraPin!: string;
 
-  @Column()
+  @Column({ nullable: true })
   nssfNumber!: string;
 
-  @Column()
+  @Column({ nullable: true })
   shaNumber!: string;
   
   @OneToMany(() => Payroll, (payroll) => payroll.staff)

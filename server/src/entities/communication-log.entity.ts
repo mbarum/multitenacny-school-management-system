@@ -1,6 +1,8 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
+
+import { Entity, Column, ManyToOne, JoinColumn } from 'typeorm';
 import { Student } from './student.entity';
 import { User } from './user.entity';
+import { BaseEntity } from './base.entity';
 
 export const CommunicationType = {
   SMS: 'SMS',
@@ -9,11 +11,8 @@ export const CommunicationType = {
 } as const;
 export type CommunicationType = typeof CommunicationType[keyof typeof CommunicationType];
 
-@Entity()
-export class CommunicationLog {
-  @PrimaryGeneratedColumn('uuid')
-  id!: string;
-
+@Entity('communication_logs')
+export class CommunicationLog extends BaseEntity {
   @Column()
   studentId!: string;
   
@@ -26,6 +25,7 @@ export class CommunicationLog {
   @Column('text')
   message!: string;
 
+  // We keep 'date' as a specific business date, but BaseEntity adds createdAt which tracks insertion time
   @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
   date!: Date;
 

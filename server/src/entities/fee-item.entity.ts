@@ -1,13 +1,11 @@
 
-import { Entity, PrimaryGeneratedColumn, Column, OneToMany, Index, ManyToOne, JoinColumn } from 'typeorm';
+import { Entity, Column, OneToMany, Index, ManyToOne, JoinColumn } from 'typeorm';
 import { ClassFee } from './class-fee.entity';
 import { School } from './school.entity';
+import { BaseEntity } from './base.entity';
 
-@Entity()
-export class FeeItem {
-  @PrimaryGeneratedColumn('uuid')
-  id!: string;
-
+@Entity('fee_items')
+export class FeeItem extends BaseEntity {
   @Index()
   @Column({ name: 'school_id', type: 'uuid', nullable: true })
   schoolId!: string;

@@ -1,5 +1,4 @@
 
-
 import React, { useState, useEffect, useRef } from 'react';
 import type { Expense, NewExpense } from '../../types';
 import { ExpenseCategory } from '../../types';
@@ -114,6 +113,8 @@ const ExpensesView: React.FC = () => {
             }
         }
     }
+    
+    const isPdf = (url: string) => url.toLowerCase().endsWith('.pdf');
 
     return (
         <div className="p-6 md:p-8">
@@ -156,8 +157,13 @@ const ExpensesView: React.FC = () => {
                                     <td className="px-4 py-3 text-right font-semibold text-slate-800">{formatCurrency(exp.amount)}</td>
                                     <td className="px-4 py-3">
                                         {exp.attachmentUrl && (
-                                            <a href={exp.attachmentUrl} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline text-xs">
-                                                View
+                                            <a href={exp.attachmentUrl} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline text-xs flex items-center">
+                                                {isPdf(exp.attachmentUrl) ? (
+                                                    <>
+                                                        <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
+                                                        PDF
+                                                    </>
+                                                ) : 'View'}
                                             </a>
                                         )}
                                     </td>
@@ -184,7 +190,11 @@ const ExpensesView: React.FC = () => {
                         <label className="block text-sm font-medium text-slate-700 mb-2">Receipt / Invoice</label>
                         <div className="flex items-center space-x-3">
                              {formData.attachmentUrl && (
-                                <img src={formData.attachmentUrl} alt="Receipt Preview" className="h-16 w-16 object-cover rounded border" />
+                                isPdf(formData.attachmentUrl) ? (
+                                     <div className="h-16 w-16 flex items-center justify-center bg-slate-100 rounded border text-slate-500 text-xs">PDF</div>
+                                ) : (
+                                    <img src={formData.attachmentUrl} alt="Receipt Preview" className="h-16 w-16 object-cover rounded border" />
+                                )
                              )}
                             <input 
                                 type="file" 

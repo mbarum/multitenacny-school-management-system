@@ -1,13 +1,13 @@
 
-import { Entity, PrimaryGeneratedColumn, Column, Index, ManyToOne, JoinColumn, CreateDateColumn, OneToMany } from 'typeorm';
+import { Entity, Column, Index, ManyToOne, JoinColumn, OneToMany } from 'typeorm';
 import { School } from './school.entity';
 import { LibraryTransaction } from './library-transaction.entity';
+import { BaseEntity } from './base.entity';
+import { ColumnNumericTransformer } from '../utils/transformers';
 
-@Entity()
-export class Book {
-  @PrimaryGeneratedColumn('uuid')
-  id!: string;
-
+@Entity('books')
+@Index(['schoolId', 'title'])
+export class Book extends BaseEntity {
   @Index()
   @Column({ name: 'school_id', type: 'uuid', nullable: true })
   schoolId!: string;
@@ -26,7 +26,7 @@ export class Book {
   isbn!: string;
 
   @Column()
-  category!: string; // e.g., "Fiction", "Science", "History"
+  category!: string;
 
   @Column({ default: 1 })
   totalQuantity!: number;
@@ -37,11 +37,8 @@ export class Book {
   @Column({ nullable: true })
   shelfLocation!: string;
 
-  @Column('float', { default: 0 })
+  @Column('decimal', { precision: 10, scale: 2, default: 0, transformer: new ColumnNumericTransformer() })
   price!: number;
-
-  @CreateDateColumn()
-  createdAt!: Date;
 
   @OneToMany(() => LibraryTransaction, (transaction) => transaction.book)
   transactions!: LibraryTransaction[];

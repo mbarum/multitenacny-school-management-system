@@ -1,10 +1,11 @@
 
-import { Entity, PrimaryGeneratedColumn, Column, OneToMany, OneToOne, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import { Entity, Column, OneToMany, OneToOne } from 'typeorm';
 import { User } from './user.entity';
 import { Subscription } from './subscription.entity';
 import { Student } from './student.entity';
 import { Staff } from './staff.entity';
 import { SchoolClass } from './school-class.entity';
+import { BaseEntity } from './base.entity';
 
 export enum GradingSystem {
     Traditional = 'Traditional',
@@ -12,10 +13,7 @@ export enum GradingSystem {
 }
 
 @Entity('schools')
-export class School {
-  @PrimaryGeneratedColumn('uuid')
-  id!: string;
-
+export class School extends BaseEntity {
   @Column()
   name!: string;
 
@@ -57,10 +55,4 @@ export class School {
 
   @OneToOne(() => Subscription, (subscription) => subscription.school, { cascade: true })
   subscription!: Subscription;
-
-  @CreateDateColumn()
-  createdAt!: Date;
-
-  @UpdateDateColumn()
-  updatedAt!: Date;
 }

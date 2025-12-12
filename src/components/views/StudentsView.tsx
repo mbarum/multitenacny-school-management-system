@@ -167,7 +167,6 @@ const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ isOpen, onClo
 const StudentsView: React.FC = () => {
     const { students, updateStudent, deleteStudent, addStudent, addMultipleTransactions, addBulkCommunicationLogs, classes, currentUser, feeStructure, studentFinancials, addNotification, openIdCardModal, updateMultipleStudents } = useData();
 
-    // ... [Rest of state variables] ...
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedClass, setSelectedClass] = useState('all');
     const [statusFilter, setStatusFilter] = useState<StudentStatus | 'all'>(StudentStatus.Active);

@@ -1,10 +1,9 @@
-import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
 
-@Entity()
-export class MpesaC2BTransaction {
-  @PrimaryGeneratedColumn('uuid')
-  id!: string;
+import { Entity, Column } from 'typeorm';
+import { BaseEntity } from './base.entity';
 
+@Entity('mpesa_c2b_transactions')
+export class MpesaC2BTransaction extends BaseEntity {
   @Column()
   transactionType!: string;
 

@@ -1,12 +1,10 @@
 
-import { Entity, PrimaryGeneratedColumn, Column, Index, ManyToOne, JoinColumn } from 'typeorm';
+import { Entity, Column, Index, ManyToOne, JoinColumn } from 'typeorm';
 import { School } from './school.entity';
+import { BaseEntity } from './base.entity';
 
-@Entity()
-export class GradingRule {
-  @PrimaryGeneratedColumn('uuid')
-  id!: string;
-
+@Entity('grading_rules')
+export class GradingRule extends BaseEntity {
   @Index()
   @Column({ name: 'school_id', type: 'uuid', nullable: true })
   schoolId!: string;

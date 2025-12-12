@@ -1,13 +1,14 @@
 
-import { Entity, PrimaryGeneratedColumn, Column, OneToOne, OneToMany, ManyToOne, JoinColumn, Index } from 'typeorm';
+import { Entity, Column, OneToOne, OneToMany, ManyToOne, JoinColumn, Index } from 'typeorm';
 import { Staff } from './staff.entity';
 import { SchoolClass } from './school-class.entity';
 import { ClassSubjectAssignment } from './class-subject-assignment.entity';
 import { School } from './school.entity';
+import { BaseEntity } from './base.entity';
 
 export enum Role {
-  SuperAdmin = 'SuperAdmin', // Platform owner
-  Admin = 'Admin', // School Admin
+  SuperAdmin = 'SuperAdmin', 
+  Admin = 'Admin', 
   Accountant = 'Accountant',
   Teacher = 'Teacher',
   Receptionist = 'Receptionist',
@@ -15,18 +16,16 @@ export enum Role {
   Parent = 'Parent',
 }
 
-@Entity()
-export class User {
-  @PrimaryGeneratedColumn('uuid')
-  id!: string;
-
+@Entity('users')
+@Index(['email'], { unique: true }) // Global unique email
+export class User extends BaseEntity {
   @Column()
   name!: string;
 
-  @Column({ unique: true })
+  @Column()
   email!: string;
 
-  @Column({ select: false }) // Hide password by default on selects
+  @Column({ select: false })
   password?: string;
 
   @Column({ type: 'enum', enum: Role })
@@ -36,12 +35,11 @@ export class User {
   avatarUrl!: string;
 
   @Column({ default: 'Active' })
-  status!: string; // "Active" or "Disabled"
+  status!: string;
 
-  // Multi-Tenancy Link
   @Index()
   @Column({ name: 'school_id', type: 'uuid', nullable: true }) 
-  schoolId!: string | null; // Nullable only for SuperAdmin
+  schoolId!: string | null;
 
   @ManyToOne(() => School, (school) => school.users, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'school_id' })

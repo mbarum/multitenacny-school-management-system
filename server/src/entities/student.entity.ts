@@ -1,8 +1,9 @@
 
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, OneToMany, JoinColumn, CreateDateColumn, Index } from 'typeorm';
+import { Entity, Column, ManyToOne, OneToMany, JoinColumn, Index } from 'typeorm';
 import { SchoolClass } from './school-class.entity';
 import { Transaction } from './transaction.entity';
 import { School } from './school.entity';
+import { BaseEntity } from './base.entity';
 
 export enum StudentStatus {
   Active = 'Active',
@@ -10,11 +11,10 @@ export enum StudentStatus {
   Graduated = 'Graduated',
 }
 
-@Entity()
-export class Student {
-  @PrimaryGeneratedColumn('uuid')
-  id!: string;
-
+@Entity('students')
+@Index(['schoolId', 'admissionNumber'], { unique: true }) // Ensure unique admission per school
+@Index(['schoolId', 'name']) // Optimize search
+export class Student extends BaseEntity {
   @Index()
   @Column({ name: 'school_id', type: 'uuid', nullable: true })
   schoolId!: string;
@@ -38,6 +38,7 @@ export class Student {
   @Column()
   guardianName!: string;
 
+  @Index() // Optimize phone lookups for M-Pesa
   @Column()
   guardianContact!: string;
 
@@ -53,9 +54,6 @@ export class Student {
   @Column({ type: 'date', nullable: true })
   dateOfBirth!: string;
 
-  @CreateDateColumn()
-  createdAt!: Date;
-
   @ManyToOne(() => SchoolClass, (schoolClass) => schoolClass.students, { onDelete: 'SET NULL', nullable: true })
   @JoinColumn({ name: 'classId' })
   schoolClass!: SchoolClass;
@@ -63,6 +61,6 @@ export class Student {
   @OneToMany(() => Transaction, (transaction) => transaction.student)
   transactions!: Transaction[];
 
-  // Virtual field for query results, not stored in DB column
+  // Virtual field
   balance?: number;
 }

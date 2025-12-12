@@ -1,12 +1,12 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, OneToMany } from 'typeorm';
+
+import { Entity, Column, ManyToOne, OneToMany } from 'typeorm';
 import { Staff } from './staff.entity';
 import { PayrollEntry } from './payroll-entry.entity';
+import { BaseEntity } from './base.entity';
+import { ColumnNumericTransformer } from '../utils/transformers';
 
-@Entity()
-export class Payroll {
-  @PrimaryGeneratedColumn('uuid')
-  id!: string;
-
+@Entity('payrolls')
+export class Payroll extends BaseEntity {
   @Column()
   staffId!: string;
   
@@ -19,13 +19,13 @@ export class Payroll {
   @Column({ type: 'date' })
   payDate!: string;
 
-  @Column('float')
+  @Column('decimal', { precision: 12, scale: 2, default: 0, transformer: new ColumnNumericTransformer() })
   grossPay!: number;
 
-  @Column('float')
+  @Column('decimal', { precision: 12, scale: 2, default: 0, transformer: new ColumnNumericTransformer() })
   totalDeductions!: number;
 
-  @Column('float')
+  @Column('decimal', { precision: 12, scale: 2, default: 0, transformer: new ColumnNumericTransformer() })
   netPay!: number;
 
   @OneToMany(() => PayrollEntry, (entry) => entry.payroll, { cascade: true })

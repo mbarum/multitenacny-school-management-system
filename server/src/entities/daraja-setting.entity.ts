@@ -1,12 +1,10 @@
 
-import { Entity, PrimaryGeneratedColumn, Column, OneToOne, JoinColumn, Index } from 'typeorm';
+import { Entity, Column, OneToOne, JoinColumn, Index } from 'typeorm';
 import { School } from './school.entity';
+import { BaseEntity } from './base.entity';
 
-@Entity()
-export class DarajaSetting {
-  @PrimaryGeneratedColumn()
-  id!: number;
-
+@Entity('daraja_settings')
+export class DarajaSetting extends BaseEntity {
   @Index()
   @Column({ name: 'school_id', type: 'uuid', nullable: true })
   schoolId!: string;

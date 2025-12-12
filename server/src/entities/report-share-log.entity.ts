@@ -1,12 +1,11 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
+
+import { Entity, Column, ManyToOne, JoinColumn } from 'typeorm';
 import { Student } from './student.entity';
 import { User } from './user.entity';
+import { BaseEntity } from './base.entity';
 
-@Entity()
-export class ReportShareLog {
-  @PrimaryGeneratedColumn('uuid')
-  id!: string;
-
+@Entity('report_share_logs')
+export class ReportShareLog extends BaseEntity {
   @Column()
   studentId!: string;
   

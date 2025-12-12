@@ -1,6 +1,7 @@
 
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
+import { Entity, Column, ManyToOne, JoinColumn } from 'typeorm';
 import { SchoolClass } from './school-class.entity';
+import { BaseEntity } from './base.entity';
 
 export const DayOfWeek = {
   Monday: 'Monday',
@@ -11,11 +12,8 @@ export const DayOfWeek = {
 } as const;
 export type DayOfWeek = typeof DayOfWeek[keyof typeof DayOfWeek];
 
-@Entity()
-export class TimetableEntry {
-  @PrimaryGeneratedColumn('uuid')
-  id!: string;
-
+@Entity('timetable_entries')
+export class TimetableEntry extends BaseEntity {
   @Column()
   classId!: string;
 

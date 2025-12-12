@@ -1,15 +1,14 @@
-import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
+
+import { Entity, Column } from 'typeorm';
+import { BaseEntity } from './base.entity';
 
 export enum GradingSystem {
     Traditional = 'Traditional',
     CBC = 'CBC'
 }
 
-@Entity()
-export class SchoolSetting {
-  @PrimaryGeneratedColumn()
-  id!: number;
-
+@Entity('school_settings')
+export class SchoolSetting extends BaseEntity {
   @Column()
   name!: string;
 

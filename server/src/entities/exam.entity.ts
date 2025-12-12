@@ -1,5 +1,7 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne } from 'typeorm';
+
+import { Entity, Column, ManyToOne } from 'typeorm';
 import { SchoolClass } from './school-class.entity';
+import { BaseEntity } from './base.entity';
 
 export const ExamType = {
   Traditional: 'Traditional',
@@ -7,11 +9,8 @@ export const ExamType = {
 } as const;
 export type ExamType = typeof ExamType[keyof typeof ExamType];
 
-@Entity()
-export class Exam {
-  @PrimaryGeneratedColumn('uuid')
-  id!: string;
-
+@Entity('exams')
+export class Exam extends BaseEntity {
   @Column()
   name!: string;
 

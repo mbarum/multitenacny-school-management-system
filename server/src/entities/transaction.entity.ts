@@ -1,7 +1,9 @@
 
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, Index } from 'typeorm';
+import { Entity, Column, ManyToOne, JoinColumn, Index } from 'typeorm';
 import { Student } from './student.entity';
 import { School } from './school.entity';
+import { BaseEntity } from './base.entity';
+import { ColumnNumericTransformer } from '../utils/transformers';
 
 export const PaymentMethod = {
   MPesa: 'MPesa',
@@ -25,11 +27,10 @@ export const TransactionType = {
 } as const;
 export type TransactionType = typeof TransactionType[keyof typeof TransactionType];
 
-@Entity()
-export class Transaction {
-  @PrimaryGeneratedColumn('uuid')
-  id!: string;
-
+@Entity('transactions')
+@Index(['schoolId', 'date']) // Optimized for date range reporting
+@Index(['schoolId', 'type']) // Optimized for calculating totals
+export class Transaction extends BaseEntity {
   @Index()
   @Column({ name: 'school_id', type: 'uuid', nullable: true })
   schoolId!: string;
@@ -37,6 +38,10 @@ export class Transaction {
   @ManyToOne(() => School, { onDelete: 'CASCADE', nullable: true })
   @JoinColumn({ name: 'school_id' })
   school!: School;
+
+  @Index()
+  @Column({ type: 'uuid' })
+  studentId!: string;
 
   @ManyToOne(() => Student, (student) => student.transactions, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'studentId' })
@@ -51,12 +56,14 @@ export class Transaction {
   @Column()
   description!: string;
 
-  @Column('float')
+  // OPTIMIZATION: Use decimal for money, transformer converts string->number
+  @Column('decimal', { precision: 12, scale: 2, default: 0, transformer: new ColumnNumericTransformer() })
   amount!: number;
 
   @Column({ type: 'enum', enum: PaymentMethod, nullable: true })
   method?: PaymentMethod;
 
+  @Index() // Optimized for searching receipt numbers
   @Column({ nullable: true })
   transactionCode?: string;
 

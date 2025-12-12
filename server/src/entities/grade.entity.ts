@@ -1,7 +1,9 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, Unique } from 'typeorm';
+
+import { Entity, Column, ManyToOne, Unique } from 'typeorm';
 import { Student } from './student.entity';
 import { Exam } from './exam.entity';
 import { Subject } from './subject.entity';
+import { BaseEntity } from './base.entity';
 
 export const CbetScore = {
   Exceeds: 'Exceeds',
@@ -15,12 +17,9 @@ export const CbetScore = {
 } as const;
 export type CbetScore = typeof CbetScore[keyof typeof CbetScore];
 
-@Entity()
+@Entity('grades')
 @Unique(['studentId', 'examId', 'subjectId'])
-export class Grade {
-  @PrimaryGeneratedColumn('uuid')
-  id!: string;
-
+export class Grade extends BaseEntity {
   @Column()
   studentId!: string;
 

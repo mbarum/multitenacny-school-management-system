@@ -26,7 +26,9 @@ const dataSourceOptions: DataSourceOptions = {
         GradingRule, Payroll, PayrollEntry, PayrollItem, ReportShareLog, SchoolEvent, TimetableEntry, 
         Transaction, SchoolSetting, DarajaSetting, School, Subscription, Book, LibraryTransaction, PlatformSetting
     ],
-    synchronize: true, // Use with caution in prod
+    // We handle synchronization manually after dropping tables to avoid FK conflicts
+    synchronize: false, 
+    dropSchema: false,
     logging: ['error'],
 };
 
@@ -34,9 +36,31 @@ const AppDataSource = new DataSource(dataSourceOptions);
 
 const runSeed = async () => {
     try {
-        console.log('Initializing and synchronizing data source...');
+        console.log('Connecting to database...');
         await AppDataSource.initialize();
-        console.log('Data source initialized.');
+        
+        console.log('⚠️  NUCLEAR OPTION: Dropping all tables to fix Foreign Key issues...');
+        // Disable foreign keys to allow dropping tables in any order
+        await AppDataSource.query('SET FOREIGN_KEY_CHECKS = 0');
+        
+        const tables = await AppDataSource.query(`
+            SELECT table_name 
+            FROM information_schema.tables 
+            WHERE table_schema = '${dataSourceOptions.database}';
+        `);
+
+        for (const table of tables) {
+            const tableName = table.TABLE_NAME || table.table_name;
+            await AppDataSource.query(`DROP TABLE IF EXISTS \`${tableName}\``);
+            console.log(`Dropped table: ${tableName}`);
+        }
+
+        await AppDataSource.query('SET FOREIGN_KEY_CHECKS = 1');
+        console.log('✅  All tables dropped.');
+
+        console.log('🔄  Synchronizing Schema...');
+        await AppDataSource.synchronize();
+        console.log('✅  Schema synchronized.');
 
         const salt = await bcrypt.genSalt();
         const hashedPassword = await bcrypt.hash('password123', salt);
@@ -51,9 +75,10 @@ const runSeed = async () => {
         const assignmentRepo = AppDataSource.getRepository(ClassSubjectAssignment);
         const darajaRepo = AppDataSource.getRepository(DarajaSetting);
         const platformRepo = AppDataSource.getRepository(PlatformSetting);
+        const schoolSettingRepo = AppDataSource.getRepository(SchoolSetting);
 
         // 0. Initialize Platform Pricing if not exists
-        let platformSettings = await platformRepo.findOne({ where: { id: 1 } });
+        let platformSettings = await platformRepo.findOne({ where: {} });
         if (!platformSettings) {
             platformSettings = platformRepo.create({
                 basicMonthlyPrice: 3000,
@@ -161,9 +186,7 @@ const runSeed = async () => {
             let cls = await classRepo.findOne({ where: { name: classNames[i], school: { id: school.id } } });
             if (!cls) {
                 // Ensure Unique Form Teacher assignment
-                // We use i % teacherUsers.length logic, but check if that teacher is already assigned
                 const teacher = i < teacherUsers.length ? teacherUsers[i] : null;
-                // Check if this teacher is already assigned to another class
                 const isAssigned = teacher ? await classRepo.findOne({ where: { formTeacher: { id: teacher.id } } }) : false;
 
                 cls = classRepo.create({

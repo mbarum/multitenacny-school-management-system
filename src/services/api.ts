@@ -97,10 +97,21 @@ export const fetchInitialData = async () => {
 const create = <T>(resource: string) => (data: any): Promise<T> => apiFetch(`/${resource}`, { method: 'POST', body: JSON.stringify(data) });
 const update = <T>(resource: string) => (id: string, data: any): Promise<T> => apiFetch(`/${resource}/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
 const remove = (resource: string) => (id: string): Promise<void> => apiFetch(`/${resource}/${id}`, { method: 'DELETE' });
+
+// Updated list function to filter out undefined/null/empty string values
 const list = <T>(resource: string) => (query?: any): Promise<any> => {
-    const queryString = query ? '?' + new URLSearchParams(query as any).toString() : '';
+    let queryString = '';
+    if (query) {
+        const filteredQuery = Object.fromEntries(
+            Object.entries(query).filter(([_, v]) => v !== undefined && v !== null && v !== '')
+        );
+        if (Object.keys(filteredQuery).length > 0) {
+            queryString = '?' + new URLSearchParams(filteredQuery as any).toString();
+        }
+    }
     return apiFetch(`/${resource}${queryString}`);
 };
+
 const batchUpdate = <T>(resource: string) => (items: T[]): Promise<T[]> => apiFetch(`/${resource}/batch`, { method: 'PUT', body: JSON.stringify(items) });
 
 // Students
