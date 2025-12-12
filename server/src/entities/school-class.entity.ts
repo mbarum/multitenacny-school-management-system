@@ -1,5 +1,5 @@
 
-import { Entity, Column, OneToOne, JoinColumn, OneToMany, ManyToOne, Index } from 'typeorm';
+import { Entity, Column, ManyToOne, JoinColumn, OneToMany, Index } from 'typeorm';
 import { User } from './user.entity';
 import { Student } from './student.entity';
 import { ClassFee } from './class-fee.entity';
@@ -25,7 +25,8 @@ export class SchoolClass extends BaseEntity {
   @Column({ type: 'uuid', nullable: true })
   formTeacherId!: string | null;
 
-  @OneToOne(() => User, (user) => user.formClass, { nullable: true, onUpdate: 'NO ACTION', onDelete: 'SET NULL' })
+  // Changed from OneToOne to ManyToOne to allow one teacher to manage multiple classes if needed
+  @ManyToOne(() => User, (user) => user.formClasses, { nullable: true, onDelete: 'SET NULL' })
   @JoinColumn({ name: 'formTeacherId' })
   formTeacher!: User | null;
   

@@ -26,7 +26,7 @@ const dataSourceOptions: DataSourceOptions = {
         GradingRule, Payroll, PayrollEntry, PayrollItem, ReportShareLog, SchoolEvent, TimetableEntry, 
         Transaction, SchoolSetting, DarajaSetting, School, Subscription, Book, LibraryTransaction, PlatformSetting
     ],
-    // We handle synchronization manually after dropping tables to avoid FK conflicts
+    // We handle synchronization manually after dropping tables
     synchronize: false, 
     dropSchema: false,
     logging: ['error'],
@@ -75,7 +75,6 @@ const runSeed = async () => {
         const assignmentRepo = AppDataSource.getRepository(ClassSubjectAssignment);
         const darajaRepo = AppDataSource.getRepository(DarajaSetting);
         const platformRepo = AppDataSource.getRepository(PlatformSetting);
-        const schoolSettingRepo = AppDataSource.getRepository(SchoolSetting);
 
         // 0. Initialize Platform Pricing if not exists
         let platformSettings = await platformRepo.findOne({ where: {} });
@@ -99,7 +98,7 @@ const runSeed = async () => {
                 address: "123 Main St, Springfield",
                 phone: "555-1234",
                 email: "contact@springfield.edu",
-                logoUrl: "/public/uploads/default_logo.png",
+                logoUrl: "https://i.imgur.com/pAEt4tQ.png",
                 gradingSystem: GradingSystem.Traditional,
                 schoolCode: 'SPE',
             });
@@ -185,14 +184,13 @@ const runSeed = async () => {
         for (let i = 0; i < classNames.length; i++) {
             let cls = await classRepo.findOne({ where: { name: classNames[i], school: { id: school.id } } });
             if (!cls) {
-                // Ensure Unique Form Teacher assignment
+                // Allow duplicate form teachers (One teacher can map to multiple classes if needed, or none)
                 const teacher = i < teacherUsers.length ? teacherUsers[i] : null;
-                const isAssigned = teacher ? await classRepo.findOne({ where: { formTeacher: { id: teacher.id } } }) : false;
 
                 cls = classRepo.create({
                     name: classNames[i],
                     classCode: `G${i+1}`,
-                    formTeacher: isAssigned ? null : teacher,
+                    formTeacher: teacher,
                     school: school
                 });
                 cls = await classRepo.save(cls);

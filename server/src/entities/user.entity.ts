@@ -45,8 +45,9 @@ export class User extends BaseEntity {
   @JoinColumn({ name: 'school_id' })
   school!: School;
 
-  @OneToOne(() => SchoolClass, (schoolClass) => schoolClass.formTeacher, { nullable: true })
-  formClass!: SchoolClass | null;
+  // Changed to OneToMany to match SchoolClass ManyToOne
+  @OneToMany(() => SchoolClass, (schoolClass) => schoolClass.formTeacher)
+  formClasses!: SchoolClass[];
   
   @OneToMany(() => ClassSubjectAssignment, (assignment) => assignment.teacher)
   taughtSubjects!: ClassSubjectAssignment[];
