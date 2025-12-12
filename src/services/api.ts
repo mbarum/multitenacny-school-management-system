@@ -51,7 +51,7 @@ export const uploadUserAvatar = (formData: FormData): Promise<{ avatarUrl: strin
 // Dashboard
 export const getDashboardStats = (): Promise<any> => apiFetch('/dashboard/stats');
 
-// Initial Data Load - Robust Implementation
+// Initial Data Load
 export const fetchInitialData = async () => {
     const definitions = [
         { endpoint: 'users', default: [] },
@@ -98,7 +98,6 @@ const create = <T>(resource: string) => (data: any): Promise<T> => apiFetch(`/${
 const update = <T>(resource: string) => (id: string, data: any): Promise<T> => apiFetch(`/${resource}/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
 const remove = (resource: string) => (id: string): Promise<void> => apiFetch(`/${resource}/${id}`, { method: 'DELETE' });
 
-// Updated list function to filter out undefined/null/empty string values
 const list = <T>(resource: string) => (query?: any): Promise<any> => {
     let queryString = '';
     if (query) {
@@ -128,6 +127,17 @@ export const importStudents = (formData: FormData): Promise<{ imported: number; 
         headers: { 'Authorization': `Bearer ${token}` },
         body: formData
     }).then(res => res.json());
+};
+export const uploadStudentPhoto = (formData: FormData): Promise<{ url: string }> => {
+    const token = localStorage.getItem('authToken');
+    return fetch('/api/students/upload-photo', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` },
+        body: formData
+    }).then(async res => {
+        if (!res.ok) throw new Error('Photo upload failed');
+        return res.json();
+    });
 };
 
 // Users
@@ -166,6 +176,17 @@ export const uploadExpenseReceipt = (formData: FormData): Promise<{ url: string 
 export const createStaff = create<Staff>('staff');
 export const updateStaff = update<Staff>('staff');
 export const exportStaff = (): Promise<Blob> => fetch('/api/staff/export', { headers: { 'Authorization': `Bearer ${localStorage.getItem('authToken')}` } }).then(res => res.blob());
+export const uploadStaffPhoto = (formData: FormData): Promise<{ url: string }> => {
+    const token = localStorage.getItem('authToken');
+    return fetch('/api/staff/upload-photo', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` },
+        body: formData
+    }).then(async res => {
+        if (!res.ok) throw new Error('Photo upload failed');
+        return res.json();
+    });
+};
 
 // Payroll
 export const savePayrollRun = (data: Payroll[]): Promise<Payroll[]> => apiFetch('/payroll/generate', { method: 'POST', body: JSON.stringify(data) });
@@ -201,6 +222,7 @@ export const batchUpdateTimetable = batchUpdate<TimetableEntry>('academics/timet
 export const batchUpdateExams = batchUpdate<Exam>('academics/exams');
 export const batchUpdateGrades = batchUpdate<Grade>('academics/grades');
 export const batchUpdateAttendance = batchUpdate<AttendanceRecord>('academics/attendance-records');
+// FIX: Point to correct backend route for events
 export const batchUpdateEvents = batchUpdate<SchoolEvent>('academics/events');
 
 export const getGrades = list<Grade>('academics/grades');

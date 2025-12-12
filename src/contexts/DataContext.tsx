@@ -45,7 +45,7 @@ interface IDataContext {
     assignedClass: SchoolClass | null;
     parentChildren: Student[];
     selectedChild: Student | null;
-    
+
     // Library
     books: Book[];
     libraryTransactions: LibraryTransaction[];
@@ -66,11 +66,11 @@ interface IDataContext {
     handleLogout: () => void;
     getNavigationItems: () => NavItem[];
     openIdCardModal: (person: Student | Staff, type: 'student' | 'staff') => void;
-    formatCurrency: (amount: number, currency?: any) => string;
+    formatCurrency: (amount: number, currency?: string) => string;
     
     // Granular Actions
     addStudent: (studentData: NewStudent) => Promise<Student>;
-    updateStudent: (studentId: string, updates: Partial<Student>) => Promise<void>;
+    updateStudent: (studentId: string, updates: Partial<Student>) => Promise<Student>;
     deleteStudent: (studentId: string) => Promise<void>;
     updateMultipleStudents: (updates: Array<Partial<Student> & { id: string }>) => Promise<void>;
     
@@ -80,26 +80,26 @@ interface IDataContext {
     addExpense: (expenseData: NewExpense) => Promise<Expense>;
 
     addStaff: (staffData: NewStaff) => Promise<Staff>;
-    updateStaff: (staffId: string, updates: Partial<Staff>) => Promise<void>;
+    updateStaff: (staffId: string, updates: Partial<Staff>) => Promise<Staff>;
     savePayrollRun: (payrollData: Payroll[]) => Promise<void>;
     addPayrollItem: (itemData: NewPayrollItem) => Promise<PayrollItem>;
     updatePayrollItem: (itemId: string, updates: Partial<PayrollItem>) => Promise<void>;
     deletePayrollItem: (itemId: string) => Promise<void>;
     
-    updateSchoolInfo: (info: any) => Promise<void>;
+    updateSchoolInfo: (info: SchoolInfo) => Promise<void>;
     uploadLogo: (formData: FormData) => Promise<void>;
     addUser: (userData: NewUser) => Promise<User>;
-    updateUser: (userId: string, updates: Partial<User>) => Promise<void>;
-    updateUserProfile: (updates: Partial<User>) => Promise<void>;
+    updateUser: (userId: string, updates: Partial<User>) => Promise<User>;
+    updateUserProfile: (data: Partial<User>) => Promise<void>;
     uploadUserAvatar: (formData: FormData) => Promise<{avatarUrl: string}>;
     deleteUser: (userId: string) => Promise<void>;
     
     addGradingRule: (ruleData: NewGradingRule) => Promise<GradingRule>;
-    updateGradingRule: (ruleId: string, updates: Partial<GradingRule>) => Promise<void>;
+    updateGradingRule: (ruleId: string, updates: Partial<GradingRule>) => Promise<GradingRule>;
     deleteGradingRule: (ruleId: string) => Promise<void>;
     
     addFeeItem: (itemData: NewFeeItem) => Promise<FeeItem>;
-    updateFeeItem: (itemId: string, updates: Partial<FeeItem>) => Promise<void>;
+    updateFeeItem: (itemId: string, updates: Partial<FeeItem>) => Promise<FeeItem>;
     deleteFeeItem: (itemId: string) => Promise<void>;
     
     updateDarajaSettings: (settings: DarajaSettings) => Promise<void>;
@@ -110,11 +110,11 @@ interface IDataContext {
 
     // Library Actions
     addBook: (book: NewBook) => Promise<Book>;
-    updateBook: (id: string, updates: Partial<Book>) => Promise<Book>;
+    updateBook: (id: string, book: Partial<Book>) => Promise<Book>;
     deleteBook: (id: string) => Promise<void>;
     issueBook: (data: IssueBookData) => Promise<LibraryTransaction>;
-    returnBook: (transactionId: string) => Promise<LibraryTransaction>;
-    markBookLost: (transactionId: string) => Promise<LibraryTransaction>;
+    returnBook: (id: string) => Promise<LibraryTransaction>;
+    markBookLost: (id: string) => Promise<LibraryTransaction>;
 
     // Batch update actions
     updateClasses: (data: SchoolClass[]) => Promise<void>;
@@ -168,7 +168,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [mpesaC2BTransactions, setMpesaC2BTransactions] = useState<MpesaC2BTransaction[]>([]);
     const [notifications, setNotifications] = useState<Notification[]>([]);
     
-    // Library State
+    // Library
     const [books, setBooks] = useState<Book[]>([]);
     const [libraryTransactions, setLibraryTransactions] = useState<LibraryTransaction[]>([]);
 
@@ -189,8 +189,10 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         localStorage.removeItem('currentUser');
         setCurrentUser(null);
         // Clear all sensitive data
-        const setters = { setUsers, setStudents, setTransactions, setExpenses, setStaff, setPayrollHistory, setSubjects, setClasses, setClassSubjectAssignments, setTimetableEntries, setExams, setGrades, setAttendanceRecords, setEvents, setGradingScale, setFeeStructure, setCommunicationLogs, setAnnouncements, setPayrollItems, setDarajaSettings, setBooks, setLibraryTransactions };
-        clearAllData(setters);
+        setUsers([]); setStudents([]); setTransactions([]); setExpenses([]); setStaff([]); setPayrollHistory([]); 
+        setSubjects([]); setClasses([]); setClassSubjectAssignments([]); setTimetableEntries([]); setExams([]); 
+        setGrades([]); setAttendanceRecords([]); setEvents([]); setGradingScale([]); setFeeStructure([]); 
+        setCommunicationLogs([]); setAnnouncements([]); setPayrollItems([]); setDarajaSettings([]); setBooks([]); setLibraryTransactions([]);
     }, []);
 
     // Effect to check for an existing session on app load
@@ -201,20 +203,17 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
             if (token && userJson) {
                 try {
                     const user = JSON.parse(userJson);
-                    // Verify session logic could go here
                     setCurrentUser(user);
                 } catch (error) {
                     handleLogout();
                 }
             }
             try {
-                // Public info - using the PUBLIC endpoint to avoid 401
                 const info = await api.getPublicSchoolInfo();
                 setSchoolInfo(info);
                 setIsOffline(false);
             } catch (error) {
                  console.error("Could not load school information", error);
-                 // Don't set offline true here, allowing landing page to render
             }
             setIsLoading(false);
         };
@@ -233,7 +232,6 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     announcementsData, schoolInfoData, darajaData
                 ] = data;
 
-                // Handle Arrays safely in case of API failure defaults
                 setUsers(Array.isArray(usersData) ? usersData : []); 
                 setStudents(Array.isArray(studentsData) ? studentsData.sort((a: Student,b: Student) => a.name.localeCompare(b.name)) : []); 
                 setTransactions(Array.isArray(transactionsData) ? transactionsData : []); 
@@ -254,12 +252,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 setCommunicationLogs(logsData?.data || []); 
                 setAnnouncements(Array.isArray(announcementsData) ? announcementsData : []); 
                 
-                // This updates the school info to the logged-in school's specific data
                 if (schoolInfoData) setSchoolInfo(schoolInfoData); 
-                
                 setDarajaSettings(darajaData);
                 
-                // Fetch library data separately to avoid huge payload initial issues
                 api.getBooks().then(setBooks).catch(console.error);
                 api.getLibraryTransactions().then(setLibraryTransactions).catch(console.error);
 
@@ -275,11 +270,13 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 setIsOffline(true);
                 setIsLoading(false);
                 if (error.message && (error.message.includes('401') || error.message.includes('Unauthorized'))) {
-                    // Force clear token immediately to break the loop
+                    // FORCE LOGOUT AND REDIRECT
                     localStorage.removeItem('authToken');
                     localStorage.removeItem('currentUser');
                     setCurrentUser(null);
-                    window.location.href = '/login'; // Force redirect to login
+                    window.location.href = '/login'; 
+                } else {
+                    addNotification("Failed to load data. Please check connection.", "error");
                 }
             });
         } else if (currentUser && currentUser.role === Role.SuperAdmin) {
@@ -298,7 +295,6 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         else setActiveView('dashboard');
     }, []);
 
-    // API ACTION FUNCTIONS
     const createApiAction = <P, S>(setter: React.Dispatch<React.SetStateAction<S[]>>, apiFn: (data: P) => Promise<S>, sortFn?: (a: S, b: S) => number) => 
         useCallback(async (data: P) => {
             const newItem = await apiFn(data);
@@ -321,8 +317,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
             await apiFn(id);
             setter(prev => prev.filter(item => item.id !== id));
         }, [setter]);
-    
-    // Bind actions to state setters
+
     const addStudent = createApiAction(setStudents, api.createStudent, (a, b) => a.name.localeCompare(b.name));
     const updateStudent = updateApiAction(setStudents, api.updateStudent);
     const deleteStudent = deleteApiAction(setStudents, api.deleteStudent);
@@ -346,7 +341,6 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const addAnnouncement = createApiAction(setAnnouncements, api.createAnnouncement);
     const addCommunicationLog = createApiAction(setCommunicationLogs, api.createCommunicationLog);
     
-    // Library Actions
     const addBook = createApiAction(setBooks, api.createBook);
     const updateBook = updateApiAction(setBooks, api.updateBook);
     const deleteBook = deleteApiAction(setBooks, api.deleteBook);
@@ -354,7 +348,6 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const returnBook = async (id: string) => { const res = await api.returnBook(id); setLibraryTransactions(prev => prev.map(t => t.id === id ? res : t)); return res; }
     const markBookLost = async (id: string) => { const res = await api.markBookLost(id); setLibraryTransactions(prev => prev.map(t => t.id === id ? res : t)); return res; }
 
-    // Non-standard actions
     const updateMultipleStudents = useCallback(async (updates: Array<Partial<Student> & { id: string }>) => {
         const updatedStudents = await api.updateMultipleStudents(updates);
         setStudents(prev => {
@@ -382,7 +375,6 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const updateUserProfile = useCallback(async (data: Partial<User>) => { const updated = await api.updateUserProfile(data); setCurrentUser(updated); }, []);
     const uploadUserAvatar = useCallback(async (formData: FormData) => { const res = await api.uploadUserAvatar(formData); setCurrentUser(prev => prev ? ({...prev, avatarUrl: res.avatarUrl}) : null); return res; }, []);
 
-    // Batch update actions
     const createBatchUpdateAction = (setter: Function, apiFn: Function) => useCallback(async (data: any[]) => { const result = await apiFn(data); setter(result); }, [setter, apiFn]);
     const updateClasses = createBatchUpdateAction(setClasses, api.batchUpdateClasses);
     const updateSubjects = createBatchUpdateAction(setSubjects, api.batchUpdateSubjects);
@@ -396,11 +388,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const studentFinancials = useMemo(() => {
         const financials: Record<string, { balance: number; overpayment: number; lastPaymentDate: string | null }> = {};
         students.forEach(student => {
-            // Use local student balance if available (from API) or calculate locally as fallback
             if (student.balance !== undefined) {
                 financials[student.id] = { balance: student.balance, overpayment: 0, lastPaymentDate: null };
             } else {
-                // Fallback for immediate UI updates before fresh fetch
                 const studentTransactions = transactions.filter(t => t.studentId === student.id).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
                 let balance = 0; let lastPaymentDate: string | null = null;
                 studentTransactions.forEach(t => {

@@ -3,6 +3,7 @@ import { Controller, Get, Post, Body, Patch, Param, Delete, Request, UseIntercep
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname, join, resolve } from 'path';
+import * as fs from 'fs';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -41,14 +42,20 @@ export class UsersController {
   @Post('upload-avatar')
   @UseInterceptors(FileInterceptor('file', {
     storage: diskStorage({
-      destination: join(resolve('.'), 'public', 'uploads'),
+      destination: (req, file, cb) => {
+        const path = join(resolve('.'), 'public', 'uploads', 'users');
+        if (!fs.existsSync(path)) {
+          fs.mkdirSync(path, { recursive: true });
+        }
+        cb(null, path);
+      },
       filename: (req: any, file: any, cb: (error: Error | null, filename: string) => void) => {
         const randomName = Array(16).fill(null).map(() => (Math.round(Math.random() * 16)).toString(16)).join('');
         return cb(null, `${randomName}${extname(file.originalname)}`);
       },
     }),
     fileFilter: (req: any, file: any, cb: (error: Error | null, acceptFile: boolean) => void) => {
-        if (!file.originalname.match(/\.(jpg|jpeg|png|gif)$/)) {
+        if (!file.originalname.match(/\.(jpg|jpeg|png|gif|webp)$/)) {
             return cb(new BadRequestException('Only image files are allowed!'), false);
         }
         cb(null, true);
@@ -57,7 +64,7 @@ export class UsersController {
   }))
   async uploadAvatar(@UploadedFile() file: any, @Request() req: any) {
     if (!file) throw new BadRequestException('File upload failed.');
-    const avatarUrl = `/public/uploads/${file.filename}`;
+    const avatarUrl = `/public/uploads/users/${file.filename}`;
     
     // Update the user record with the new URL
     await this.usersService.update(req.user.userId, { avatarUrl }, req.user.schoolId);

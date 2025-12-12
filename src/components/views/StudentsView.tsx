@@ -1,17 +1,17 @@
 
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import Modal from '../components/common/Modal';
-import WebcamCaptureModal from '../components/common/WebcamCaptureModal';
-import type { Student, Transaction, CommunicationLog, User, FeeItem, SchoolInfo, NewStudent, NewCommunicationLog, NewTransaction, SchoolClass } from '../../types';
+import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
+import Modal from '../common/Modal';
+import WebcamCaptureModal from '../common/WebcamCaptureModal';
+import type { Student, NewStudent, NewCommunicationLog, NewTransaction, SchoolClass, CommunicationLog } from '../../types';
 import { CommunicationType, StudentStatus, TransactionType } from '../../types';
-import StudentBillingModal from '../components/common/StudentBillingModal';
-import BulkMessageModal from '../components/common/BulkMessageModal';
-import PromotionModal from '../components/common/PromotionModal';
+import StudentBillingModal from '../common/StudentBillingModal';
+import BulkMessageModal from '../common/BulkMessageModal';
+import PromotionModal from '../common/PromotionModal';
 import { useData } from '../../contexts/DataContext';
 import { calculateAge, debounce } from '../../utils/helpers';
-import ImportModal from '../components/common/ImportModal';
-import Pagination from '../components/common/Pagination';
-import Skeleton from '../components/common/Skeleton';
+import ImportModal from '../common/ImportModal';
+import Pagination from '../common/Pagination';
+import Skeleton from '../common/Skeleton';
 import * as api from '../../services/api';
 
 interface StudentProfileModalProps {
@@ -22,15 +22,14 @@ interface StudentProfileModalProps {
 }
 
 const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ isOpen, onClose, student, onViewIdCard }) => {
-    // Removed communicationLogs from useData
     const { addCommunicationLog, currentUser, classes, updateStudent, addNotification } = useData();
     const [activeTab, setActiveTab] = useState<'details' | 'communication'>('details');
     const [message, setMessage] = useState('');
     const [formData, setFormData] = useState<Partial<Student>>({});
     
-    // Local state for communication logs
     const [studentLogs, setStudentLogs] = useState<CommunicationLog[]>([]);
     const [loadingLogs, setLoadingLogs] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
         if (isOpen) {
@@ -38,7 +37,6 @@ const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ isOpen, onClo
             setMessage('');
             if (student) {
                 setFormData({ ...student });
-                // Fetch logs when modal opens
                 setLoadingLogs(true);
                 api.getCommunicationLogs({ studentId: student.id, limit: 50 })
                     .then(res => setStudentLogs(res.data))
@@ -53,11 +51,24 @@ const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ isOpen, onClo
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
+    const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0]) {
+            const formData = new FormData();
+            formData.append('file', e.target.files[0]);
+            try {
+                const res = await api.uploadStudentPhoto(formData);
+                setFormData(prev => ({ ...prev, profileImage: res.url }));
+                addNotification('Photo uploaded successfully', 'success');
+            } catch (error) {
+                addNotification('Failed to upload photo', 'error');
+            }
+        }
+    };
+
     const handleSaveChanges = (e: React.FormEvent) => {
         e.preventDefault();
         if (!student) return;
         
-        // Remove 'class' property which causes 400 Bad Request on backend validation
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { class: _, balance, ...updates } = formData;
         
@@ -100,7 +111,23 @@ const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ isOpen, onClo
             {activeTab === 'details' && (
                 <form onSubmit={handleSaveChanges} className="space-y-6">
                     <div className="flex items-start space-x-6">
-                        <img src={formData.profileImage || student.profileImage} alt={student.name} className="h-24 w-24 rounded-full object-cover border-2 border-slate-200"/>
+                        <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
+                            <img 
+                                src={formData.profileImage || student.profileImage || 'https://i.imgur.com/S5o7W44.png'} 
+                                alt={student.name} 
+                                className="h-24 w-24 rounded-full object-cover border-2 border-slate-200 group-hover:opacity-75 transition-opacity"
+                            />
+                            <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                <span className="bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded">Change</span>
+                            </div>
+                            <input 
+                                type="file" 
+                                ref={fileInputRef} 
+                                className="hidden" 
+                                accept="image/*" 
+                                onChange={handlePhotoUpload}
+                            />
+                        </div>
                         <div className="flex-1">
                              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 <div><label className="text-xs font-medium text-slate-500">Full Name</label><input name="name" value={formData.name || ''} onChange={handleFormChange} className="w-full p-2 border rounded-md"/></div>
@@ -180,6 +207,7 @@ const StudentsView: React.FC = () => {
     const [isCaptureModalOpen, setIsCaptureModalOpen] = useState(false);
     const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
     const [isBulkMessageModalOpen, setIsBulkMessageModalOpen] = useState(false);
+    const addStudentPhotoInputRef = useRef<HTMLInputElement>(null);
     
     // Pagination State
     const [studentsList, setStudentsList] = useState<Student[]>([]);
@@ -199,8 +227,13 @@ const StudentsView: React.FC = () => {
         setLoading(true);
         try {
             const response = await api.getStudents({ page, limit: 10, search, classId, status });
-            setStudentsList(response.data);
-            setTotalPages(response.last_page);
+            if (Array.isArray(response)) {
+                 setStudentsList(response);
+                 setTotalPages(1);
+            } else {
+                 setStudentsList(response.data || []);
+                 setTotalPages(response.last_page || 1);
+            }
             setCurrentPage(page);
         } catch (error) {
             console.error("Error fetching students:", error);
@@ -217,16 +250,16 @@ const StudentsView: React.FC = () => {
         [fetchStudents]
     );
 
-    // Effect for immediate filters (class, status, page)
     useEffect(() => {
         fetchStudents(currentPage, searchTerm, selectedClass, statusFilter);
-    }, [currentPage, selectedClass, statusFilter]);
+    }, [currentPage, selectedClass, statusFilter, fetchStudents]);
 
-    // Effect for Search (Debounced)
     useEffect(() => {
-        // Only debounce if search term changes to avoid lag
-        debouncedFetch(1, searchTerm, selectedClass, statusFilter);
-    }, [searchTerm, debouncedFetch]);
+        // Only trigger debounce search if searchTerm changes
+        if (searchTerm) {
+             debouncedFetch(1, searchTerm, selectedClass, statusFilter);
+        }
+    }, [searchTerm, debouncedFetch, selectedClass, statusFilter]);
     
     
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -243,12 +276,10 @@ const StudentsView: React.FC = () => {
         e.preventDefault();
         
         // Remove 'class' property which causes 400 Bad Request on backend validation
-        // 'class' is a display property on frontend, but backend DTO is strict
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const { class: className, ...payload } = newStudent;
+        const { class: className, ...studentData } = newStudent;
 
-        // Ensure we pass the sanitized object
-        const studentToAdd = await addStudent(payload as NewStudent);
+        const studentToAdd = await addStudent(studentData as NewStudent);
         addNotification(`Student ${studentToAdd.name} added successfully!`, 'success');
 
         const initialTransactions: NewTransaction[] = feeStructure
@@ -270,7 +301,7 @@ const StudentsView: React.FC = () => {
         }
 
         setIsAddModalOpen(false);
-        fetchStudents(currentPage, searchTerm, selectedClass, statusFilter); // Refresh list
+        fetchStudents(currentPage, searchTerm, selectedClass, statusFilter);
     };
     
     const handleOpenAddStudentModal = () => {
@@ -297,8 +328,35 @@ const StudentsView: React.FC = () => {
         setIsBillingModalOpen(true);
     }
     
-    const handlePhotoCapture = (imageDataUrl: string) => {
-        setNewStudent(prev => ({ ...prev, profileImage: imageDataUrl }));
+    const handlePhotoCapture = async (imageDataUrl: string) => {
+         // Convert base64 to file
+         const res = await fetch(imageDataUrl);
+         const blob = await res.blob();
+         const file = new File([blob], "capture.jpg", { type: "image/jpeg" });
+         
+         const formData = new FormData();
+         formData.append('file', file);
+         try {
+            const uploadRes = await api.uploadStudentPhoto(formData);
+            setNewStudent(prev => ({ ...prev, profileImage: uploadRes.url }));
+            addNotification('Photo captured and uploaded.', 'success');
+         } catch (error) {
+             addNotification('Failed to upload captured photo.', 'error');
+         }
+    };
+
+    const handleAddStudentPhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+         if (e.target.files && e.target.files[0]) {
+            const formData = new FormData();
+            formData.append('file', e.target.files[0]);
+            try {
+                const res = await api.uploadStudentPhoto(formData);
+                setNewStudent(prev => ({ ...prev, profileImage: res.url }));
+                addNotification('Photo uploaded.', 'success');
+            } catch (error) {
+                addNotification('Failed to upload photo.', 'error');
+            }
+        }
     };
 
     const handleExport = async () => {
@@ -324,7 +382,6 @@ const StudentsView: React.FC = () => {
         formData.append('file', file);
         try {
             const result = await api.importStudents(formData);
-            // The modal now handles the detailed result display
             if (result.imported > 0) {
                 fetchStudents(currentPage, searchTerm, selectedClass, statusFilter);
             }
@@ -334,7 +391,6 @@ const StudentsView: React.FC = () => {
             addNotification(errorMessage, 'error');
         } finally {
             setIsImporting(false);
-            // Don't close modal here, let user see results
         }
     };
 
@@ -451,7 +507,6 @@ const StudentsView: React.FC = () => {
                     </thead>
                     <tbody>
                         {loading ? (
-                            // Skeleton Loading Rows
                              Array.from({ length: 5 }).map((_, i) => (
                                 <tr key={i} className="border-b border-slate-100">
                                     <td className="px-4 py-4"><Skeleton className="h-4 w-4 mx-auto"/></td>
@@ -475,7 +530,7 @@ const StudentsView: React.FC = () => {
                             </tr>
                         ) : (
                             studentsList.map(student => {
-                                const financials = studentFinancials[student.id] || { balance: 0 };
+                                const financials = studentFinancials[student.id] || { balance: student.balance || 0 };
                                 return (
                                     <tr key={student.id} className={`border-b border-slate-100 hover:bg-slate-50 transition-colors ${student.status !== 'Active' ? 'bg-slate-50 text-slate-500' : ''}`}>
                                         <td className="px-4 py-2 text-center">
@@ -487,7 +542,7 @@ const StudentsView: React.FC = () => {
                                             />
                                         </td>
                                         <td className="px-4 py-2 flex items-center space-x-3">
-                                            <img src={student.profileImage} alt={student.name} className={`h-10 w-10 rounded-full object-cover ${student.status !== 'Active' ? 'filter grayscale' : ''}`}/>
+                                            <img src={student.profileImage} alt={student.name} className={`h-10 w-10 rounded-full object-cover border border-slate-200 ${student.status !== 'Active' ? 'filter grayscale' : ''}`}/>
                                             <div>
                                                 <span className={`font-semibold ${student.status === 'Active' ? 'text-slate-800' : ''}`}>{student.name}</span>
                                                 {student.status !== 'Active' && <span className={`ml-2 px-2 py-0.5 text-xs font-semibold rounded-full ${student.status === 'Graduated' ? 'bg-blue-100 text-blue-700' : 'bg-slate-200 text-slate-600'}`}>{student.status}</span>}
@@ -516,8 +571,20 @@ const StudentsView: React.FC = () => {
             <Modal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} title="Add New Student" size="2xl">
                 <form onSubmit={handleAddStudent} className="space-y-4">
                     <div className="flex items-center space-x-4">
-                        <img src={newStudent.profileImage} alt="New student" className="h-24 w-24 rounded-full object-cover border"/>
-                        <button type="button" onClick={() => setIsCaptureModalOpen(true)} className="px-4 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700">Take Photo</button>
+                        <div className="relative h-24 w-24 rounded-full overflow-hidden border group">
+                            <img src={newStudent.profileImage} alt="New student" className="h-full w-full object-cover"/>
+                        </div>
+                        <div className="flex space-x-2">
+                             <input 
+                                type="file" 
+                                accept="image/*"
+                                ref={addStudentPhotoInputRef}
+                                onChange={handleAddStudentPhotoUpload}
+                                className="hidden"
+                            />
+                            <button type="button" onClick={() => addStudentPhotoInputRef.current?.click()} className="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300">Upload</button>
+                            <button type="button" onClick={() => setIsCaptureModalOpen(true)} className="px-4 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700">Capture</button>
+                        </div>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <input type="text" name="name" placeholder="Full Name" value={newStudent.name} onChange={handleInputChange} required className="p-2 border border-slate-300 rounded-lg"/>

@@ -2,7 +2,7 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import Modal from '../components/common/Modal';
 import WebcamCaptureModal from '../components/common/WebcamCaptureModal';
-import type { Student, Transaction, CommunicationLog, User, FeeItem, SchoolInfo, NewStudent, NewCommunicationLog, NewTransaction, SchoolClass } from '../types';
+import type { Student, NewStudent, NewCommunicationLog, NewTransaction, SchoolClass, CommunicationLog } from '../types';
 import { CommunicationType, StudentStatus, TransactionType } from '../types';
 import StudentBillingModal from '../components/common/StudentBillingModal';
 import BulkMessageModal from '../components/common/BulkMessageModal';
@@ -22,13 +22,11 @@ interface StudentProfileModalProps {
 }
 
 const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ isOpen, onClose, student, onViewIdCard }) => {
-    // Removed communicationLogs from useData
     const { addCommunicationLog, currentUser, classes, updateStudent, addNotification } = useData();
     const [activeTab, setActiveTab] = useState<'details' | 'communication'>('details');
     const [message, setMessage] = useState('');
     const [formData, setFormData] = useState<Partial<Student>>({});
     
-    // Local state for communication logs
     const [studentLogs, setStudentLogs] = useState<CommunicationLog[]>([]);
     const [loadingLogs, setLoadingLogs] = useState(false);
 
@@ -38,7 +36,6 @@ const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ isOpen, onClo
             setMessage('');
             if (student) {
                 setFormData({ ...student });
-                // Fetch logs when modal opens
                 setLoadingLogs(true);
                 api.getCommunicationLogs({ studentId: student.id, limit: 50 })
                     .then(res => setStudentLogs(res.data))
@@ -57,7 +54,9 @@ const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ isOpen, onClo
         e.preventDefault();
         if (!student) return;
         
-        const { class: _, ...updates } = formData;
+        // Remove 'class' and 'balance' properties which are read-only or virtual
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { class: _, balance, ...updates } = formData;
         
         updateStudent(student.id, updates).then(() => {
             addNotification(`${student.name}'s profile updated successfully.`, 'success');
@@ -197,8 +196,13 @@ const StudentsView: React.FC = () => {
         setLoading(true);
         try {
             const response = await api.getStudents({ page, limit: 10, search, classId, status });
-            setStudentsList(response.data);
-            setTotalPages(response.last_page);
+            if (Array.isArray(response)) {
+                 setStudentsList(response);
+                 setTotalPages(1);
+            } else {
+                 setStudentsList(response.data || []);
+                 setTotalPages(response.last_page || 1);
+            }
             setCurrentPage(page);
         } catch (error) {
             console.error("Error fetching students:", error);
@@ -215,16 +219,16 @@ const StudentsView: React.FC = () => {
         [fetchStudents]
     );
 
-    // Effect for immediate filters (class, status, page)
     useEffect(() => {
         fetchStudents(currentPage, searchTerm, selectedClass, statusFilter);
-    }, [currentPage, selectedClass, statusFilter]);
+    }, [currentPage, selectedClass, statusFilter, fetchStudents]);
 
-    // Effect for Search (Debounced)
     useEffect(() => {
-        // Only debounce if search term changes to avoid lag
-        debouncedFetch(1, searchTerm, selectedClass, statusFilter);
-    }, [searchTerm, debouncedFetch]);
+        // Only trigger debounce search if searchTerm changes
+        if (searchTerm) {
+             debouncedFetch(1, searchTerm, selectedClass, statusFilter);
+        }
+    }, [searchTerm, debouncedFetch, selectedClass, statusFilter]);
     
     
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -239,7 +243,12 @@ const StudentsView: React.FC = () => {
 
     const handleAddStudent = async (e: React.FormEvent) => {
         e.preventDefault();
-        const studentToAdd = await addStudent(newStudent);
+        
+        // Remove 'class' property which causes 400 Bad Request on backend validation
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { class: className, ...studentData } = newStudent;
+
+        const studentToAdd = await addStudent(studentData as NewStudent);
         addNotification(`Student ${studentToAdd.name} added successfully!`, 'success');
 
         const initialTransactions: NewTransaction[] = feeStructure
@@ -261,7 +270,7 @@ const StudentsView: React.FC = () => {
         }
 
         setIsAddModalOpen(false);
-        fetchStudents(currentPage, searchTerm, selectedClass, statusFilter); // Refresh list
+        fetchStudents(currentPage, searchTerm, selectedClass, statusFilter);
     };
     
     const handleOpenAddStudentModal = () => {
@@ -315,7 +324,6 @@ const StudentsView: React.FC = () => {
         formData.append('file', file);
         try {
             const result = await api.importStudents(formData);
-            // The modal now handles the detailed result display
             if (result.imported > 0) {
                 fetchStudents(currentPage, searchTerm, selectedClass, statusFilter);
             }
@@ -325,7 +333,6 @@ const StudentsView: React.FC = () => {
             addNotification(errorMessage, 'error');
         } finally {
             setIsImporting(false);
-            // Don't close modal here, let user see results
         }
     };
 
@@ -442,7 +449,6 @@ const StudentsView: React.FC = () => {
                     </thead>
                     <tbody>
                         {loading ? (
-                            // Skeleton Loading Rows
                              Array.from({ length: 5 }).map((_, i) => (
                                 <tr key={i} className="border-b border-slate-100">
                                     <td className="px-4 py-4"><Skeleton className="h-4 w-4 mx-auto"/></td>
@@ -456,7 +462,13 @@ const StudentsView: React.FC = () => {
                             ))
                         ) : studentsList.length === 0 ? (
                             <tr>
-                                <td colSpan={7} className="text-center py-8 text-slate-500">No students found matching your criteria.</td>
+                                <td colSpan={7} className="text-center py-12 text-slate-500 flex flex-col items-center justify-center w-full">
+                                    <svg className="w-12 h-12 text-slate-300 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M15 21a6 6 0 00-9-5.197m0 0A5.975 5.975 0 0112 13a5.975 5.975 0 013 5.197M15 21a6 6 0 00-9-5.197" />
+                                    </svg>
+                                    <p className="font-medium text-lg">No students found</p>
+                                    <p className="text-sm">Try adjusting your filters or search terms.</p>
+                                </td>
                             </tr>
                         ) : (
                             studentsList.map(student => {

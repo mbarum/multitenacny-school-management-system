@@ -31,8 +31,9 @@ export class PayrollService {
 
     async savePayrollRun(payrollData: any[], schoolId: string): Promise<Payroll[]> {
         return this.entityManager.transaction(async transactionalEntityManager => {
-            const currentMonth = new Date().toLocaleString('default', { month: 'long', year: 'numeric' });
-            let entriesToProcess: any[] = []; // Fix: Explicitly type as any[] or specific interface
+            // FIX: Enforce en-US locale to match frontend and avoid duplication due to mismatch
+            const currentMonth = new Date().toLocaleString('en-US', { month: 'long', year: 'numeric' });
+            let entriesToProcess: any[] = []; 
 
             if (!payrollData || payrollData.length === 0) {
                 // Auto-Generate: Fetch staff ONLY for this school
@@ -67,27 +68,40 @@ export class PayrollService {
                 entriesToProcess = payrollData;
             }
 
-            const savedPayrolls: Payroll[] = [];
+            const savedPayrollIds: string[] = [];
+
             for (const data of entriesToProcess) {
+                // Ensure month string consistency if provided by frontend, otherwise use generated default
+                // Ideally, frontend sends the month string it generated
+                const month = data.month || currentMonth;
+
                 // Cleanup using schoolId indirectly via Staff to verify safety
-                // Actually safer to check staff's schoolId matches the request schoolId
                 const staff = await this.staffRepo.findOne({ where: { id: data.staffId, schoolId: schoolId as any } });
                 if (!staff) { this.logger.warn(`Skipping payroll for staff ${data.staffId} - not in school.`); continue; }
 
-                const existing = await transactionalEntityManager.findOne(Payroll, { where: { staffId: data.staffId, month: data.month } });
+                const existing = await transactionalEntityManager.findOne(Payroll, { where: { staffId: data.staffId, month } });
                 if (existing) await transactionalEntityManager.remove(existing);
 
                 const payroll = transactionalEntityManager.create(Payroll, {
-                    staffId: data.staffId, month: data.month, payDate: data.payDate, grossPay: data.grossPay, totalDeductions: data.totalDeductions, netPay: data.netPay
+                    staffId: data.staffId, month, payDate: data.payDate, grossPay: data.grossPay, totalDeductions: data.totalDeductions, netPay: data.netPay
                 });
                 const savedPayroll = await transactionalEntityManager.save(payroll);
+                savedPayrollIds.push(savedPayroll.id);
 
                 const allEntries = [...data.earnings.map((e:any) => ({...e, type: PayrollItemType.Earning, payroll: savedPayroll})), 
                                     ...data.deductions.map((d:any) => ({...d, type: PayrollItemType.Deduction, payroll: savedPayroll}))];
                 await transactionalEntityManager.save(PayrollEntry, allEntries.map(e => transactionalEntityManager.create(PayrollEntry, e)));
-                savedPayrolls.push(savedPayroll);
             }
-            return savedPayrolls;
+
+            // FIX: Reload saved payrolls with relations so frontend gets complete data immediately
+            if (savedPayrollIds.length > 0) {
+                return transactionalEntityManager.find(Payroll, {
+                    where: savedPayrollIds.map(id => ({ id })),
+                    relations: ['payrollEntries', 'staff'] // Load entries for "View Payslip" to work immediately
+                });
+            }
+
+            return [];
         });
     }
 
@@ -108,7 +122,6 @@ export class PayrollService {
         qb.skip(skip).take(limit);
         const [payrolls, total] = await qb.getManyAndCount();
 
-        // Mapping logic kept similar...
         const data = payrolls.map(p => ({
             id: p.id, staffId: p.staffId, staffName: p.staff ? p.staff.name : 'N/A', month: p.month, payDate: p.payDate,
             grossPay: p.grossPay, totalDeductions: p.totalDeductions, netPay: p.netPay,

@@ -1,6 +1,4 @@
 
-// src/utils/helpers.ts
-
 export const createSchoolAbbreviation = (schoolName: string): string => {
     if (!schoolName) return "SCH";
     const words = schoolName.split(' ').filter(w => w.length > 0);
@@ -30,12 +28,6 @@ export const calculateAge = (dateOfBirth: string): number | null => {
     }
 };
 
-/**
- * A simple debounce function to delay execution of a function.
- * @param func The function to debounce.
- * @param delay The delay in milliseconds.
- * @returns A debounced version of the function.
- */
 export const debounce = <F extends (...args: any[]) => any>(func: F, delay: number): ((...args: Parameters<F>) => void) => {
   let timeoutId: ReturnType<typeof setTimeout> | null = null;
   return (...args: Parameters<F>) => {

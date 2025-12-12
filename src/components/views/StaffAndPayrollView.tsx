@@ -1,9 +1,9 @@
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import Modal from '../common/Modal';
-import WebcamCaptureModal from '../common/WebcamCaptureModal';
-import Pagination from '../common/Pagination';
-import Skeleton from '../common/Skeleton';
+import Modal from '../components/common/Modal';
+import WebcamCaptureModal from '../components/common/WebcamCaptureModal';
+import Pagination from '../components/common/Pagination';
+import Skeleton from '../components/common/Skeleton';
 import type { Staff, Payroll, PayrollItem, SchoolInfo, NewStaff, NewPayrollItem, PayrollEntry } from '../../types';
 import { PayrollItemType, PayrollItemCategory, CalculationType, Role } from '../../types';
 import { useData } from '../../contexts/DataContext';
@@ -240,17 +240,34 @@ const StaffAndPayrollView: React.FC = () => {
         setStaffFormData(prev => ({ ...prev, [name]: name === 'salary' ? parseFloat(value) || 0 : value }));
     };
 
-    const handleStaffPhotoCapture = (imageDataUrl: string) => {
-        setStaffPhotoUrl(imageDataUrl);
+    const handleStaffPhotoCapture = async (imageDataUrl: string) => {
+         // Convert base64 to file
+         const res = await fetch(imageDataUrl);
+         const blob = await res.blob();
+         const file = new File([blob], "capture.jpg", { type: "image/jpeg" });
+         
+         const formData = new FormData();
+         formData.append('file', file);
+         try {
+            const uploadRes = await api.uploadStaffPhoto(formData);
+            setStaffPhotoUrl(uploadRes.url);
+            addNotification('Photo captured and uploaded.', 'success');
+         } catch (error) {
+             addNotification('Failed to upload captured photo.', 'error');
+         }
     };
 
-    const handleStaffPhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleStaffPhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
-            const reader = new FileReader();
-            reader.onload = (event) => {
-                setStaffPhotoUrl(event.target?.result as string);
-            };
-            reader.readAsDataURL(e.target.files[0]);
+             const formData = new FormData();
+            formData.append('file', e.target.files[0]);
+            try {
+                const res = await api.uploadStaffPhoto(formData);
+                setStaffPhotoUrl(res.url);
+                addNotification('Photo uploaded.', 'success');
+            } catch (error) {
+                addNotification('Failed to upload photo.', 'error');
+            }
         }
     };
     
@@ -307,7 +324,9 @@ const StaffAndPayrollView: React.FC = () => {
     const calculateHousingLevy = (grossPay: number) => grossPay * 0.015;
 
     const generatePayrollWorksheet = () => {
-        const month = new Date().toLocaleString('default', { month: 'long', year: 'numeric' });
+        // Enforce consistent locale for month string to avoid backend mismatch issues
+        const month = new Date().toLocaleString('en-US', { month: 'long', year: 'numeric' });
+        
         const worksheet = staff.map(staffMember => {
             const earnings: PayrollEntry[] = [{ name: 'Basic Salary', amount: staffMember.salary }];
             
@@ -328,14 +347,31 @@ const StaffAndPayrollView: React.FC = () => {
                 { name: 'NSSF', amount: calculateNSSF(grossPay) },
                 { name: 'Housing Levy', amount: calculateHousingLevy(grossPay) },
             ];
+
+            // Add Recurring Deductions (Missing in previous version)
+             payrollItems
+                .filter(i => i.type === PayrollItemType.Deduction && i.isRecurring)
+                .forEach(item => {
+                     const deductionAmount = item.calculationType === CalculationType.Percentage
+                        ? (item.value / 100) * staffMember.salary
+                        : item.value;
+                     deductions.push({ name: item.name, amount: deductionAmount });
+                });
             
             const totalDeductions = deductions.reduce((sum, d) => sum + d.amount, 0);
             const netPay = grossPay - totalDeductions;
             
             return {
-                id: `payroll-${staffMember.id}-${Date.now()}`, staffId: staffMember.id, staffName: staffMember.name,
-                month, payDate: new Date().toISOString().split('T')[0],
-                grossPay, totalDeductions, netPay, earnings, deductions,
+                id: `payroll-${staffMember.id}-${Date.now()}`, 
+                staffId: staffMember.id, 
+                staffName: staffMember.name,
+                month, 
+                payDate: new Date().toISOString().split('T')[0],
+                grossPay, 
+                totalDeductions, 
+                netPay, 
+                earnings, 
+                deductions,
             };
         });
         setPayrollWorksheet(worksheet);
@@ -358,6 +394,7 @@ const StaffAndPayrollView: React.FC = () => {
             setIsGeneratingPayroll(false);
             setIsRunPayrollModalOpen(false);
             addNotification(`Payroll for ${payrollWorksheet[0]?.month} finalized successfully.`, "success");
+            // Always refresh history to ensure consistency
             if (activeTab === 'history') {
                 fetchPayrollHistory(1, selectedStaffFilter, selectedMonthFilter);
             }
@@ -372,8 +409,6 @@ const StaffAndPayrollView: React.FC = () => {
     const openP9Modal = async (staffMember: Staff) => {
         setSelectedStaffForP9(staffMember);
         // Fetch full history for P9 aggregation
-        // In a real scenario, this should be a specialized endpoint getting yearly aggregates
-        // Here we rely on fetching all history for simplicity, filtering client-side
         try {
             const history = await api.getPayrollHistory({ staffId: staffMember.id, limit: 50 }); // Get plenty of history
             setP9Data(history.data);
@@ -535,7 +570,11 @@ const StaffAndPayrollView: React.FC = () => {
                 <form onSubmit={handleSaveStaff} className="space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <div className="md:col-span-1 flex flex-col items-center">
-                            <img src={staffPhotoUrl} alt="Staff" className="h-32 w-32 rounded-full object-cover border-4 border-slate-200 mb-4" />
+                            <img 
+                                src={staffPhotoUrl} 
+                                alt="Staff" 
+                                className="h-32 w-32 rounded-full object-cover border-4 border-slate-200 mb-4" 
+                            />
                             <div className="flex space-x-2">
                                 <button type="button" onClick={() => setIsStaffCaptureModalOpen(true)} className="px-3 py-1.5 bg-slate-600 text-white text-xs font-semibold rounded-lg hover:bg-slate-700">Capture</button>
                                 <input type="file" accept="image/*" ref={staffPhotoInputRef} onChange={handleStaffPhotoUpload} className="hidden" />
@@ -759,6 +798,5 @@ const StaffAndPayrollView: React.FC = () => {
         </div>
     )
 };
-
 
 export default StaffAndPayrollView;

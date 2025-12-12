@@ -26,7 +26,6 @@ const dataSourceOptions: DataSourceOptions = {
         GradingRule, Payroll, PayrollEntry, PayrollItem, ReportShareLog, SchoolEvent, TimetableEntry, 
         Transaction, SchoolSetting, DarajaSetting, School, Subscription, Book, LibraryTransaction, PlatformSetting
     ],
-    // We handle synchronization manually after dropping tables
     synchronize: false, 
     dropSchema: false,
     logging: ['error'],
@@ -40,7 +39,6 @@ const runSeed = async () => {
         await AppDataSource.initialize();
         
         console.log('⚠️  NUCLEAR OPTION: Dropping all tables to fix Foreign Key issues...');
-        // Disable foreign keys to allow dropping tables in any order
         await AppDataSource.query('SET FOREIGN_KEY_CHECKS = 0');
         
         const tables = await AppDataSource.query(`
@@ -76,7 +74,7 @@ const runSeed = async () => {
         const darajaRepo = AppDataSource.getRepository(DarajaSetting);
         const platformRepo = AppDataSource.getRepository(PlatformSetting);
 
-        // 0. Initialize Platform Pricing if not exists
+        // 0. Initialize Platform Pricing
         let platformSettings = await platformRepo.findOne({ where: {} });
         if (!platformSettings) {
             platformSettings = platformRepo.create({
@@ -86,7 +84,6 @@ const runSeed = async () => {
                 premiumAnnualPrice: 50000
             });
             await platformRepo.save(platformSettings);
-            console.log('Platform pricing initialized.');
         }
 
         // 1. Create a Default School
@@ -103,7 +100,6 @@ const runSeed = async () => {
                 schoolCode: 'SPE',
             });
             school = await schoolRepo.save(school);
-            console.log('Default School created.');
 
             const sub = subRepo.create({
                 school,
@@ -115,7 +111,7 @@ const runSeed = async () => {
             await subRepo.save(sub);
         }
 
-        // 2. Upsert Users (Ensure SuperAdmin and others exist with correct roles)
+        // 2. Upsert Users
         const usersToCreate = [
             { name: 'Platform Owner', email: 'super@saaslink.com', role: Role.SuperAdmin, school: null },
             { name: 'Admin User', email: 'admin@saaslink.com', role: Role.Admin, school: school },
@@ -123,7 +119,6 @@ const runSeed = async () => {
             { name: 'Alice Teacher', email: 'alice@saaslink.com', role: Role.Teacher, school: school },
             { name: 'Bob Teacher', email: 'bob@saaslink.com', role: Role.Teacher, school: school },
             { name: 'Charlie Parent', email: 'parent1@saaslink.com', role: Role.Parent, school: school },
-            { name: 'Diana Parent', email: 'parent2@saaslink.com', role: Role.Parent, school: school },
         ];
         
         const createdUsers: User[] = [];
@@ -140,15 +135,11 @@ const runSeed = async () => {
                     status: 'Active',
                     avatarUrl: `https://i.pravatar.cc/150?u=${userData.email}`
                 });
-                console.log(`Creating user: ${userData.email}`);
             } else {
-                // Critical: Update role if it's different (fixes missing SuperAdmin privileges)
                 user.role = userData.role;
                 user.school = userData.school || null as any;
                 if (!user.password) user.password = hashedPassword;
-                console.log(`Updating user: ${userData.email}`);
             }
-            
             const savedUser = await userRepo.save(user);
             createdUsers.push(savedUser);
         }
@@ -184,9 +175,7 @@ const runSeed = async () => {
         for (let i = 0; i < classNames.length; i++) {
             let cls = await classRepo.findOne({ where: { name: classNames[i], school: { id: school.id } } });
             if (!cls) {
-                // Allow duplicate form teachers (One teacher can map to multiple classes if needed, or none)
                 const teacher = i < teacherUsers.length ? teacherUsers[i] : null;
-
                 cls = classRepo.create({
                     name: classNames[i],
                     classCode: `G${i+1}`,
@@ -227,14 +216,12 @@ const runSeed = async () => {
 
         // 6. Create Subjects
         const subjects = ['Mathematics', 'English', 'Science'];
-        const createdSubjects: Subject[] = [];
         for (const name of subjects) {
             let subj = await subjectRepo.findOne({ where: { name, school: { id: school.id } } });
             if (!subj) {
                 subj = subjectRepo.create({ name, school });
-                subj = await subjectRepo.save(subj);
+                await subjectRepo.save(subj);
             }
-            createdSubjects.push(subj);
         }
 
         // 7. Settings (Daraja)

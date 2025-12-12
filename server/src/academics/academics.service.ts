@@ -109,18 +109,33 @@ export class AcademicsService {
         const savedItems: T[] = [];
         const transactionalRepo = transactionalEntityManager.getRepository(repo.target);
         for (const item of items) {
-            // Check if item exists and belongs to school (if ID present)
-            if (item.id) {
-                // Skip rigorous check for batch performance, but ensure schoolId on entity if applicable
-                // Ideally we verify ownership here.
-            }
-            // For creation/update, inject schoolId if the entity has it
             const entityData = { ...item };
+            
+            // Fix for temporary IDs from frontend (e.g. evt-12345, grd-12345)
+            // If ID looks strictly temporary, remove it to force creation
+            if (entityData.id && typeof entityData.id === 'string' && (
+                entityData.id.startsWith('evt-') || 
+                entityData.id.startsWith('temp-') || 
+                entityData.id.startsWith('tt-') ||
+                entityData.id.startsWith('grd-') // Added grd- prefix for grades
+            )) {
+                delete entityData.id;
+            }
+
             if ('schoolId' in (transactionalRepo.metadata.propertiesMap as any) || transactionalRepo.metadata.columns.find(c => c.propertyName === 'schoolId')) {
                  (entityData as any).schoolId = schoolId;
             }
             
-            const entity = transactionalRepo.create(entityData); 
+            // Upsert logic
+            let entity;
+            if (entityData.id) {
+               // Try to find existing
+               entity = await transactionalRepo.preload(entityData);
+               if(!entity) entity = transactionalRepo.create(entityData);
+            } else {
+               entity = transactionalRepo.create(entityData); 
+            }
+            
             const saved = await transactionalRepo.save(entity);
             savedItems.push(saved);
         }

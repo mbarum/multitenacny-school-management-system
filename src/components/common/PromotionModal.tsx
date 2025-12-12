@@ -1,8 +1,11 @@
-import React, { useState, useMemo, useEffect } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import Modal from './Modal';
 import { useData } from '../../contexts/DataContext';
-import type { Student, SchoolClass } from '../../types';
+import type { Student } from '../../types';
 import { StudentStatus } from '../../types';
+import * as api from '../../services/api';
+import Skeleton from './Skeleton';
 
 interface PromotionModalProps {
     isOpen: boolean;
@@ -10,24 +13,38 @@ interface PromotionModalProps {
 }
 
 const PromotionModal: React.FC<PromotionModalProps> = ({ isOpen, onClose }) => {
-    const { classes, students, updateMultipleStudents, addNotification } = useData();
+    const { classes, updateMultipleStudents, addNotification } = useData();
     const [fromClassId, setFromClassId] = useState('');
     const [toClassId, setToClassId] = useState('');
     const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
     const [isProcessing, setIsProcessing] = useState(false);
-
-    const studentsInFromClass = useMemo(() => {
-        if (!fromClassId) return [];
-        return students.filter(s => s.classId === fromClassId && s.status === 'Active');
-    }, [students, fromClassId]);
+    
+    // Local state for students to ensure we get the full list for the specific class
+    const [studentsInFromClass, setStudentsInFromClass] = useState<Student[]>([]);
+    const [isLoadingStudents, setIsLoadingStudents] = useState(false);
 
     useEffect(() => {
         if (fromClassId) {
-            setSelectedStudentIds(studentsInFromClass.map(s => s.id));
+            setIsLoadingStudents(true);
+            // Fetch all active students for this class specifically, bypassing pagination
+            api.getStudents({ classId: fromClassId, status: 'Active', pagination: 'false' })
+                .then((data: any) => {
+                    // Handle potential API response formats (array vs object with data)
+                    const list = Array.isArray(data) ? data : data.data || [];
+                    setStudentsInFromClass(list);
+                    // Reset selection when class changes
+                    setSelectedStudentIds([]); 
+                })
+                .catch(err => {
+                    console.error("Failed to load students for promotion", err);
+                    addNotification("Failed to load students.", "error");
+                })
+                .finally(() => setIsLoadingStudents(false));
         } else {
+            setStudentsInFromClass([]);
             setSelectedStudentIds([]);
         }
-    }, [fromClassId, studentsInFromClass]);
+    }, [fromClassId, addNotification]);
 
     const handleSelectStudent = (studentId: string) => {
         setSelectedStudentIds(prev =>
@@ -90,6 +107,7 @@ const PromotionModal: React.FC<PromotionModalProps> = ({ isOpen, onClose }) => {
             setFromClassId('');
             setToClassId('');
             setSelectedStudentIds([]);
+            setStudentsInFromClass([]);
             setIsProcessing(false);
         }
     }, [isOpen]);
@@ -118,27 +136,37 @@ const PromotionModal: React.FC<PromotionModalProps> = ({ isOpen, onClose }) => {
                     <div className="border-t pt-4">
                         <h4 className="font-semibold mb-2 text-slate-800">Select students from {classes.find(c => c.id === fromClassId)?.name}</h4>
                         <div className="max-h-64 overflow-y-auto border rounded-md">
-                            <table className="w-full text-sm">
-                                <thead>
-                                    <tr className="bg-slate-50 border-b sticky top-0">
-                                        <th className="p-2 text-left w-10">
-                                            <input type="checkbox" onChange={handleSelectAll} checked={studentsInFromClass.length > 0 && selectedStudentIds.length === studentsInFromClass.length}/>
-                                        </th>
-                                        <th className="p-2 text-left font-semibold text-slate-600">Student Name</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {studentsInFromClass.map(student => (
-                                        <tr key={student.id} className="hover:bg-slate-50 border-b last:border-b-0">
-                                            <td className="p-2">
-                                                <input type="checkbox" checked={selectedStudentIds.includes(student.id)} onChange={() => handleSelectStudent(student.id)} />
-                                            </td>
-                                            <td className="p-2 text-slate-700">{student.name}</td>
+                            {isLoadingStudents ? (
+                                <div className="p-4 space-y-2">
+                                    <Skeleton className="h-6 w-full" />
+                                    <Skeleton className="h-6 w-full" />
+                                    <Skeleton className="h-6 w-full" />
+                                </div>
+                            ) : (
+                                <table className="w-full text-sm">
+                                    <thead>
+                                        <tr className="bg-slate-50 border-b sticky top-0">
+                                            <th className="p-2 text-left w-10">
+                                                <input type="checkbox" onChange={handleSelectAll} checked={studentsInFromClass.length > 0 && selectedStudentIds.length === studentsInFromClass.length}/>
+                                            </th>
+                                            <th className="p-2 text-left font-semibold text-slate-600">Student Name</th>
+                                            <th className="p-2 text-left font-semibold text-slate-600">Admission No.</th>
                                         </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                             {studentsInFromClass.length === 0 && <p className="text-center text-slate-500 p-4">No active students in this class.</p>}
+                                    </thead>
+                                    <tbody>
+                                        {studentsInFromClass.map(student => (
+                                            <tr key={student.id} className="hover:bg-slate-50 border-b last:border-b-0">
+                                                <td className="p-2">
+                                                    <input type="checkbox" checked={selectedStudentIds.includes(student.id)} onChange={() => handleSelectStudent(student.id)} />
+                                                </td>
+                                                <td className="p-2 text-slate-700">{student.name}</td>
+                                                <td className="p-2 text-slate-500">{student.admissionNumber}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            )}
+                             {!isLoadingStudents && studentsInFromClass.length === 0 && <p className="text-center text-slate-500 p-4">No active students found in this class.</p>}
                         </div>
                          <p className="text-xs text-slate-500 mt-1">{selectedStudentIds.length} of {studentsInFromClass.length} students selected.</p>
                     </div>

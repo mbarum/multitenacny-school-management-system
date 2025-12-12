@@ -1,11 +1,10 @@
 
-
 import React, { useState, useMemo, useEffect } from 'react';
 import type { Exam, Grade, SchoolClass, Student, Subject } from '../../types';
 import { ExamType, CbetScore } from '../../types';
-import Modal from '../common/Modal';
+import Modal from '../components/common/Modal';
 import { useData } from '../../contexts/DataContext';
-
+import * as api from '../services/api';
 
 const ManageExamsView: React.FC<any> = ({ exams, classes, openModal }) => (
     <div className="bg-white p-6 rounded-xl shadow-lg">
@@ -35,9 +34,29 @@ const EnterGradesView: React.FC<any> = ({selectedExamId, setSelectedExamId, sele
                 <select value={selectedSubjectId} onChange={e => setSelectedSubjectId(e.target.value)} className="p-2 border rounded" disabled={!selectedClassId}><option value="">Select Subject</option>{subjects.map((s:Subject) => <option key={s.id} value={s.id}>{s.name}</option>)}</select>
             </div>
             {selectedSubjectId && <>
-                <table className="w-full text-left"><thead><tr className="bg-slate-50 border-b"><th>Student</th><th>{selectedExamType === ExamType.Traditional ? 'Score' : 'Level'}</th><th>Comments</th></tr></thead>
+                <table className="w-full text-left"><thead><tr className="bg-slate-50 border-b"><th>Student</th><th>{selectedExamType === ExamType.Traditional ? 'Score' : 'Marks / Level'}</th><th>Comments</th></tr></thead>
                     <tbody>{studentsInClass.map((student:Student) => (<tr key={student.id} className="border-b"><td className="p-2">{student.name}</td>
-                        <td className="p-2">{selectedExamType === ExamType.Traditional ? <input type="number" value={gradeEntries.get(student.id)?.score ?? ''} onChange={e => handleGradeChange(student.id, { score: e.target.value ? parseInt(e.target.value) : null })} className="w-20 p-1 border rounded"/> : <select value={gradeEntries.get(student.id)?.cbetScore ?? ''} onChange={e => handleGradeChange(student.id, { cbetScore: e.target.value as CbetScore })} className="p-1 border rounded"><option value="">Select Level</option>{Object.values(CbetScore).map(v => <option key={v} value={v}>{v}</option>)}</select>}</td>
+                        <td className="p-2">
+                             <div className="flex space-x-2 items-center">
+                                <input 
+                                    type="number" 
+                                    placeholder="Score"
+                                    value={gradeEntries.get(student.id)?.score ?? ''} 
+                                    onChange={e => handleGradeChange(student.id, { score: e.target.value ? parseFloat(e.target.value) : null })} 
+                                    className="w-20 p-1 border rounded"
+                                />
+                                {selectedExamType === ExamType.CBC && (
+                                    <select 
+                                        value={gradeEntries.get(student.id)?.cbetScore ?? ''} 
+                                        onChange={e => handleGradeChange(student.id, { cbetScore: e.target.value as CbetScore })} 
+                                        className="p-1 border rounded text-sm w-32"
+                                    >
+                                        <option value="">- Level -</option>
+                                        {Object.values(CbetScore).map(v => <option key={v} value={v}>{v}</option>)}
+                                    </select>
+                                )}
+                            </div>
+                        </td>
                         <td className="p-2"><input type="text" value={gradeEntries.get(student.id)?.comments || ''} onChange={e => handleGradeChange(student.id, { comments: e.target.value })} className="w-full p-1 border rounded"/></td></tr>))}</tbody>
                 </table>
                 <div className="flex justify-end mt-4"><button onClick={handleSaveGrades} className="px-4 py-2 bg-primary-600 text-white rounded">Save Grades</button></div>
@@ -59,7 +78,7 @@ const ExamModal: React.FC<any> = ({ isOpen, onClose, onSave, data, classes }) =>
 };
 
 const ExaminationsView: React.FC = () => {
-    const { exams, updateExams, grades, updateGrades, classes, students, subjects } = useData();
+    const { exams, updateExams, updateGrades, classes, students, subjects } = useData();
     const [activeTab, setActiveTab] = useState('manage');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingExam, setEditingExam] = useState<Exam | null>(null);
@@ -69,22 +88,28 @@ const ExaminationsView: React.FC = () => {
     const [selectedClassId, setSelectedClassId] = useState('');
     const [selectedSubjectId, setSelectedSubjectId] = useState('');
     const [gradeEntries, setGradeEntries] = useState<Map<string, { score: number | null, cbetScore: CbetScore | null, comments: string }>>(new Map());
+    const [currentGrades, setCurrentGrades] = useState<Grade[]>([]);
     
     const studentsInClass = useMemo(() => students.filter(s => s.classId === selectedClassId), [students, selectedClassId]);
     const selectedExam = useMemo(() => exams.find(e => e.id === selectedExamId), [exams, selectedExamId]);
 
     useEffect(() => {
         if (selectedExamId && selectedClassId && selectedSubjectId) {
-            const newEntries = new Map();
-            studentsInClass.forEach(student => {
-                const existingGrade = grades.find(g => g.studentId === student.id && g.examId === selectedExamId && g.subjectId === selectedSubjectId);
-                newEntries.set(student.id, { score: existingGrade?.score ?? null, cbetScore: existingGrade?.cbetScore ?? null, comments: existingGrade?.comments ?? '' });
-            });
-            setGradeEntries(newEntries);
+            api.getGrades({ examId: selectedExamId, subjectId: selectedSubjectId, classId: selectedClassId })
+            .then(grades => {
+                setCurrentGrades(grades);
+                const newEntries = new Map();
+                studentsInClass.forEach(student => {
+                    const existingGrade = grades.find(g => g.studentId === student.id);
+                    newEntries.set(student.id, { score: existingGrade?.score ?? null, cbetScore: existingGrade?.cbetScore ?? null, comments: existingGrade?.comments ?? '' });
+                });
+                setGradeEntries(newEntries);
+            })
+            .catch(err => console.error("Failed to fetch grades", err));
         } else {
             setGradeEntries(new Map());
         }
-    }, [selectedExamId, selectedClassId, selectedSubjectId, studentsInClass, grades]);
+    }, [selectedExamId, selectedClassId, selectedSubjectId, studentsInClass]);
 
     const handleSaveExam = (formData: Omit<Exam, 'id'>) => {
         let updatedExams;
@@ -98,17 +123,16 @@ const ExaminationsView: React.FC = () => {
     };
     
      const handleSaveGrades = () => {
-        const otherGrades = grades.filter(g => g.examId !== selectedExamId || g.subjectId !== selectedSubjectId || students.find(s=>s.id === g.studentId)?.classId !== selectedClassId);
         const newGrades: Grade[] = studentsInClass.map(student => {
             const entry = gradeEntries.get(student.id);
-            const existingGrade = grades.find(g => g.studentId === student.id && g.examId === selectedExamId && g.subjectId === selectedSubjectId);
+            const existingGrade = currentGrades.find(g => g.studentId === student.id);
             return {
                 id: existingGrade?.id || `grd-${student.id}-${selectedExamId}-${selectedSubjectId}`,
                 studentId: student.id, examId: selectedExamId, subjectId: selectedSubjectId,
                 score: entry?.score ?? null, cbetScore: entry?.cbetScore ?? null, comments: entry?.comments ?? ''
             };
         });
-        updateGrades([...otherGrades, ...newGrades]).then(() => {
+        updateGrades(newGrades).then(() => {
             alert("Grades saved successfully!");
         });
     };

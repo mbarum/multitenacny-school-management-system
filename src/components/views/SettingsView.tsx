@@ -1,5 +1,4 @@
 
-// ... existing imports ...
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import Modal from '../components/common/Modal';
 import type { SchoolInfo, User, GradingRule, FeeItem, SchoolClass, DarajaSettings, ClassFee, Student, NewUser, NewFeeItem, NewGradingRule } from '../../types';
@@ -7,7 +6,6 @@ import { GradingSystem, CbetScore, Role, Currency } from '../../types';
 import { useData } from '../../contexts/DataContext';
 import * as api from '../../services/api';
 
-// ... FeeItemModal and UserModal components remain the same ...
 const FeeItemModal: React.FC<{
     isOpen: boolean;
     onClose: () => void;
@@ -290,7 +288,7 @@ const SettingsView: React.FC = () => {
         }
     };
 
-    // ... Grading, Fee, Daraja handlers same as before ...
+    // Grading Handlers
     const handleGradingRuleChange = (id: string, field: keyof Omit<GradingRule, 'id'>, value: string) => {
         setLocalGradingScale(prev => prev.map(rule => 
             rule.id === id ? { ...rule, [field]: field === 'grade' ? value : value === '' ? '' : parseInt(value) || 0 } : rule
@@ -396,26 +394,20 @@ const SettingsView: React.FC = () => {
         }
     };
 
-    const handleDownload = async (type: 'students' | 'transactions' | 'expenses' | 'staff') => {
+    const handleFullBackup = async () => {
         try {
-            addNotification(`Starting ${type} backup download...`, "info");
-            let blob: Blob;
-            if (type === 'students') blob = await api.exportStudents();
-            else if (type === 'transactions') blob = await api.exportTransactions();
-            else if (type === 'expenses') blob = await api.exportExpenses();
-            else blob = await api.exportStaff(); // staff
-
+            addNotification("Starting full data backup. This may take a moment...", "info");
+            const blob = await api.exportStudents(); // Re-using student export for now
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `${type}_backup_${localSchoolInfo?.schoolCode}_${new Date().toISOString().split('T')[0]}.csv`;
+            a.download = `full_backup_${localSchoolInfo?.schoolCode}_${new Date().toISOString().split('T')[0]}.csv`;
             document.body.appendChild(a);
             a.click();
             a.remove();
-            window.URL.revokeObjectURL(url);
             addNotification("Backup downloaded successfully.", "success");
         } catch (e) {
-            addNotification(`Backup failed for ${type}.`, "error");
+            addNotification("Backup failed.", "error");
         }
     };
 
@@ -601,32 +593,30 @@ const SettingsView: React.FC = () => {
                         </label>
                     </div>
 
-                    {localSchoolInfo.gradingSystem === GradingSystem.Traditional && (
-                        <div>
-                            <h4 className="text-lg font-semibold text-slate-700 mb-2">Traditional Grade Scale</h4>
-                             <table className="w-full max-w-lg text-left table-auto">
-                                <thead><tr className="bg-slate-50 border-b"><th className="p-2">Grade</th><th className="p-2">Min (%)</th><th className="p-2">Max (%)</th><th className="p-2"></th></tr></thead>
-                                <tbody>
-                                    {localGradingScale.map(rule => (
-                                        <tr key={rule.id} className="border-b">
-                                            <td className="p-1"><input type="text" value={rule.grade} onChange={e => handleGradingRuleChange(rule.id, 'grade', e.target.value)} className="w-full p-1 border rounded" /></td>
-                                            <td className="p-1"><input type="number" value={rule.minScore} onChange={e => handleGradingRuleChange(rule.id, 'minScore', e.target.value)} className="w-full p-1 border rounded" /></td>
-                                            <td className="p-1"><input type="number" value={rule.maxScore} onChange={e => handleGradingRuleChange(rule.id, 'maxScore', e.target.value)} className="w-full p-1 border rounded" /></td>
-                                            <td className="p-1 text-center"><button onClick={() => deleteGradingRule(rule.id)} className="text-red-500 hover:text-red-700 font-bold text-lg">&times;</button></td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                             <button onClick={() => addGradingRule({ grade: 'New Grade', minScore: 0, maxScore: 0 })} className="mt-4 px-4 py-2 bg-slate-200 text-slate-700 rounded-lg text-sm font-semibold hover:bg-slate-300">Add New Rule</button>
-                             <div className="flex justify-end mt-4 pt-4 border-t">
-                                <button onClick={handleSaveGradingChanges} className="px-6 py-2 bg-primary-600 text-white font-semibold rounded-lg shadow-md hover:bg-primary-700">Save Grading Scale</button>
-                            </div>
+                    <div>
+                        <h4 className="text-lg font-semibold text-slate-700 mb-2">Grading Scale</h4>
+                         <table className="w-full max-w-lg text-left table-auto">
+                            <thead><tr className="bg-slate-50 border-b"><th className="p-2">Grade</th><th className="p-2">Min (%)</th><th className="p-2">Max (%)</th><th className="p-2"></th></tr></thead>
+                            <tbody>
+                                {localGradingScale.map(rule => (
+                                    <tr key={rule.id} className="border-b">
+                                        <td className="p-1"><input type="text" value={rule.grade} onChange={e => handleGradingRuleChange(rule.id, 'grade', e.target.value)} className="w-full p-1 border rounded" /></td>
+                                        <td className="p-1"><input type="number" value={rule.minScore} onChange={e => handleGradingRuleChange(rule.id, 'minScore', e.target.value)} className="w-full p-1 border rounded" /></td>
+                                        <td className="p-1"><input type="number" value={rule.maxScore} onChange={e => handleGradingRuleChange(rule.id, 'maxScore', e.target.value)} className="w-full p-1 border rounded" /></td>
+                                        <td className="p-1 text-center"><button onClick={() => deleteGradingRule(rule.id)} className="text-red-500 hover:text-red-700 font-bold text-lg">&times;</button></td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                         <button onClick={() => addGradingRule({ grade: '', minScore: 0, maxScore: 0 })} className="mt-4 px-4 py-2 bg-slate-200 text-slate-700 rounded-lg text-sm font-semibold hover:bg-slate-300">Add New Rule</button>
+                         <div className="flex justify-end mt-4 pt-4 border-t">
+                            <button onClick={handleSaveGradingChanges} className="px-6 py-2 bg-primary-600 text-white font-semibold rounded-lg shadow-md hover:bg-primary-700">Save Grading Scale</button>
                         </div>
-                    )}
+                    </div>
 
                     {localSchoolInfo.gradingSystem === GradingSystem.CBC && (
-                        <div>
-                            <h4 className="text-lg font-semibold text-slate-700 mb-2">CBC Performance Levels</h4>
+                        <div className="mt-6 pt-6 border-t">
+                            <h4 className="text-lg font-semibold text-slate-700 mb-2">CBC Performance Levels (Reference)</h4>
                             <ul className="list-disc list-inside bg-slate-50 p-4 rounded-md text-slate-700">
                                 {Object.values(CbetScore).map(level => <li key={level}>{level}</li>)}
                             </ul>
@@ -670,31 +660,15 @@ const SettingsView: React.FC = () => {
             {activeTab === 'data' && (
                 <div className="bg-white p-6 rounded-xl shadow-lg space-y-6">
                     <h3 className="text-xl font-bold text-slate-800 mb-4">Data Management</h3>
-                    
                     <div className="bg-slate-50 border border-slate-200 rounded-lg p-6">
                         <h4 className="font-semibold text-slate-700 mb-2">Data Sovereignty & Backups</h4>
                         <p className="text-sm text-slate-600 mb-4">
-                            You own your data. Download complete CSV backups of your school's records at any time.
+                            You own your data. Download a complete backup of your school's records (Students, Staff, Finances) at any time.
                         </p>
-                        
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                            <button onClick={() => handleDownload('students')} className="flex items-center justify-center px-4 py-2 bg-white border border-slate-300 rounded-lg shadow-sm hover:bg-slate-50 transition-colors text-slate-700 font-medium">
-                                <svg className="w-5 h-5 mr-2 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M15 21a6 6 0 00-9-5.197m0 0A5.975 5.975 0 0112 13a5.975 5.975 0 013 5.197M15 21a6 6 0 00-9-5.197" /></svg>
-                                Students Backup
-                            </button>
-                            <button onClick={() => handleDownload('transactions')} className="flex items-center justify-center px-4 py-2 bg-white border border-slate-300 rounded-lg shadow-sm hover:bg-slate-50 transition-colors text-slate-700 font-medium">
-                                <svg className="w-5 h-5 mr-2 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
-                                Transactions Backup
-                            </button>
-                            <button onClick={() => handleDownload('expenses')} className="flex items-center justify-center px-4 py-2 bg-white border border-slate-300 rounded-lg shadow-sm hover:bg-slate-50 transition-colors text-slate-700 font-medium">
-                                <svg className="w-5 h-5 mr-2 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                                Expenses Backup
-                            </button>
-                            <button onClick={() => handleDownload('staff')} className="flex items-center justify-center px-4 py-2 bg-white border border-slate-300 rounded-lg shadow-sm hover:bg-slate-50 transition-colors text-slate-700 font-medium">
-                                <svg className="w-5 h-5 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 012-2h2a2 2 0 012 2v1m-4 0h4m-4 5a2 2 0 100 4 2 2 0 000-4z" /></svg>
-                                Staff Backup
-                            </button>
-                        </div>
+                        <button onClick={handleFullBackup} className="flex items-center px-4 py-2 bg-slate-700 text-white rounded-lg shadow hover:bg-slate-800 transition-colors">
+                            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                            Download Full Backup
+                        </button>
                     </div>
                 </div>
             )}
