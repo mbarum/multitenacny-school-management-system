@@ -7,6 +7,57 @@ interface LandingPageProps {
     onNavigate: (path: string, state?: any) => void;
 }
 
+// Inline component for Cookie Banner
+const CookieBanner: React.FC = () => {
+    const [visible, setVisible] = useState(false);
+
+    useEffect(() => {
+        const consent = localStorage.getItem('cookie_consent');
+        if (!consent) {
+            setVisible(true);
+        }
+    }, []);
+
+    const accept = () => {
+        localStorage.setItem('cookie_consent', 'true');
+        setVisible(false);
+    };
+
+    if (!visible) return null;
+
+    return (
+        <div className="fixed bottom-0 left-0 right-0 bg-slate-900 text-white p-4 z-50 shadow-inner flex flex-col sm:flex-row justify-between items-center gap-4 border-t border-slate-700">
+            <div className="text-sm text-slate-300 max-w-3xl">
+                We use cookies to enhance your experience, analyze site traffic, and serve personalized content. By clicking "Accept", you consent to our use of cookies in accordance with our <a href="#" className="underline text-primary-400 hover:text-primary-300">Cookie Policy</a>.
+            </div>
+            <div className="flex gap-3">
+                <button onClick={() => setVisible(false)} className="px-4 py-2 text-sm text-slate-300 hover:text-white transition-colors">Decline</button>
+                <button onClick={accept} className="px-6 py-2 bg-primary-600 text-white text-sm font-bold rounded-lg hover:bg-primary-700 transition-colors shadow-lg shadow-primary-900/50">
+                    Accept All
+                </button>
+            </div>
+        </div>
+    );
+};
+
+// Inline component for WhatsApp FAB
+const WhatsAppFAB: React.FC = () => (
+    <a 
+        href="https://wa.me/254720935895?text=Hello%20Saaslink%2C%20I%20would%20like%20to%20know%20more%20about%20the%20school%20system." 
+        target="_blank" 
+        rel="noopener noreferrer"
+        className="fixed bottom-6 right-6 z-40 bg-green-500 text-white p-4 rounded-full shadow-2xl hover:bg-green-600 transition-transform hover:scale-110 hover:shadow-green-500/40 flex items-center justify-center group"
+        aria-label="Chat on WhatsApp"
+    >
+        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor" viewBox="0 0 16 16">
+            <path d="M13.601 2.326A7.854 7.854 0 0 0 7.994 0C3.627 0 .068 3.558.064 7.926c0 1.399.366 2.76 1.057 3.965L0 16l4.204-1.102a7.933 7.933 0 0 0 3.79.965h.004c4.368 0 7.926-3.558 7.93-7.93A7.898 7.898 0 0 0 13.6 2.326zM7.994 14.521a6.573 6.573 0 0 1-3.356-.92l-.24-.144-2.494.654.666-2.433-.156-.251a6.56 6.56 0 0 1-1.007-3.505c0-3.626 2.957-6.584 6.591-6.584a6.56 6.56 0 0 1 4.66 1.931 6.557 6.557 0 0 1 1.928 4.66c-.004 3.639-2.961 6.592-6.592 6.592zm3.615-4.934c-.197-.099-1.17-.578-1.353-.646-.182-.065-.315-.099-.445.099-.133.197-.513.646-.627.775-.114.133-.232.148-.43.05-.197-.1-.836-.308-1.592-.985-.59-.525-.985-1.175-1.103-1.372-.114-.198-.011-.304.088-.403.087-.088.197-.232.296-.346.1-.114.133-.198.198-.33.065-.134.034-.248-.015-.347-.05-.099-.445-1.076-.612-1.47-.16-.389-.323-.335-.445-.34-.114-.007-.247-.007-.38-.007a.729.729 0 0 0-.529.247c-.182.198-.691.677-.691 1.654 0 .977.71 1.916.81 2.049.098.133 1.394 2.132 3.383 2.992.47.205.84.326 1.129.418.475.152.904.129 1.246.08.38-.058 1.171-.48 1.338-.943.164-.464.164-.86.114-.943-.049-.084-.182-.133-.38-.232z"/>
+        </svg>
+        <span className="absolute right-full mr-3 bg-slate-800 text-white text-xs font-bold px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+            Chat with Support
+        </span>
+    </a>
+);
+
 const LandingPage: React.FC<LandingPageProps> = ({ onNavigate }) => {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [scrolled, setScrolled] = useState(false);
@@ -430,6 +481,11 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate }) => {
                     </div>
                 </div>
             </footer>
+
+            {/* Cookie Banner */}
+            <CookieBanner />
+            {/* WhatsApp Floating Button */}
+            <WhatsAppFAB />
         </div>
     );
 };

@@ -152,11 +152,11 @@ const Login: React.FC = () => {
                  <div className="hidden lg:block relative overflow-hidden">
                     <img 
                         className="absolute inset-0 h-full w-full object-cover transition-transform duration-[20s] hover:scale-105"
-                        src="https://images.unsplash.com/photo-1577896851231-70ef18881754?q=80&w=2070&auto=format&fit=crop"
-                        alt="Students in a modern African classroom setting"
-                        aria-label="African classroom setting with students learning"
+                        src="https://images.unsplash.com/photo-1451187580459-43490279c0fa?q=80&w=2072&auto=format&fit=crop"
+                        alt="Integrated cloud-based school services"
+                        aria-label="Integrated cloud-based school services"
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-primary-900/90 via-primary-900/40 to-slate-900/10 flex flex-col justify-end p-16">
+                    <div className="absolute inset-0 bg-gradient-to-t from-primary-900/90 via-primary-900/40 to-slate-900/20 flex flex-col justify-end p-16">
                          <div className="text-white max-w-lg animate-fade-in-up">
                              <div className="mb-4 inline-flex items-center px-3 py-1 rounded-full bg-white/20 backdrop-blur-sm border border-white/30 text-xs font-medium text-white">
                                 🚀 The #1 School Management System

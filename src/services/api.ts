@@ -39,6 +39,8 @@ const apiFetch = async (endpoint: string, options: RequestInit = {}) => {
 // Auth
 export const login = (credentials: {email: string, password: string}): Promise<{user: User, token: string}> => apiFetch('/auth/login', { method: 'POST', body: JSON.stringify(credentials) });
 export const registerSchool = (data: any): Promise<{user: User, token: string, school: School}> => apiFetch('/auth/register-school', { method: 'POST', body: JSON.stringify(data) });
+export const createPaymentIntent = (data: { plan: string, billingCycle: string, email: string }): Promise<{ clientSecret: string, amount: number }> => apiFetch('/auth/create-payment-intent', { method: 'POST', body: JSON.stringify(data) });
+
 export const getAuthenticatedUser = (): Promise<User> => apiFetch('/users/me');
 export const updateUserProfile = (data: Partial<User>): Promise<User> => apiFetch('/users/profile', { method: 'PATCH', body: JSON.stringify(data) });
 export const uploadUserAvatar = (formData: FormData): Promise<{ avatarUrl: string }> => {

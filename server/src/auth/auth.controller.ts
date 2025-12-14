@@ -22,6 +22,12 @@ export class AuthController {
   }
 
   @Public()
+  @Post('create-payment-intent')
+  async createPaymentIntent(@Body() body: { plan: string; billingCycle: string; email: string }) {
+    return this.authService.createPaymentIntent(body.plan, body.billingCycle, body.email);
+  }
+
+  @Public()
   @Post('request-password-reset')
   async requestPasswordReset(@Body('email') email: string) {
     return this.authService.requestPasswordReset(email);
