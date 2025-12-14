@@ -2,16 +2,16 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import Modal from '../components/common/Modal';
 import Pagination from '../components/common/Pagination';
-import { initiateSTKPush } from '../services/darajaService';
-import type { Transaction, NewTransaction, Student } from '../types';
-import { PaymentMethod, TransactionType } from '../types';
-import { useData } from '../contexts/DataContext';
+import { initiateSTKPush } from '../../services/darajaService';
+import type { Transaction, NewTransaction, Student } from '../../types';
+import { PaymentMethod, TransactionType } from '../../types';
+import { useData } from '../../contexts/DataContext';
 import GenerateInvoicesModal from '../components/common/GenerateInvoicesModal';
-import * as api from '../services/api';
+import * as api from '../../services/api';
 import Skeleton from '../components/common/Skeleton';
 
 const FeeManagementView: React.FC = () => {
-    const { addTransaction, students, darajaSettings, addNotification } = useData();
+    const { addTransaction, students, darajaSettings, addNotification, formatCurrency } = useData();
     const [isRecordModalOpen, setIsRecordModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
@@ -61,12 +61,21 @@ const FeeManagementView: React.FC = () => {
                 page: currentPage,
                 limit: 10,
                 search: searchTerm,
-                startDate: start,
-                endDate: end,
-                // Removed type filter to show all transactions (Invoices & Payments) for better management
+                startDate: start || undefined, 
+                endDate: end || undefined,     
             });
-            setTransactions(response.data);
-            setTotalPages(response.last_page);
+            
+            // Fix: Check for pagination format
+            if (Array.isArray(response)) {
+                setTransactions(response);
+                setTotalPages(1);
+            } else if (response && Array.isArray(response.data)) {
+                 setTransactions(response.data);
+                 setTotalPages(response.last_page || 1);
+            } else {
+                 setTransactions([]);
+                 setTotalPages(1);
+            }
         } catch (error) {
             console.error("Failed to fetch transactions", error);
             addNotification("Failed to load transactions", "error");
@@ -259,7 +268,7 @@ const FeeManagementView: React.FC = () => {
                                     </td>
                                     <td className="px-4 py-3 font-semibold text-slate-800">{p.studentName || 'Unknown'}</td>
                                     <td className="px-4 py-3 text-slate-600">{p.description}</td>
-                                    <td className="px-4 py-3 text-right font-medium text-slate-800">{p.amount.toLocaleString()}</td>
+                                    <td className="px-4 py-3 text-right font-medium text-slate-800">{formatCurrency(p.amount)}</td>
                                     <td className="px-4 py-3 text-slate-600">{p.method || '-'}</td>
                                     <td className="px-4 py-3 space-x-2">
                                         <button onClick={() => openEditModal(p)} className="text-blue-600 hover:underline">Edit</button>

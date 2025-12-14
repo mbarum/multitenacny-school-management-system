@@ -1,18 +1,18 @@
 
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import Modal from '../components/common/Modal';
 import WebcamCaptureModal from '../components/common/WebcamCaptureModal';
-import type { Student, NewStudent, NewCommunicationLog, NewTransaction, SchoolClass, CommunicationLog } from '../types';
-import { CommunicationType, StudentStatus, TransactionType } from '../types';
+import type { Student, NewStudent, NewCommunicationLog, NewTransaction, SchoolClass, CommunicationLog } from '../../types';
+import { CommunicationType, StudentStatus, TransactionType } from '../../types';
 import StudentBillingModal from '../components/common/StudentBillingModal';
 import BulkMessageModal from '../components/common/BulkMessageModal';
 import PromotionModal from '../components/common/PromotionModal';
-import { useData } from '../contexts/DataContext';
-import { calculateAge, debounce } from '../utils/helpers';
+import { useData } from '../../contexts/DataContext';
+import { calculateAge, debounce } from '../../utils/helpers';
 import ImportModal from '../components/common/ImportModal';
 import Pagination from '../components/common/Pagination';
 import Skeleton from '../components/common/Skeleton';
-import * as api from '../services/api';
+import * as api from '../../services/api';
 
 interface StudentProfileModalProps {
     isOpen: boolean;
@@ -29,6 +29,7 @@ const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ isOpen, onClo
     
     const [studentLogs, setStudentLogs] = useState<CommunicationLog[]>([]);
     const [loadingLogs, setLoadingLogs] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
         if (isOpen) {
@@ -50,11 +51,24 @@ const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ isOpen, onClo
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
+    const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0]) {
+            const formData = new FormData();
+            formData.append('file', e.target.files[0]);
+            try {
+                const res = await api.uploadStudentPhoto(formData);
+                setFormData(prev => ({ ...prev, profileImage: res.url }));
+                addNotification('Photo uploaded successfully', 'success');
+            } catch (error) {
+                addNotification('Failed to upload photo', 'error');
+            }
+        }
+    };
+
     const handleSaveChanges = (e: React.FormEvent) => {
         e.preventDefault();
         if (!student) return;
         
-        // Remove 'class' and 'balance' properties which are read-only or virtual
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { class: _, balance, ...updates } = formData;
         
@@ -97,7 +111,23 @@ const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ isOpen, onClo
             {activeTab === 'details' && (
                 <form onSubmit={handleSaveChanges} className="space-y-6">
                     <div className="flex items-start space-x-6">
-                        <img src={formData.profileImage || student.profileImage} alt={student.name} className="h-24 w-24 rounded-full object-cover border-2 border-slate-200"/>
+                        <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
+                            <img 
+                                src={formData.profileImage || student.profileImage || 'https://i.imgur.com/S5o7W44.png'} 
+                                alt={student.name} 
+                                className="h-24 w-24 rounded-full object-cover border-2 border-slate-200 group-hover:opacity-75 transition-opacity"
+                            />
+                            <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                <span className="bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded">Change</span>
+                            </div>
+                            <input 
+                                type="file" 
+                                ref={fileInputRef} 
+                                className="hidden" 
+                                accept="image/*" 
+                                onChange={handlePhotoUpload}
+                            />
+                        </div>
                         <div className="flex-1">
                              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 <div><label className="text-xs font-medium text-slate-500">Full Name</label><input name="name" value={formData.name || ''} onChange={handleFormChange} className="w-full p-2 border rounded-md"/></div>
@@ -177,6 +207,7 @@ const StudentsView: React.FC = () => {
     const [isCaptureModalOpen, setIsCaptureModalOpen] = useState(false);
     const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
     const [isBulkMessageModalOpen, setIsBulkMessageModalOpen] = useState(false);
+    const addStudentPhotoInputRef = useRef<HTMLInputElement>(null);
     
     // Pagination State
     const [studentsList, setStudentsList] = useState<Student[]>([]);
@@ -196,12 +227,16 @@ const StudentsView: React.FC = () => {
         setLoading(true);
         try {
             const response = await api.getStudents({ page, limit: 10, search, classId, status });
+            // Fix: Robust check for pagination vs array format
             if (Array.isArray(response)) {
                  setStudentsList(response);
                  setTotalPages(1);
-            } else {
-                 setStudentsList(response.data || []);
+            } else if (response && Array.isArray(response.data)) {
+                 setStudentsList(response.data);
                  setTotalPages(response.last_page || 1);
+            } else {
+                 setStudentsList([]);
+                 setTotalPages(1);
             }
             setCurrentPage(page);
         } catch (error) {
@@ -299,6 +334,20 @@ const StudentsView: React.FC = () => {
     
     const handlePhotoCapture = (imageDataUrl: string) => {
         setNewStudent(prev => ({ ...prev, profileImage: imageDataUrl }));
+    };
+
+    const handleAddStudentPhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+         if (e.target.files && e.target.files[0]) {
+            const formData = new FormData();
+            formData.append('file', e.target.files[0]);
+            try {
+                const res = await api.uploadStudentPhoto(formData);
+                setNewStudent(prev => ({ ...prev, profileImage: res.url }));
+                addNotification('Photo uploaded.', 'success');
+            } catch (error) {
+                addNotification('Failed to upload photo.', 'error');
+            }
+        }
     };
 
     const handleExport = async () => {
@@ -484,7 +533,7 @@ const StudentsView: React.FC = () => {
                                             />
                                         </td>
                                         <td className="px-4 py-2 flex items-center space-x-3">
-                                            <img src={student.profileImage} alt={student.name} className={`h-10 w-10 rounded-full object-cover ${student.status !== 'Active' ? 'filter grayscale' : ''}`}/>
+                                            <img src={student.profileImage} alt={student.name} className={`h-10 w-10 rounded-full object-cover border border-slate-200 ${student.status !== 'Active' ? 'filter grayscale' : ''}`}/>
                                             <div>
                                                 <span className={`font-semibold ${student.status === 'Active' ? 'text-slate-800' : ''}`}>{student.name}</span>
                                                 {student.status !== 'Active' && <span className={`ml-2 px-2 py-0.5 text-xs font-semibold rounded-full ${student.status === 'Graduated' ? 'bg-blue-100 text-blue-700' : 'bg-slate-200 text-slate-600'}`}>{student.status}</span>}
@@ -513,8 +562,20 @@ const StudentsView: React.FC = () => {
             <Modal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} title="Add New Student" size="2xl">
                 <form onSubmit={handleAddStudent} className="space-y-4">
                     <div className="flex items-center space-x-4">
-                        <img src={newStudent.profileImage} alt="New student" className="h-24 w-24 rounded-full object-cover border"/>
-                        <button type="button" onClick={() => setIsCaptureModalOpen(true)} className="px-4 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700">Take Photo</button>
+                        <div className="relative h-24 w-24 rounded-full overflow-hidden border group">
+                            <img src={newStudent.profileImage} alt="New student" className="h-full w-full object-cover"/>
+                        </div>
+                        <div className="flex space-x-2">
+                             <input 
+                                type="file" 
+                                accept="image/*"
+                                ref={addStudentPhotoInputRef}
+                                onChange={handleAddStudentPhotoUpload}
+                                className="hidden"
+                            />
+                            <button type="button" onClick={() => addStudentPhotoInputRef.current?.click()} className="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300">Upload</button>
+                            <button type="button" onClick={() => setIsCaptureModalOpen(true)} className="px-4 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700">Capture</button>
+                        </div>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <input type="text" name="name" placeholder="Full Name" value={newStudent.name} onChange={handleInputChange} required className="p-2 border border-slate-300 rounded-lg"/>

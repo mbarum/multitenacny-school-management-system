@@ -7,7 +7,8 @@ import type {
     TimetableEntry, Exam, Grade, AttendanceRecord, SchoolEvent, SchoolInfo, GradingRule, FeeItem, 
     CommunicationLog, Announcement, PayrollItem, DarajaSettings, MpesaC2BTransaction, 
     Notification, NewStudent, NewStaff, NewTransaction, NewExpense, NewPayrollItem, NewAnnouncement, 
-    NewCommunicationLog, NewUser, NewGradingRule, NewFeeItem, Book, LibraryTransaction, NewBook, IssueBookData
+    NewCommunicationLog, NewUser, NewGradingRule, NewFeeItem, Book, LibraryTransaction, IssueBookData,
+    NewBook
 } from '../types';
 import { NAVIGATION_ITEMS, TEACHER_NAVIGATION_ITEMS, PARENT_NAVIGATION_ITEMS, SUPER_ADMIN_NAVIGATION_ITEMS } from '../constants';
 import type { NavItem } from '../constants';
@@ -222,6 +223,14 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         checkSession();
     }, [handleLogout, addNotification]);
 
+    // Helper to safely extract array from potentially paginated response
+    const getArray = (data: any): any[] => {
+        if (!data) return [];
+        if (Array.isArray(data)) return data;
+        if (data.data && Array.isArray(data.data)) return data.data;
+        return [];
+    };
+
     // Effect to fetch all app data when a user logs in
     useEffect(() => {
         if (currentUser && currentUser.role !== Role.SuperAdmin) {
@@ -235,39 +244,34 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     announcementsData, schoolInfoData, darajaData
                 ] = data;
 
-                const classesList = Array.isArray(classesData) ? classesData : [];
-                
-                // FIX: Robust handling for students data which might come as {data: [], total: ...} or just []
-                // This ensures we don't accidentally set an empty array if the API returns an object
-                const validStudents: Student[] = Array.isArray(studentsData) 
-                    ? studentsData 
-                    : (studentsData && Array.isArray(studentsData.data) ? studentsData.data : []);
+                const classesList = getArray(classesData);
+                const validStudents: Student[] = getArray(studentsData);
 
-                setUsers(Array.isArray(usersData) ? usersData : []); 
+                setUsers(getArray(usersData)); 
                 setStudents(validStudents.sort((a: Student,b: Student) => a.name.localeCompare(b.name)));
-                setTransactions(Array.isArray(transactionsData) ? transactionsData : []); 
-                setExpenses(Array.isArray(expensesData) ? expensesData : []); 
-                setStaff(Array.isArray(staffData) ? staffData : []); 
-                setPayrollHistory(payrollHistoryData?.data || []); 
-                setSubjects(Array.isArray(subjectsData) ? subjectsData : []); 
+                setTransactions(getArray(transactionsData)); 
+                setExpenses(getArray(expensesData)); 
+                setStaff(getArray(staffData)); 
+                setPayrollHistory(getArray(payrollHistoryData)); 
+                setSubjects(getArray(subjectsData)); 
                 setClasses(classesList); 
-                setClassSubjectAssignments(Array.isArray(assignmentsData) ? assignmentsData : []); 
-                setTimetableEntries(Array.isArray(timetableData) ? timetableData : []); 
-                setExams(Array.isArray(examsData) ? examsData : []); 
-                setGrades(Array.isArray(gradesData) ? gradesData : []); 
-                setAttendanceRecords(Array.isArray(attendanceData) ? attendanceData : []); 
-                setEvents(Array.isArray(eventsData) ? eventsData : []); 
-                setGradingScale(Array.isArray(gradingData) ? gradingData : []); 
-                setFeeStructure(Array.isArray(feeData) ? feeData : []); 
-                setPayrollItems(Array.isArray(payrollItemsData) ? payrollItemsData : []); 
-                setCommunicationLogs(logsData?.data || []); 
-                setAnnouncements(Array.isArray(announcementsData) ? announcementsData : []); 
+                setClassSubjectAssignments(getArray(assignmentsData)); 
+                setTimetableEntries(getArray(timetableData)); 
+                setExams(getArray(examsData)); 
+                setGrades(getArray(gradesData)); 
+                setAttendanceRecords(getArray(attendanceData)); 
+                setEvents(getArray(eventsData)); 
+                setGradingScale(getArray(gradingData)); 
+                setFeeStructure(getArray(feeData)); 
+                setPayrollItems(getArray(payrollItemsData)); 
+                setCommunicationLogs(getArray(logsData)); 
+                setAnnouncements(getArray(announcementsData)); 
                 
                 if (schoolInfoData) setSchoolInfo(schoolInfoData); 
                 setDarajaSettings(darajaData);
                 
-                api.getBooks().then(setBooks).catch(console.error);
-                api.getLibraryTransactions().then(setLibraryTransactions).catch(console.error);
+                api.getBooks().then((res) => setBooks(getArray(res))).catch(console.error);
+                api.getLibraryTransactions().then((res) => setLibraryTransactions(getArray(res))).catch(console.error);
 
                  if (currentUser.role === Role.Teacher) {
                     // Find the class where this user is the form teacher
