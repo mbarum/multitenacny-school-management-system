@@ -7,7 +7,7 @@ import { json, urlencoded } from 'express';
 import { join, resolve } from 'path';
 import * as fs from 'fs';
 import helmet from 'helmet';
-import * as compression from 'compression';
+import compression from 'compression';
 import { AllExceptionsFilter } from './common/filters/http-exception.filter';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 

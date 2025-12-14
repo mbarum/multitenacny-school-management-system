@@ -18,7 +18,7 @@ import Stripe from 'stripe';
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
   private transporter: nodemailer.Transporter;
-  private stripe: Stripe;
+  private stripe: Stripe | undefined;
 
   constructor(
     private usersService: UsersService,
