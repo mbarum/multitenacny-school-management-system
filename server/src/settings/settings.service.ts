@@ -11,6 +11,7 @@ import { UpdateDarajaSettingsDto } from './dto/update-daraja-settings.dto';
 @Injectable()
 export class SettingsService {
   private readonly logger = new Logger(SettingsService.name);
+  private ratesCache: { timestamp: number, rates: any } | null = null;
 
   constructor(
     @InjectRepository(School)
@@ -37,7 +38,8 @@ export class SettingsService {
             id: '', 
             slug: '', 
             schoolCode: 'SIS', 
-            gradingSystem: 'Traditional' 
+            gradingSystem: 'Traditional',
+            currency: 'KES'
         } as unknown as School;
     }
     
@@ -48,14 +50,51 @@ export class SettingsService {
         phone: school.phone,
         email: school.email,
         schoolCode: school.schoolCode,
-        gradingSystem: school.gradingSystem
+        gradingSystem: school.gradingSystem,
+        currency: school.currency
     } as School;
+  }
+
+  // Fetch live rates, caching them for 1 hour to be polite to the API provider
+  async getExchangeRates(base: string = 'KES'): Promise<Record<string, number>> {
+      const now = Date.now();
+      const ONE_HOUR = 3600 * 1000;
+
+      if (this.ratesCache && (now - this.ratesCache.timestamp < ONE_HOUR)) {
+          return this.ratesCache.rates;
+      }
+
+      try {
+          // Using open.er-api.com for reliable, key-free exchange rates
+          const response = await fetch(`https://open.er-api.com/v6/latest/${base}`);
+          const data = await response.json();
+          
+          if (data && data.rates) {
+              this.ratesCache = { timestamp: now, rates: data.rates };
+              return data.rates;
+          }
+          throw new Error("Invalid API response");
+      } catch (error) {
+          this.logger.error("Failed to fetch exchange rates, using fallback", error);
+          // Fallback static rates if API fails (Relative to KES)
+          return { 
+              KES: 1, 
+              USD: 0.0077, 
+              UGX: 28.5, 
+              TZS: 19.8, 
+              RWF: 9.8, 
+              BIF: 22.0,
+              ZMW: 0.20,
+              ETB: 0.95,
+              SDG: 4.60,
+              SSP: 10.50
+          };
+      }
   }
   
   async getPlatformPricing(): Promise<PlatformSetting> {
       const setting = await this.platformSettingRepository.findOne({ where: {} });
       if (!setting) {
-          // Return defaults if not initialized (though seed should handle this)
           return { 
               id: 'default', 
               basicMonthlyPrice: 3000, 
@@ -87,7 +126,6 @@ export class SettingsService {
   async getDarajaSettings(schoolId: string): Promise<DarajaSetting> {
     const setting = await this.darajaSettingRepository.findOne({ where: { schoolId: schoolId as any } });
     if (!setting) {
-        // Return blank object if not set yet, preserving the structure
         return { 
             id: 'default', 
             consumerKey: '', 

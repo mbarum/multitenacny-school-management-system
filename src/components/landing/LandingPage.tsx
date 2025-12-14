@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Pricing from './Pricing';
 import { SubscriptionPlan } from '../../types';
 
@@ -8,200 +8,387 @@ interface LandingPageProps {
 }
 
 const LandingPage: React.FC<LandingPageProps> = ({ onNavigate }) => {
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+    const [scrolled, setScrolled] = useState(false);
+
+    useEffect(() => {
+        const handleScroll = () => setScrolled(window.scrollY > 20);
+        window.addEventListener('scroll', handleScroll);
+        return () => window.removeEventListener('scroll', handleScroll);
+    }, []);
 
     const handleSelectPlan = (plan: SubscriptionPlan, billing: 'MONTHLY' | 'ANNUALLY') => {
         onNavigate('/register', { plan, billing });
     };
 
+    const navLinks = [
+        { name: 'Features', href: '#features' },
+        { name: 'How it Works', href: '#how-it-works' },
+        { name: 'Pricing', href: '#pricing' },
+    ];
+
     return (
-        <div className="min-h-screen bg-white font-sans text-slate-900">
+        <div className="min-h-screen bg-slate-50 font-sans text-slate-900 selection:bg-primary-100 selection:text-primary-900 overflow-x-hidden">
             {/* Navbar */}
-            <nav className="fixed w-full bg-white/90 backdrop-blur-md z-50 border-b border-slate-100" aria-label="Main Navigation">
+            <nav className={`fixed w-full z-50 transition-all duration-300 ${scrolled ? 'bg-white/90 backdrop-blur-md shadow-sm border-b border-slate-200 py-2' : 'bg-transparent py-4'}`}>
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex justify-between items-center h-16">
-                        <div className="flex items-center">
-                            <div className="bg-primary-600 rounded-lg p-1.5">
-                                <svg className="h-6 w-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        {/* Logo */}
+                        <div className="flex items-center cursor-pointer group" onClick={() => window.scrollTo(0,0)}>
+                            <div className="bg-gradient-to-tr from-primary-700 to-primary-500 rounded-xl p-2 shadow-lg shadow-primary-500/20 group-hover:scale-105 transition-transform duration-300">
+                                <svg className="h-6 w-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
                                 </svg>
                             </div>
-                            <span className="ml-3 text-xl font-bold text-slate-900 tracking-tight">Saaslink</span>
+                            <span className="ml-3 text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">Saaslink</span>
                         </div>
+
+                        {/* Desktop Nav */}
                         <div className="hidden md:flex space-x-8 items-center">
-                            <a href="#features" className="text-slate-600 hover:text-primary-600 font-medium transition-colors">Features</a>
-                            <a href="#pricing" className="text-slate-600 hover:text-primary-600 font-medium transition-colors">Pricing</a>
-                            <button onClick={() => onNavigate('/login')} className="text-slate-600 hover:text-primary-600 font-medium transition-colors">Log in</button>
+                            {navLinks.map((link) => (
+                                <a key={link.name} href={link.href} className="text-sm font-medium text-slate-600 hover:text-primary-600 transition-colors">
+                                    {link.name}
+                                </a>
+                            ))}
+                            <div className="flex items-center space-x-4 ml-4">
+                                <button onClick={() => onNavigate('/login')} className="text-sm font-semibold text-slate-700 hover:text-primary-700 transition-colors">
+                                    Log in
+                                </button>
+                                <button 
+                                    onClick={() => handleSelectPlan(SubscriptionPlan.FREE, 'MONTHLY')} 
+                                    className="px-5 py-2.5 bg-slate-900 text-white text-sm font-bold rounded-full hover:bg-slate-800 transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 active:translate-y-0"
+                                >
+                                    Get Started
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Mobile Menu Button */}
+                        <div className="md:hidden flex items-center">
                             <button 
-                                onClick={() => handleSelectPlan(SubscriptionPlan.FREE, 'MONTHLY')} 
-                                className="px-5 py-2 bg-primary-600 text-white rounded-full font-semibold hover:bg-primary-700 transition-all shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
+                                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} 
+                                className="text-slate-600 p-2 rounded-lg hover:bg-slate-100 transition-colors focus:outline-none"
                             >
-                                Get Started
+                                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    {isMobileMenuOpen ? (
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                    ) : (
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                                    )}
+                                </svg>
                             </button>
                         </div>
                     </div>
                 </div>
+
+                {/* Mobile Menu */}
+                {isMobileMenuOpen && (
+                    <div className="md:hidden absolute top-16 left-0 w-full bg-white/95 backdrop-blur-xl border-b border-slate-200 shadow-xl py-6 px-6 flex flex-col space-y-4 animate-fade-in-down">
+                        {navLinks.map((link) => (
+                            <a key={link.name} href={link.href} onClick={() => setIsMobileMenuOpen(false)} className="text-lg font-medium text-slate-700 hover:text-primary-600">
+                                {link.name}
+                            </a>
+                        ))}
+                        <hr className="border-slate-100" />
+                        <button onClick={() => onNavigate('/login')} className="w-full py-3 bg-slate-100 text-slate-700 font-semibold rounded-xl hover:bg-slate-200">
+                            Log in
+                        </button>
+                        <button onClick={() => handleSelectPlan(SubscriptionPlan.FREE, 'MONTHLY')} className="w-full py-3 bg-primary-600 text-white font-bold rounded-xl shadow-lg">
+                            Get Started Free
+                        </button>
+                    </div>
+                )}
             </nav>
 
             {/* Hero Section */}
-            <header className="pt-32 pb-20 lg:pt-40 lg:pb-28 bg-gradient-to-b from-slate-50 to-white overflow-hidden">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
-                    <div className="text-center max-w-4xl mx-auto z-10 relative">
-                        <span className="inline-block py-1.5 px-4 rounded-full bg-white text-primary-700 text-sm font-semibold mb-6 border border-slate-200 shadow-sm">
-                            The #1 School Management System in East Africa
+            <header className="relative pt-32 pb-20 sm:pt-40 sm:pb-24 overflow-hidden">
+                {/* Background Decor */}
+                <div className="absolute inset-0 -z-10">
+                    <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-primary-100/50 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/2"></div>
+                    <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-blue-100/50 rounded-full blur-[100px] translate-y-1/3 -translate-x-1/3"></div>
+                </div>
+
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative text-center">
+                    <div className="inline-flex items-center gap-2 py-1.5 px-4 rounded-full bg-white border border-slate-200 shadow-sm text-primary-700 text-xs sm:text-sm font-semibold mb-8 animate-fade-in-up">
+                        <span className="relative flex h-2 w-2">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary-400 opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-2 w-2 bg-primary-500"></span>
                         </span>
-                        <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight text-slate-900 mb-8 leading-tight">
-                            Manage Your School <br/>
-                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary-600 to-primary-800">Like a Pro</span>
-                        </h1>
-                        <p className="text-xl text-slate-600 mb-10 leading-relaxed max-w-2xl mx-auto font-light">
-                            Streamline admissions, automate M-Pesa fee collection, track academics, and get AI-powered financial insights. All in one secure platform tailored for Kenyan, Ugandan, Tanzanian, and Rwandan schools.
-                        </p>
-                        <div className="flex flex-col sm:flex-row justify-center gap-4">
-                            <button 
-                                onClick={() => handleSelectPlan(SubscriptionPlan.BASIC, 'MONTHLY')}
-                                className="px-8 py-4 bg-primary-600 text-white rounded-xl text-lg font-bold shadow-lg hover:bg-primary-700 hover:shadow-xl hover:-translate-y-1 transition-all flex items-center justify-center"
-                            >
-                                Start Your Free Trial
-                                <svg className="ml-2 -mr-1 w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clipRule="evenodd" /></svg>
-                            </button>
-                            <button onClick={() => onNavigate('/login')} className="px-8 py-4 bg-white text-slate-700 border border-slate-200 rounded-xl text-lg font-bold shadow-sm hover:bg-slate-50 hover:border-slate-300 transition-all">
-                                Admin Login
-                            </button>
+                        New: AI Financial Insights & Reporting
+                    </div>
+                    
+                    <h1 className="text-5xl sm:text-6xl md:text-7xl font-extrabold tracking-tight text-slate-900 mb-8 leading-[1.1]">
+                        Run Your School <br className="hidden sm:block" />
+                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary-600 to-teal-500">From The Cloud.</span>
+                    </h1>
+                    
+                    <p className="text-xl text-slate-600 mb-10 max-w-2xl mx-auto leading-relaxed">
+                        Access your school data from anywhere, on any device. 
+                        We automate M-Pesa payments, academic reports, and accounting so you can focus on education.
+                    </p>
+                    
+                    <div className="flex flex-col sm:flex-row justify-center gap-4 mb-16">
+                        <button 
+                            onClick={() => handleSelectPlan(SubscriptionPlan.BASIC, 'MONTHLY')}
+                            className="px-8 py-4 bg-primary-600 text-white rounded-xl text-lg font-bold shadow-xl shadow-primary-600/30 hover:bg-primary-700 hover:-translate-y-1 transition-all flex items-center justify-center gap-2"
+                        >
+                            Start Free Trial
+                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" /></svg>
+                        </button>
+                        <button onClick={() => onNavigate('/login')} className="px-8 py-4 bg-white text-slate-700 border border-slate-200 rounded-xl text-lg font-bold shadow-sm hover:bg-slate-50 hover:border-slate-300 transition-all">
+                            View Live Demo
+                        </button>
+                    </div>
+
+                    {/* CSS Browser Mockup */}
+                    <div className="relative max-w-5xl mx-auto mt-10 animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
+                        <div className="bg-slate-900 rounded-t-2xl h-8 flex items-center px-4 space-x-2">
+                            <div className="w-3 h-3 rounded-full bg-red-500"></div>
+                            <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
+                            <div className="w-3 h-3 rounded-full bg-green-500"></div>
                         </div>
-                        <p className="mt-8 text-sm text-slate-500 flex flex-wrap items-center justify-center gap-6">
-                            <span className="flex items-center"><svg className="w-5 h-5 mr-1.5 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg> Instant Setup</span>
-                            <span className="flex items-center"><svg className="w-5 h-5 mr-1.5 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg> 14-Day Free Trial</span>
-                            <span className="flex items-center"><svg className="w-5 h-5 mr-1.5 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg> No Credit Card Required</span>
-                        </p>
+                        <div className="bg-white border-x border-b border-slate-200 rounded-b-2xl shadow-2xl p-2 sm:p-4">
+                            {/* Mock UI Structure */}
+                            <div className="grid grid-cols-12 gap-4 h-64 sm:h-96 bg-slate-50 rounded-xl p-4 overflow-hidden border border-slate-100">
+                                {/* Sidebar Mock */}
+                                <div className="hidden sm:block col-span-2 bg-white rounded-lg shadow-sm border border-slate-100 h-full p-3 space-y-3">
+                                    <div className="h-8 w-8 bg-primary-100 rounded-lg mb-6"></div>
+                                    <div className="h-3 w-3/4 bg-slate-100 rounded"></div>
+                                    <div className="h-3 w-full bg-slate-100 rounded"></div>
+                                    <div className="h-3 w-5/6 bg-slate-100 rounded"></div>
+                                    <div className="h-3 w-4/5 bg-primary-50 rounded"></div>
+                                </div>
+                                {/* Main Content Mock */}
+                                <div className="col-span-12 sm:col-span-10 flex flex-col gap-4">
+                                    {/* Header Mock */}
+                                    <div className="flex justify-between items-center">
+                                        <div className="h-6 w-1/3 bg-white rounded shadow-sm border border-slate-100"></div>
+                                        <div className="flex gap-2">
+                                            <div className="h-8 w-8 rounded-full bg-white shadow-sm border border-slate-100"></div>
+                                            <div className="h-8 w-24 rounded bg-primary-600 shadow-md"></div>
+                                        </div>
+                                    </div>
+                                    {/* Stats Mock */}
+                                    <div className="grid grid-cols-3 gap-4">
+                                        <div className="h-24 bg-white rounded-lg shadow-sm border border-slate-100 p-3 flex flex-col justify-between">
+                                            <div className="h-8 w-8 bg-green-100 rounded-full"></div>
+                                            <div className="h-4 w-1/2 bg-slate-100 rounded"></div>
+                                        </div>
+                                        <div className="h-24 bg-white rounded-lg shadow-sm border border-slate-100 p-3 flex flex-col justify-between">
+                                            <div className="h-8 w-8 bg-blue-100 rounded-full"></div>
+                                            <div className="h-4 w-1/2 bg-slate-100 rounded"></div>
+                                        </div>
+                                        <div className="h-24 bg-white rounded-lg shadow-sm border border-slate-100 p-3 flex flex-col justify-between">
+                                            <div className="h-8 w-8 bg-orange-100 rounded-full"></div>
+                                            <div className="h-4 w-1/2 bg-slate-100 rounded"></div>
+                                        </div>
+                                    </div>
+                                    {/* Table Mock */}
+                                    <div className="flex-1 bg-white rounded-lg shadow-sm border border-slate-100 p-4 space-y-3">
+                                        <div className="flex justify-between mb-4">
+                                            <div className="h-4 w-1/4 bg-slate-100 rounded"></div>
+                                            <div className="h-4 w-16 bg-slate-100 rounded"></div>
+                                        </div>
+                                        {[1,2,3,4].map(i => (
+                                            <div key={i} className="flex justify-between items-center py-2 border-b border-slate-50 last:border-0">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="h-8 w-8 rounded-full bg-slate-100"></div>
+                                                    <div className="space-y-1">
+                                                        <div className="h-2 w-24 bg-slate-100 rounded"></div>
+                                                        <div className="h-2 w-16 bg-slate-50 rounded"></div>
+                                                    </div>
+                                                </div>
+                                                <div className="h-2 w-12 bg-green-100 rounded"></div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </header>
             
-            {/* Trusted By Section (Social Proof) */}
-            <section className="py-10 bg-white border-b border-slate-100" aria-label="Trusted By Schools">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-                    <p className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-6">Trusted by modern schools across East Africa</p>
-                    <div className="flex justify-center items-center gap-8 md:gap-16 opacity-50 grayscale hover:grayscale-0 transition-all duration-500">
-                        {/* Placeholder Logos for professionalism */}
-                         <div className="text-xl font-bold text-slate-600 flex items-center gap-2"><div className="w-8 h-8 bg-slate-300 rounded"></div> ACADEMY</div>
-                         <div className="text-xl font-bold text-slate-600 flex items-center gap-2"><div className="w-8 h-8 bg-slate-300 rounded-full"></div> HIGH SCHOOL</div>
-                         <div className="text-xl font-bold text-slate-600 flex items-center gap-2"><div className="w-8 h-8 bg-slate-300 rounded"></div> INT. SCHOOL</div>
-                    </div>
-                </div>
-            </section>
-
-            {/* Features Grid */}
-            <section id="features" className="py-24 bg-slate-50" aria-label="Features">
+            {/* The "Anywhere" Banner */}
+            <div className="bg-slate-900 py-12 border-y border-slate-800">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="text-center mb-16">
-                        <h2 className="text-primary-600 font-semibold tracking-wide uppercase text-sm">Powerful Features</h2>
-                        <p className="mt-2 text-3xl font-extrabold text-slate-900 sm:text-4xl">Everything you need to run a modern school</p>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center divide-y md:divide-y-0 md:divide-x divide-slate-800">
+                        <div className="p-4">
+                            <h3 className="text-white font-bold text-lg mb-2">100% Cloud Based</h3>
+                            <p className="text-slate-400 text-sm">No servers to buy. No installation required. Just login and manage.</p>
+                        </div>
+                        <div className="p-4">
+                            <h3 className="text-white font-bold text-lg mb-2">Accessible Anywhere</h3>
+                            <p className="text-slate-400 text-sm">Works on your laptop, tablet, and smartphone. Data syncs instantly.</p>
+                        </div>
+                        <div className="p-4">
+                            <h3 className="text-white font-bold text-lg mb-2">Bank-Grade Security</h3>
+                            <p className="text-slate-400 text-sm">Daily automated backups and encrypted connections keep data safe.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Features Section */}
+            <section id="features" className="py-24 bg-white">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div className="text-center max-w-3xl mx-auto mb-20">
+                        <h2 className="text-primary-600 font-bold tracking-wide uppercase text-sm mb-3">Why Saaslink?</h2>
+                        <p className="text-4xl font-extrabold text-slate-900">A complete operating system for your school</p>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                        {[
-                            {
-                                title: 'Automated M-Pesa',
-                                desc: 'Collect fees instantly via STK Push. Automated reconciliation means no more lost receipts or manual data entry.',
-                                icon: <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v.01m0 0v6m0-6h6m-6 0H6" /></svg>
-                            },
-                            {
-                                title: 'AI Financial Insights',
-                                desc: 'Gemini AI acts as your virtual CFO, analyzing income and expenses to provide executive summaries and alerts.',
-                                icon: <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
-                            },
-                            {
-                                title: 'Parent Portal',
-                                desc: 'Give parents real-time access to grades, fee balances, and announcements from any device, anywhere.',
-                                icon: <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M15 21a6 6 0 00-9-5.197m0 0A5.975 5.975 0 0112 13a5.975 5.975 0 013 5.197M15 21a6 6 0 00-9-5.197" /></svg>
-                            },
-                            {
-                                title: 'Library Management',
-                                desc: 'Track book issuance, returns, lost books, and fines with a complete library system. Never lose a book again.',
-                                icon: <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
-                            },
-                             {
-                                title: 'Staff & Payroll',
-                                desc: 'Manage staff profiles, track attendance, and generate compliant payslips and P9 forms effortlessly.',
-                                icon: <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.653-.122-1.28-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.653.122-1.28.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
-                            },
-                            {
-                                title: 'Multi-Tenant Security',
-                                desc: 'Enterprise-grade data isolation ensures your school records are private, backed up, and secure.',
-                                icon: <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
-                            }
-                        ].map((item, idx) => (
-                            <article key={idx} className="bg-white p-8 rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 border border-slate-100 group">
-                                <div className="bg-primary-50 w-12 h-12 rounded-xl flex items-center justify-center text-primary-600 mb-6 group-hover:bg-primary-600 group-hover:text-white transition-colors">
-                                    {item.icon}
-                                </div>
-                                <h3 className="text-xl font-bold text-slate-800 mb-3">{item.title}</h3>
-                                <p className="text-slate-600 leading-relaxed text-sm">{item.desc}</p>
-                            </article>
-                        ))}
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                        {/* Finance Card */}
+                        <div className="bg-slate-50 rounded-3xl p-8 border border-slate-100 hover:shadow-xl transition-shadow duration-300">
+                            <div className="w-12 h-12 bg-green-100 rounded-2xl flex items-center justify-center text-green-600 mb-6">
+                                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v.01m0 0v6m0-6h6m-6 0H6" /></svg>
+                            </div>
+                            <h3 className="text-2xl font-bold text-slate-900 mb-4">Smart Finance</h3>
+                            <ul className="space-y-4 text-slate-600">
+                                <li className="flex items-start">
+                                    <svg className="w-5 h-5 text-primary-500 mr-3 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                                    <span><strong>Automated M-Pesa</strong> fee collection with STK Push.</span>
+                                </li>
+                                <li className="flex items-start">
+                                    <svg className="w-5 h-5 text-primary-500 mr-3 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                                    <span><strong>Gemini AI</strong> financial reports & insights.</span>
+                                </li>
+                                <li className="flex items-start">
+                                    <svg className="w-5 h-5 text-primary-500 mr-3 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                                    <span>Real-time fee balance tracking.</span>
+                                </li>
+                            </ul>
+                        </div>
+
+                        {/* Academics Card */}
+                        <div className="bg-slate-50 rounded-3xl p-8 border border-slate-100 hover:shadow-xl transition-shadow duration-300">
+                            <div className="w-12 h-12 bg-blue-100 rounded-2xl flex items-center justify-center text-blue-600 mb-6">
+                                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
+                            </div>
+                            <h3 className="text-2xl font-bold text-slate-900 mb-4">Academics & Exams</h3>
+                            <ul className="space-y-4 text-slate-600">
+                                <li className="flex items-start">
+                                    <svg className="w-5 h-5 text-primary-500 mr-3 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                                    <span>Support for <strong>CBC & Traditional</strong> grading systems.</span>
+                                </li>
+                                <li className="flex items-start">
+                                    <svg className="w-5 h-5 text-primary-500 mr-3 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                                    <span>Automated report card generation.</span>
+                                </li>
+                                <li className="flex items-start">
+                                    <svg className="w-5 h-5 text-primary-500 mr-3 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                                    <span>Digital Library management system.</span>
+                                </li>
+                            </ul>
+                        </div>
+
+                         {/* Admin Card */}
+                         <div className="bg-slate-50 rounded-3xl p-8 border border-slate-100 hover:shadow-xl transition-shadow duration-300">
+                            <div className="w-12 h-12 bg-purple-100 rounded-2xl flex items-center justify-center text-purple-600 mb-6">
+                                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.653-.122-1.28-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.653.122-1.28.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+                            </div>
+                            <h3 className="text-2xl font-bold text-slate-900 mb-4">Staff & Parents</h3>
+                            <ul className="space-y-4 text-slate-600">
+                                <li className="flex items-start">
+                                    <svg className="w-5 h-5 text-primary-500 mr-3 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                                    <span>Parent Portal for grades & fee balances.</span>
+                                </li>
+                                <li className="flex items-start">
+                                    <svg className="w-5 h-5 text-primary-500 mr-3 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                                    <span>Bulk SMS & Email communication.</span>
+                                </li>
+                                <li className="flex items-start">
+                                    <svg className="w-5 h-5 text-primary-500 mr-3 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                                    <span>Staff Payroll with statutory deductions.</span>
+                                </li>
+                            </ul>
+                        </div>
                     </div>
                 </div>
             </section>
 
-            {/* Pricing */}
+            {/* Social Proof */}
+            <section className="py-20 bg-slate-900 text-white">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                     <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
+                        <div>
+                            <div className="text-4xl font-bold text-primary-400 mb-2">500+</div>
+                            <div className="text-slate-400 text-sm uppercase tracking-wide">Schools Trusted</div>
+                        </div>
+                        <div>
+                            <div className="text-4xl font-bold text-primary-400 mb-2">50k+</div>
+                            <div className="text-slate-400 text-sm uppercase tracking-wide">Students Managed</div>
+                        </div>
+                        <div>
+                            <div className="text-4xl font-bold text-primary-400 mb-2">99.9%</div>
+                            <div className="text-slate-400 text-sm uppercase tracking-wide">Uptime Guarantee</div>
+                        </div>
+                        <div>
+                            <div className="text-4xl font-bold text-primary-400 mb-2">24/7</div>
+                            <div className="text-slate-400 text-sm uppercase tracking-wide">Customer Support</div>
+                        </div>
+                     </div>
+                </div>
+            </section>
+
+            {/* Pricing Section */}
             <Pricing onSelectPlan={handleSelectPlan} />
 
+            {/* CTA Section */}
+            <section className="py-20 bg-gradient-to-br from-primary-600 to-primary-800 text-white relative overflow-hidden">
+                <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]"></div>
+                <div className="max-w-4xl mx-auto px-4 text-center relative z-10">
+                    <h2 className="text-3xl sm:text-4xl font-bold mb-6">Ready to digitize your school?</h2>
+                    <p className="text-xl text-primary-100 mb-10">Join the fastest growing school management platform in East Africa. Try it free for 14 days.</p>
+                    <button 
+                        onClick={() => handleSelectPlan(SubscriptionPlan.FREE, 'MONTHLY')}
+                        className="px-8 py-4 bg-white text-primary-800 rounded-full text-lg font-bold shadow-2xl hover:bg-slate-100 hover:scale-105 transition-all"
+                    >
+                        Create Free Account
+                    </button>
+                    <p className="mt-4 text-sm opacity-70">No credit card required for Starter plan.</p>
+                </div>
+            </section>
+
             {/* Footer */}
-            <footer className="bg-slate-900 text-slate-300 py-16">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 md:grid-cols-4 gap-12">
+            <footer className="bg-white pt-16 pb-8 border-t border-slate-200">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
                     <div className="col-span-1 md:col-span-2">
-                        <div className="flex items-center text-white mb-6">
-                            <div className="bg-primary-600 rounded-lg p-1 mr-3">
+                        <div className="flex items-center text-slate-900 mb-6">
+                            <div className="bg-primary-600 rounded-lg p-1.5 mr-3">
                                 <svg className="h-6 w-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
                                 </svg>
                             </div>
                             <span className="text-2xl font-bold tracking-tight">Saaslink</span>
                         </div>
-                        <p className="max-w-md text-slate-400 mb-6">Transforming education management across Africa with cutting-edge technology and seamless payments.</p>
-                        <div className="flex space-x-4">
-                            {/* Social icons placeholders */}
-                            <div className="w-8 h-8 bg-slate-800 rounded-full flex items-center justify-center hover:bg-primary-600 transition-colors cursor-pointer">
-                                <span className="sr-only">Twitter</span>
-                                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M23 3a10.9 10.9 0 0 1-3.14 1.53 4.48 4.48 0 0 0-7.86 3v1A10.66 10.66 0 0 1 3 4s-4 9 5 13a11.64 11.64 0 0 1-7 2c9 5 20 0 20-11.5a4.5 4.5 0 0 0-.08-.83A7.72 7.72 0 0 0 23 3z"></path></svg>
-                            </div>
-                            <div className="w-8 h-8 bg-slate-800 rounded-full flex items-center justify-center hover:bg-primary-600 transition-colors cursor-pointer">
-                                <span className="sr-only">LinkedIn</span>
-                                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"></path><rect x="2" y="9" width="4" height="12"></rect><circle cx="4" cy="4" r="2"></circle></svg>
-                            </div>
-                        </div>
+                        <p className="text-slate-500 max-w-sm">
+                            Simplifying education management with secure, cloud-based technology designed for modern African schools.
+                        </p>
                     </div>
                     <div>
-                        <h4 className="text-white font-bold mb-4 uppercase tracking-wider text-sm">Product</h4>
-                        <ul className="space-y-3 text-sm">
-                            <li><a href="#features" className="hover:text-primary-500 transition-colors">Features</a></li>
-                            <li><a href="#pricing" className="hover:text-primary-500 transition-colors">Pricing</a></li>
-                            <li><a href="/login" className="hover:text-primary-500 transition-colors">Admin Login</a></li>
+                        <h4 className="font-bold text-slate-900 mb-4">Product</h4>
+                        <ul className="space-y-2 text-sm text-slate-600">
+                            <li><a href="#features" className="hover:text-primary-600">Features</a></li>
+                            <li><a href="#pricing" className="hover:text-primary-600">Pricing</a></li>
+                            <li><a href="/login" className="hover:text-primary-600">Admin Login</a></li>
+                            <li><a href="/register" className="hover:text-primary-600">Register School</a></li>
                         </ul>
                     </div>
                     <div>
-                        <h4 className="text-white font-bold mb-4 uppercase tracking-wider text-sm">Contact Sales</h4>
-                        <ul className="space-y-3 text-sm">
-                            <li className="flex items-start">
-                                <svg className="w-5 h-5 mr-2 text-primary-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 00-2-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
-                                <a href="mailto:sales@saaslink.com" className="hover:text-white transition-colors">sales@saaslink.com</a>
-                            </li>
-                            <li className="flex items-start">
-                                <svg className="w-5 h-5 mr-2 text-primary-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" /></svg>
-                                <span>+254 720 935 895</span>
-                            </li>
-                            <li className="flex items-start">
-                                <svg className="w-5 h-5 mr-2 text-primary-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-                                <span>Nairobi, Kenya</span>
-                            </li>
+                        <h4 className="font-bold text-slate-900 mb-4">Contact</h4>
+                        <ul className="space-y-2 text-sm text-slate-600">
+                            <li>sales@saaslink.com</li>
+                            <li>+254 720 935 895</li>
+                            <li>Nairobi, Kenya</li>
                         </ul>
                     </div>
                 </div>
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-16 pt-8 border-t border-slate-800 text-sm text-center flex flex-col md:flex-row justify-between items-center">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 border-t border-slate-100 flex flex-col md:flex-row justify-between items-center text-sm text-slate-500">
                     <p>&copy; {new Date().getFullYear()} Saaslink Technologies. All rights reserved.</p>
-                    <div className="space-x-6 mt-4 md:mt-0">
-                        <a href="#" className="hover:text-white transition-colors">Privacy Policy</a>
-                        <a href="#" className="hover:text-white transition-colors">Terms of Service</a>
+                    <div className="flex space-x-6 mt-4 md:mt-0">
+                        <a href="#" className="hover:text-slate-900">Privacy Policy</a>
+                        <a href="#" className="hover:text-slate-900">Terms of Service</a>
                     </div>
                 </div>
             </footer>

@@ -235,6 +235,7 @@ export const getSchoolInfo = (): Promise<SchoolInfo> => apiFetch('/settings/scho
 export const updateSchoolInfo = (data: any): Promise<SchoolInfo> => apiFetch('/settings/school-info', { method: 'PUT', body: JSON.stringify(data) });
 export const updateDarajaSettings = (data: DarajaSettings): Promise<DarajaSettings> => apiFetch('/settings/daraja', { method: 'PUT', body: JSON.stringify(data) });
 export const getPlatformPricing = (): Promise<PlatformPricing> => apiFetch('/settings/public/pricing');
+export const getExchangeRates = (): Promise<Record<string, number>> => apiFetch('/settings/public/rates');
 
 // Academics
 export const createGradingRule = create<GradingRule>('academics/grading-scale');

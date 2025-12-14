@@ -2,6 +2,7 @@
 import { Entity, Column, Index, ManyToOne, JoinColumn } from 'typeorm';
 import { School } from './school.entity';
 import { BaseEntity } from './base.entity';
+import { ColumnNumericTransformer } from '../utils/transformers';
 
 export const PayrollItemType = {
   Earning: 'Earning',
@@ -48,7 +49,7 @@ export class PayrollItem extends BaseEntity {
   @Column({ type: 'enum', enum: CalculationType })
   calculationType!: CalculationType;
 
-  @Column('decimal', { precision: 12, scale: 2, default: 0 })
+  @Column('decimal', { precision: 12, scale: 2, default: 0, transformer: new ColumnNumericTransformer() })
   value!: number;
 
   @Column({ default: false })

@@ -32,7 +32,7 @@ const SuperAdminDashboard: React.FC = () => {
     const [activeTab, setActiveTab] = useState<'overview' | 'revenue' | 'settings'>('overview');
     
     // Filtering State
-    const [filter, setFilter] = useState<'all' | 'active' | 'trial' | 'issues'>('all');
+    const [filter, setFilter] = useState<'all' | 'active' | 'trial' | 'issues' | 'new'>('all');
     
     // Edit Form State
     const [plan, setPlan] = useState<SubscriptionPlan>(SubscriptionPlan.FREE);
@@ -84,6 +84,11 @@ const SuperAdminDashboard: React.FC = () => {
         if (filter === 'active') return schools.filter(s => s.subscription?.status === SubscriptionStatus.ACTIVE);
         if (filter === 'trial') return schools.filter(s => s.subscription?.status === SubscriptionStatus.TRIAL);
         if (filter === 'issues') return schools.filter(s => s.subscription?.status === SubscriptionStatus.PAST_DUE || s.subscription?.status === SubscriptionStatus.CANCELLED);
+        if (filter === 'new') {
+            const thirtyDaysAgo = new Date();
+            thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+            return schools.filter(s => s.createdAt && new Date(s.createdAt) > thirtyDaysAgo);
+        }
         return schools;
     }, [schools, filter]);
 
@@ -246,6 +251,8 @@ const SuperAdminDashboard: React.FC = () => {
                         value={`+${stats?.newSchoolsLast30Days?.toString() || '0'}`} 
                         icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>}
                         colorClass="bg-blue-100 text-blue-600"
+                        onClick={() => setFilter('new')}
+                        isSelected={filter === 'new'}
                     />
                     <StatCard 
                         title="Active / Trial" 
@@ -259,6 +266,7 @@ const SuperAdminDashboard: React.FC = () => {
                         title="Monthly Revenue" 
                         value={`KES ${stats?.mrr?.toLocaleString() || '0'}`} 
                         icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v.01" /></svg>} 
+                        onClick={() => setActiveTab('revenue')}
                     />
                 </div>
 
@@ -271,6 +279,7 @@ const SuperAdminDashboard: React.FC = () => {
                                 {filter === 'active' && 'Active Subscriptions'}
                                 {filter === 'trial' && 'Schools in Trial'}
                                 {filter === 'issues' && 'Past Due / Cancelled'}
+                                {filter === 'new' && 'New Schools (Last 30 Days)'}
                             </h3>
                             <span className="text-sm text-slate-500">{filteredSchools.length} record(s)</span>
                         </div>

@@ -2,17 +2,17 @@
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import Modal from '../components/common/Modal';
 import WebcamCaptureModal from '../components/common/WebcamCaptureModal';
-import type { Student, NewStudent, NewCommunicationLog, NewTransaction, SchoolClass, CommunicationLog } from '../../types';
-import { CommunicationType, StudentStatus, TransactionType } from '../../types';
+import type { Student, NewStudent, NewCommunicationLog, NewTransaction, SchoolClass, CommunicationLog } from '../types';
+import { CommunicationType, StudentStatus, TransactionType } from '../types';
 import StudentBillingModal from '../components/common/StudentBillingModal';
 import BulkMessageModal from '../components/common/BulkMessageModal';
 import PromotionModal from '../components/common/PromotionModal';
-import { useData } from '../../contexts/DataContext';
-import { calculateAge, debounce } from '../../utils/helpers';
+import { useData } from '../contexts/DataContext';
+import { calculateAge, debounce } from '../utils/helpers';
 import ImportModal from '../components/common/ImportModal';
 import Pagination from '../components/common/Pagination';
 import Skeleton from '../components/common/Skeleton';
-import * as api from '../../services/api';
+import * as api from '../services/api';
 
 interface StudentProfileModalProps {
     isOpen: boolean;
@@ -332,8 +332,21 @@ const StudentsView: React.FC = () => {
         setIsBillingModalOpen(true);
     }
     
-    const handlePhotoCapture = (imageDataUrl: string) => {
-        setNewStudent(prev => ({ ...prev, profileImage: imageDataUrl }));
+    const handlePhotoCapture = async (imageDataUrl: string) => {
+         // Convert base64 to file
+         const res = await fetch(imageDataUrl);
+         const blob = await res.blob();
+         const file = new File([blob], "capture.jpg", { type: "image/jpeg" });
+         
+         const formData = new FormData();
+         formData.append('file', file);
+         try {
+            const uploadRes = await api.uploadStudentPhoto(formData);
+            setNewStudent(prev => ({ ...prev, profileImage: uploadRes.url }));
+            addNotification('Photo captured and uploaded.', 'success');
+         } catch (error) {
+             addNotification('Failed to upload captured photo.', 'error');
+         }
     };
 
     const handleAddStudentPhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {

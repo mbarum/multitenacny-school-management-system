@@ -213,14 +213,10 @@ export enum ExamType {
 }
 
 export enum CbetScore {
-  Exceeds = 'Exceeds',
-  Meets = 'Meets',
-  Approaching = 'Approaching',
-  Below = 'Below',
-  Exceeds_Expectation = 'Exceeds Expectation',
-  Meets_Expectation = 'Meets Expectation',
-  Approaching_Expectation = 'Approaching Expectation',
-  Below_Expectation = 'Below Expectation'
+  EE = 'Exceeding Expectations (EE)',
+  ME = 'Meeting Expectations (ME)',
+  AE = 'Approaching Expectations (AE)',
+  BE = 'Below Expectations (BE)'
 }
 
 export interface Exam {
@@ -289,7 +285,11 @@ export enum Currency {
     TZS = 'TZS',
     RWF = 'RWF',
     BIF = 'BIF',
-    USD = 'USD'
+    USD = 'USD',
+    ZMW = 'ZMW', // Zambian Kwacha
+    ETB = 'ETB', // Ethiopian Birr
+    SDG = 'SDG', // Sudanese Pound
+    SSP = 'SSP'  // South Sudanese Pound
 }
 
 export interface SchoolInfo {

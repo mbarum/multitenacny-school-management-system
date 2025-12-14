@@ -41,25 +41,33 @@ export class PayrollService {
                 const recurringItems = await this.itemRepo.find({ where: { isRecurring: true, schoolId: schoolId as any } });
 
                 entriesToProcess = activeStaff.map(staff => {
-                    const earnings = [{ name: 'Basic Salary', amount: staff.salary, type: PayrollItemType.Earning }];
+                    const salary = Number(staff.salary); // Ensure number
+                    const earnings = [{ name: 'Basic Salary', amount: salary, type: PayrollItemType.Earning }];
+                    
                     recurringItems.filter(i => i.type === PayrollItemType.Earning).forEach(item => {
+                        const itemValue = Number(item.value); // Ensure number
                         const amount = item.calculationType === CalculationType.Percentage 
-                            ? (item.value / 100) * staff.salary : item.value;
+                            ? (itemValue / 100) * salary : itemValue;
                         earnings.push({ name: item.name, amount, type: PayrollItemType.Earning });
                     });
-                    const grossPay = earnings.reduce((sum, i) => sum + i.amount, 0);
+                    
+                    const grossPay = earnings.reduce((sum, i) => sum + Number(i.amount), 0);
+                    
                     const deductions = [
                         { name: 'PAYE', amount: this.calculatePAYE(grossPay), type: PayrollItemType.Deduction },
                         { name: 'SHA Contribution', amount: this.calculateSHA(grossPay), type: PayrollItemType.Deduction },
                         { name: 'NSSF', amount: this.calculateNSSF(grossPay), type: PayrollItemType.Deduction },
                         { name: 'Housing Levy', amount: this.calculateHousingLevy(grossPay), type: PayrollItemType.Deduction },
                     ];
+                    
                     recurringItems.filter(i => i.type === PayrollItemType.Deduction).forEach(item => {
+                        const itemValue = Number(item.value); // Ensure number
                         const amount = item.calculationType === CalculationType.Percentage 
-                            ? (item.value / 100) * staff.salary : item.value;
+                            ? (itemValue / 100) * salary : itemValue;
                         deductions.push({ name: item.name, amount, type: PayrollItemType.Deduction });
                     });
-                    const totalDeductions = deductions.reduce((sum, d) => sum + d.amount, 0);
+                    
+                    const totalDeductions = deductions.reduce((sum, d) => sum + Number(d.amount), 0);
                     const netPay = grossPay - totalDeductions;
 
                     return { staffId: staff.id, staffName: staff.name, month: currentMonth, payDate: new Date().toISOString().split('T')[0], grossPay, totalDeductions, netPay, earnings, deductions };

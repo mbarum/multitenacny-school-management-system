@@ -18,8 +18,10 @@ const ParentDashboard: React.FC = () => {
                 for (const child of parentChildren) {
                     // Fetch updated student data which includes calculated balance
                     const res = await api.getStudents({ search: child.admissionNumber, limit: 1 });
-                    const student = res.data.find(s => s.id === child.id);
-                    newBalances[child.id] = student?.balance || 0;
+                    if (res && res.data) {
+                        const student = res.data.find((s: Student) => s.id === child.id);
+                        newBalances[child.id] = student?.balance || 0;
+                    }
                 }
                 setBalances(newBalances);
             } catch (e) {
@@ -49,11 +51,15 @@ const ParentDashboard: React.FC = () => {
                 parentChildren.map(child => {
                     const balance = balances[child.id] || 0;
                     return (
-                        <div key={child.id} className="bg-white p-6 rounded-xl shadow-lg flex items-center justify-between hover:shadow-xl transition-shadow">
+                        <div 
+                            key={child.id} 
+                            onClick={() => handleSelectChild(child)}
+                            className="bg-white p-6 rounded-xl shadow-lg flex items-center justify-between hover:shadow-xl hover:-translate-y-1 transition-all cursor-pointer group border border-transparent hover:border-primary-100"
+                        >
                             <div className="flex items-center space-x-4">
-                                <img src={child.profileImage} alt={child.name} className="h-20 w-20 rounded-full object-cover"/>
+                                <img src={child.profileImage} alt={child.name} className="h-20 w-20 rounded-full object-cover group-hover:ring-2 group-hover:ring-primary-500 group-hover:ring-offset-2 transition-all"/>
                                 <div>
-                                    <h3 className="text-2xl font-bold text-slate-800">{child.name}</h3>
+                                    <h3 className="text-2xl font-bold text-slate-800 group-hover:text-primary-700 transition-colors">{child.name}</h3>
                                     <p className="text-slate-600">{child.class}</p>
                                 </div>
                             </div>
@@ -62,7 +68,7 @@ const ParentDashboard: React.FC = () => {
                                 <p className={`text-2xl font-bold ${balance > 0 ? 'text-red-600' : 'text-green-600'}`}>
                                     KES {balance.toLocaleString()}
                                 </p>
-                                <button onClick={() => handleSelectChild(child)} className="mt-2 text-primary-600 font-semibold hover:underline">View Details &rarr;</button>
+                                <span className="mt-2 text-primary-600 font-semibold text-sm group-hover:underline inline-block">View Details &rarr;</span>
                             </div>
                         </div>
                     );

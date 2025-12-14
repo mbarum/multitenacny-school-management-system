@@ -3,17 +3,18 @@ import React, { useState, useEffect } from 'react';
 import { SubscriptionPlan, PlatformPricing, Currency } from '../../types';
 import * as api from '../../services/api';
 import Skeleton from '../common/Skeleton';
-import { convertAmount, formatCurrency, EXCHANGE_RATES } from '../../utils/currency';
+import { useData } from '../../contexts/DataContext';
 
 interface PricingProps {
     onSelectPlan: (plan: SubscriptionPlan, billing: 'MONTHLY' | 'ANNUALLY') => void;
 }
 
 const Pricing: React.FC<PricingProps> = ({ onSelectPlan }) => {
+    const { formatCurrency, convertCurrency } = useData();
     const [billing, setBilling] = useState<'MONTHLY' | 'ANNUALLY'>('MONTHLY');
     const [pricing, setPricing] = useState<PlatformPricing | null>(null);
     const [loading, setLoading] = useState(true);
-    const [currency, setCurrency] = useState<Currency>(Currency.KES);
+    const [currency, setCurrency] = useState<string>('KES');
 
     useEffect(() => {
         const fetchPricing = async () => {
@@ -38,7 +39,7 @@ const Pricing: React.FC<PricingProps> = ({ onSelectPlan }) => {
         if (plan === SubscriptionPlan.PREMIUM) {
             basePrice = billing === 'MONTHLY' ? pricing.premiumMonthlyPrice : pricing.premiumAnnualPrice;
         }
-        return convertAmount(basePrice, currency);
+        return convertCurrency(basePrice, currency);
     };
 
     const plans = [
@@ -133,7 +134,7 @@ const Pricing: React.FC<PricingProps> = ({ onSelectPlan }) => {
                         <span className="text-sm font-medium text-slate-600">Currency:</span>
                         <select 
                             value={currency} 
-                            onChange={(e) => setCurrency(e.target.value as Currency)}
+                            onChange={(e) => setCurrency(e.target.value)}
                             className="p-1 border border-slate-300 rounded text-sm bg-white focus:ring-primary-500 focus:border-primary-500"
                         >
                             {Object.values(Currency).map(c => <option key={c} value={c}>{c}</option>)}
@@ -193,7 +194,7 @@ const Pricing: React.FC<PricingProps> = ({ onSelectPlan }) => {
                                         <li key={feature} className="flex items-start opacity-50">
                                             <div className="flex-shrink-0">
                                                 <svg className="h-6 w-6 text-slate-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                                                 </svg>
                                             </div>
                                             <p className="ml-3 text-base text-slate-500">{feature}</p>

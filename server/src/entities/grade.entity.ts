@@ -7,14 +7,10 @@ import { School } from './school.entity';
 import { BaseEntity } from './base.entity';
 
 export const CbetScore = {
-  Exceeds: 'Exceeds',
-  Meets: 'Meets',
-  Approaching: 'Approaching',
-  Below: 'Below',
-  Exceeds_Expectation: 'Exceeds Expectation',
-  Meets_Expectation: 'Meets Expectation',
-  Approaching_Expectation: 'Approaching Expectation',
-  Below_Expectation: 'Below Expectation'
+  EE: 'Exceeding Expectations (EE)',
+  ME: 'Meeting Expectations (ME)',
+  AE: 'Approaching Expectations (AE)',
+  BE: 'Below Expectations (BE)'
 } as const;
 export type CbetScore = typeof CbetScore[keyof typeof CbetScore];
 

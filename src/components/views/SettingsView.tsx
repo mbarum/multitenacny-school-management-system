@@ -334,14 +334,54 @@ const SettingsView: React.FC = () => {
         ));
     };
 
-    const handleSaveGradingChanges = () => {
-        localGradingScale.forEach(rule => {
-            const originalRule = gradingScale.find(r => r.id === rule.id);
-            if (originalRule && (originalRule.grade !== rule.grade || originalRule.minScore !== rule.minScore || originalRule.maxScore !== rule.maxScore)) {
-                updateGradingRule(rule.id, { grade: rule.grade, minScore: rule.minScore, maxScore: rule.maxScore });
-            }
-        });
-        addNotification('Grading scale changes saved!', 'success');
+    // FIXED: Only adds to local state. Does not call API immediately.
+    const handleAddGradingRule = () => {
+        setLocalGradingScale(prev => [
+            ...prev, 
+            { id: `temp-${Date.now()}`, grade: '', minScore: 0, maxScore: 0 } as GradingRule
+        ]);
+    };
+
+    // FIXED: Handles deleting temp rules locally, and real rules via API.
+    const handleDeleteGradingRule = (id: string) => {
+        if (id.startsWith('temp-')) {
+            setLocalGradingScale(prev => prev.filter(r => r.id !== id));
+        } else {
+             if (window.confirm('Are you sure you want to delete this grading rule?')) {
+                deleteGradingRule(id);
+             }
+        }
+    };
+
+    // FIXED: Iterates and saves new rules (temp IDs) or updates existing ones.
+    const handleSaveGradingChanges = async () => {
+        // Validate inputs
+        const invalid = localGradingScale.find(r => !r.grade.trim());
+        if (invalid) {
+            addNotification('Grade name cannot be empty.', 'error');
+            return;
+        }
+
+        try {
+            const promises = localGradingScale.map(async (rule) => {
+                if (rule.id.startsWith('temp-')) {
+                    // Create new rules for temp items
+                    return addGradingRule({ grade: rule.grade, minScore: rule.minScore, maxScore: rule.maxScore });
+                } else {
+                    // Update existing rules if changed
+                    const originalRule = gradingScale.find(r => r.id === rule.id);
+                    if (originalRule && (originalRule.grade !== rule.grade || originalRule.minScore !== rule.minScore || originalRule.maxScore !== rule.maxScore)) {
+                        return updateGradingRule(rule.id, { grade: rule.grade, minScore: rule.minScore, maxScore: rule.maxScore });
+                    }
+                }
+                return Promise.resolve();
+            });
+
+            await Promise.all(promises);
+            addNotification('Grading scale saved successfully!', 'success');
+        } catch (error) {
+            addNotification('Failed to save grading scale.', 'error');
+        }
     };
 
     const { feeItemsByCategory, feeCategories } = useMemo(() => {
@@ -643,12 +683,12 @@ const SettingsView: React.FC = () => {
                                             <td className="p-1"><input type="text" value={rule.grade} onChange={e => handleGradingRuleChange(rule.id, 'grade', e.target.value)} className="w-full p-1 border rounded" /></td>
                                             <td className="p-1"><input type="number" value={rule.minScore} onChange={e => handleGradingRuleChange(rule.id, 'minScore', e.target.value)} className="w-full p-1 border rounded" /></td>
                                             <td className="p-1"><input type="number" value={rule.maxScore} onChange={e => handleGradingRuleChange(rule.id, 'maxScore', e.target.value)} className="w-full p-1 border rounded" /></td>
-                                            <td className="p-1 text-center"><button onClick={() => deleteGradingRule(rule.id)} className="text-red-500 hover:text-red-700 font-bold text-lg">&times;</button></td>
+                                            <td className="p-1 text-center"><button onClick={() => handleDeleteGradingRule(rule.id)} className="text-red-500 hover:text-red-700 font-bold text-lg">&times;</button></td>
                                         </tr>
                                     ))}
                                 </tbody>
                             </table>
-                             <button onClick={() => addGradingRule({ grade: 'New', minScore: 0, maxScore: 0 })} className="mt-4 px-4 py-2 bg-slate-200 text-slate-700 rounded-lg text-sm font-semibold hover:bg-slate-300">Add New Rule</button>
+                             <button onClick={handleAddGradingRule} className="mt-4 px-4 py-2 bg-slate-200 text-slate-700 rounded-lg text-sm font-semibold hover:bg-slate-300">Add New Rule</button>
                              <div className="flex justify-end mt-4 pt-4 border-t">
                                 <button onClick={handleSaveGradingChanges} className="px-6 py-2 bg-primary-600 text-white font-semibold rounded-lg shadow-md hover:bg-primary-700">Save Grading Scale</button>
                             </div>
@@ -656,8 +696,8 @@ const SettingsView: React.FC = () => {
                     )}
 
                     {localSchoolInfo.gradingSystem === GradingSystem.CBC && (
-                        <div className="mt-6 pt-6 border-t">
-                            <h4 className="text-lg font-semibold text-slate-700 mb-2">CBC Performance Levels (Reference)</h4>
+                        <div>
+                            <h4 className="text-lg font-semibold text-slate-700 mb-2">CBC Performance Levels</h4>
                             <ul className="list-disc list-inside bg-slate-50 p-4 rounded-md text-slate-700">
                                 {Object.values(CbetScore).map(level => <li key={level}>{level}</li>)}
                             </ul>
@@ -723,10 +763,10 @@ const SettingsView: React.FC = () => {
                 feeCategories={feeCategories}
             />
             <UserModal 
-                isOpen={isUserModalOpen} 
-                onClose={() => setIsUserModalOpen(false)} 
-                onSave={handleSaveUser} 
-                user={editingUser} 
+                isOpen={isUserModalOpen}
+                onClose={() => setIsUserModalOpen(false)}
+                onSave={handleSaveUser}
+                user={editingUser}
             />
         </div>
     );

@@ -8,7 +8,7 @@ import type {
     CommunicationLog, Announcement, PayrollItem, DarajaSettings, MpesaC2BTransaction, 
     Notification, NewStudent, NewStaff, NewTransaction, NewExpense, NewPayrollItem, NewAnnouncement, 
     NewCommunicationLog, NewUser, NewGradingRule, NewFeeItem, Book, LibraryTransaction, IssueBookData,
-    NewBook
+    NewBook, Currency
 } from '../types';
 import { NAVIGATION_ITEMS, TEACHER_NAVIGATION_ITEMS, PARENT_NAVIGATION_ITEMS, SUPER_ADMIN_NAVIGATION_ITEMS } from '../constants';
 import type { NavItem } from '../constants';
@@ -50,6 +50,9 @@ interface IDataContext {
     // Library
     books: Book[];
     libraryTransactions: LibraryTransaction[];
+    
+    // Currency
+    exchangeRates: Record<string, number>;
 
     // UI State
     isSidebarCollapsed: boolean;
@@ -68,6 +71,7 @@ interface IDataContext {
     getNavigationItems: () => NavItem[];
     openIdCardModal: (person: Student | Staff, type: 'student' | 'staff') => void;
     formatCurrency: (amount: number, currency?: string) => string;
+    convertCurrency: (amount: number, targetCurrency: string) => number;
     
     // Granular Actions
     addStudent: (studentData: NewStudent) => Promise<Student>;
@@ -174,6 +178,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [books, setBooks] = useState<Book[]>([]);
     const [libraryTransactions, setLibraryTransactions] = useState<LibraryTransaction[]>([]);
 
+    // Currency Rates (Fetched from backend)
+    const [exchangeRates, setExchangeRates] = useState<Record<string, number>>({});
+
     // UI State
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
     const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
@@ -214,6 +221,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
             try {
                 const info = await api.getPublicSchoolInfo();
                 setSchoolInfo(info);
+                // Also fetch public rates on load for Pricing page
+                const rates = await api.getExchangeRates();
+                setExchangeRates(rates);
                 setIsOffline(false);
             } catch (error) {
                  console.error("Could not load school information", error);
@@ -272,6 +282,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 
                 api.getBooks().then((res) => setBooks(getArray(res))).catch(console.error);
                 api.getLibraryTransactions().then((res) => setLibraryTransactions(getArray(res))).catch(console.error);
+                
+                // Fetch rates again when authenticated to ensure freshness
+                api.getExchangeRates().then(setExchangeRates).catch(console.error);
 
                  if (currentUser.role === Role.Teacher) {
                     // Find the class where this user is the form teacher
@@ -433,18 +446,27 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setIsIdCardModalOpen(true);
     }, []);
 
-    const formatCurrency = useCallback((amount: number, currency = 'KES') => {
+    const formatCurrency = useCallback((amount: number, currency?: string) => {
+        // Use school's selected currency or fallback to provided one/KES
+        const targetCurrency = currency || schoolInfo?.currency || 'KES';
         return new Intl.NumberFormat('en-US', {
             style: 'currency',
-            currency: schoolInfo?.currency || currency,
+            currency: targetCurrency,
             minimumFractionDigits: 0,
             maximumFractionDigits: 0,
         }).format(amount);
     }, [schoolInfo]);
 
+    const convertCurrency = useCallback((amount: number, targetCurrency: string) => {
+        // Base is KES. If target is different, convert using loaded rates.
+        if (targetCurrency === 'KES' || !exchangeRates[targetCurrency]) return amount;
+        return amount * exchangeRates[targetCurrency];
+    }, [exchangeRates]);
+
     const value: IDataContext = {
-        isLoading, isOffline, schoolInfo, currentUser, activeView, users, students, transactions, expenses, staff, payrollHistory, subjects, classes, classSubjectAssignments, timetableEntries, exams, grades, attendanceRecords, events, gradingScale, feeStructure, communicationLogs, announcements, payrollItems, darajaSettings, mpesaC2BTransactions, notifications, assignedClass, parentChildren, selectedChild, isSidebarCollapsed, isMobileSidebarOpen, setIsSidebarCollapsed, setIsMobileSidebarOpen, setActiveView, setSelectedChild, addNotification, handleLogin, handleLogout, getNavigationItems, openIdCardModal, studentFinancials, formatCurrency,
+        isLoading, isOffline, schoolInfo, currentUser, activeView, users, students, transactions, expenses, staff, payrollHistory, subjects, classes, classSubjectAssignments, timetableEntries, exams, grades, attendanceRecords, events, gradingScale, feeStructure, communicationLogs, announcements, payrollItems, darajaSettings, mpesaC2BTransactions, notifications, assignedClass, parentChildren, selectedChild, isSidebarCollapsed, isMobileSidebarOpen, setIsSidebarCollapsed, setIsMobileSidebarOpen, setActiveView, setSelectedChild, addNotification, handleLogin, handleLogout, getNavigationItems, openIdCardModal, studentFinancials, 
         books, libraryTransactions,
+        exchangeRates, formatCurrency, convertCurrency,
         addStudent, updateStudent, deleteStudent, updateMultipleStudents, 
         addTransaction, addMultipleTransactions, 
         addExpense, 

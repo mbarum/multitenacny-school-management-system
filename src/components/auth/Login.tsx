@@ -65,17 +65,17 @@ const Login: React.FC = () => {
     return (
         <>
             <div className="min-h-screen w-full bg-slate-50 lg:grid lg:grid-cols-2">
-                <div className="flex flex-col justify-center items-center p-8 lg:p-12 relative">
+                <div className="flex flex-col justify-center items-center p-8 lg:p-12 relative z-10 bg-white">
                     <div className="w-full max-w-sm">
                         <div className="mb-10 text-center">
                              <div className="flex items-center justify-center">
                                  {schoolInfo?.logoUrl && (
-                                    <img src={schoolInfo.logoUrl} alt="School Logo" className="h-14 w-14 rounded-full object-cover" />
+                                    <img src={schoolInfo.logoUrl} alt="School Logo" className="h-16 w-16 rounded-full object-cover border border-slate-100 shadow-sm" />
                                  )}
-                                <span className="ml-4 text-4xl font-bold text-primary-700 tracking-tight">{schoolInfo?.name || 'Saaslink'}</span>
+                                <span className="ml-4 text-3xl font-bold text-primary-700 tracking-tight">{schoolInfo?.name || 'Saaslink'}</span>
                              </div>
                              <h1 className="mt-8 text-3xl font-extrabold text-slate-900">Welcome Back</h1>
-                             <p className="mt-2 text-slate-600">Please sign in to continue.</p>
+                             <p className="mt-2 text-slate-600">Please sign in to access the portal.</p>
                         </div>
                         
                         <form onSubmit={handleLoginSubmit} className="space-y-6">
@@ -93,10 +93,10 @@ const Login: React.FC = () => {
                                     }} 
                                     onBlur={validateForm}
                                     required 
-                                    className={`peer block w-full px-10 py-3 border rounded-lg shadow-sm placeholder-transparent focus:outline-none focus:ring-2  focus:border-primary-500 transition ${formErrors.email ? 'border-red-500 focus:ring-red-500' : 'border-slate-300 focus:ring-primary-500'}`} 
+                                    className={`peer block w-full px-10 py-3.5 border rounded-xl shadow-sm placeholder-transparent focus:outline-none focus:ring-2 focus:ring-offset-1 focus:border-primary-500 transition ${formErrors.email ? 'border-red-500 focus:ring-red-500' : 'border-slate-300 focus:ring-primary-500'}`} 
                                     placeholder="you@example.com"
                                 />
-                                 <label htmlFor="email" className="absolute left-10 -top-2.5 text-sm text-slate-500 bg-slate-50 px-1 transition-all peer-placeholder-shown:text-base peer-placeholder-shown:text-slate-400 peer-placeholder-shown:top-3.5 peer-focus:-top-2.5 peer-focus:text-sm peer-focus:text-primary-600">Email Address</label>
+                                 <label htmlFor="email" className="absolute left-10 -top-2.5 text-sm text-slate-500 bg-white px-1 transition-all peer-placeholder-shown:text-base peer-placeholder-shown:text-slate-400 peer-placeholder-shown:top-3.5 peer-focus:-top-2.5 peer-focus:text-sm peer-focus:text-primary-600">Email Address</label>
                                 {formErrors.email && <p className="mt-1 text-xs text-red-600">{formErrors.email}</p>}
                             </div>
 
@@ -110,11 +110,11 @@ const Login: React.FC = () => {
                                     value={password} 
                                     onChange={(e) => setPassword(e.target.value)} 
                                     required 
-                                    className="peer block w-full px-10 py-3 border border-slate-300 rounded-lg shadow-sm placeholder-transparent focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition"
+                                    className="peer block w-full px-10 py-3.5 border border-slate-300 rounded-xl shadow-sm placeholder-transparent focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-primary-500 focus:border-primary-500 transition"
                                     placeholder="••••••••"
                                 />
-                                <label htmlFor="password" className="absolute left-10 -top-2.5 text-sm text-slate-500 bg-slate-50 px-1 transition-all peer-placeholder-shown:text-base peer-placeholder-shown:text-slate-400 peer-placeholder-shown:top-3.5 peer-focus:-top-2.5 peer-focus:text-sm peer-focus:text-primary-600">Password</label>
-                                <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                                <label htmlFor="password" className="absolute left-10 -top-2.5 text-sm text-slate-500 bg-white px-1 transition-all peer-placeholder-shown:text-base peer-placeholder-shown:text-slate-400 peer-placeholder-shown:top-3.5 peer-focus:-top-2.5 peer-focus:text-sm peer-focus:text-primary-600">Password</label>
+                                <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1">
                                     {showPassword ? 
                                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
                                         : 
@@ -123,44 +123,48 @@ const Login: React.FC = () => {
                                 </button>
                             </div>
                             
-                            {error && <p className="text-red-600 text-sm text-center">{error}</p>}
+                            {error && <p className="text-red-600 bg-red-50 p-3 rounded-lg text-sm text-center border border-red-200">{error}</p>}
 
                             <div className="flex justify-between items-center text-sm">
-                                <label className="flex items-center space-x-2">
-                                    <input type="checkbox" className="rounded text-primary-600 focus:ring-primary-500"/>
+                                <label className="flex items-center space-x-2 cursor-pointer">
+                                    <input type="checkbox" className="rounded text-primary-600 focus:ring-primary-500 w-4 h-4 border-slate-300"/>
                                     <span className="text-slate-600">Remember me</span>
                                 </label>
-                                <a href="#" onClick={(e) => {e.preventDefault(); setIsResetModalOpen(true)}} className="font-medium text-primary-600 hover:text-primary-500">Forgot Password?</a>
+                                <a href="#" onClick={(e) => {e.preventDefault(); setIsResetModalOpen(true)}} className="font-semibold text-primary-600 hover:text-primary-700 transition-colors">Forgot Password?</a>
                             </div>
 
                             <div>
-                                <button type="submit" disabled={isLoading} className="w-full flex justify-center items-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-lg font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors disabled:bg-slate-400 h-[52px]">
+                                <button type="submit" disabled={isLoading} className="w-full flex justify-center items-center py-3.5 px-4 border border-transparent rounded-xl shadow-lg shadow-primary-500/30 text-lg font-bold text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-all transform hover:-translate-y-0.5 disabled:bg-slate-400 disabled:shadow-none h-[54px]">
                                     {isLoading ? 
                                         <svg className="animate-spin h-6 w-6 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                                             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                                             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                         </svg>
-                                        : 'Login'}
+                                        : 'Sign In'}
                                 </button>
                             </div>
                         </form>
                     </div>
-                     <p className="absolute bottom-8 text-center text-sm text-slate-500">
+                     <p className="absolute bottom-8 text-center text-sm text-slate-400">
                         &copy; {new Date().getFullYear()} Saaslink Technologies Ltd. All rights reserved.
                     </p>
                 </div>
-                 <div className="hidden lg:block relative">
+                 <div className="hidden lg:block relative overflow-hidden">
                     <img 
-                        className="absolute inset-0 h-full w-full object-cover"
-                        src="https://images.unsplash.com/photo-1542810634-71277d95dcbb?q=80&w=2070&auto=format&fit=crop"
-                        alt="Students in an African classroom setting"
+                        className="absolute inset-0 h-full w-full object-cover transition-transform duration-[20s] hover:scale-105"
+                        src="https://images.unsplash.com/photo-1577896851231-70ef18881754?q=80&w=2070&auto=format&fit=crop"
+                        alt="Students in a modern African classroom setting"
                         aria-label="African classroom setting with students learning"
                     />
-                    <div className="absolute inset-0 bg-slate-900 bg-opacity-50 flex items-center justify-center p-12">
-                         <div className="text-white max-w-md">
-                            <h2 className="text-4xl font-bold">Empowering Education,</h2>
-                            <h2 className="text-4xl font-bold text-primary-300 mt-2">Connecting Communities.</h2>
-                            <p className="mt-4 text-slate-200">Our platform provides a seamless, integrated experience for administrators, teachers, parents, and students across Africa.</p>
+                    <div className="absolute inset-0 bg-gradient-to-t from-primary-900/90 via-primary-900/40 to-slate-900/10 flex flex-col justify-end p-16">
+                         <div className="text-white max-w-lg animate-fade-in-up">
+                             <div className="mb-4 inline-flex items-center px-3 py-1 rounded-full bg-white/20 backdrop-blur-sm border border-white/30 text-xs font-medium text-white">
+                                🚀 The #1 School Management System
+                             </div>
+                            <h2 className="text-4xl font-bold leading-tight">Empowering African Education through Technology.</h2>
+                            <p className="mt-6 text-lg text-slate-100 font-light leading-relaxed">
+                                Streamline administration, automate fee collection, and generate AI-powered insights. Join thousands of schools transforming their operations with Saaslink.
+                            </p>
                         </div>
                     </div>
                 </div>
@@ -176,7 +180,7 @@ const Login: React.FC = () => {
                             value={resetEmail}
                             onChange={(e) => setResetEmail(e.target.value)}
                             required
-                            className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md"
+                            className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500"
                             placeholder="you@example.com"
                         />
                     </div>

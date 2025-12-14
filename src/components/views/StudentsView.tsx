@@ -69,8 +69,20 @@ const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ isOpen, onClo
         e.preventDefault();
         if (!student) return;
         
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const { class: _, balance, ...updates } = formData;
+        // Sanitize the payload. Only send fields that are allowed to be updated.
+        // Backend rejects: id, schoolId, createdAt, updatedAt, admissionNumber
+        const updates: any = {
+            name: formData.name,
+            classId: formData.classId,
+            status: formData.status,
+            profileImage: formData.profileImage,
+            guardianName: formData.guardianName,
+            guardianContact: formData.guardianContact,
+            guardianAddress: formData.guardianAddress,
+            guardianEmail: formData.guardianEmail,
+            emergencyContact: formData.emergencyContact,
+            dateOfBirth: formData.dateOfBirth,
+        };
         
         updateStudent(student.id, updates).then(() => {
             addNotification(`${student.name}'s profile updated successfully.`, 'success');
@@ -227,12 +239,16 @@ const StudentsView: React.FC = () => {
         setLoading(true);
         try {
             const response = await api.getStudents({ page, limit: 10, search, classId, status });
+            // Fix: Robust check for pagination vs array format
             if (Array.isArray(response)) {
                  setStudentsList(response);
                  setTotalPages(1);
-            } else {
-                 setStudentsList(response.data || []);
+            } else if (response && Array.isArray(response.data)) {
+                 setStudentsList(response.data);
                  setTotalPages(response.last_page || 1);
+            } else {
+                 setStudentsList([]);
+                 setTotalPages(1);
             }
             setCurrentPage(page);
         } catch (error) {

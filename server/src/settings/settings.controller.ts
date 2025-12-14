@@ -29,6 +29,12 @@ export class SettingsController {
     return this.settingsService.getPlatformPricing();
   }
 
+  @Public()
+  @Get('public/rates')
+  getExchangeRates() {
+      return this.settingsService.getExchangeRates();
+  }
+
   @Post('upload-logo')
   @Roles(Role.Admin)
   @UseInterceptors(FileInterceptor('logo', {
