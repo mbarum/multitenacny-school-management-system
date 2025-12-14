@@ -20,7 +20,7 @@ const SuperAdminDashboard: React.FC = () => {
     
     // Pricing Management
     const [isPricingModalOpen, setIsPricingModalOpen] = useState(false);
-    const [newPricing, setNewPricing] = useState<Partial<PlatformPricing & { mpesaPaybill?: string, mpesaConsumerKey?: string, mpesaConsumerSecret?: string, mpesaPasskey?: string }>>({});
+    const [newPricing, setNewPricing] = useState<Partial<PlatformPricing>>({});
 
     // Health Check
     const [isHealthModalOpen, setIsHealthModalOpen] = useState(false);
@@ -496,6 +496,27 @@ const SuperAdminDashboard: React.FC = () => {
                             <div>
                                 <label className="block text-sm font-medium text-slate-700">Consumer Secret</label>
                                 <input type="password" name="mpesaConsumerSecret" value={newPricing.mpesaConsumerSecret || ''} onChange={handlePriceChange} className="w-full p-2 border rounded"/>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="p-4 bg-white border-2 border-slate-200 rounded-lg mt-6">
+                        <h4 className="font-bold text-slate-800 mb-4 text-lg flex items-center">
+                            <svg className="w-6 h-6 mr-2 text-[#635BFF]" fill="currentColor" viewBox="0 0 24 24"><path d="M13.976 9.15c-2.172-.806-3.356-1.426-3.356-2.915 0-1.17 1.256-1.936 2.756-1.936 1.704 0 2.946.852 3.655 2.14l2.58-1.572C18.256 2.378 16.036.8 13.376.8c-3.6 0-6.196 2.05-6.196 5.518 0 3.328 2.656 4.796 5.566 5.86 2.17.804 3.018 1.574 3.018 2.964 0 1.288-1.418 2.124-3.056 2.124-2.186 0-3.528-1.074-4.22-2.58L5.6 16.39c1.078 2.376 3.42 3.61 6.55 3.61 3.86 0 6.646-1.996 6.646-5.818 0-3.518-2.616-4.992-4.82-5.832"/></svg>
+                            Stripe Integration (Card Payments)
+                        </h4>
+                        <div className="grid grid-cols-1 gap-4">
+                             <div>
+                                <label className="block text-sm font-medium text-slate-700">Publishable Key</label>
+                                <input type="text" name="stripePublishableKey" value={newPricing.stripePublishableKey || ''} onChange={handlePriceChange} className="w-full p-2 border rounded" placeholder="pk_live_..."/>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700">Secret Key</label>
+                                <input type="password" name="stripeSecretKey" value={newPricing.stripeSecretKey || ''} onChange={handlePriceChange} className="w-full p-2 border rounded" placeholder="sk_live_..."/>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700">Webhook Secret</label>
+                                <input type="password" name="stripeWebhookSecret" value={newPricing.stripeWebhookSecret || ''} onChange={handlePriceChange} className="w-full p-2 border rounded" placeholder="whsec_..."/>
                             </div>
                         </div>
                     </div>

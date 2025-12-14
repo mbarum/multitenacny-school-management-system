@@ -29,4 +29,14 @@ export class PlatformSetting extends BaseEntity {
 
   @Column({ default: '' })
   mpesaPasskey!: string;
+
+  // Stripe Integration
+  @Column({ default: '' })
+  stripePublishableKey!: string;
+
+  @Column({ default: '' })
+  stripeSecretKey!: string;
+
+  @Column({ default: '' })
+  stripeWebhookSecret!: string;
 }

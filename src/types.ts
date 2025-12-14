@@ -466,4 +466,15 @@ export interface PlatformPricing {
     basicAnnualPrice: number;
     premiumMonthlyPrice: number;
     premiumAnnualPrice: number;
+    
+    // M-Pesa Integration (Super Admin receiving payments)
+    mpesaPaybill?: string;
+    mpesaConsumerKey?: string;
+    mpesaConsumerSecret?: string;
+    mpesaPasskey?: string;
+
+    // Stripe Integration
+    stripePublishableKey?: string;
+    stripeSecretKey?: string;
+    stripeWebhookSecret?: string;
 }

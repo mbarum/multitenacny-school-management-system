@@ -9,12 +9,13 @@ import { JwtStrategy } from './jwt.strategy';
 import { ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { School } from '../entities/school.entity';
+import { PlatformSetting } from '../entities/platform-setting.entity';
 
 @Module({
   imports: [
     UsersModule,
     PassportModule,
-    TypeOrmModule.forFeature([School]),
+    TypeOrmModule.forFeature([School, PlatformSetting]),
     JwtModule.registerAsync({
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
