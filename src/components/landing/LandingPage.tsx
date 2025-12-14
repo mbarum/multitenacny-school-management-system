@@ -307,6 +307,44 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate }) => {
                 </div>
             </section>
 
+            {/* How It Works Section */}
+            <section id="how-it-works" className="py-24 bg-white border-t border-slate-100">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div className="text-center mb-16">
+                        <h2 className="text-3xl font-extrabold text-slate-900 sm:text-4xl">
+                            Up and running in minutes
+                        </h2>
+                        <p className="mt-4 text-lg text-slate-600">
+                            Skip the expensive IT setup. Saaslink is plug-and-play.
+                        </p>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-12 text-center">
+                        {/* Step 1 */}
+                        <div className="relative group">
+                            <div className="w-16 h-16 bg-primary-100 text-primary-600 rounded-full flex items-center justify-center mx-auto mb-6 text-xl font-bold transition-transform group-hover:scale-110">1</div>
+                            <h3 className="text-xl font-bold text-slate-900 mb-2">Create Account</h3>
+                            <p className="text-slate-600 max-w-sm mx-auto">Register your school profile securely. No installation or hardware required.</p>
+                        </div>
+                        {/* Step 2 */}
+                        <div className="relative group">
+                             {/* Connector Line (Desktop) */}
+                            <div className="hidden md:block absolute top-8 -left-1/2 w-full h-0.5 bg-slate-100 -z-10"></div>
+                            <div className="w-16 h-16 bg-primary-100 text-primary-600 rounded-full flex items-center justify-center mx-auto mb-6 text-xl font-bold transition-transform group-hover:scale-110">2</div>
+                            <h3 className="text-xl font-bold text-slate-900 mb-2">Import Data</h3>
+                            <p className="text-slate-600 max-w-sm mx-auto">Upload your student list via CSV or add them manually. We organize everything instantly.</p>
+                        </div>
+                        {/* Step 3 */}
+                        <div className="relative group">
+                            <div className="hidden md:block absolute top-8 -left-1/2 w-full h-0.5 bg-slate-100 -z-10"></div>
+                            <div className="w-16 h-16 bg-primary-100 text-primary-600 rounded-full flex items-center justify-center mx-auto mb-6 text-xl font-bold transition-transform group-hover:scale-110">3</div>
+                            <h3 className="text-xl font-bold text-slate-900 mb-2">Automate Fees</h3>
+                            <p className="text-slate-600 max-w-sm mx-auto">Connect M-Pesa. Payments reconcile automatically. Parents get receipts instantly.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
             {/* Social Proof */}
             <section className="py-20 bg-slate-900 text-white">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
