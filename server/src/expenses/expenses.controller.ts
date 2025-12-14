@@ -52,8 +52,8 @@ export class ExpensesController {
 
   @Get('export')
   @Roles(Role.Admin, Role.Accountant)
-  async export(@Request() req: any, @Res() res: any) {
-    const csv = await this.expensesService.exportExpenses(req.user.schoolId);
+  async export(@Request() req: any, @Query() query: GetExpensesDto, @Res() res: any) {
+    const csv = await this.expensesService.exportExpenses(req.user.schoolId, query);
     res.setHeader('Content-Type', 'text/csv');
     res.setHeader('Content-Disposition', 'attachment; filename="expenses.csv"');
     res.send(csv);

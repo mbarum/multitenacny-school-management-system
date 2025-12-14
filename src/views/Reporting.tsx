@@ -189,15 +189,25 @@ const AttendanceReport: React.FC<{ onBack: () => void }> = ({ onBack }) => {
         api.getAttendance({
             classId: classId || undefined,
             startDate: startDate || undefined,
-            endDate: endDate || undefined
+            endDate: endDate || undefined,
+            pagination: 'false' // Ensure we get all records for the report
         })
-        .then(setAttendanceRecords)
+        .then((res: any) => {
+            // Handle both array and paginated response just in case
+            if (Array.isArray(res)) {
+                setAttendanceRecords(res);
+            } else if (res && res.data && Array.isArray(res.data)) {
+                setAttendanceRecords(res.data);
+            } else {
+                setAttendanceRecords([]);
+            }
+        })
         .catch(err => console.error("Failed to fetch attendance", err))
         .finally(() => setLoading(false));
     }, [classId, startDate, endDate]);
 
     const filteredRecords = useMemo(() => {
-        return attendanceRecords.filter(r => r.status !== AttendanceStatus.Present);
+        return Array.isArray(attendanceRecords) ? attendanceRecords.filter(r => r.status !== AttendanceStatus.Present) : [];
     }, [attendanceRecords]);
 
     return (

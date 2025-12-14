@@ -1,5 +1,5 @@
 
-import { Injectable, InternalServerErrorException, Logger } from '@nestjs/common';
+import { Injectable, InternalServerErrorException, Logger, BadRequestException } from '@nestjs/common';
 import { GoogleGenAI } from '@google/genai';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -82,7 +82,13 @@ export class AiService {
 
       return { summary: response.text ?? 'AI summary could not be generated at this time.' };
 
-    } catch (error) {
+    } catch (error: any) {
+      // Check for specific API errors
+      if (error && error.message && error.message.includes('API key not valid')) {
+           this.logger.error("AI Generation Failed: Invalid API Key.");
+           return { summary: "System Error: The AI service API key is invalid. Please contact support." };
+      }
+      
       this.logger.error("Error calling Gemini API:", error);
       throw new InternalServerErrorException('Failed to generate AI summary.');
     }

@@ -42,4 +42,16 @@ export class SuperAdminController {
   ) {
     return this.superAdminService.updateSubscription(schoolId, updateDto);
   }
+
+  @Get('payments')
+  @Roles(Role.SuperAdmin)
+  getSubscriptionPayments() {
+      return this.superAdminService.getSubscriptionPayments();
+  }
+
+  @Post('payments/manual')
+  @Roles(Role.SuperAdmin)
+  recordManualPayment(@Body() body: { schoolId: string, amount: number, transactionCode: string, date: string, method: string }) {
+      return this.superAdminService.recordManualPayment(body.schoolId, body);
+  }
 }

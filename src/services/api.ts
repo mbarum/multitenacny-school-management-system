@@ -68,11 +68,11 @@ export const getDashboardStats = (): Promise<any> => apiFetch('/dashboard/stats'
 export const fetchInitialData = async (role?: Role) => {
     // Define endpoints and restrict them by role if necessary.
     // If 'roles' is undefined, the endpoint is fetched for everyone.
-    // NOTE: Append ?pagination=false to endpoints that now support pagination but need full data for context init.
     const definitions: { endpoint: string, default: any, critical?: boolean, roles?: Role[] }[] = [
         { endpoint: 'users', default: [], roles: [Role.Admin] },
+        // FIX: Added pagination=false to ensure ALL students are loaded for teacher classes
         { endpoint: 'students?pagination=false', default: [], roles: [Role.Admin, Role.Accountant, Role.Teacher, Role.Receptionist] },
-        { endpoint: 'transactions?pagination=false', default: [] }, // Fetches all for simple calculations, though not scalable long term.
+        { endpoint: 'transactions?pagination=false', default: [] }, // Access controlled by backend filters, safe to call
         { endpoint: 'expenses?pagination=false', default: [], roles: [Role.Admin, Role.Accountant] },
         { endpoint: 'staff', default: [], roles: [Role.Admin, Role.Accountant] },
         { endpoint: 'payroll/payroll-history', default: { data: [], total: 0 }, roles: [Role.Admin, Role.Accountant] },
@@ -82,7 +82,7 @@ export const fetchInitialData = async (role?: Role) => {
         { endpoint: 'academics/timetable-entries', default: [] },
         { endpoint: 'academics/exams', default: [] },
         { endpoint: 'academics/grades', default: [] },
-        { endpoint: 'academics/attendance-records?pagination=false', default: [] }, // Initial attendance fetch
+        { endpoint: 'academics/attendance-records?pagination=false', default: [] },
         { endpoint: 'academics/events', default: [] },
         { endpoint: 'academics/grading-scale', default: [] },
         { endpoint: 'academics/fee-structure', default: [], roles: [Role.Admin, Role.Accountant] },
@@ -182,7 +182,18 @@ export const getExpenses = list<Expense>('expenses');
 export const createExpense = create<Expense>('expenses');
 export const updateExpense = update<Expense>('expenses');
 export const deleteExpense = remove('expenses');
-export const exportExpenses = (): Promise<Blob> => fetch('/api/expenses/export', { headers: { 'Authorization': `Bearer ${localStorage.getItem('authToken')}` } }).then(res => res.blob());
+export const exportExpenses = (query?: any): Promise<Blob> => {
+    let queryString = '';
+    if (query) {
+         const filteredQuery = Object.fromEntries(
+            Object.entries(query).filter(([_, v]) => v !== undefined && v !== null && v !== '')
+        );
+        if (Object.keys(filteredQuery).length > 0) {
+            queryString = '?' + new URLSearchParams(filteredQuery as any).toString();
+        }
+    }
+    return fetch(`/api/expenses/export${queryString}`, { headers: { 'Authorization': `Bearer ${localStorage.getItem('authToken')}` } }).then(res => res.blob());
+};
 export const uploadExpenseReceipt = (formData: FormData): Promise<{ url: string }> => {
     const token = localStorage.getItem('authToken');
     return fetch('/api/expenses/upload-receipt', {
@@ -275,3 +286,5 @@ export const getPlatformStats = (): Promise<any> => apiFetch('/super-admin/stats
 export const getSystemHealth = (): Promise<any> => apiFetch('/super-admin/health');
 export const updateSchoolSubscription = (schoolId: string, data: any): Promise<School> => apiFetch(`/super-admin/schools/${schoolId}/subscription`, { method: 'PATCH', body: JSON.stringify(data) });
 export const updatePlatformPricing = (data: Partial<PlatformPricing>): Promise<PlatformPricing> => apiFetch('/super-admin/pricing', { method: 'PUT', body: JSON.stringify(data) });
+export const getSubscriptionPayments = list<any>('super-admin/payments');
+export const recordManualSubscriptionPayment = (data: any) => apiFetch('/super-admin/payments/manual', { method: 'POST', body: JSON.stringify(data) });

@@ -64,11 +64,19 @@ export class ExpensesService {
     }
   }
 
-  async exportExpenses(schoolId: string): Promise<string> {
-    const expenses = await this.expensesRepository.find({ 
-        where: { schoolId: schoolId as any },
-        order: { date: 'DESC' }
-    });
+  async exportExpenses(schoolId: string, query: GetExpensesDto): Promise<string> {
+    const { startDate, endDate, category } = query;
+    const qb = this.expensesRepository.createQueryBuilder('expense');
+    qb.where('expense.schoolId = :schoolId', { schoolId });
+
+    if (startDate) qb.andWhere('expense.date >= :startDate', { startDate });
+    if (endDate) qb.andWhere('expense.date <= :endDate', { endDate });
+    if (category) qb.andWhere('expense.category = :category', { category });
+
+    qb.orderBy('expense.date', 'DESC');
+
+    const expenses = await qb.getMany();
+    
     const data = expenses.map(e => ({
         Date: e.date,
         Category: e.category,

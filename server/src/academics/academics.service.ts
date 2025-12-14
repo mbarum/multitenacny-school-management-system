@@ -37,7 +37,6 @@ export class AcademicsService {
       id: c.id,
       name: c.name,
       classCode: c.classCode,
-      // Robustly get the ID. If the column is null (due to TypeORM hydration behavior), get it from the relation object.
       formTeacherId: c.formTeacherId || (c.formTeacher ? c.formTeacher.id : null),
       formTeacherName: c.formTeacher?.name || null,
     }));
@@ -47,35 +46,37 @@ export class AcademicsService {
   
   findAllAssignments(schoolId: string) {
       return this.assignmentRepo.find({ 
-          where: { class: { schoolId: schoolId as any } }, // Indirect check via Class
+          where: { class: { schoolId: schoolId as any } }, // Indirect check via Class is fine, but ClassSubjectAssignment usually doesn't need direct schoolId if linked to Class
           relations: ['class', 'subject', 'teacher'] 
       });
   }
 
   findAllTimetableEntries(schoolId: string) {
-      // Correctly query with the relation alias 'class' which now exists in the entity
       return this.timetableRepo.createQueryBuilder('tt')
         .leftJoinAndSelect('tt.class', 'class')
         .where('class.schoolId = :schoolId', { schoolId })
         .getMany();
   }
 
+  // UPDATED: Now uses direct schoolId column on Exam
   findAllExams = (schoolId: string) => this.examRepo.find({ 
-      where: { schoolClass: { schoolId: schoolId as any } }, 
+      where: { schoolId: schoolId as any }, 
       order: { date: 'DESC' },
       relations: ['schoolClass']
   });
   
+  // UPDATED: Now uses direct schoolId column on Grade
   async findAllGrades(query: GetGradesDto | undefined, schoolId: string) {
       const qb = this.gradeRepo.createQueryBuilder('grade');
-      qb.leftJoin('grade.student', 'student');
-      qb.where('student.schoolId = :schoolId', { schoolId });
+      qb.where('grade.schoolId = :schoolId', { schoolId });
       
       if (query) {
           if (query.examId) qb.andWhere('grade.examId = :examId', { examId: query.examId });
           if (query.subjectId) qb.andWhere('grade.subjectId = :subjectId', { subjectId: query.subjectId });
           if (query.studentId) qb.andWhere('grade.studentId = :studentId', { studentId: query.studentId });
           if (query.classId) {
+             // For class filtering, we still join student or exam, but let's join student
+              qb.leftJoin('grade.student', 'student');
               qb.leftJoin('student.schoolClass', 'schoolClass');
               qb.andWhere('schoolClass.id = :classId', { classId: query.classId });
           }
@@ -121,16 +122,16 @@ export class AcademicsService {
   findAllGradingRules = (schoolId: string) => this.gradingRuleRepo.find({ where: { schoolId: schoolId as any } });
   findAllFeeItems = (schoolId: string) => this.feeItemRepo.find({ where: { schoolId: schoolId as any }, relations: ['classSpecificFees'] });
 
-  // Generic batch update modified to accept schoolId for safety (though items usually have IDs)
+  // Generic batch update
   async batchUpdate<T extends { id?: string }>(repo: Repository<T>, items: T[], schoolId: string): Promise<T[]> {
     return this.entityManager.transaction(async (transactionalEntityManager: EntityManager) => {
         const savedItems: T[] = [];
         const transactionalRepo = transactionalEntityManager.getRepository(repo.target);
+        
         for (const item of items) {
-            const entityData = { ...item };
+            const entityData: any = { ...item };
             
-            // Fix for temporary IDs from frontend (e.g. evt-12345, grd-12345)
-            // If ID looks strictly temporary, remove it to force creation
+            // Remove temporary IDs
             if (entityData.id && typeof entityData.id === 'string' && (
                 entityData.id.startsWith('evt-') || 
                 entityData.id.startsWith('temp-') || 
@@ -144,17 +145,19 @@ export class AcademicsService {
                 delete entityData.id;
             }
 
+            // Inject schoolId if the entity supports it
             if ('schoolId' in (transactionalRepo.metadata.propertiesMap as any) || transactionalRepo.metadata.columns.find(c => c.propertyName === 'schoolId')) {
-                 (entityData as any).schoolId = schoolId;
+                 entityData.schoolId = schoolId;
             }
             
             // Upsert logic
             let entity;
             if (entityData.id) {
-               // Try to find existing
+               // Try to find existing to update
                entity = await transactionalRepo.preload(entityData);
                if(!entity) entity = transactionalRepo.create(entityData);
             } else {
+               // Create new
                entity = transactionalRepo.create(entityData); 
             }
             
@@ -222,18 +225,18 @@ export class AcademicsService {
 
   // Exams
   createExam(dto: CreateExamDto, schoolId: string) { 
-      // Check class ownership
-      return this.examRepo.save(this.examRepo.create(dto)); 
+      return this.examRepo.save(this.examRepo.create({ ...dto, school: { id: schoolId } as any })); 
   }
   async updateExam(id: string, dto: UpdateExamDto, schoolId: string) {
-    const item = await this.examRepo.findOne({ where: { id }, relations: ['schoolClass'] });
-    if (!item || item.schoolClass.schoolId !== schoolId) throw new NotFoundException(`Exam not found`);
+    // Check using schoolId directly now
+    const item = await this.examRepo.findOne({ where: { id, schoolId: schoolId as any } });
+    if (!item) throw new NotFoundException(`Exam not found`);
     Object.assign(item, dto);
     return this.examRepo.save(item);
   }
   async deleteExam(id: string, schoolId: string) {
-    const item = await this.examRepo.findOne({ where: { id }, relations: ['schoolClass'] });
-    if (!item || item.schoolClass.schoolId !== schoolId) throw new NotFoundException(`Exam not found`);
+    const item = await this.examRepo.findOne({ where: { id, schoolId: schoolId as any } });
+    if (!item) throw new NotFoundException(`Exam not found`);
     await this.examRepo.delete(id);
   }
 

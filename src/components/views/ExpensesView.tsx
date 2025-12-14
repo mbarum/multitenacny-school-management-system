@@ -40,17 +40,22 @@ const ExpensesView: React.FC = () => {
                 endDate: endDate || undefined,
                 category: selectedCategory || undefined
             });
-            // Handle array response (if pagination disabled or legacy) vs paginated response
+            
+            // Fix: Handle both array (legacy/no-pagination) and object (paginated) responses
             if (Array.isArray(data)) {
                 setExpenses(data);
                 setTotalPages(1);
-            } else {
+            } else if (data && Array.isArray(data.data)) {
                 setExpenses(data.data);
-                setTotalPages(data.last_page);
+                setTotalPages(data.last_page || 1);
+            } else {
+                setExpenses([]);
+                setTotalPages(1);
             }
         } catch (error) {
             console.error(error);
             addNotification("Failed to load expenses.", "error");
+            setExpenses([]);
         } finally {
             setLoading(false);
         }
@@ -97,7 +102,6 @@ const ExpensesView: React.FC = () => {
     };
 
     const handlePhotoCapture = (imageDataUrl: string) => {
-        // Convert base64 to blob/file
         fetch(imageDataUrl)
             .then(res => res.blob())
             .then(blob => {
@@ -135,17 +139,57 @@ const ExpensesView: React.FC = () => {
         }
     }
     
-    const isPdf = (url: string) => url.toLowerCase().endsWith('.pdf');
+    const handleExportCSV = async () => {
+        try {
+             const blob = await api.exportExpenses({
+                startDate: startDate || undefined,
+                endDate: endDate || undefined,
+                category: selectedCategory || undefined
+            });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `expenses_export_${new Date().toISOString().split('T')[0]}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            window.URL.revokeObjectURL(url);
+            addNotification('Expenses exported to CSV successfully.', 'success');
+        } catch (error) {
+             addNotification('Failed to export expenses.', 'error');
+        }
+    }
+    
+    const handlePrint = () => {
+        window.print();
+    }
+    
+    const isPdf = (url?: string) => url && url.toLowerCase().endsWith('.pdf');
 
     return (
         <div className="p-6 md:p-8">
-            <div className="flex justify-between items-center mb-6">
+            <style>
+                {`
+                @media print {
+                    body * { visibility: hidden; }
+                    .printable-area, .printable-area * { visibility: visible; }
+                    .printable-area { position: absolute; left: 0; top: 0; width: 100%; }
+                    .no-print { display: none !important; }
+                }
+                `}
+            </style>
+            
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4 no-print">
                 <h2 className="text-3xl font-bold text-slate-800">Expense Tracking</h2>
-                <button onClick={openAddModal} className="px-4 py-2 bg-primary-600 text-white font-semibold rounded-lg shadow-md hover:bg-primary-700">Add New Expense</button>
+                <div className="flex gap-2">
+                    <button onClick={handlePrint} className="px-4 py-2 bg-slate-500 text-white font-semibold rounded-lg shadow-md hover:bg-slate-600">Print / PDF</button>
+                    <button onClick={handleExportCSV} className="px-4 py-2 bg-green-600 text-white font-semibold rounded-lg shadow-md hover:bg-green-700">Export CSV</button>
+                    <button onClick={openAddModal} className="px-4 py-2 bg-primary-600 text-white font-semibold rounded-lg shadow-md hover:bg-primary-700">Add New Expense</button>
+                </div>
             </div>
 
             {/* Filters */}
-            <div className="mb-4 bg-white p-4 rounded-xl shadow-lg flex flex-col sm:flex-row items-center gap-4">
+            <div className="mb-4 bg-white p-4 rounded-xl shadow-lg flex flex-col sm:flex-row items-center gap-4 no-print">
                 <div className="flex items-center space-x-2 w-full sm:w-auto">
                     <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="p-2 border border-slate-300 rounded-lg w-full" placeholder="Start Date"/>
                     <span className="text-slate-500">to</span>
@@ -159,7 +203,14 @@ const ExpensesView: React.FC = () => {
                 </div>
             </div>
 
-            <div className="bg-white rounded-xl shadow-lg overflow-x-auto">
+            <div className="bg-white rounded-xl shadow-lg overflow-x-auto printable-area">
+                 {/* Print Header */}
+                 <div className="hidden print:block text-center mb-4">
+                     <h3 className="text-2xl font-bold">Expenses Report</h3>
+                     <p>Generated on {new Date().toLocaleDateString()}</p>
+                     {(startDate || endDate) && <p>Period: {startDate || 'Start'} to {endDate || 'End'}</p>}
+                 </div>
+
                  <table className="w-full text-left table-auto">
                     <thead>
                         <tr className="bg-slate-50 border-b border-slate-200">
@@ -167,8 +218,8 @@ const ExpensesView: React.FC = () => {
                             <th className="px-4 py-3 font-semibold text-slate-600">Category</th>
                             <th className="px-4 py-3 font-semibold text-slate-600">Description</th>
                             <th className="px-4 py-3 font-semibold text-slate-600 text-right">Amount (KES)</th>
-                            <th className="px-4 py-3 font-semibold text-slate-600">Receipt</th>
-                            <th className="px-4 py-3 font-semibold text-slate-600">Actions</th>
+                            <th className="px-4 py-3 font-semibold text-slate-600 no-print">Receipt</th>
+                            <th className="px-4 py-3 font-semibold text-slate-600 no-print">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -192,7 +243,7 @@ const ExpensesView: React.FC = () => {
                                     <td className="px-4 py-3 text-slate-600">{exp.category}</td>
                                     <td className="px-4 py-3 text-slate-800">{exp.description}</td>
                                     <td className="px-4 py-3 text-right font-semibold text-slate-800">{formatCurrency(exp.amount)}</td>
-                                    <td className="px-4 py-3">
+                                    <td className="px-4 py-3 no-print">
                                         {exp.attachmentUrl && (
                                             <a href={exp.attachmentUrl} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline text-xs flex items-center">
                                                 {isPdf(exp.attachmentUrl) ? (
@@ -206,7 +257,7 @@ const ExpensesView: React.FC = () => {
                                             </a>
                                         )}
                                     </td>
-                                    <td className="px-4 py-3 space-x-2">
+                                    <td className="px-4 py-3 space-x-2 no-print">
                                         <button onClick={() => openEditModal(exp)} className="text-blue-600 hover:underline">Edit</button>
                                         <button onClick={() => handleDelete(exp.id)} className="text-red-600 hover:underline">Delete</button>
                                     </td>
@@ -216,7 +267,9 @@ const ExpensesView: React.FC = () => {
                     </tbody>
                 </table>
             </div>
-             <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
+             <div className="no-print">
+                 <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
+             </div>
 
              <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingExpense ? "Edit Expense" : "Add New Expense"}>
                 <form onSubmit={handleSave} className="space-y-4">

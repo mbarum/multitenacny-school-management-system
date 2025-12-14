@@ -6,6 +6,7 @@ import { School } from '../entities/school.entity';
 import { Subscription, SubscriptionStatus, SubscriptionPlan } from '../entities/subscription.entity';
 import { User } from '../entities/user.entity';
 import { PlatformSetting } from '../entities/platform-setting.entity';
+import { SubscriptionPayment } from '../entities/subscription-payment.entity';
 import * as os from 'os';
 
 @Injectable()
@@ -15,6 +16,7 @@ export class SuperAdminService {
     @InjectRepository(Subscription) private subRepo: Repository<Subscription>,
     @InjectRepository(User) private userRepo: Repository<User>,
     @InjectRepository(PlatformSetting) private platformSettingRepo: Repository<PlatformSetting>,
+    @InjectRepository(SubscriptionPayment) private paymentRepo: Repository<SubscriptionPayment>,
   ) {}
 
   async findAllSchools() {
@@ -146,5 +148,32 @@ export class SuperAdminService {
       });
       return this.subRepo.save(sub);
     }
+  }
+
+  // --- Subscription Payments ---
+  
+  async getSubscriptionPayments() {
+      return this.paymentRepo.find({
+          relations: ['school'],
+          order: { paymentDate: 'DESC' },
+          take: 50
+      });
+  }
+
+  async recordManualPayment(schoolId: string, data: { amount: number, transactionCode: string, date: string, method: string }) {
+      const school = await this.schoolRepo.findOne({ where: { id: schoolId } });
+      if (!school) throw new NotFoundException("School not found");
+
+      const payment = this.paymentRepo.create({
+          school,
+          amount: data.amount,
+          transactionCode: data.transactionCode,
+          paymentDate: data.date,
+          paymentMethod: data.method,
+          periodStart: new Date().toISOString(), // Mock logic
+          periodEnd: new Date(Date.now() + 30*24*60*60*1000).toISOString()
+      });
+
+      return this.paymentRepo.save(payment);
   }
 }

@@ -56,16 +56,20 @@ export class DashboardService {
     
     const feesOverdue = Math.max(0, totalInvoiced - totalCredited);
 
-    // 5. Get Monthly Data (Filtered by School)
+    // 5. Calculate Profit
+    const totalProfit = totalRevenue - totalExpenses;
+
+    // 6. Get Monthly Data (Filtered by School)
     const monthlyData = await this.getMonthlyFinancials(schoolId);
 
-    // 6. Get Expense Distribution (Filtered by School)
+    // 7. Get Expense Distribution (Filtered by School)
     const expenseDistribution = await this.getExpenseDistribution(schoolId);
 
     return {
       totalStudents,
       totalRevenue,
       totalExpenses,
+      totalProfit,
       feesOverdue,
       monthlyData,
       expenseDistribution
