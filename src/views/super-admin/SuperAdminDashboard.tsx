@@ -4,10 +4,10 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useData } from '../../contexts/DataContext';
 import { School, SubscriptionStatus, SubscriptionPlan, PlatformPricing } from '../../types';
 import * as api from '../../services/api';
-import Modal from '../common/Modal';
-import StatCard from '../common/StatCard';
-import Skeleton from '../common/Skeleton';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import Modal from '../../components/common/Modal';
+import StatCard from '../../components/common/StatCard';
+import Skeleton from '../../components/common/Skeleton';
+import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 const SuperAdminDashboard: React.FC = () => {
     const { addNotification, formatCurrency } = useData();
@@ -101,7 +101,6 @@ const SuperAdminDashboard: React.FC = () => {
     // --- Handlers ---
     const openEditModal = (school: School) => {
         setSelectedSchool(school);
-        // Access subscription safely as it might be nested or null depending on API return
         const sub = (school as any).subscription;
         setPlan(sub?.plan || SubscriptionPlan.FREE);
         setStatus(sub?.status || SubscriptionStatus.TRIAL);

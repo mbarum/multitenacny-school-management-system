@@ -1,5 +1,6 @@
 
-import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useRef, useMemo, useEffect } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Modal from '../common/Modal';
 import WebcamCaptureModal from '../common/WebcamCaptureModal';
 import type { Student, NewStudent, NewCommunicationLog, NewTransaction, SchoolClass, CommunicationLog } from '../../types';
@@ -8,13 +9,15 @@ import StudentBillingModal from '../common/StudentBillingModal';
 import BulkMessageModal from '../common/BulkMessageModal';
 import PromotionModal from '../common/PromotionModal';
 import { useData } from '../../contexts/DataContext';
-import { calculateAge, debounce } from '../../utils/helpers';
 import ImportModal from '../common/ImportModal';
 import Pagination from '../common/Pagination';
 import Skeleton from '../common/Skeleton';
 import * as api from '../../services/api';
+import { calculateAge } from '../../utils/helpers';
 
 const DEFAULT_AVATAR = 'https://i.imgur.com/S5o7W44.png';
+
+// --- Sub-components ---
 
 interface StudentProfileModalProps {
     isOpen: boolean;
@@ -24,7 +27,7 @@ interface StudentProfileModalProps {
 }
 
 const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ isOpen, onClose, student, onViewIdCard }) => {
-    const { addCommunicationLog, currentUser, classes, updateStudent, addNotification } = useData();
+    const { currentUser, addNotification } = useData();
     const [activeTab, setActiveTab] = useState<'details' | 'communication'>('details');
     const [message, setMessage] = useState('');
     const [formData, setFormData] = useState<Partial<Student>>({});
@@ -34,17 +37,16 @@ const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ isOpen, onClo
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
-        if (isOpen) {
+        if (isOpen && student) {
             setActiveTab('details');
             setMessage('');
-            if (student) {
-                setFormData({ ...student });
-                setLoadingLogs(true);
-                api.getCommunicationLogs({ studentId: student.id, limit: 50 })
-                    .then(res => setStudentLogs(res.data))
-                    .catch(err => console.error("Failed to fetch logs", err))
-                    .finally(() => setLoadingLogs(false));
-            }
+            setFormData({ ...student });
+            
+            setLoadingLogs(true);
+            api.getCommunicationLogs({ studentId: student.id, limit: 20 })
+                .then(res => setStudentLogs(res.data))
+                .catch(err => console.error(err))
+                .finally(() => setLoadingLogs(false));
         }
     }, [isOpen, student]);
 
@@ -67,20 +69,21 @@ const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ isOpen, onClo
         }
     };
 
-    const handleSaveChanges = (e: React.FormEvent) => {
+    const handleSaveChanges = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!student) return;
-        
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const { class: _, balance, ...updates } = formData;
-        
-        updateStudent(student.id, updates).then(() => {
+        try {
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            const { class: _, balance, ...updates } = formData;
+            await api.updateStudent(student.id, updates);
             addNotification(`${student.name}'s profile updated successfully.`, 'success');
             onClose();
-        });
+        } catch (error) {
+            addNotification('Failed to update student.', 'error');
+        }
     };
 
-    const handleSendMessage = (e: React.FormEvent) => {
+    const handleSendMessage = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!message.trim() || !student || !currentUser) return;
 
@@ -91,56 +94,44 @@ const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ isOpen, onClo
             date: new Date().toISOString(),
             sentBy: currentUser.name,
         };
-        addCommunicationLog(newLog).then((log) => {
+        
+        try {
+            const log = await api.createCommunicationLog(newLog);
             setStudentLogs(prev => [log, ...prev]);
             setMessage('');
             addNotification('Message sent successfully.', 'success');
-        });
+        } catch (error) {
+            addNotification('Failed to send message.', 'error');
+        }
     };
     
     if (!isOpen || !student) return null;
-
     const age = calculateAge(student.dateOfBirth);
 
     return (
         <Modal isOpen={isOpen} onClose={onClose} title={`${student.name}'s Profile`} size="2xl">
             <div className="border-b border-slate-200 mb-4">
-                <nav className="-mb-px flex space-x-8" aria-label="Tabs">
-                    <button onClick={() => setActiveTab('details')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'details' ? 'border-primary-500 text-primary-600' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'}`}>Details</button>
-                    <button onClick={() => setActiveTab('communication')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'communication' ? 'border-primary-500 text-primary-600' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'}`}>Communication</button>
+                <nav className="-mb-px flex space-x-8">
+                    <button onClick={() => setActiveTab('details')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'details' ? 'border-primary-500 text-primary-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>Details</button>
+                    <button onClick={() => setActiveTab('communication')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'communication' ? 'border-primary-500 text-primary-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>Communication</button>
                 </nav>
             </div>
             {activeTab === 'details' && (
                 <form onSubmit={handleSaveChanges} className="space-y-6">
                     <div className="flex items-start space-x-6">
-                        <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
-                            <img 
-                                src={formData.profileImage || DEFAULT_AVATAR} 
-                                onError={(e) => { e.currentTarget.src = DEFAULT_AVATAR; }}
-                                alt={student.name} 
-                                className="h-24 w-24 rounded-full object-cover border-2 border-slate-200 group-hover:opacity-75 transition-opacity"
-                            />
-                            <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                <span className="bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded">Change</span>
-                            </div>
-                            <input 
-                                type="file" 
-                                ref={fileInputRef} 
-                                className="hidden" 
-                                accept="image/*" 
-                                onChange={handlePhotoUpload}
-                            />
+                         <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
+                            <img src={formData.profileImage || DEFAULT_AVATAR} onError={(e) => { e.currentTarget.src = DEFAULT_AVATAR; }} alt={student.name} className="h-24 w-24 rounded-full object-cover border-2 border-slate-200 group-hover:opacity-75 transition-opacity"/>
+                            <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"><span className="bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded">Change</span></div>
+                            <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handlePhotoUpload}/>
                         </div>
-                        <div className="flex-1">
-                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="flex-1 space-y-2">
+                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div><label className="text-xs font-medium text-slate-500">Full Name</label><input name="name" value={formData.name || ''} onChange={handleFormChange} className="w-full p-2 border rounded-md"/></div>
                                 <div><label className="text-xs font-medium text-slate-500">Admission No.</label><input value={student.admissionNumber} readOnly disabled className="w-full p-2 border rounded-md bg-slate-100"/></div>
-                                <div><label className="text-xs font-medium text-slate-500">Class</label><select name="classId" value={formData.classId} onChange={handleFormChange} className="w-full p-2 border rounded-md"><option value="">Select Class</option>{classes.map((c: SchoolClass) => <option key={c.id} value={c.id}>{c.name}</option>)}</select></div>
                              </div>
                         </div>
                         <button type="button" onClick={onViewIdCard} className="px-3 py-1.5 bg-slate-200 text-slate-700 font-semibold rounded-lg hover:bg-slate-300 text-sm whitespace-nowrap">View ID Card</button>
                     </div>
-                    {/* ... rest of the form ... */}
                     <div className="pt-4 border-t">
                         <h4 className="text-lg font-semibold text-slate-800 mb-2">Biodata</h4>
                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-slate-700 mb-4">
@@ -150,43 +141,30 @@ const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ isOpen, onClo
                          </div>
                         <h4 className="text-lg font-semibold text-slate-800 mb-2 pt-4 border-t">Guardian Information</h4>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-slate-700">
-                             <div><label className="text-xs font-medium text-slate-500">Guardian's Name</label><input name="guardianName" value={formData.guardianName || ''} onChange={handleFormChange} className="w-full p-2 border rounded-md"/></div>
-                             <div><label className="text-xs font-medium text-slate-500">Guardian's Email</label><input type="email" name="guardianEmail" value={formData.guardianEmail || ''} onChange={handleFormChange} className="w-full p-2 border rounded-md"/></div>
+                             <div><label className="text-xs font-medium text-slate-500">Guardian Name</label><input name="guardianName" value={formData.guardianName || ''} onChange={handleFormChange} className="w-full p-2 border rounded-md"/></div>
+                             <div><label className="text-xs font-medium text-slate-500">Guardian Email</label><input type="email" name="guardianEmail" value={formData.guardianEmail || ''} onChange={handleFormChange} className="w-full p-2 border rounded-md"/></div>
                              <div><label className="text-xs font-medium text-slate-500">Primary Contact</label><input name="guardianContact" value={formData.guardianContact || ''} onChange={handleFormChange} className="w-full p-2 border rounded-md"/></div>
                              <div><label className="text-xs font-medium text-slate-500">Emergency Contact</label><input name="emergencyContact" value={formData.emergencyContact || ''} onChange={handleFormChange} className="w-full p-2 border rounded-md"/></div>
                              <div className="col-span-2"><label className="text-xs font-medium text-slate-500">Address</label><input name="guardianAddress" value={formData.guardianAddress || ''} onChange={handleFormChange} className="w-full p-2 border rounded-md"/></div>
                         </div>
                     </div>
-                    <div className="flex justify-end pt-4 border-t">
-                        <button type="submit" className="px-6 py-2 bg-primary-600 text-white font-semibold rounded-lg shadow-md hover:bg-primary-700">
-                            Save Changes
-                        </button>
-                    </div>
+                    <div className="flex justify-end pt-4 border-t"><button type="submit" className="px-6 py-2 bg-primary-600 text-white font-semibold rounded-lg shadow-md hover:bg-primary-700">Save Changes</button></div>
                 </form>
             )}
             {activeTab === 'communication' && (
-                 <div className="flex flex-col h-[60vh]">
-                    <div className="flex-1 overflow-y-auto pr-4 -mr-4 space-y-4">
-                       {loadingLogs ? <div className="p-4"><Skeleton className="h-16 w-full mb-2"/><Skeleton className="h-16 w-full"/></div> : 
+                 <div className="flex flex-col h-[50vh]">
+                    <div className="flex-1 overflow-y-auto pr-4 space-y-4">
+                       {loadingLogs ? <div className="p-4 space-y-2"><Skeleton className="h-12 w-full"/><Skeleton className="h-12 w-full"/></div> : 
                        studentLogs.length > 0 ? studentLogs.map(log => (
-                           <div key={log.id} className="bg-slate-50 p-3 rounded-lg">
-                               <div className="flex justify-between items-center text-xs text-slate-500 mb-1">
-                                   <span>{log.sentBy} via {log.type}</span>
-                                   <span>{new Date(log.date).toLocaleString()}</span>
-                               </div>
-                               <p className="text-slate-800">{log.message}</p>
+                           <div key={log.id} className="bg-slate-50 p-3 rounded-lg border border-slate-100">
+                               <div className="flex justify-between items-center text-xs text-slate-500 mb-1"><span>{log.sentBy} via {log.type}</span><span>{new Date(log.date).toLocaleDateString()}</span></div>
+                               <p className="text-slate-800 text-sm">{log.message}</p>
                            </div>
-                       )) : <p className="text-center text-slate-500">No communication history.</p>}
+                       )) : <p className="text-center text-slate-500 py-10">No communication history.</p>}
                     </div>
                     <form onSubmit={handleSendMessage} className="mt-4 border-t pt-4">
-                        <textarea
-                            value={message}
-                            onChange={(e) => setMessage(e.target.value)}
-                            placeholder="Type a message to the guardian..."
-                            className="w-full border-slate-300 rounded-md p-2 focus:ring-primary-500 focus:border-primary-500"
-                            rows={3}
-                        />
-                        <button type="submit" className="mt-2 px-4 py-2 bg-primary-600 text-white font-semibold rounded-lg shadow-md hover:bg-primary-700">Send Message</button>
+                        <textarea value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Type a message..." className="w-full border-slate-300 rounded-md p-2 text-sm" rows={2}/>
+                        <button type="submit" className="mt-2 px-4 py-2 bg-primary-600 text-white text-sm font-semibold rounded-lg shadow-md hover:bg-primary-700">Send Message</button>
                     </form>
                 </div>
             )}
@@ -196,125 +174,123 @@ const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ isOpen, onClo
 
 
 const StudentsView: React.FC = () => {
-    // ... [Existing Hook Calls] ...
-    const { students, updateStudent, deleteStudent, addStudent, addMultipleTransactions, addBulkCommunicationLogs, classes, currentUser, feeStructure, studentFinancials, addNotification, openIdCardModal, updateMultipleStudents } = useData();
+    const { addNotification, openIdCardModal, updateMultipleStudents, currentUser } = useData();
+    const queryClient = useQueryClient();
 
-    // ... [Existing State Variables] ...
-    const [searchTerm, setSearchTerm] = useState('');
-    const [selectedClass, setSelectedClass] = useState('all');
-    const [statusFilter, setStatusFilter] = useState<StudentStatus | 'all'>(StudentStatus.Active);
+    // UI State
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
     const [isBillingModalOpen, setIsBillingModalOpen] = useState(false);
     const [isPromotionModalOpen, setIsPromotionModalOpen] = useState(false);
     const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+    const [isCaptureModalOpen, setIsCaptureModalOpen] = useState(false);
+    const [isBulkMessageModalOpen, setIsBulkMessageModalOpen] = useState(false);
     const [isImporting, setIsImporting] = useState(false);
     const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
-    const [isCaptureModalOpen, setIsCaptureModalOpen] = useState(false);
     const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
-    const [isBulkMessageModalOpen, setIsBulkMessageModalOpen] = useState(false);
     const addStudentPhotoInputRef = useRef<HTMLInputElement>(null);
-    
-    // Pagination State
-    const [studentsList, setStudentsList] = useState<Student[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [currentPage, setCurrentPage] = useState(1);
-    const [totalPages, setTotalPages] = useState(1);
+
+    // Filters & Pagination
+    const [searchTerm, setSearchTerm] = useState('');
+    const [selectedClass, setSelectedClass] = useState('all');
+    const [statusFilter, setStatusFilter] = useState<StudentStatus | 'all'>(StudentStatus.Active);
+    const [page, setPage] = useState(1);
 
     const initialStudentState: NewStudent = {
-        name: '', class: classes[0]?.name || '', classId: classes[0]?.id || '', profileImage: DEFAULT_AVATAR,
+        name: '', classId: '', class: '', profileImage: DEFAULT_AVATAR,
         guardianName: '', guardianContact: '', guardianAddress: '', guardianEmail: '', emergencyContact: '', dateOfBirth: ''
     };
-    
     const [newStudent, setNewStudent] = useState(initialStudentState);
 
-    // ... [Fetch Logic] ...
-    const fetchStudents = useCallback(async (page: number, search: string, classId: string, status: string) => {
-        setLoading(true);
-        try {
-            const response = await api.getStudents({ page, limit: 10, search, classId, status });
-            if (Array.isArray(response)) {
-                 setStudentsList(response);
-                 setTotalPages(1);
-            } else if (response && Array.isArray(response.data)) {
-                 setStudentsList(response.data);
-                 setTotalPages(response.last_page || 1);
-            } else {
-                 setStudentsList([]);
-                 setTotalPages(1);
+    // --- Queries ---
+
+    const { data: classes = [] } = useQuery({
+        queryKey: ['classes'],
+        queryFn: () => api.getClasses().then(res => Array.isArray(res) ? res : res.data)
+    });
+
+    const { data: feeStructure = [] } = useQuery({
+        queryKey: ['fee-structure'],
+        queryFn: api.getFeeStructure
+    });
+
+    const { data: studentsData, isLoading } = useQuery({
+        queryKey: ['students', page, searchTerm, selectedClass, statusFilter],
+        queryFn: () => api.getStudents({ 
+            page, 
+            limit: 10, 
+            search: searchTerm, 
+            classId: selectedClass !== 'all' ? selectedClass : undefined, 
+            status: statusFilter !== 'all' ? statusFilter : undefined
+        }),
+        placeholderData: (prev) => prev
+    });
+
+    const students = studentsData?.data || [];
+    const totalPages = studentsData?.last_page || 1;
+
+    // --- Mutations ---
+
+    const addStudentMutation = useMutation({
+        mutationFn: api.createStudent,
+        onSuccess: async (student) => {
+            addNotification(`Student ${student.name} added successfully!`, 'success');
+            
+            const initialTransactions: NewTransaction[] = feeStructure
+                .filter(item => !item.isOptional && item.classSpecificFees.some(fee => fee.classId === student.classId))
+                .map(item => {
+                    const classFee = item.classSpecificFees.find(fee => fee.classId === student.classId);
+                    return {
+                        studentId: student.id,
+                        type: TransactionType.Invoice,
+                        date: new Date().toISOString().split('T')[0],
+                        description: item.name,
+                        amount: classFee!.amount,
+                    };
+                });
+            
+            if(initialTransactions.length > 0) {
+                await api.createMultipleTransactions(initialTransactions);
+                addNotification(`Initial invoices created for ${student.name}.`, 'info');
             }
-            setCurrentPage(page);
-        } catch (error) {
-            console.error("Error fetching students:", error);
-            addNotification("Failed to fetch students", "error");
-        } finally {
-            setLoading(false);
+
+            queryClient.invalidateQueries({ queryKey: ['students'] });
+            setIsAddModalOpen(false);
+            setNewStudent(initialStudentState);
         }
-    }, [addNotification]);
+    });
 
-    const debouncedFetch = useMemo(
-        () => debounce((page: number, search: string, classId: string, status: string) => {
-            fetchStudents(page, search, classId, status);
-        }, 500),
-        [fetchStudents]
-    );
-
-    useEffect(() => {
-        fetchStudents(currentPage, searchTerm, selectedClass, statusFilter);
-    }, [currentPage, selectedClass, statusFilter, fetchStudents]);
-
-    useEffect(() => {
-        if (searchTerm) {
-             debouncedFetch(1, searchTerm, selectedClass, statusFilter);
+    const deleteStudentMutation = useMutation({
+        mutationFn: api.deleteStudent,
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['students'] });
+            addNotification('Student deleted', 'success');
         }
-    }, [searchTerm, debouncedFetch, selectedClass, statusFilter]);
-    
+    });
+
+    // --- Handlers ---
     
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
         if (name === 'classId') {
-            const selected = classes.find(c => c.id === value);
-            setNewStudent(prev => ({ ...prev, classId: value, class: selected?.name || '' }));
+             const selected = classes.find((c: SchoolClass) => c.id === value);
+             setNewStudent(prev => ({ ...prev, classId: value, class: selected ? selected.name : '' }));
         } else {
-            setNewStudent(prev => ({ ...prev, [name]: value }));
+             setNewStudent(prev => ({ ...prev, [name]: value }));
         }
     };
 
-    // ... [Other Handlers like handleAddStudent, etc.] ...
-
-    const handleAddStudent = async (e: React.FormEvent) => {
+    const handleAddStudent = (e: React.FormEvent) => {
         e.preventDefault();
-        
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const { class: className, ...studentData } = newStudent;
-
-        const studentToAdd = await addStudent(studentData as NewStudent);
-        addNotification(`Student ${studentToAdd.name} added successfully!`, 'success');
-
-        const initialTransactions: NewTransaction[] = feeStructure
-            .filter(item => !item.isOptional && item.classSpecificFees.some(fee => fee.classId === studentToAdd.classId))
-            .map(item => {
-                const classFee = item.classSpecificFees.find(fee => fee.classId === studentToAdd.classId);
-                return {
-                    studentId: studentToAdd.id,
-                    type: TransactionType.Invoice,
-                    date: new Date().toISOString().split('T')[0],
-                    description: item.name,
-                    amount: classFee!.amount,
-                };
-            });
-        
-        if(initialTransactions.length > 0) {
-            await addMultipleTransactions(initialTransactions);
-            addNotification(`Initial invoices created for ${studentToAdd.name}.`, 'info');
-        }
-
-        setIsAddModalOpen(false);
-        fetchStudents(currentPage, searchTerm, selectedClass, statusFilter);
+        addStudentMutation.mutate(newStudent);
     };
     
     const handleOpenAddStudentModal = () => {
-        setNewStudent({ ...initialStudentState });
+        setNewStudent({
+            ...initialStudentState,
+            classId: classes[0]?.id || '',
+            class: classes[0]?.name || ''
+        });
         setIsAddModalOpen(true);
     };
 
@@ -322,20 +298,17 @@ const StudentsView: React.FC = () => {
         setSelectedStudent(student);
         setIsProfileModalOpen(true);
     };
-    
-    const handleDelete = (studentId: string, studentName: string) => {
-        if (window.confirm(`Are you sure you want to delete ${studentName}? This will permanently remove all associated records.`)) {
-            deleteStudent(studentId).then(() => {
-                addNotification(`Student ${studentName} deleted successfully.`, 'success');
-                fetchStudents(currentPage, searchTerm, selectedClass, statusFilter);
-            });
-        }
-    };
 
     const handleManageBilling = (student: Student) => {
         setSelectedStudent(student);
         setIsBillingModalOpen(true);
     }
+    
+    const handleDelete = async (studentId: string, studentName: string) => {
+        if (window.confirm(`Are you sure you want to delete ${studentName}? This will permanently remove all associated records.`)) {
+            deleteStudentMutation.mutate(studentId);
+        }
+    };
     
     const handlePhotoCapture = async (imageDataUrl: string) => {
          const res = await fetch(imageDataUrl);
@@ -367,23 +340,6 @@ const StudentsView: React.FC = () => {
         }
     };
 
-    const handleExport = async () => {
-        try {
-            const blob = await api.exportStudents();
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `students_export_${new Date().toISOString().split('T')[0]}.csv`;
-            document.body.appendChild(a);
-            a.click();
-            a.remove();
-            window.URL.revokeObjectURL(url);
-            addNotification('Student data exported successfully.', 'success');
-        } catch (error) {
-            addNotification('Failed to export students.', 'error');
-        }
-    };
-
     const handleImport = async (file: File) => {
         setIsImporting(true);
         const formData = new FormData();
@@ -391,53 +347,61 @@ const StudentsView: React.FC = () => {
         try {
             const result = await api.importStudents(formData);
             if (result.imported > 0) {
-                fetchStudents(currentPage, searchTerm, selectedClass, statusFilter);
+                queryClient.invalidateQueries({ queryKey: ['students'] });
             }
             return result;
-        } catch (error) {
-            const errorMessage = error instanceof Error ? error.message : "An unknown error occurred during import.";
-            addNotification(errorMessage, 'error');
+        } catch (error: any) {
+            addNotification(error.message || "Import failed", 'error');
         } finally {
             setIsImporting(false);
         }
     };
-
-    const handleSelectStudent = (studentId: string, isSelected: boolean) => {
-        if (isSelected) {
-            setSelectedStudentIds(prev => [...prev, studentId]);
-        } else {
-            setSelectedStudentIds(prev => prev.filter(id => id !== studentId));
+    
+    const handleExport = async () => {
+        try {
+            const blob = await api.exportStudents();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `students_export.csv`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+        } catch (error) {
+            addNotification('Export failed', 'error');
         }
     };
 
+    const handleSelectStudent = (studentId: string, isSelected: boolean) => {
+        if (isSelected) setSelectedStudentIds(prev => [...prev, studentId]);
+        else setSelectedStudentIds(prev => prev.filter(id => id !== studentId));
+    };
+
     const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.checked) {
-            setSelectedStudentIds(studentsList.map(s => s.id));
-        } else {
-            setSelectedStudentIds([]);
-        }
+        if (e.target.checked) setSelectedStudentIds(students.map((s:Student) => s.id));
+        else setSelectedStudentIds([]);
     };
 
     const handleBulkStatusChange = (status: StudentStatus) => {
         const updates = selectedStudentIds.map(id => ({ id, status }));
         updateMultipleStudents(updates).then(() => {
-            addNotification(`${selectedStudentIds.length} student(s) status updated to ${status}.`, 'success');
+            addNotification(`${selectedStudentIds.length} student(s) status updated.`, 'success');
             setSelectedStudentIds([]);
-            fetchStudents(currentPage, searchTerm, selectedClass, statusFilter);
+            queryClient.invalidateQueries({ queryKey: ['students'] });
         });
     };
-
+    
     const handleSendBulkMessage = (message: string) => {
         if (!currentUser) return;
-        const newLogs: NewCommunicationLog[] = selectedStudentIds.map(studentId => ({
+        const newLogs = selectedStudentIds.map(studentId => ({
             studentId,
             type: CommunicationType.PortalMessage,
             message,
             date: new Date().toISOString(),
             sentBy: currentUser.name,
         }));
-        addBulkCommunicationLogs(newLogs).then(() => {
-            addNotification(`Message sent to ${selectedStudentIds.length} student guardians.`, 'success');
+        api.createBulkCommunicationLogs(newLogs).then(() => {
+            addNotification(`Message sent to ${selectedStudentIds.length} guardians.`, 'success');
             setSelectedStudentIds([]);
             setIsBulkMessageModalOpen(false);
         });
@@ -445,11 +409,11 @@ const StudentsView: React.FC = () => {
 
     const handleToggleStatus = (student: Student) => {
         const newStatus = student.status === StudentStatus.Active ? StudentStatus.Inactive : StudentStatus.Active;
-        updateStudent(student.id, { status: newStatus }).then(() => {
-             fetchStudents(currentPage, searchTerm, selectedClass, statusFilter);
+        api.updateStudent(student.id, { status: newStatus }).then(() => {
+            queryClient.invalidateQueries({ queryKey: ['students'] });
+            addNotification(`Student ${student.name} status updated.`, 'success');
         });
     };
-
 
     return (
         <div className="p-6 md:p-8">
@@ -458,18 +422,18 @@ const StudentsView: React.FC = () => {
                 <div className="mt-2 sm:mt-0 flex space-x-2">
                     <button onClick={() => setIsImportModalOpen(true)} className="px-4 py-2 bg-slate-500 text-white font-semibold rounded-lg shadow-md hover:bg-slate-600 transition-colors">Import</button>
                     <button onClick={handleExport} className="px-4 py-2 bg-slate-500 text-white font-semibold rounded-lg shadow-md hover:bg-slate-600 transition-colors">Export</button>
-                    <button onClick={() => setIsPromotionModalOpen(true)} className="px-4 py-2 bg-slate-600 text-white font-semibold rounded-lg shadow-md hover:bg-slate-700 transition-colors">Promote Students</button>
-                    <button onClick={handleOpenAddStudentModal} className="px-4 py-2 bg-primary-600 text-white font-semibold rounded-lg shadow-md hover:bg-primary-700 transition-colors">Add New Student</button>
+                    <button onClick={() => setIsPromotionModalOpen(true)} className="px-4 py-2 bg-slate-600 text-white font-semibold rounded-lg shadow-md hover:bg-slate-700 transition-colors">Promote</button>
+                    <button onClick={handleOpenAddStudentModal} className="px-4 py-2 bg-primary-600 text-white font-semibold rounded-lg shadow-md hover:bg-primary-700 transition-colors">Add Student</button>
                 </div>
             </div>
-            {/* Filters */}
+            
             <div className="mb-4 flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4 items-center">
-                <input type="text" placeholder="Search by name or admission no..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full sm:w-1/3 p-2 border border-slate-300 rounded-lg shadow-sm focus:ring-primary-500 focus:border-primary-500"/>
-                <select value={selectedClass} onChange={e => setSelectedClass(e.target.value)} className="p-2 border border-slate-300 rounded-lg shadow-sm focus:ring-primary-500 focus:border-primary-500">
+                <input type="text" placeholder="Search by name or admission no..." value={searchTerm} onChange={e => { setSearchTerm(e.target.value); setPage(1); }} className="w-full sm:w-1/3 p-2 border border-slate-300 rounded-lg shadow-sm focus:ring-primary-500 focus:border-primary-500"/>
+                <select value={selectedClass} onChange={e => { setSelectedClass(e.target.value); setPage(1); }} className="p-2 border border-slate-300 rounded-lg shadow-sm focus:ring-primary-500 focus:border-primary-500">
                     <option value="all">All Classes</option>
-                    {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    {classes.map((c:SchoolClass) => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
-                <select value={statusFilter} onChange={e => setStatusFilter(e.target.value as any)} className="p-2 border border-slate-300 rounded-lg shadow-sm focus:ring-primary-500 focus:border-primary-500">
+                <select value={statusFilter} onChange={e => { setStatusFilter(e.target.value as any); setPage(1); }} className="p-2 border border-slate-300 rounded-lg shadow-sm focus:ring-primary-500 focus:border-primary-500">
                     <option value={StudentStatus.Active}>Show Active</option>
                     <option value={StudentStatus.Inactive}>Show Inactive</option>
                     <option value={StudentStatus.Graduated}>Show Graduated</option>
@@ -481,10 +445,9 @@ const StudentsView: React.FC = () => {
                 <div className="mb-4 bg-primary-100 p-3 rounded-lg flex items-center justify-between shadow">
                     <p className="font-semibold text-primary-800">{selectedStudentIds.length} student(s) selected</p>
                     <div className="space-x-2">
-                         <button onClick={() => setIsBulkMessageModalOpen(true)} className="px-3 py-1.5 bg-blue-600 text-white text-sm font-semibold rounded-md hover:bg-blue-700">Send Message</button>
-                        <button onClick={() => handleBulkStatusChange(StudentStatus.Active)} className="px-3 py-1.5 bg-green-600 text-white text-sm font-semibold rounded-md hover:bg-green-700">Activate</button>
-                        <button onClick={() => handleBulkStatusChange(StudentStatus.Inactive)} className="px-3 py-1.5 bg-yellow-600 text-white text-sm font-semibold rounded-md hover:bg-yellow-700">Deactivate</button>
-                        <button onClick={() => handleBulkStatusChange(StudentStatus.Graduated)} className="px-3 py-1.5 bg-slate-600 text-white text-sm font-semibold rounded-md hover:bg-slate-700">Graduate</button>
+                         <button onClick={() => setIsBulkMessageModalOpen(true)} className="px-3 py-1.5 bg-blue-600 text-white text-sm font-semibold rounded-md">Message</button>
+                        <button onClick={() => handleBulkStatusChange(StudentStatus.Active)} className="px-3 py-1.5 bg-green-600 text-white text-sm font-semibold rounded-md">Activate</button>
+                        <button onClick={() => handleBulkStatusChange(StudentStatus.Inactive)} className="px-3 py-1.5 bg-yellow-600 text-white text-sm font-semibold rounded-md">Deactivate</button>
                     </div>
                 </div>
             )}
@@ -497,12 +460,7 @@ const StudentsView: React.FC = () => {
                                 <input
                                     type="checkbox"
                                     onChange={handleSelectAll}
-                                    checked={studentsList.length > 0 && selectedStudentIds.length === studentsList.length}
-                                    ref={el => {
-                                        if (el) {
-                                            el.indeterminate = selectedStudentIds.length > 0 && selectedStudentIds.length < studentsList.length;
-                                        }
-                                    }}
+                                    checked={students.length > 0 && selectedStudentIds.length === students.length}
                                     className="h-4 w-4 rounded text-primary-600"
                                 />
                             </th>
@@ -515,154 +473,82 @@ const StudentsView: React.FC = () => {
                         </tr>
                     </thead>
                     <tbody>
-                        {loading ? (
-                             Array.from({ length: 5 }).map((_, i) => (
+                        {isLoading ? (
+                            Array.from({ length: 5 }).map((_, i) => (
                                 <tr key={i} className="border-b border-slate-100">
-                                    <td className="px-4 py-4"><Skeleton className="h-4 w-4 mx-auto"/></td>
-                                    <td className="px-4 py-4 flex items-center space-x-3"><Skeleton className="h-10 w-10 rounded-full"/><Skeleton className="h-4 w-32"/></td>
-                                    <td className="px-4 py-4"><Skeleton className="h-4 w-24"/></td>
-                                    <td className="px-4 py-4"><Skeleton className="h-4 w-16"/></td>
-                                    <td className="px-4 py-4"><Skeleton className="h-4 w-24"/></td>
-                                    <td className="px-4 py-4"><Skeleton className="h-4 w-20 ml-auto"/></td>
-                                    <td className="px-4 py-4"><Skeleton className="h-4 w-32 mx-auto"/></td>
+                                    <td colSpan={7} className="px-4 py-4"><Skeleton className="h-4 w-full" /></td>
                                 </tr>
                             ))
-                        ) : studentsList.length === 0 ? (
-                            <tr>
-                                <td colSpan={7} className="text-center py-12 text-slate-500 flex flex-col items-center justify-center w-full">
-                                    <svg className="w-12 h-12 text-slate-300 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M15 21a6 6 0 00-9-5.197m0 0A5.975 5.975 0 0112 13a5.975 5.975 0 013 5.197M15 21a6 6 0 00-9-5.197" />
-                                    </svg>
-                                    <p className="font-medium text-lg">No students found</p>
-                                    <p className="text-sm">Try adjusting your filters or search terms.</p>
-                                </td>
-                            </tr>
+                        ) : students.length === 0 ? (
+                            <tr><td colSpan={7} className="text-center py-12 text-slate-500">No students found.</td></tr>
                         ) : (
-                            studentsList.map(student => {
-                                const financials = studentFinancials[student.id] || { balance: student.balance || 0 };
-                                return (
-                                    <tr key={student.id} className={`border-b border-slate-100 hover:bg-slate-50 transition-colors ${student.status !== 'Active' ? 'bg-slate-50 text-slate-500' : ''}`}>
-                                        <td className="px-4 py-2 text-center">
-                                             <input 
-                                                type="checkbox"
-                                                checked={selectedStudentIds.includes(student.id)}
-                                                onChange={e => handleSelectStudent(student.id, e.target.checked)}
-                                                className="h-4 w-4 rounded text-primary-600"
-                                            />
-                                        </td>
-                                        <td className="px-4 py-2 flex items-center space-x-3">
-                                            <img 
-                                                src={student.profileImage || DEFAULT_AVATAR} 
-                                                alt={student.name} 
-                                                onError={(e) => { e.currentTarget.src = DEFAULT_AVATAR; }}
-                                                className={`h-10 w-10 rounded-full object-cover border border-slate-200 ${student.status !== 'Active' ? 'filter grayscale' : ''}`}
-                                            />
-                                            <div>
-                                                <span className={`font-semibold ${student.status === 'Active' ? 'text-slate-800' : ''}`}>{student.name}</span>
-                                                {student.status !== 'Active' && <span className={`ml-2 px-2 py-0.5 text-xs font-semibold rounded-full ${student.status === 'Graduated' ? 'bg-blue-100 text-blue-700' : 'bg-slate-200 text-slate-600'}`}>{student.status}</span>}
-                                            </div>
-                                        </td>
-                                        <td className="px-4 py-2">{student.admissionNumber}</td>
-                                        <td className="px-4 py-2">{student.class}</td>
-                                        <td className="px-4 py-2">{student.guardianContact}</td>
-                                        <td className={`px-4 py-2 text-right font-semibold ${financials.balance > 0 ? 'text-red-600' : 'text-green-600'}`}>{financials.balance.toLocaleString()}</td>
-                                        <td className="px-4 py-2 text-center space-x-2 whitespace-nowrap">
-                                            <button onClick={() => handleManageBilling(student)} className="text-green-600 hover:underline">Billing</button>
-                                            <button onClick={() => handleViewProfile(student)} className="text-primary-600 hover:underline">Profile</button>
-                                            {student.status !== 'Graduated' && <button onClick={() => handleToggleStatus(student)} className="text-yellow-600 hover:underline">{student.status === 'Active' ? 'Deactivate' : 'Activate'}</button>}
-                                            <button onClick={() => handleDelete(student.id, student.name)} className="text-red-600 hover:underline">Delete</button>
-                                        </td>
-                                    </tr>
-                                )
-                            })
+                            students.map((student: Student) => (
+                                <tr key={student.id} className={`border-b border-slate-100 hover:bg-slate-50 transition-colors ${student.status !== 'Active' ? 'bg-slate-50 text-slate-500' : ''}`}>
+                                    <td className="px-4 py-2 text-center">
+                                         <input 
+                                            type="checkbox"
+                                            checked={selectedStudentIds.includes(student.id)}
+                                            onChange={e => handleSelectStudent(student.id, e.target.checked)}
+                                            className="h-4 w-4 rounded text-primary-600"
+                                        />
+                                    </td>
+                                    <td className="px-4 py-2 flex items-center space-x-3">
+                                        <img src={student.profileImage || DEFAULT_AVATAR} onError={(e) => { e.currentTarget.src = DEFAULT_AVATAR; }} alt={student.name} className={`h-10 w-10 rounded-full object-cover ${student.status !== 'Active' ? 'filter grayscale' : ''}`}/>
+                                        <div>
+                                            <span className={`font-semibold ${student.status === 'Active' ? 'text-slate-800' : ''}`}>{student.name}</span>
+                                            {student.status !== 'Active' && <span className={`ml-2 px-2 py-0.5 text-xs font-semibold rounded-full ${student.status === 'Graduated' ? 'bg-blue-100 text-blue-700' : 'bg-slate-200 text-slate-600'}`}>{student.status}</span>}
+                                        </div>
+                                    </td>
+                                    <td className="px-4 py-2">{student.admissionNumber}</td>
+                                    <td className="px-4 py-2">{student.class}</td>
+                                    <td className="px-4 py-2">{student.guardianContact}</td>
+                                    <td className={`px-4 py-2 text-right font-semibold ${(student.balance || 0) > 0 ? 'text-red-600' : 'text-green-600'}`}>{(student.balance || 0).toLocaleString()}</td>
+                                    <td className="px-4 py-2 text-center space-x-2 whitespace-nowrap">
+                                        <button onClick={() => handleManageBilling(student)} className="text-green-600 hover:underline">Billing</button>
+                                        <button onClick={() => handleViewProfile(student)} className="text-primary-600 hover:underline">Profile</button>
+                                        {student.status !== 'Graduated' && <button onClick={() => handleToggleStatus(student)} className="text-yellow-600 hover:underline">{student.status === 'Active' ? 'Deactivate' : 'Activate'}</button>}
+                                        <button onClick={() => handleDelete(student.id, student.name)} className="text-red-600 hover:underline">Delete</button>
+                                    </td>
+                                </tr>
+                            ))
                         )}
                     </tbody>
                 </table>
             </div>
-            
-             <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
+             <Pagination currentPage={page} totalPages={totalPages} onPageChange={setPage} />
 
-             {/* Modals ... */}
-            <Modal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} title="Add New Student" size="2xl">
+             {/* Modals */}
+            <Modal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} title="Add New Student" size="xl">
                 <form onSubmit={handleAddStudent} className="space-y-4">
                     <div className="flex items-center space-x-4">
-                        <div className="relative h-24 w-24 rounded-full overflow-hidden border group">
-                            <img 
-                                src={newStudent.profileImage || DEFAULT_AVATAR} 
-                                onError={(e) => { e.currentTarget.src = DEFAULT_AVATAR; }}
-                                alt="New student" 
-                                className="h-full w-full object-cover"
-                            />
-                        </div>
-                        <div className="flex space-x-2">
-                             <input 
-                                type="file" 
-                                accept="image/*"
-                                ref={addStudentPhotoInputRef}
-                                onChange={handleAddStudentPhotoUpload}
-                                className="hidden"
-                            />
-                            <button type="button" onClick={() => addStudentPhotoInputRef.current?.click()} className="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300">Upload</button>
-                            <button type="button" onClick={() => setIsCaptureModalOpen(true)} className="px-4 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700">Capture</button>
-                        </div>
+                        <img src={newStudent.profileImage} className="h-20 w-20 rounded-full border" alt="Profile" />
+                        <button type="button" onClick={() => addStudentPhotoInputRef.current?.click()} className="px-3 py-1 bg-slate-200 rounded">Upload</button>
+                        <input type="file" ref={addStudentPhotoInputRef} className="hidden" onChange={handleAddStudentPhotoUpload}/>
+                        <button type="button" onClick={() => setIsCaptureModalOpen(true)} className="px-3 py-1 bg-slate-200 rounded">Capture</button>
                     </div>
-                    {/* ... rest of add student form ... */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <input type="text" name="name" placeholder="Full Name" value={newStudent.name} onChange={handleInputChange} required className="p-2 border border-slate-300 rounded-lg"/>
-                        <input type="text" name="admissionNumber" placeholder="Admission Number (auto-generated)" value="" readOnly disabled className="p-2 border border-slate-300 rounded-lg bg-slate-100"/>
-                        <select name="classId" value={newStudent.classId} onChange={handleInputChange} required className="p-2 border border-slate-300 rounded-lg">
-                            {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    <div className="grid grid-cols-2 gap-4">
+                        <input name="name" placeholder="Full Name" value={newStudent.name} onChange={handleInputChange} className="p-2 border rounded" required/>
+                        <select name="classId" value={newStudent.classId} onChange={handleInputChange} className="p-2 border rounded" required>
+                             <option value="">Select Class</option>
+                             {classes.map((c:SchoolClass) => <option key={c.id} value={c.id}>{c.name}</option>)}
                         </select>
-                         <div>
-                            <label htmlFor="dateOfBirth" className="text-xs text-slate-500">Date of Birth</label>
-                            <input type="date" id="dateOfBirth" name="dateOfBirth" value={newStudent.dateOfBirth} onChange={handleInputChange} required className="w-full p-2 border border-slate-300 rounded-lg"/>
-                        </div>
-                        <input type="text" name="guardianName" placeholder="Guardian's Name" value={newStudent.guardianName} onChange={handleInputChange} required className="p-2 border border-slate-300 rounded-lg"/>
-                        <input type="text" name="guardianContact" placeholder="Guardian's Contact" value={newStudent.guardianContact} onChange={handleInputChange} required className="p-2 border border-slate-300 rounded-lg"/>
-                        <input type="email" name="guardianEmail" placeholder="Guardian's Email" value={newStudent.guardianEmail} onChange={handleInputChange} required className="p-2 border border-slate-300 rounded-lg"/>
-                        <input type="text" name="emergencyContact" placeholder="Emergency Contact" value={newStudent.emergencyContact} onChange={handleInputChange} required className="p-2 border border-slate-300 rounded-lg"/>
-                        <input type="text" name="guardianAddress" placeholder="Guardian's Address" value={newStudent.guardianAddress} onChange={handleInputChange} required className="p-2 border border-slate-300 rounded-lg col-span-full"/>
+                        <input name="guardianName" placeholder="Guardian Name" value={newStudent.guardianName} onChange={handleInputChange} className="p-2 border rounded" required/>
+                        <input name="guardianContact" placeholder="Contact" value={newStudent.guardianContact} onChange={handleInputChange} className="p-2 border rounded" required/>
+                        <input name="guardianEmail" placeholder="Email" value={newStudent.guardianEmail} onChange={handleInputChange} className="p-2 border rounded"/>
+                        <input name="dateOfBirth" type="date" value={newStudent.dateOfBirth} onChange={handleInputChange} className="p-2 border rounded" required/>
+                        <input name="guardianAddress" placeholder="Address" value={newStudent.guardianAddress} onChange={handleInputChange} className="p-2 border rounded col-span-2" required/>
+                        <input name="emergencyContact" placeholder="Emergency Contact" value={newStudent.emergencyContact} onChange={handleInputChange} className="p-2 border rounded" required/>
                     </div>
-                    <div className="flex justify-end">
-                        <button type="submit" className="px-6 py-2 bg-primary-600 text-white font-semibold rounded-lg shadow-md hover:bg-primary-700">Save Student</button>
-                    </div>
+                    <div className="flex justify-end"><button type="submit" className="px-6 py-2 bg-primary-600 text-white rounded">Save Student</button></div>
                 </form>
             </Modal>
-             <ImportModal
-                isOpen={isImportModalOpen}
-                onClose={() => setIsImportModalOpen(false)}
-                onUpload={handleImport}
-                title="Import Students"
-                templateUrl="/public/templates/students_template.csv"
-                processing={isImporting}
-            />
-            <StudentProfileModal 
-                isOpen={isProfileModalOpen}
-                onClose={() => setIsProfileModalOpen(false)}
-                student={selectedStudent}
-                onViewIdCard={() => {
-                    if (selectedStudent) {
-                         openIdCardModal(selectedStudent, 'student');
-                    }
-                    setIsProfileModalOpen(false);
-                }}
-            />
-            <StudentBillingModal
-                isOpen={isBillingModalOpen}
-                onClose={() => setIsBillingModalOpen(false)}
-                student={selectedStudent}
-            />
+
+            <StudentProfileModal isOpen={isProfileModalOpen} onClose={() => setIsProfileModalOpen(false)} student={selectedStudent} onViewIdCard={() => { openIdCardModal(selectedStudent!, 'student'); setIsProfileModalOpen(false); }} />
+            <StudentBillingModal isOpen={isBillingModalOpen} onClose={() => setIsBillingModalOpen(false)} student={selectedStudent} />
+            <ImportModal isOpen={isImportModalOpen} onClose={() => setIsImportModalOpen(false)} onUpload={handleImport} title="Import Students" templateUrl="/public/templates/students_template.csv" processing={isImporting} />
+            <BulkMessageModal isOpen={isBulkMessageModalOpen} onClose={() => setIsBulkMessageModalOpen(false)} studentsToMessage={students.filter((s:Student) => selectedStudentIds.includes(s.id))} onSend={handleSendBulkMessage} />
+            <PromotionModal isOpen={isPromotionModalOpen} onClose={() => setIsPromotionModalOpen(false)} />
             <WebcamCaptureModal isOpen={isCaptureModalOpen} onClose={() => setIsCaptureModalOpen(false)} onCapture={handlePhotoCapture} />
-             <BulkMessageModal
-                isOpen={isBulkMessageModalOpen}
-                onClose={() => setIsBulkMessageModalOpen(false)}
-                studentsToMessage={studentsList.filter(s => selectedStudentIds.includes(s.id))}
-                onSend={handleSendBulkMessage}
-            />
-            <PromotionModal
-                isOpen={isPromotionModalOpen}
-                onClose={() => setIsPromotionModalOpen(false)}
-            />
         </div>
     );
 };

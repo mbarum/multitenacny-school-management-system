@@ -5,6 +5,7 @@ import { AttendanceStatus, AttendanceRecord } from '../types';
 import { useData } from '../contexts/DataContext';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import * as api from '../services/api';
+import Skeleton from '../components/common/Skeleton';
 
 const ReportWrapper: React.FC<{ title: string; onBack: () => void; children: React.ReactNode }> = ({ title, onBack, children }) => (
     <div>
@@ -37,19 +38,17 @@ const ReportWrapper: React.FC<{ title: string; onBack: () => void; children: Rea
 );
 
 const FinancialSummary: React.FC<{ onBack: () => void }> = ({ onBack }) => {
-    const { transactions, expenses } = useData();
+    // The backend now handles data fetching for AI summary
     const [summary, setSummary] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
     
-    const payments = transactions.filter(t => t.type === 'Payment');
-
     const handleGenerateSummary = async () => {
         setIsLoading(true);
         setError('');
         setSummary('');
         try {
-            const result = await generateFinancialSummary(payments, expenses);
+            const result = await generateFinancialSummary();
             setSummary(result);
         } catch (err) {
             setError('Failed to generate summary. Please try again.');
@@ -61,7 +60,7 @@ const FinancialSummary: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     return (
         <ReportWrapper title="AI-Powered Financial Summary" onBack={onBack}>
             <div className="bg-white p-6 rounded-xl shadow-lg">
-                <p className="text-slate-600 mb-4">Click the button below to generate a concise financial summary for the current period using Gemini AI.</p>
+                <p className="text-slate-600 mb-4">Click the button below to generate a concise financial summary for the current period using Gemini AI. The system will analyze revenue, expenses, and trends.</p>
                 <button onClick={handleGenerateSummary} disabled={isLoading} className="inline-flex items-center px-6 py-2 bg-primary-600 text-white font-semibold rounded-lg shadow-md hover:bg-primary-700 disabled:bg-slate-400 transition-colors no-print">
                    {isLoading ? (
                     <>
@@ -77,7 +76,7 @@ const FinancialSummary: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                 {summary && (
                     <div className="mt-6 p-4 bg-slate-50 border border-slate-200 rounded-lg">
                         <h4 className="text-lg font-semibold text-slate-800 mb-2">Generated Summary:</h4>
-                        <p className="text-slate-700 whitespace-pre-wrap leading-relaxed">{summary}</p>
+                        <div className="text-slate-700 whitespace-pre-wrap leading-relaxed prose max-w-none" dangerouslySetInnerHTML={{ __html: summary.replace(/\n/g, '<br/>').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') }} />
                     </div>
                 )}
             </div>
@@ -86,17 +85,19 @@ const FinancialSummary: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 };
 
 const DefaultersReport: React.FC<{ onBack: () => void }> = ({ onBack }) => {
-    const { students, studentFinancials } = useData();
-    
-    const defaulters = useMemo(() => students
-        .map(s => ({
-            ...s,
-            balance: studentFinancials[s.id]?.balance || 0,
-            lastPaymentDate: studentFinancials[s.id]?.lastPaymentDate,
-        }))
-        .filter(s => s.balance > 0)
-        .sort((a,b) => b.balance - a.balance), [students, studentFinancials]);
-    
+    const [defaulters, setDefaulters] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        // Fetch students directly (skipping pagination for report)
+        api.getStudents({ pagination: 'false' }).then((res: any) => {
+            const list = Array.isArray(res) ? res : res.data;
+            const withDebt = list.filter((s: any) => s.balance > 0).sort((a: any, b: any) => b.balance - a.balance);
+            setDefaulters(withDebt);
+            setLoading(false);
+        });
+    }, []);
+
     const totalDeficit = defaulters.reduce((sum, s) => sum + s.balance, 0);
 
     return (
@@ -105,13 +106,13 @@ const DefaultersReport: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                 <div className="mb-4 p-4 bg-red-50 border-l-4 border-red-500 rounded-r-lg">
                     <h3 className="text-xl font-bold text-red-800">Total Outstanding Balance: KES {totalDeficit.toLocaleString()}</h3>
                 </div>
+                {loading ? <Skeleton className="h-64 w-full" /> : (
                 <table className="w-full text-left table-auto">
                     <thead>
                         <tr className="bg-slate-50 border-b border-slate-200">
                             <th className="px-4 py-3 font-semibold text-slate-600">Student Name</th>
                             <th className="px-4 py-3 font-semibold text-slate-600">Class</th>
                             <th className="px-4 py-3 font-semibold text-slate-600">Guardian Contact</th>
-                            <th className="px-4 py-3 font-semibold text-slate-600">Last Payment</th>
                             <th className="px-4 py-3 font-semibold text-slate-600 text-right">Balance (KES)</th>
                         </tr>
                     </thead>
@@ -121,13 +122,13 @@ const DefaultersReport: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                                 <td className="px-4 py-3 font-medium text-slate-800">{student.name}</td>
                                 <td className="px-4 py-3 text-slate-500">{student.class}</td>
                                 <td className="px-4 py-3 text-slate-500">{student.guardianContact}</td>
-                                <td className="px-4 py-3 text-slate-500">{student.lastPaymentDate || 'N/A'}</td>
                                 <td className="px-4 py-3 font-semibold text-red-600 text-right">{student.balance.toLocaleString()}</td>
                             </tr>
                         ))}
                     </tbody>
                 </table>
-                 {defaulters.length === 0 && (
+                )}
+                 {!loading && defaulters.length === 0 && (
                     <div className="text-center py-8 text-slate-500">
                         <p>No fee defaulters found. All accounts are settled.</p>
                     </div>
@@ -138,9 +139,21 @@ const DefaultersReport: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 }
 
 const ClassListReport: React.FC<{ onBack: () => void }> = ({ onBack }) => {
-    const { students, classes } = useData();
+    const { classes } = useData();
     const [selectedClassId, setSelectedClassId] = useState<string>(classes[0]?.id || '');
-    const studentsInClass = useMemo(() => students.filter(s => s.classId === selectedClassId), [students, selectedClassId]);
+    const [students, setStudents] = useState<any[]>([]);
+    const [loading, setLoading] = useState(false);
+
+    useEffect(() => {
+        if(selectedClassId) {
+            setLoading(true);
+            api.getStudents({ classId: selectedClassId, pagination: 'false' }).then((res: any) => {
+                setStudents(Array.isArray(res) ? res : res.data);
+                setLoading(false);
+            });
+        }
+    }, [selectedClassId]);
+
     return (
         <ReportWrapper title="Class List" onBack={onBack}>
              <div className="bg-white p-6 rounded-xl shadow-lg">
@@ -151,6 +164,7 @@ const ClassListReport: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                     </select>
                 </div>
                  <h3 className="text-xl font-semibold mb-2 print:block hidden text-center">{classes.find(c=>c.id === selectedClassId)?.name}</h3>
+                 {loading ? <Skeleton className="h-40 w-full" /> : (
                 <table className="w-full text-left table-auto">
                     <thead>
                         <tr className="bg-slate-50 border-b border-slate-200">
@@ -160,7 +174,7 @@ const ClassListReport: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                         </tr>
                     </thead>
                     <tbody>
-                        {studentsInClass.map((student, index) => (
+                        {students.map((student, index) => (
                             <tr key={student.id} className="border-b border-slate-100">
                                 <td className="px-4 py-3 text-slate-500">{index + 1}</td>
                                 <td className="px-4 py-3 text-slate-500">{student.admissionNumber}</td>
@@ -169,46 +183,35 @@ const ClassListReport: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                         ))}
                     </tbody>
                 </table>
+                 )}
             </div>
         </ReportWrapper>
     )
 }
 
 const AttendanceReport: React.FC<{ onBack: () => void }> = ({ onBack }) => {
-    const { students, classes } = useData();
+    const { classes } = useData();
     const [classId, setClassId] = useState(classes[0]?.id || '');
     const [startDate, setStartDate] = useState('');
     const [endDate, setEndDate] = useState('');
-    const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
+    const [records, setRecords] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
-
-    const studentMap = useMemo(() => new Map(students.map(s => [s.id, s])), [students]);
 
     useEffect(() => {
         setLoading(true);
-        api.getAttendance({
-            classId: classId || undefined,
-            startDate: startDate || undefined,
+        api.getAttendance({ 
+            classId: classId || undefined, 
+            startDate: startDate || undefined, 
             endDate: endDate || undefined,
-            pagination: 'false' // Ensure we get all records for the report
-        })
-        .then((res: any) => {
-            // Handle both array and paginated response just in case
-            if (Array.isArray(res)) {
-                setAttendanceRecords(res);
-            } else if (res && res.data && Array.isArray(res.data)) {
-                setAttendanceRecords(res.data);
-            } else {
-                setAttendanceRecords([]);
-            }
-        })
-        .catch(err => console.error("Failed to fetch attendance", err))
-        .finally(() => setLoading(false));
+            pagination: 'false'
+        }).then((res: any) => {
+            const list = Array.isArray(res) ? res : res.data || [];
+            // Filter locally for simplicity if API returns all
+            const issues = list.filter((r: any) => r.status !== 'Present');
+            setRecords(issues);
+            setLoading(false);
+        });
     }, [classId, startDate, endDate]);
-
-    const filteredRecords = useMemo(() => {
-        return Array.isArray(attendanceRecords) ? attendanceRecords.filter(r => r.status !== AttendanceStatus.Present) : [];
-    }, [attendanceRecords]);
 
     return (
         <ReportWrapper title="Attendance Issues Report" onBack={onBack}>
@@ -218,6 +221,7 @@ const AttendanceReport: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                     <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="border-slate-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500"/>
                     <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="border-slate-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500"/>
                 </div>
+                {loading ? <Skeleton className="h-40 w-full" /> : (
                 <table className="w-full text-left table-auto">
                      <thead>
                         <tr className="bg-slate-50 border-b border-slate-200">
@@ -227,76 +231,46 @@ const AttendanceReport: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                         </tr>
                     </thead>
                     <tbody>
-                        {loading ? <tr><td colSpan={3} className="text-center p-4">Loading...</td></tr> : 
-                         filteredRecords.map(record => (
+                        {records.map(record => (
                             <tr key={record.id} className="border-b border-slate-100">
                                 <td className="px-4 py-3 text-slate-500">{record.date}</td>
-                                <td className="px-4 py-3 font-medium text-slate-800">{studentMap.get(record.studentId)?.name || 'Unknown'}</td>
-                                <td className="px-4 py-3"><span className={`px-2 py-1 text-xs font-semibold rounded-full ${record.status === AttendanceStatus.Absent ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'}`}>{record.status}</span></td>
+                                <td className="px-4 py-3 font-medium text-slate-800">{record.student ? record.student.name : 'Unknown'}</td>
+                                <td className="px-4 py-3"><span className={`px-2 py-1 text-xs font-semibold rounded-full ${record.status === 'Absent' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'}`}>{record.status}</span></td>
                             </tr>
                         ))}
-                         {!loading && filteredRecords.length === 0 && (
+                         {records.length === 0 && (
                             <tr><td colSpan={3} className="text-center py-8 text-slate-500">No attendance issues found for the selected criteria.</td></tr>
                         )}
                     </tbody>
                 </table>
+                )}
             </div>
         </ReportWrapper>
     )
 }
 
 const CashFlowProjection: React.FC<{ onBack: () => void }> = ({ onBack }) => {
-    const { students, feeStructure, expenses } = useData();
+    // This requires aggregate data. We'll simplify by fetching recent expenses and income.
+    const [projectionData, setProjectionData] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
 
-    const projectionData = useMemo(() => {
-        // 1. Calculate average monthly recurring expenses
-        const monthlyExpenses: { [key: string]: number } = {};
-        expenses.forEach(expense => {
-            const month = expense.date.substring(0, 7); // YYYY-MM
-            if (!monthlyExpenses[month]) monthlyExpenses[month] = 0;
-            monthlyExpenses[month] += expense.amount;
-        });
-        const expenseMonths = Object.values(monthlyExpenses);
-        const avgMonthlyExpenses = expenseMonths.length > 0 ? expenseMonths.reduce((a, b) => a + b, 0) / expenseMonths.length : 50000;
-
-        // 2. Calculate total projected termly income from active students
-        const termlyIncome = students
-            .filter(s => s.status === 'Active')
-            .reduce((total, student) => {
-                const classFees = feeStructure
-                    .filter(item => item.frequency === 'Termly' && !item.isOptional)
-                    .flatMap(item => item.classSpecificFees)
-                    .find(fee => fee.classId === student.classId);
-                return total + (classFees?.amount || 0);
-            }, 0);
-
-        // 3. Generate projection for the next 6 months
-        const data = [];
-        const today = new Date();
-        const termStartMonths = [0, 4, 8]; // Jan, May, Sep
-
-        for (let i = 0; i < 6; i++) {
-            const date = new Date(today.getFullYear(), today.getMonth() + i, 1);
-            const monthName = date.toLocaleString('default', { month: 'short' });
-            
-            const income = termStartMonths.includes(date.getMonth()) ? termlyIncome : 0;
-            const expense = avgMonthlyExpenses;
-            
-            data.push({
-                name: monthName,
-                income,
-                expenses: expense,
-                net: income - expense,
-            });
-        }
-        return data;
-
-    }, [students, feeStructure, expenses]);
+    useEffect(() => {
+        const loadData = async () => {
+            try {
+                const stats = await api.getDashboardStats();
+                // Reuse stats.monthlyData if available, or fetch explicit projection endpoint
+                setProjectionData(stats.monthlyData || []);
+            } catch(e) { console.error(e) }
+            finally { setLoading(false); }
+        };
+        loadData();
+    }, []);
 
     return (
-        <ReportWrapper title="6-Month Cash Flow Projection" onBack={onBack}>
+        <ReportWrapper title="Cash Flow Trends" onBack={onBack}>
             <div className="bg-white p-6 rounded-xl shadow-lg">
-                <p className="text-sm text-slate-500 mb-4">This projection is based on current active students' termly fees and the average of past monthly expenses.</p>
+                <p className="text-sm text-slate-500 mb-4">Historical income vs expenses over the last 6 months.</p>
+                {loading ? <Skeleton className="h-96 w-full" /> : (
                 <div className="w-full h-96 mb-8">
                      <ResponsiveContainer width="100%" height="100%">
                         <LineChart data={projectionData}>
@@ -305,32 +279,12 @@ const CashFlowProjection: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                             <YAxis tickFormatter={(value) => `KES ${value/1000}k`} />
                             <Tooltip formatter={(value: number) => `KES ${value.toLocaleString()}`}/>
                             <Legend />
-                            <Line type="monotone" dataKey="income" stroke="#16a34a" strokeWidth={2} name="Projected Income" />
-                            <Line type="monotone" dataKey="expenses" stroke="#dc2626" strokeWidth={2} name="Projected Expenses" />
-                            <Line type="monotone" dataKey="net" stroke="#475569" strokeWidth={2} name="Net Cash Flow" />
+                            <Line type="monotone" dataKey="income" stroke="#16a34a" strokeWidth={2} name="Income" />
+                            <Line type="monotone" dataKey="expenses" stroke="#dc2626" strokeWidth={2} name="Expenses" />
                         </LineChart>
                     </ResponsiveContainer>
                 </div>
-                 <table className="w-full text-left table-auto">
-                    <thead>
-                        <tr className="bg-slate-50 border-b">
-                            <th className="px-4 py-2 font-semibold">Month</th>
-                            <th className="px-4 py-2 font-semibold text-right">Income (KES)</th>
-                            <th className="px-4 py-2 font-semibold text-right">Expenses (KES)</th>
-                            <th className="px-4 py-2 font-semibold text-right">Net Cash Flow (KES)</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {projectionData.map((d: { name: string; income: number; expenses: number; net: number; }, index) => (
-                            <tr key={`${d.name}-${index}`} className="border-b">
-                                <td className="px-4 py-2 font-medium">{d.name}</td>
-                                <td className="px-4 py-2 text-right text-green-600">{d.income.toLocaleString()}</td>
-                                <td className="px-4 py-2 text-right text-red-600">({d.expenses.toLocaleString()})</td>
-                                <td className={`px-4 py-2 text-right font-bold ${d.net >= 0 ? 'text-slate-800' : 'text-red-600'}`}>{d.net.toLocaleString()}</td>
-                            </tr>
-                        ))}
-                    </tbody>
-                 </table>
+                )}
             </div>
         </ReportWrapper>
     );
@@ -346,7 +300,7 @@ const Reporting: React.FC = () => {
     const reports = [
         { id: 'summary', title: 'Financial Summary', description: 'AI-powered overview of school finances.', icon: <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg> },
         { id: 'defaulters', title: 'Fee Defaulters', description: 'List students with outstanding balances.', icon: <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" /></svg> },
-        { id: 'projection', title: 'Cash Flow Projection', description: 'Forecast future income and expenses.', icon: <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg> },
+        { id: 'projection', title: 'Cash Flow Trends', description: 'Visual forecast of income and expenses.', icon: <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg> },
         { id: 'class_lists', title: 'Class Lists', description: 'Generate printable lists of students by class.', icon: <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M15 21a6 6 0 00-9-5.197m0 0A5.975 5.975 0 0112 13a5.975 5.975 0 013 5.197" /></svg> },
         { id: 'attendance', title: 'Attendance Report', description: 'Track student attendance issues.', icon: <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2zM7 15l2 2 4-4" /></svg> },
     ];

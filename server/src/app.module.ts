@@ -5,7 +5,7 @@ import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { StudentsModule } from './students/students.module';
 import { AiModule } from './ai/ai.module';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { typeOrmAsyncConfig } from './config/typeorm.config';
 import { SettingsModule } from './settings/settings.module';
@@ -30,6 +30,8 @@ import { AuditInterceptor } from './common/interceptors/audit.interceptor';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { CacheModule } from '@nestjs/cache-manager';
 import { ScheduleModule } from '@nestjs/schedule';
+import { BullModule } from '@nestjs/bullmq';
+import { QueuesModule } from './queues/queues.module';
 import { join } from 'path';
 import { School } from './entities/school.entity';
 
@@ -46,6 +48,16 @@ import { School } from './entities/school.entity';
       isGlobal: true,
       ttl: 60000,
       max: 100,
+    }),
+    BullModule.forRootAsync({
+      imports: [ConfigModule],
+      useFactory: async (configService: ConfigService) => ({
+        connection: {
+          host: configService.get('REDIS_HOST', 'localhost'),
+          port: configService.get('REDIS_PORT', 6379),
+        },
+      }),
+      inject: [ConfigService],
     }),
     ServeStaticModule.forRoot({
       rootPath: join((process as any).cwd(), '..', 'dist'),
@@ -69,6 +81,7 @@ import { School } from './entities/school.entity';
     LibraryModule,
     TasksModule,
     SuperAdminModule,
+    QueuesModule,
   ],
   controllers: [AppController],
   providers: [
@@ -78,11 +91,11 @@ import { School } from './entities/school.entity';
     },
     {
       provide: APP_GUARD,
-      useClass: JwtAuthGuard, // Global Auth Guard runs first
+      useClass: JwtAuthGuard, 
     },
     {
       provide: APP_GUARD,
-      useClass: RolesGuard,   // Role Guard runs second (user is now attached)
+      useClass: RolesGuard,
     },
     {
       provide: APP_GUARD,

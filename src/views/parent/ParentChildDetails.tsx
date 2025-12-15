@@ -1,49 +1,37 @@
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { AttendanceStatus, ExamType, Grade, AttendanceRecord, Subject, Transaction } from '../../types';
 import { useData } from '../../contexts/DataContext';
 import * as api from '../../services/api';
-import Skeleton from '../common/Skeleton';
+import Skeleton from '../../components/common/Skeleton';
 import { useQuery } from '@tanstack/react-query';
 
 const ParentChildDetails: React.FC = () => {
     const { selectedChild, setActiveView } = useData();
     const [activeTab, setActiveTab] = useState('academics');
     
-    // We fetch subjects and exams globally or per view. Let's use useQuery for caching.
+    // Global data queries
     const { data: subjects = [] } = useQuery({ queryKey: ['subjects'], queryFn: () => api.getSubjects().then(res => Array.isArray(res) ? res : res.data) });
     const { data: exams = [] } = useQuery({ queryKey: ['exams'], queryFn: () => api.findAllExams() });
 
-    // Local state for child specific data
-    const [grades, setGrades] = useState<Grade[]>([]);
-    const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
-    const [transactions, setTransactions] = useState<Transaction[]>([]);
-    const [loadingGrades, setLoadingGrades] = useState(false);
-    const [loadingAttendance, setLoadingAttendance] = useState(false);
-    const [loadingFinance, setLoadingFinance] = useState(false);
+    // Child specific queries
+    const { data: grades = [], isLoading: loadingGrades } = useQuery({
+        queryKey: ['child-grades', selectedChild?.id],
+        queryFn: () => selectedChild ? api.getGrades({ studentId: selectedChild.id }) : Promise.resolve([]),
+        enabled: !!selectedChild
+    });
 
-    useEffect(() => {
-        if (selectedChild) {
-            setLoadingGrades(true);
-            api.getGrades({ studentId: selectedChild.id })
-                .then(setGrades)
-                .catch(err => console.error("Failed to load grades", err))
-                .finally(() => setLoadingGrades(false));
-
-            setLoadingAttendance(true);
-            api.getAttendance({ studentId: selectedChild.id })
-                .then((res: any) => setAttendanceRecords(Array.isArray(res) ? res : res.data))
-                .catch(err => console.error("Failed to load attendance", err))
-                .finally(() => setLoadingAttendance(false));
-                
-            setLoadingFinance(true);
-            api.getTransactions({ studentId: selectedChild.id, limit: 50 })
-                .then((res: any) => setTransactions(res.data))
-                .catch(err => console.error("Failed to load transactions", err))
-                .finally(() => setLoadingFinance(false));
-        }
-    }, [selectedChild]);
-
+    const { data: attendanceRecords = [], isLoading: loadingAttendance } = useQuery({
+        queryKey: ['child-attendance', selectedChild?.id],
+        queryFn: () => selectedChild ? api.getAttendance({ studentId: selectedChild.id }).then((res: any) => Array.isArray(res) ? res : res.data) : Promise.resolve([]),
+        enabled: !!selectedChild
+    });
+    
+    const { data: transactions = [], isLoading: loadingFinance } = useQuery({
+        queryKey: ['child-transactions', selectedChild?.id],
+        queryFn: () => selectedChild ? api.getTransactions({ studentId: selectedChild.id, limit: 50 }).then((res: any) => res.data) : Promise.resolve([]),
+        enabled: !!selectedChild
+    });
 
     if (!selectedChild) {
         return (
@@ -59,7 +47,7 @@ const ParentChildDetails: React.FC = () => {
 
     const childGradesByExam = useMemo((): Record<string, Grade[]> => {
         const gradesByExam: Record<string, Grade[]> = {};
-        grades.forEach(grade => {
+        grades.forEach((grade: Grade) => {
             if (!gradesByExam[grade.examId]) {
                 gradesByExam[grade.examId] = [];
             }
@@ -68,7 +56,6 @@ const ParentChildDetails: React.FC = () => {
         return gradesByExam;
     }, [grades]);
 
-    // Use subjectMap safely
     const subjectMap = useMemo(() => new Map<string, string>((subjects as Subject[]).map(s => [s.id, s.name])), [subjects]);
 
     return (
@@ -143,7 +130,7 @@ const ParentChildDetails: React.FC = () => {
                             </tr>
                         </thead>
                         <tbody>
-                            {transactions.map(t => (
+                            {(transactions as Transaction[]).map(t => (
                                 <tr key={t.id} className="border-b">
                                     <td className="px-4 py-2">{new Date(t.date).toLocaleDateString()}</td>
                                     <td className="px-4 py-2">{t.description}</td>
@@ -173,7 +160,7 @@ const ParentChildDetails: React.FC = () => {
                             </thead>
                             <tbody>
                                 {loadingAttendance ? <tr><td colSpan={2} className="p-4"><Skeleton className="h-8 w-full"/></td></tr> : 
-                                attendanceRecords.map(record => (
+                                (attendanceRecords as AttendanceRecord[]).map(record => (
                                     <tr key={record.id} className="border-b">
                                         <td className="px-4 py-2">{new Date(record.date).toLocaleDateString()}</td>
                                         <td className="px-4 py-2">

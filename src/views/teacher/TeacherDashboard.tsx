@@ -1,40 +1,29 @@
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { AttendanceStatus } from '../../types';
-import StatCard from '../common/StatCard';
+import StatCard from '../../components/common/StatCard';
 import { useData } from '../../contexts/DataContext';
 import * as api from '../../services/api';
 
 const TeacherDashboard: React.FC = () => {
-    const { assignedClass, isLoading, setActiveView } = useData();
-    const [todayAttendance, setTodayAttendance] = useState(0);
-    const [totalStudents, setTotalStudents] = useState(0);
+    const { assignedClass, setActiveView } = useData();
 
-    useEffect(() => {
-        if (assignedClass) {
-            const today = new Date().toISOString().split('T')[0];
-            
-            // Fetch total student count for this class
-            api.getStudents({ classId: assignedClass.id, pagination: 'false', status: 'Active' })
-               .then((res: any) => {
-                   const count = Array.isArray(res) ? res.length : (res.data ? res.data.length : 0);
-                   setTotalStudents(count);
-               })
-               .catch(console.error);
+    const { data: students = [], isLoading: studentsLoading } = useQuery({
+        queryKey: ['my-class-students', assignedClass?.id],
+        queryFn: () => assignedClass 
+            ? api.getStudents({ classId: assignedClass.id, pagination: 'false', status: 'Active' }).then(res => Array.isArray(res) ? res : res.data)
+            : Promise.resolve([]),
+        enabled: !!assignedClass
+    });
 
-            // Fetch attendance
-            api.getAttendance({ classId: assignedClass.id, date: today })
-                .then(records => {
-                    const presentCount = records.filter((r: any) => r.status === AttendanceStatus.Present || r.status === AttendanceStatus.Late).length;
-                    setTodayAttendance(presentCount);
-                })
-                .catch(err => console.error("Failed to fetch attendance", err));
-        }
-    }, [assignedClass]);
-
-    if (isLoading) {
-        return <div className="p-8 text-center text-slate-500">Loading dashboard...</div>;
-    }
+    const { data: attendance = [] } = useQuery({
+        queryKey: ['daily-attendance', assignedClass?.id],
+        queryFn: () => assignedClass 
+            ? api.getAttendance({ classId: assignedClass.id, date: new Date().toISOString().split('T')[0] }).then(res => Array.isArray(res) ? res : res.data)
+            : Promise.resolve([]),
+        enabled: !!assignedClass
+    });
 
     if (!assignedClass) {
         return (
@@ -45,15 +34,13 @@ const TeacherDashboard: React.FC = () => {
                     </svg>
                 </div>
                 <h2 className="text-2xl font-bold text-slate-800 mb-2">No Class Assigned</h2>
-                <p className="text-slate-600 max-w-md">
-                    You have not been assigned as a Form Teacher to any class yet. 
-                    Please contact the school administrator to assign you to a class in the Academics settings.
-                </p>
+                <p className="text-slate-600 max-w-md">You have not been assigned as a Form Teacher yet.</p>
             </div>
         );
     }
     
-    const attendancePercentage = totalStudents > 0 ? Math.round((todayAttendance / totalStudents) * 100) : 0;
+    const presentToday = attendance.filter((r: any) => r.status === AttendanceStatus.Present || r.status === AttendanceStatus.Late).length;
+    const attendancePercentage = students.length > 0 ? Math.round((presentToday / students.length) * 100) : 0;
 
     return (
         <div className="p-6 md:p-8">
@@ -64,7 +51,8 @@ const TeacherDashboard: React.FC = () => {
              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <StatCard 
                     title="Total Students" 
-                    value={totalStudents.toString()} 
+                    value={studentsLoading ? "..." : students.length.toString()} 
+                    loading={studentsLoading}
                     icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.653-.122-1.28-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.653.122-1.28.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>} 
                     onClick={() => setActiveView('my_class')}
                 />

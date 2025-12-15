@@ -5,6 +5,8 @@ import { Repository, DeepPartial } from 'typeorm';
 import { Announcement } from '../entities/announcement.entity';
 import { CommunicationLog, CommunicationType } from '../entities/communication-log.entity';
 import { GetCommunicationLogsDto } from './dto/get-logs.dto';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
 
 @Injectable()
 export class CommunicationsService {
@@ -13,6 +15,7 @@ export class CommunicationsService {
     constructor(
         @InjectRepository(Announcement) private readonly announcementRepo: Repository<Announcement>,
         @InjectRepository(CommunicationLog) private readonly logRepo: Repository<CommunicationLog>,
+        @InjectQueue('notifications') private notificationsQueue: Queue,
     ) {}
 
     createAnnouncement(data: Omit<Announcement, 'id' | 'sentBy'>, schoolId: string): Promise<Announcement> {
@@ -96,14 +99,15 @@ export class CommunicationsService {
         };
     }
 
-    // --- SMS Capability ---
+    // --- Queue Producers ---
+
     async sendSMS(phone: string, message: string, studentId: string, userId: string): Promise<void> {
-        // Integration with SMS Provider (e.g., Africa's Talking) would go here.
-        // For now, we simulate success and log it to DB.
+        this.logger.log(`Queuing SMS to ${phone}`);
         
-        this.logger.log(`Sending SMS to ${phone}: "${message}"`);
-        
-        // Log to database
+        // Add to Queue
+        await this.notificationsQueue.add('send-sms', { phone, message });
+
+        // Log to database immediately
         await this.createLog({
             studentId,
             type: CommunicationType.SMS,
@@ -111,7 +115,22 @@ export class CommunicationsService {
             date: new Date(),
             sentById: userId
         } as DeepPartial<CommunicationLog>);
+    }
+
+    async sendEmail(to: string | string[], subject: string, body: string): Promise<void> {
+        this.logger.log(`Queuing Email to ${Array.isArray(to) ? to.length + ' recipients' : to}`);
         
-        return Promise.resolve();
+        // If it's a bulk array, we might want to split it or handle it in the processor
+        // For simple implementation, we send it as one job, assuming SMTP can handle BCC or processor loops
+        if (Array.isArray(to)) {
+             // For bulk, iterate and queue individual jobs to avoid blocking or hitting limits
+             const jobs = to.map(recipient => ({
+                 name: 'send-email',
+                 data: { to: recipient, subject, html: body }
+             }));
+             await this.notificationsQueue.addBulk(jobs);
+        } else {
+             await this.notificationsQueue.add('send-email', { to, subject, html: body });
+        }
     }
 }

@@ -1,5 +1,6 @@
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useRef } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { Expense, NewExpense } from '../types';
 import { ExpenseCategory } from '../types';
 import Modal from '../components/common/Modal';
@@ -11,16 +12,16 @@ import Pagination from '../components/common/Pagination';
 
 const ExpensesView: React.FC = () => {
     const { addNotification, formatCurrency } = useData();
-    const [expenses, setExpenses] = useState<Expense[]>([]);
-    const [loading, setLoading] = useState(true);
+    const queryClient = useQueryClient();
+    
+    // UI State
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isCaptureModalOpen, setIsCaptureModalOpen] = useState(false);
     const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     
-    // Pagination and Filtering State
-    const [currentPage, setCurrentPage] = useState(1);
-    const [totalPages, setTotalPages] = useState(1);
+    // Filters
+    const [page, setPage] = useState(1);
     const [startDate, setStartDate] = useState('');
     const [endDate, setEndDate] = useState('');
     const [selectedCategory, setSelectedCategory] = useState('');
@@ -30,40 +31,52 @@ const ExpensesView: React.FC = () => {
     };
     const [formData, setFormData] = useState<NewExpense>(initialExpenseState);
 
-    const fetchExpenses = useCallback(async () => {
-        setLoading(true);
-        try {
-            const data = await api.getExpenses({
-                page: currentPage,
-                limit: 10,
-                startDate: startDate || undefined,
-                endDate: endDate || undefined,
-                category: selectedCategory || undefined
-            });
-            
-            // Fix: Handle both array (legacy/no-pagination) and object (paginated) responses
-            if (Array.isArray(data)) {
-                setExpenses(data);
-                setTotalPages(1);
-            } else if (data && Array.isArray(data.data)) {
-                setExpenses(data.data);
-                setTotalPages(data.last_page || 1);
-            } else {
-                setExpenses([]);
-                setTotalPages(1);
-            }
-        } catch (error) {
-            console.error(error);
-            addNotification("Failed to load expenses.", "error");
-            setExpenses([]);
-        } finally {
-            setLoading(false);
-        }
-    }, [currentPage, startDate, endDate, selectedCategory, addNotification]);
+    // --- Queries ---
+    const { data: expensesData, isLoading } = useQuery({
+        queryKey: ['expenses', page, startDate, endDate, selectedCategory],
+        queryFn: () => api.getExpenses({
+            page,
+            limit: 10,
+            startDate: startDate || undefined,
+            endDate: endDate || undefined,
+            category: selectedCategory || undefined
+        }),
+        placeholderData: (prev) => prev
+    });
 
-    useEffect(() => {
-        fetchExpenses();
-    }, [fetchExpenses]);
+    const expenses = expensesData?.data || [];
+    const totalPages = expensesData?.last_page || 1;
+
+    // --- Mutations ---
+    const createMutation = useMutation({
+        mutationFn: api.createExpense,
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['expenses'] });
+            queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
+            addNotification("Expense added successfully.", "success");
+            setIsModalOpen(false);
+        },
+        onError: () => addNotification("Failed to add expense.", "error")
+    });
+
+    const updateMutation = useMutation({
+        mutationFn: (data: { id: string, payload: Partial<Expense> }) => api.updateExpense(data.id, data.payload),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['expenses'] });
+            addNotification("Expense updated.", "success");
+            setIsModalOpen(false);
+        }
+    });
+
+    const deleteMutation = useMutation({
+        mutationFn: api.deleteExpense,
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['expenses'] });
+            addNotification("Expense deleted.", "success");
+        }
+    });
+
+    // --- Handlers ---
 
     const openAddModal = () => {
         setEditingExpense(null);
@@ -110,32 +123,18 @@ const ExpensesView: React.FC = () => {
             });
     };
 
-    const handleSave = async (e: React.FormEvent) => {
+    const handleSave = (e: React.FormEvent) => {
         e.preventDefault();
-        try {
-            if (editingExpense) {
-                await api.updateExpense(editingExpense.id, formData);
-                addNotification("Expense updated successfully.", "success");
-            } else {
-                await api.createExpense(formData);
-                addNotification("Expense added successfully.", "success");
-            }
-            setIsModalOpen(false);
-            fetchExpenses();
-        } catch (error) {
-            addNotification("Failed to save expense.", "error");
+        if (editingExpense) {
+            updateMutation.mutate({ id: editingExpense.id, payload: formData });
+        } else {
+            createMutation.mutate(formData);
         }
     };
 
-    const handleDelete = async (id: string) => {
+    const handleDelete = (id: string) => {
         if(window.confirm("Are you sure you want to delete this expense record?")) {
-            try {
-                await api.deleteExpense(id);
-                addNotification("Expense deleted successfully.", "success");
-                fetchExpenses();
-            } catch (error) {
-                addNotification("Failed to delete expense.", "error");
-            }
+            deleteMutation.mutate(id);
         }
     }
     
@@ -223,7 +222,7 @@ const ExpensesView: React.FC = () => {
                         </tr>
                     </thead>
                     <tbody>
-                        {loading ? (
+                        {isLoading ? (
                              Array.from({ length: 5 }).map((_, i) => (
                                 <tr key={i} className="border-b border-slate-100">
                                     <td className="px-4 py-4"><Skeleton className="h-4 w-24"/></td>
@@ -237,7 +236,7 @@ const ExpensesView: React.FC = () => {
                         ) : expenses.length === 0 ? (
                             <tr><td colSpan={6} className="text-center py-8 text-slate-500">No expenses recorded.</td></tr>
                         ) : (
-                            expenses.map(exp => (
+                            expenses.map((exp: any) => (
                                 <tr key={exp.id} className="border-b border-slate-100 hover:bg-slate-50">
                                     <td className="px-4 py-3 text-slate-500">{new Date(exp.date).toLocaleDateString()}</td>
                                     <td className="px-4 py-3 text-slate-600">{exp.category}</td>
@@ -268,7 +267,7 @@ const ExpensesView: React.FC = () => {
                 </table>
             </div>
              <div className="no-print">
-                 <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
+                 <Pagination currentPage={page} totalPages={totalPages} onPageChange={setPage} />
              </div>
 
              <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingExpense ? "Edit Expense" : "Add New Expense"}>

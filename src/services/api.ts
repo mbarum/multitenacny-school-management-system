@@ -1,293 +1,249 @@
 
 import type { 
     User, Student, Transaction, Expense, Staff, Payroll, Subject, SchoolClass, 
-    ClassSubjectAssignment, TimetableEntry, Exam, Grade, AttendanceRecord, SchoolEvent, 
-    SchoolInfo, GradingRule, FeeItem, CommunicationLog, Announcement, ReportShareLog, 
-    PayrollItem, DarajaSettings, MpesaC2BTransaction, NewStudent, NewStaff, 
-    NewTransaction, NewExpense, NewPayrollItem, NewAnnouncement, NewCommunicationLog, 
-    NewUser, NewGradingRule, NewFeeItem, Book, LibraryTransaction, IssueBookData,
-    School, PlatformPricing
+    ClassSubjectAssignment, TimetableEntry, Exam, Grade, AttendanceRecord, 
+    SchoolEvent, SchoolInfo, GradingRule, FeeItem, CommunicationLog, Announcement,
+    PayrollItem, DarajaSettings, NewStudent, NewStaff, NewTransaction, NewExpense,
+    NewPayrollItem, NewAnnouncement, NewCommunicationLog, NewUser, NewFeeItem, 
+    NewGradingRule, PlatformPricing, SubscriptionPlan, SubscriptionStatus,
+    Book
 } from '../types';
-import { Role } from '../types';
 
 const apiFetch = async (endpoint: string, options: RequestInit = {}) => {
     const token = localStorage.getItem('authToken');
     const headers = new Headers(options.headers);
-    headers.set('Content-Type', 'application/json');
-
-    if (token) {
-        headers.set('Authorization', `Bearer ${token}`);
+    if (!(options.body instanceof FormData)) {
+        headers.set('Content-Type', 'application/json');
     }
+    if (token) headers.set('Authorization', `Bearer ${token}`);
 
-    const response = await fetch(`/api${endpoint}`, {
-        ...options,
-        headers,
-    });
+    const response = await fetch(`/api${endpoint}`, { ...options, headers });
+    
+    const contentType = response.headers.get('content-type');
+    if (contentType && contentType.includes('text/csv')) {
+        return response.blob();
+    }
 
     if (!response.ok) {
         const errorData = await response.json().catch(() => ({ message: response.statusText }));
         throw new Error(errorData.message || `API Error: ${response.status}`);
     }
-
-    if (response.status === 204) {
-        return null;
-    }
-
+    if (response.status === 204) return null;
     return response.json();
 };
 
-// Auth
-export const login = (credentials: {email: string, password: string}): Promise<{user: User, token: string}> => apiFetch('/auth/login', { method: 'POST', body: JSON.stringify(credentials) });
-export const registerSchool = (data: any): Promise<{user: User, token: string, school: School}> => apiFetch('/auth/register-school', { method: 'POST', body: JSON.stringify(data) });
-export const createPaymentIntent = (data: { plan: string, billingCycle: string, email: string }): Promise<{ clientSecret: string, amount: number }> => apiFetch('/auth/create-payment-intent', { method: 'POST', body: JSON.stringify(data) });
+// --- GETTERS ---
+export const getClasses = () => apiFetch('/academics/classes');
 
-export const getAuthenticatedUser = (): Promise<User> => apiFetch('/users/me');
-export const updateUserProfile = (data: Partial<User>): Promise<User> => apiFetch('/users/profile', { method: 'PATCH', body: JSON.stringify(data) });
-export const uploadUserAvatar = (formData: FormData): Promise<{ avatarUrl: string }> => {
-    const token = localStorage.getItem('authToken');
-    return fetch('/api/users/upload-avatar', {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` },
-        body: formData
-    }).then(res => res.json());
-};
-export const adminUploadUserPhoto = (formData: FormData): Promise<{ url: string }> => {
-    const token = localStorage.getItem('authToken');
-    return fetch('/api/users/upload-photo', {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` },
-        body: formData
-    }).then(async res => {
-        if (!res.ok) throw new Error('Photo upload failed');
-        return res.json();
-    });
+export const getStudents = (params: { page?: number, limit?: number, search?: string, classId?: string, status?: string, pagination?: string, mode?: string } = {}) => {
+    const query = new URLSearchParams();
+    if (params.page) query.append('page', params.page.toString());
+    if (params.limit) query.append('limit', params.limit.toString());
+    if (params.search) query.append('search', params.search);
+    if (params.classId) query.append('classId', params.classId);
+    if (params.status) query.append('status', params.status);
+    if (params.pagination) query.append('pagination', params.pagination);
+    if (params.mode) query.append('mode', params.mode);
+    return apiFetch(`/students?${query.toString()}`);
 };
 
-// Dashboard
-export const getDashboardStats = (): Promise<any> => apiFetch('/dashboard/stats');
+export const getDashboardStats = () => apiFetch('/dashboard/stats');
+export const getSchoolInfo = () => apiFetch('/settings/school-info');
+export const getPublicSchoolInfo = () => apiFetch('/settings/public/school-info');
+export const getExchangeRates = () => apiFetch('/settings/public/rates');
+export const getPlatformPricing = () => apiFetch('/settings/public/pricing');
 
-// Initial Data Load
-export const fetchInitialData = async (role?: Role) => {
-    // Define endpoints and restrict them by role if necessary.
-    // If 'roles' is undefined, the endpoint is fetched for everyone.
-    const definitions: { endpoint: string, default: any, critical?: boolean, roles?: Role[] }[] = [
-        { endpoint: 'users', default: [], roles: [Role.Admin] },
-        // FIX: Added pagination=false to ensure ALL students are loaded for teacher classes
-        { endpoint: 'students?pagination=false', default: [], roles: [Role.Admin, Role.Accountant, Role.Teacher, Role.Receptionist] },
-        { endpoint: 'transactions?pagination=false', default: [] }, // Access controlled by backend filters, safe to call
-        { endpoint: 'expenses?pagination=false', default: [], roles: [Role.Admin, Role.Accountant] },
-        { endpoint: 'staff', default: [], roles: [Role.Admin, Role.Accountant] },
-        { endpoint: 'payroll/payroll-history', default: { data: [], total: 0 }, roles: [Role.Admin, Role.Accountant] },
-        { endpoint: 'academics/subjects', default: [] },
-        { endpoint: 'academics/classes', default: [] },
-        { endpoint: 'academics/class-subject-assignments', default: [] },
-        { endpoint: 'academics/timetable-entries', default: [] },
-        { endpoint: 'academics/exams', default: [] },
-        { endpoint: 'academics/grades', default: [] },
-        { endpoint: 'academics/attendance-records?pagination=false', default: [] },
-        { endpoint: 'academics/events', default: [] },
-        { endpoint: 'academics/grading-scale', default: [] },
-        { endpoint: 'academics/fee-structure', default: [], roles: [Role.Admin, Role.Accountant] },
-        { endpoint: 'payroll/payroll-items', default: [], roles: [Role.Admin, Role.Accountant] },
-        { endpoint: 'communications/communication-logs', default: { data: [], total: 0 } },
-        { endpoint: 'communications/announcements', default: [] },
-        { endpoint: 'settings/school-info', default: null, critical: true },
-        { endpoint: 'settings/daraja', default: null, roles: [Role.Admin] }
-    ];
-
-    const results = await Promise.allSettled(definitions.map(def => {
-        // If a role is provided and the definition has restricted roles, check access
-        if (role && def.roles && !def.roles.includes(role)) {
-            // Skip fetching and return default immediately
-            return Promise.resolve(def.default);
-        }
-        return apiFetch(`/${def.endpoint}`);
-    }));
-    
-    return results.map((result, index) => {
-        const def = definitions[index];
-        if (result.status === 'fulfilled') {
-            return result.value;
-        } else {
-            console.warn(`Failed to fetch ${def.endpoint}:`, result.reason);
-            if (def.critical) {
-                throw result.reason; 
-            }
-            return def.default;
-        }
-    });
-};
-
-// Generic Helpers
+// --- CRUD & Actions ---
 const create = <T>(resource: string) => (data: any): Promise<T> => apiFetch(`/${resource}`, { method: 'POST', body: JSON.stringify(data) });
 const update = <T>(resource: string) => (id: string, data: any): Promise<T> => apiFetch(`/${resource}/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
 const remove = (resource: string) => (id: string): Promise<void> => apiFetch(`/${resource}/${id}`, { method: 'DELETE' });
 
-const list = <T>(resource: string) => (query?: any): Promise<any> => {
-    let queryString = '';
-    if (query) {
-        const filteredQuery = Object.fromEntries(
-            Object.entries(query).filter(([_, v]) => v !== undefined && v !== null && v !== '')
-        );
-        if (Object.keys(filteredQuery).length > 0) {
-            queryString = '?' + new URLSearchParams(filteredQuery as any).toString();
-        }
-    }
-    return apiFetch(`/${resource}${queryString}`);
-};
-
-const batchUpdate = <T>(resource: string) => (items: T[]): Promise<T[]> => apiFetch(`/${resource}/batch`, { method: 'PUT', body: JSON.stringify(items) });
-
 // Students
-export const getStudents = list<Student>('students');
 export const createStudent = create<Student>('students');
-export const updateStudent = update<Student>('students');
+export const updateStudent = (id: string, data: any) => apiFetch(`/students/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
 export const deleteStudent = remove('students');
-export const updateMultipleStudents = (updates: Array<Partial<Student> & { id: string }>): Promise<Student[]> => apiFetch('/students/batch-update', { method: 'POST', body: JSON.stringify(updates) });
-export const exportStudents = (): Promise<Blob> => fetch('/api/students/export', { headers: { 'Authorization': `Bearer ${localStorage.getItem('authToken')}` } }).then(res => res.blob());
-export const importStudents = (formData: FormData): Promise<{ imported: number; failed: number; errors: any[] }> => {
-    const token = localStorage.getItem('authToken');
-    return fetch('/api/students/import', {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` },
-        body: formData
-    }).then(res => res.json());
-};
-export const uploadStudentPhoto = (formData: FormData): Promise<{ url: string }> => {
-    const token = localStorage.getItem('authToken');
-    return fetch('/api/students/upload-photo', {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` },
-        body: formData
-    }).then(async res => {
-        if (!res.ok) throw new Error('Photo upload failed');
-        return res.json();
-    });
-};
+export const updateMultipleStudents = (updates: any[]) => apiFetch('/students/batch-update', { method: 'POST', body: JSON.stringify(updates) });
+export const uploadStudentPhoto = (formData: FormData) => apiFetch('/students/upload-photo', { method: 'POST', body: formData });
+export const exportStudents = () => apiFetch('/students/export');
+export const importStudents = (formData: FormData) => apiFetch('/students/import', { method: 'POST', body: formData });
 
-// Users
-export const getUsers = list<User>('users');
+// Transactions
+export const getTransactions = (params: { page?: number, limit?: number, search?: string, startDate?: string, endDate?: string, type?: string, studentId?: string } = {}) => {
+    const query = new URLSearchParams();
+    if (params.page) query.append('page', params.page.toString());
+    if (params.limit) query.append('limit', params.limit.toString());
+    if (params.search) query.append('search', params.search);
+    if (params.startDate) query.append('startDate', params.startDate);
+    if (params.endDate) query.append('endDate', params.endDate);
+    if (params.type) query.append('type', params.type);
+    if (params.studentId) query.append('studentId', params.studentId);
+    return apiFetch(`/transactions?${query.toString()}`);
+};
+export const createTransaction = create<Transaction>('transactions');
+export const createMultipleTransactions = (data: NewTransaction[]) => apiFetch('/transactions/batch', { method: 'POST', body: JSON.stringify(data) });
+export const updateTransaction = (id: string, data: Partial<Transaction>) => apiFetch(`/transactions/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
+export const deleteTransaction = remove('transactions');
+
+// Expenses
+export const getExpenses = (params: { page?: number, limit?: number, startDate?: string, endDate?: string, category?: string } = {}) => {
+    const query = new URLSearchParams();
+    if (params.page) query.append('page', params.page.toString());
+    if (params.limit) query.append('limit', params.limit.toString());
+    if (params.startDate) query.append('startDate', params.startDate);
+    if (params.endDate) query.append('endDate', params.endDate);
+    if (params.category) query.append('category', params.category);
+    return apiFetch(`/expenses?${query.toString()}`);
+};
+export const createExpense = create<Expense>('expenses');
+export const updateExpense = (id: string, data: Partial<Expense>) => apiFetch(`/expenses/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
+export const deleteExpense = remove('expenses');
+export const uploadExpenseReceipt = (formData: FormData) => apiFetch('/expenses/upload-receipt', { method: 'POST', body: formData });
+export const exportExpenses = (params: any) => {
+    const query = new URLSearchParams(params);
+    return apiFetch(`/expenses/export?${query.toString()}`);
+}
+
+// Staff & Payroll
+export const getStaff = () => apiFetch('/staff');
+export const createStaff = create<Staff>('staff');
+export const updateStaff = update<Staff>('staff');
+export const savePayrollRun = (data: Payroll[]) => apiFetch('/payroll/generate', { method: 'POST', body: JSON.stringify(data) });
+export const getPayrollHistory = (params: { page?: number, limit?: number, staffId?: string, month?: string } = {}) => {
+    const query = new URLSearchParams();
+    if (params.page) query.append('page', params.page.toString());
+    if (params.limit) query.append('limit', params.limit.toString());
+    if (params.staffId) query.append('staffId', params.staffId);
+    if (params.month) query.append('month', params.month);
+    return apiFetch(`/payroll/payroll-history?${query.toString()}`);
+};
+export const createPayrollItem = create<PayrollItem>('payroll/payroll-items');
+export const updatePayrollItem = (id: string, data: Partial<PayrollItem>) => apiFetch(`/payroll/payroll-items/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
+export const deletePayrollItem = (id: string) => apiFetch(`/payroll/payroll-items/${id}`, { method: 'DELETE' });
+export const getPayrollItems = () => apiFetch('/payroll/payroll-items');
+export const uploadStaffPhoto = (formData: FormData) => apiFetch('/staff/upload-photo', { method: 'POST', body: formData });
+
+// Academics
+export const createClass = create<SchoolClass>('academics/classes');
+export const updateClass = (id: string, data: any) => apiFetch(`/academics/classes/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
+export const deleteClass = (id: string) => apiFetch(`/academics/classes/${id}`, { method: 'DELETE' });
+export const updateClasses = (data: SchoolClass[]) => apiFetch('/academics/classes/batch', { method: 'PUT', body: JSON.stringify(data) });
+
+export const createSubject = create<Subject>('academics/subjects');
+export const updateSubject = (id: string, data: any) => apiFetch(`/academics/subjects/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
+export const deleteSubject = (id: string) => apiFetch(`/academics/subjects/${id}`, { method: 'DELETE' });
+export const updateSubjects = (data: Subject[]) => apiFetch('/academics/subjects/batch', { method: 'PUT', body: JSON.stringify(data) });
+
+export const createAssignment = create<ClassSubjectAssignment>('academics/class-subject-assignments');
+export const updateAssignment = (id: string, data: any) => apiFetch(`/academics/class-subject-assignments/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
+export const deleteAssignment = (id: string) => apiFetch(`/academics/class-subject-assignments/${id}`, { method: 'DELETE' });
+export const updateAssignments = (data: ClassSubjectAssignment[]) => apiFetch('/academics/class-subject-assignments/batch', { method: 'PUT', body: JSON.stringify(data) });
+
+export const updateTimetable = (data: TimetableEntry[]) => apiFetch('/academics/timetable-entries/batch', { method: 'PUT', body: JSON.stringify(data) });
+export const updateExams = (data: Exam[]) => apiFetch('/academics/exams/batch', { method: 'PUT', body: JSON.stringify(data) });
+export const updateGrades = (data: Grade[]) => apiFetch('/academics/grades/batch', { method: 'PUT', body: JSON.stringify(data) });
+export const updateAttendance = (data: AttendanceRecord[]) => apiFetch('/academics/attendance-records/batch', { method: 'PUT', body: JSON.stringify(data) });
+export const updateEvents = (data: SchoolEvent[]) => apiFetch('/academics/events/batch', { method: 'PUT', body: JSON.stringify(data) });
+
+export const getSubjects = () => apiFetch('/academics/subjects');
+export const getFeeStructure = () => apiFetch('/academics/fee-structure');
+export const getGradingScale = () => apiFetch('/academics/grading-scale');
+export const getEvents = () => apiFetch('/academics/events');
+export const findAllExams = () => apiFetch('/academics/exams');
+export const findAllAssignments = () => apiFetch('/academics/class-subject-assignments');
+export const findAllTimetableEntries = () => apiFetch('/academics/timetable-entries');
+
+export const getAttendance = (params: { page?: number, limit?: number, pagination?: string, classId?: string, studentId?: string, startDate?: string, endDate?: string, date?: string } = {}) => {
+     const query = new URLSearchParams();
+    if (params.page) query.append('page', params.page.toString());
+    if (params.limit) query.append('limit', params.limit.toString());
+    if (params.pagination) query.append('pagination', params.pagination);
+    if (params.classId) query.append('classId', params.classId);
+    if (params.studentId) query.append('studentId', params.studentId);
+    if (params.startDate) query.append('startDate', params.startDate);
+    if (params.endDate) query.append('endDate', params.endDate);
+    if (params.date) query.append('date', params.date);
+    return apiFetch(`/academics/attendance-records?${query.toString()}`);
+}
+
+export const getGrades = (params: { examId?: string, subjectId?: string, studentId?: string, classId?: string }) => {
+     const query = new URLSearchParams();
+     if(params.examId) query.append('examId', params.examId);
+     if(params.subjectId) query.append('subjectId', params.subjectId);
+     if(params.studentId) query.append('studentId', params.studentId);
+     if(params.classId) query.append('classId', params.classId);
+     return apiFetch(`/academics/grades?${query.toString()}`);
+}
+
+// Settings
+export const updateSchoolInfo = (data: SchoolInfo) => apiFetch('/settings/school-info', { method: 'PUT', body: JSON.stringify(data) });
+export const updateDarajaSettings = (data: DarajaSettings) => apiFetch('/settings/daraja', { method: 'PUT', body: JSON.stringify(data) });
+export const getDarajaSettings = (schoolId?: string) => apiFetch('/settings/daraja');
+export const uploadLogo = (formData: FormData) => apiFetch('/settings/upload-logo', { method: 'POST', body: formData });
 export const createUser = create<User>('users');
 export const updateUser = update<User>('users');
 export const deleteUser = remove('users');
-
-// Transactions
-export const getTransactions = list<Transaction>('transactions');
-export const createTransaction = create<Transaction>('transactions');
-export const updateTransaction = update<Transaction>('transactions');
-export const deleteTransaction = remove('transactions');
-export const createMultipleTransactions = (data: NewTransaction[]): Promise<Transaction[]> => apiFetch('/transactions/batch', { method: 'POST', body: JSON.stringify(data) });
-export const exportTransactions = (): Promise<Blob> => fetch('/api/transactions/export', { headers: { 'Authorization': `Bearer ${localStorage.getItem('authToken')}` } }).then(res => res.blob());
-
-// Expenses
-export const getExpenses = list<Expense>('expenses');
-export const createExpense = create<Expense>('expenses');
-export const updateExpense = update<Expense>('expenses');
-export const deleteExpense = remove('expenses');
-export const exportExpenses = (query?: any): Promise<Blob> => {
-    let queryString = '';
-    if (query) {
-         const filteredQuery = Object.fromEntries(
-            Object.entries(query).filter(([_, v]) => v !== undefined && v !== null && v !== '')
-        );
-        if (Object.keys(filteredQuery).length > 0) {
-            queryString = '?' + new URLSearchParams(filteredQuery as any).toString();
-        }
-    }
-    return fetch(`/api/expenses/export${queryString}`, { headers: { 'Authorization': `Bearer ${localStorage.getItem('authToken')}` } }).then(res => res.blob());
-};
-export const uploadExpenseReceipt = (formData: FormData): Promise<{ url: string }> => {
-    const token = localStorage.getItem('authToken');
-    return fetch('/api/expenses/upload-receipt', {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` },
-        body: formData
-    }).then(async res => {
-        if (!res.ok) throw new Error('Upload failed');
-        return res.json();
-    });
-};
-
-// Staff
-export const createStaff = create<Staff>('staff');
-export const updateStaff = update<Staff>('staff');
-export const exportStaff = (): Promise<Blob> => fetch('/api/staff/export', { headers: { 'Authorization': `Bearer ${localStorage.getItem('authToken')}` } }).then(res => res.blob());
-export const uploadStaffPhoto = (formData: FormData): Promise<{ url: string }> => {
-    const token = localStorage.getItem('authToken');
-    return fetch('/api/staff/upload-photo', {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` },
-        body: formData
-    }).then(async res => {
-        if (!res.ok) throw new Error('Photo upload failed');
-        return res.json();
-    });
-};
-
-// Payroll
-export const savePayrollRun = (data: Payroll[]): Promise<Payroll[]> => apiFetch('/payroll/generate', { method: 'POST', body: JSON.stringify(data) });
-export const getPayrollHistory = list<Payroll>('payroll/payroll-history');
-export const createPayrollItem = create<PayrollItem>('payroll/payroll-items');
-export const updatePayrollItem = update<PayrollItem>('payroll/payroll-items');
-export const deletePayrollItem = remove('payroll/payroll-items');
-
-// Settings
-export const getPublicSchoolInfo = (): Promise<SchoolInfo> => apiFetch('/settings/public/school-info');
-export const getSchoolInfo = (): Promise<SchoolInfo> => apiFetch('/settings/school-info');
-export const updateSchoolInfo = (data: any): Promise<SchoolInfo> => apiFetch('/settings/school-info', { method: 'PUT', body: JSON.stringify(data) });
-export const updateDarajaSettings = (data: DarajaSettings): Promise<DarajaSettings> => apiFetch('/settings/daraja', { method: 'PUT', body: JSON.stringify(data) });
-export const getPlatformPricing = (): Promise<PlatformPricing> => apiFetch('/settings/public/pricing');
-export const getExchangeRates = (): Promise<Record<string, number>> => apiFetch('/settings/public/rates');
-
-// Academics
+export const getUsers = () => apiFetch('/users');
+export const updateUserProfile = (data: Partial<User>) => apiFetch('/users/profile', { method: 'PATCH', body: JSON.stringify(data) });
+export const uploadUserAvatar = (formData: FormData) => apiFetch('/users/upload-avatar', { method: 'POST', body: formData });
+export const adminUploadUserPhoto = (formData: FormData) => apiFetch('/users/upload-photo', { method: 'POST', body: formData });
 export const createGradingRule = create<GradingRule>('academics/grading-scale');
-export const updateGradingRule = update<GradingRule>('academics/grading-scale');
-export const deleteGradingRule = remove('academics/grading-scale');
-
+export const updateGradingRule = (id: string, data: any) => apiFetch(`/academics/grading-scale/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
+export const deleteGradingRule = (id: string) => apiFetch(`/academics/grading-scale/${id}`, { method: 'DELETE' });
 export const createFeeItem = create<FeeItem>('academics/fee-structure');
-export const updateFeeItem = update<FeeItem>('academics/fee-structure');
-export const deleteFeeItem = remove('academics/fee-structure');
-
-export const deleteClass = remove('academics/classes');
-export const deleteSubject = remove('academics/subjects');
-export const deleteAssignment = remove('academics/class-subject-assignments');
-
-export const batchUpdateClasses = batchUpdate<SchoolClass>('academics/classes');
-export const batchUpdateSubjects = batchUpdate<Subject>('academics/subjects');
-export const batchUpdateAssignments = batchUpdate<ClassSubjectAssignment>('academics/class-subject-assignments');
-export const batchUpdateTimetable = batchUpdate<TimetableEntry>('academics/timetable-entries');
-export const batchUpdateExams = batchUpdate<Exam>('academics/exams');
-export const batchUpdateGrades = batchUpdate<Grade>('academics/grades');
-export const batchUpdateAttendance = batchUpdate<AttendanceRecord>('academics/attendance-records');
-// FIX: Point to correct backend route for events
-export const batchUpdateEvents = batchUpdate<SchoolEvent>('academics/events');
-
-export const getGrades = list<Grade>('academics/grades');
-export const getAttendance = list<AttendanceRecord>('academics/attendance-records');
+export const updateFeeItem = (id: string, data: any) => apiFetch(`/academics/fee-structure/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
+export const deleteFeeItem = (id: string) => apiFetch(`/academics/fee-structure/${id}`, { method: 'DELETE' });
 
 // Communications
+export const getCommunicationLogs = (params: { page?: number, limit?: number, studentId?: string, type?: string }) => {
+    const query = new URLSearchParams();
+    if (params.page) query.append('page', params.page.toString());
+    if (params.limit) query.append('limit', params.limit.toString());
+    if (params.studentId) query.append('studentId', params.studentId);
+    if (params.type) query.append('type', params.type);
+    return apiFetch(`/communications/communication-logs?${query.toString()}`);
+}
+export const findAllAnnouncements = () => apiFetch('/communications/announcements');
 export const createAnnouncement = create<Announcement>('communications/announcements');
-export const updateAnnouncement = update<Announcement>('communications/announcements');
-export const deleteAnnouncement = remove('communications/announcements');
+export const updateAnnouncement = (id: string, data: Partial<Announcement>) => apiFetch(`/communications/announcements/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
+export const deleteAnnouncement = (id: string) => apiFetch(`/communications/announcements/${id}`, { method: 'DELETE' });
 export const createCommunicationLog = create<CommunicationLog>('communications/communication-logs');
-export const getCommunicationLogs = list<CommunicationLog>('communications/communication-logs');
-export const createBulkCommunicationLogs = (data: NewCommunicationLog[]): Promise<CommunicationLog[]> => apiFetch('/communications/communication-logs/batch', { method: 'POST', body: JSON.stringify(data) });
+export const createBulkCommunicationLogs = (data: NewCommunicationLog[]) => apiFetch('/communications/communication-logs/batch', { method: 'POST', body: JSON.stringify(data) });
 
 // Library
-export const getBooks = list<Book>('library/books');
-export const createBook = create<Book>('library/books');
-export const updateBook = update<Book>('library/books');
-export const deleteBook = remove('library/books');
-export const issueBook = (data: IssueBookData): Promise<LibraryTransaction> => apiFetch('/library/issue', { method: 'POST', body: JSON.stringify(data) });
-export const returnBook = (transactionId: string): Promise<LibraryTransaction> => apiFetch(`/library/return/${transactionId}`, { method: 'POST' });
-export const markBookLost = (transactionId: string): Promise<LibraryTransaction> => apiFetch(`/library/lost/${transactionId}`, { method: 'POST' });
-export const getLibraryTransactions = list<LibraryTransaction>('library/transactions');
+export const getBooks = (params: { page?: number, limit?: number, search?: string }) => {
+    const query = new URLSearchParams();
+    if (params.page) query.append('page', params.page.toString());
+    if (params.limit) query.append('limit', params.limit.toString());
+    if (params.search) query.append('search', params.search);
+    return apiFetch(`/library/books?${query.toString()}`);
+};
+export const addBook = create<Book>('library/books');
+export const updateBook = (id: string, data: Partial<Book>) => apiFetch(`/library/books/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
+export const deleteBook = (id: string) => apiFetch(`/library/books/${id}`, { method: 'DELETE' });
+export const issueBook = (data: { studentId: string, bookId: string, dueDate: string }) => apiFetch('/library/issue', { method: 'POST', body: JSON.stringify(data) });
+export const returnBook = (transactionId: string) => apiFetch(`/library/return/${transactionId}`, { method: 'POST' });
+export const markBookLost = (transactionId: string) => apiFetch(`/library/lost/${transactionId}`, { method: 'POST' });
+export const getLibraryTransactions = (params: { page?: number, limit?: number, status?: string }) => {
+    const query = new URLSearchParams();
+    if (params.page) query.append('page', params.page.toString());
+    if (params.limit) query.append('limit', params.limit.toString());
+    if (params.status) query.append('status', params.status);
+    return apiFetch(`/library/transactions?${query.toString()}`);
+};
 
 // Super Admin
-export const getAllSchools = list<School>('super-admin/schools');
-export const getPlatformStats = (): Promise<any> => apiFetch('/super-admin/stats');
-export const getSystemHealth = (): Promise<any> => apiFetch('/super-admin/health');
-export const updateSchoolSubscription = (schoolId: string, data: any): Promise<School> => apiFetch(`/super-admin/schools/${schoolId}/subscription`, { method: 'PATCH', body: JSON.stringify(data) });
-export const updatePlatformPricing = (data: Partial<PlatformPricing>): Promise<PlatformPricing> => apiFetch('/super-admin/pricing', { method: 'PUT', body: JSON.stringify(data) });
-export const getSubscriptionPayments = list<any>('super-admin/payments');
-export const recordManualSubscriptionPayment = (data: any) => apiFetch('/super-admin/payments/manual', { method: 'POST', body: JSON.stringify(data) });
+export const getAllSchools = () => apiFetch('/super-admin/schools');
+export const getPlatformStats = () => apiFetch('/super-admin/stats');
+export const getSystemHealth = () => apiFetch('/super-admin/health');
+export const getSubscriptionPayments = () => apiFetch('/super-admin/payments');
+export const updateSchoolSubscription = (schoolId: string, data: { plan: SubscriptionPlan, status: SubscriptionStatus, endDate?: string }) => apiFetch(`/super-admin/schools/${schoolId}/subscription`, { method: 'PATCH', body: JSON.stringify(data) });
+export const updatePlatformPricing = (data: Partial<PlatformPricing>) => apiFetch('/super-admin/pricing', { method: 'PUT', body: JSON.stringify(data) });
+
+// Auth
+export const login = (creds: any) => apiFetch('/auth/login', { method: 'POST', body: JSON.stringify(creds) });
+export const registerSchool = (data: any) => apiFetch('/auth/register-school', { method: 'POST', body: JSON.stringify(data) });
+
+// Deprecated
+export const fetchInitialData = () => {
+    return Promise.resolve([]);
+};

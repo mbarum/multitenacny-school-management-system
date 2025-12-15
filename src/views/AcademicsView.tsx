@@ -1,5 +1,6 @@
 
 import React, { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { SchoolClass, Subject, ClassSubjectAssignment, Staff } from '../types';
 import { Role } from '../types';
 import Modal from '../components/common/Modal';
@@ -7,79 +8,34 @@ import { useData } from '../contexts/DataContext';
 import * as api from '../services/api';
 
 const AcademicsView: React.FC = () => {
-    const { classes, updateClasses, subjects, updateSubjects, classSubjectAssignments, updateAssignments, staff, addNotification } = useData();
+    const { addNotification } = useData();
+    const queryClient = useQueryClient();
     const [activeTab, setActiveTab] = useState('classes');
+    
+    // Modal State
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalType, setModalType] = useState('');
     const [editingData, setEditingData] = useState<any>(null);
 
-    const handleSaveClass = (formData: any) => {
-        let updatedClasses;
-        if (editingData) {
-            updatedClasses = classes.map(c => c.id === editingData.id ? { ...c, ...formData } : c);
-        } else {
-            updatedClasses = [...classes, { ...formData }];
-        }
-        updateClasses(updatedClasses);
-        setIsModalOpen(false);
-    };
+    // --- Queries ---
+    const { data: classes = [] } = useQuery({ queryKey: ['classes'], queryFn: () => api.getClasses().then(res => Array.isArray(res) ? res : res.data) });
+    const { data: subjects = [] } = useQuery({ queryKey: ['subjects'], queryFn: () => api.getSubjects().then(res => Array.isArray(res) ? res : res.data) });
+    const { data: assignments = [] } = useQuery({ queryKey: ['assignments'], queryFn: () => api.findAllAssignments().then(res => Array.isArray(res) ? res : res.data) });
+    const { data: staff = [] } = useQuery({ queryKey: ['staff'], queryFn: () => api.getStaff() }); // Need staff for dropdowns
 
-    const handleDeleteClass = async (id: string) => {
-        if (!window.confirm("Delete this class? This will fail if students are assigned.")) return;
-        try {
-            await api.deleteClass(id);
-            // Refresh logic: filter out locally
-            updateClasses(classes.filter(c => c.id !== id));
-            addNotification("Class deleted.", "success");
-        } catch (e: any) {
-            addNotification(e.message || "Failed to delete class.", "error");
-        }
-    };
+    // --- Mutations ---
+    const createClassMutation = useMutation({ mutationFn: api.createClass, onSuccess: () => { queryClient.invalidateQueries({queryKey:['classes']}); setIsModalOpen(false); addNotification('Class created', 'success'); } });
+    const updateClassMutation = useMutation({ mutationFn: (d:any) => api.updateClass(d.id, d.data), onSuccess: () => { queryClient.invalidateQueries({queryKey:['classes']}); setIsModalOpen(false); addNotification('Class updated', 'success'); } });
+    const deleteClassMutation = useMutation({ mutationFn: api.deleteClass, onSuccess: () => { queryClient.invalidateQueries({queryKey:['classes']}); addNotification('Class deleted', 'success'); } });
 
-    const handleSaveSubject = (formData: any) => {
-        let updatedSubjects;
-        if (editingData) {
-            updatedSubjects = subjects.map(s => s.id === editingData.id ? { ...s, ...formData } : s);
-        } else {
-            updatedSubjects = [...subjects, { ...formData }];
-        }
-        updateSubjects(updatedSubjects);
-        setIsModalOpen(false);
-    };
+    const createSubjectMutation = useMutation({ mutationFn: api.createSubject, onSuccess: () => { queryClient.invalidateQueries({queryKey:['subjects']}); setIsModalOpen(false); addNotification('Subject created', 'success'); } });
+    const updateSubjectMutation = useMutation({ mutationFn: (d:any) => api.updateSubject(d.id, d.data), onSuccess: () => { queryClient.invalidateQueries({queryKey:['subjects']}); setIsModalOpen(false); addNotification('Subject updated', 'success'); } });
+    const deleteSubjectMutation = useMutation({ mutationFn: api.deleteSubject, onSuccess: () => { queryClient.invalidateQueries({queryKey:['subjects']}); addNotification('Subject deleted', 'success'); } });
 
-    const handleDeleteSubject = async (id: string) => {
-        if (!window.confirm("Delete this subject?")) return;
-        try {
-            await api.deleteSubject(id);
-            updateSubjects(subjects.filter(s => s.id !== id));
-            addNotification("Subject deleted.", "success");
-        } catch (e: any) {
-            addNotification("Failed to delete subject. It may be assigned to a class.", "error");
-        }
-    };
-    
-    const handleSaveAssignment = (formData: any) => {
-        let updatedAssignments;
-        if (editingData) {
-            updatedAssignments = classSubjectAssignments.map(a => a.id === editingData.id ? { ...a, ...formData } : a);
-        } else {
-            updatedAssignments = [...classSubjectAssignments, { ...formData }];
-        }
-        updateAssignments(updatedAssignments);
-        setIsModalOpen(false);
-    };
+    const createAssignMutation = useMutation({ mutationFn: api.createAssignment, onSuccess: () => { queryClient.invalidateQueries({queryKey:['assignments']}); setIsModalOpen(false); addNotification('Assignment created', 'success'); } });
+    const deleteAssignMutation = useMutation({ mutationFn: api.deleteAssignment, onSuccess: () => { queryClient.invalidateQueries({queryKey:['assignments']}); addNotification('Assignment removed', 'success'); } });
 
-    const handleDeleteAssignment = async (id: string) => {
-        if (!window.confirm("Remove this teacher assignment?")) return;
-        try {
-            await api.deleteAssignment(id);
-            updateAssignments(classSubjectAssignments.filter(a => a.id !== id));
-            addNotification("Assignment removed.", "success");
-        } catch (e) {
-            addNotification("Failed to remove assignment.", "error");
-        }
-    };
-
+    // --- Handlers ---
 
     const openModal = (type: string, data: any = null) => {
         setModalType(type);
@@ -87,7 +43,21 @@ const AcademicsView: React.FC = () => {
         setIsModalOpen(true);
     };
 
-    const teachers = staff.filter(s => s.userRole === Role.Teacher);
+    const handleSaveClass = (formData: any) => {
+        if (editingData) updateClassMutation.mutate({ id: editingData.id, data: formData });
+        else createClassMutation.mutate(formData);
+    };
+
+    const handleSaveSubject = (formData: any) => {
+        if (editingData) updateSubjectMutation.mutate({ id: editingData.id, data: formData });
+        else createSubjectMutation.mutate(formData);
+    };
+
+    const handleSaveAssignment = (formData: any) => {
+        createAssignMutation.mutate(formData);
+    };
+
+    const teachers = staff.filter((s:any) => s.userRole === Role.Teacher);
 
     return (
         <div className="p-6 md:p-8">
@@ -108,17 +78,18 @@ const AcademicsView: React.FC = () => {
                     </div>
                      <table className="w-full text-left table-auto">
                         <thead><tr className="bg-slate-50 border-b"><th className="p-2">Class Name</th><th className="p-2">Class Code</th><th className="p-2">Form Teacher</th><th className="p-2">Actions</th></tr></thead>
-                        <tbody>{classes.map(c => (<tr key={c.id} className="border-b">
+                        <tbody>{classes.map((c:any) => (<tr key={c.id} className="border-b">
                             <td className="p-2">{c.name}</td>
                             <td className="p-2">{c.classCode}</td>
                             <td className="p-2">{c.formTeacherName || 'Not Assigned'}</td>
                             <td className="p-2 space-x-2">
                                 <button onClick={() => openModal('class', c)} className="text-blue-600 hover:underline">Edit</button>
-                                <button onClick={() => handleDeleteClass(c.id)} className="text-red-600 hover:underline">Delete</button>
+                                <button onClick={() => { if(confirm('Delete class?')) deleteClassMutation.mutate(c.id); }} className="text-red-600 hover:underline">Delete</button>
                             </td></tr>))}</tbody>
                     </table>
                 </div>
             )}
+            
             {activeTab === 'subjects' && (
                  <div className="bg-white p-6 rounded-xl shadow-lg">
                     <div className="flex justify-between items-center mb-4">
@@ -127,15 +98,16 @@ const AcademicsView: React.FC = () => {
                     </div>
                      <table className="w-full text-left table-auto">
                         <thead><tr className="bg-slate-50 border-b"><th className="p-2">Subject Name</th><th className="p-2">Actions</th></tr></thead>
-                        <tbody>{subjects.map(s => (<tr key={s.id} className="border-b">
+                        <tbody>{subjects.map((s:any) => (<tr key={s.id} className="border-b">
                             <td className="p-2">{s.name}</td>
                             <td className="p-2 space-x-2">
                                 <button onClick={() => openModal('subject', s)} className="text-blue-600 hover:underline">Edit</button>
-                                <button onClick={() => handleDeleteSubject(s.id)} className="text-red-600 hover:underline">Delete</button>
+                                <button onClick={() => { if(confirm('Delete subject?')) deleteSubjectMutation.mutate(s.id); }} className="text-red-600 hover:underline">Delete</button>
                             </td></tr>))}</tbody>
                     </table>
                 </div>
             )}
+
             {activeTab === 'assignments' && (
                  <div className="bg-white p-6 rounded-xl shadow-lg">
                     <div className="flex justify-between items-center mb-4">
@@ -144,13 +116,12 @@ const AcademicsView: React.FC = () => {
                     </div>
                      <table className="w-full text-left table-auto">
                         <thead><tr className="bg-slate-50 border-b"><th className="p-2">Class</th><th className="p-2">Subject</th><th className="p-2">Teacher</th><th className="p-2">Actions</th></tr></thead>
-                        <tbody>{classSubjectAssignments.map(a => (<tr key={a.id} className="border-b">
-                            <td className="p-2">{classes.find(c=>c.id === a.classId)?.name}</td>
-                            <td className="p-2">{subjects.find(s=>s.id === a.subjectId)?.name}</td>
-                            <td className="p-2">{staff.find(s=>s.userId === a.teacherId)?.name}</td>
+                        <tbody>{assignments.map((a:any) => (<tr key={a.id} className="border-b">
+                            <td className="p-2">{classes.find((c:any)=>c.id === a.classId)?.name}</td>
+                            <td className="p-2">{subjects.find((s:any)=>s.id === a.subjectId)?.name}</td>
+                            <td className="p-2">{staff.find((s:any)=>s.userId === a.teacherId)?.name}</td>
                             <td className="p-2 space-x-2">
-                                <button onClick={() => openModal('assignment', a)} className="text-blue-600 hover:underline">Edit</button>
-                                <button onClick={() => handleDeleteAssignment(a.id)} className="text-red-600 hover:underline">Delete</button>
+                                <button onClick={() => { if(confirm('Remove assignment?')) deleteAssignMutation.mutate(a.id); }} className="text-red-600 hover:underline">Delete</button>
                             </td></tr>))}</tbody>
                     </table>
                 </div>
@@ -167,10 +138,12 @@ const ClassModal: React.FC<any> = ({ isOpen, onClose, onSave, data, teachers }) 
     const [name, setName] = useState(data?.name || '');
     const [classCode, setClassCode] = useState(data?.classCode || '');
     const [formTeacherId, setFormTeacherId] = useState(data?.formTeacherId || '');
-    return <Modal isOpen={isOpen} onClose={onClose} title={data ? "Edit Class" : "Add Class"}><form onSubmit={e => {e.preventDefault(); onSave({name, classCode, formTeacherId})}} className="space-y-4">
+    return <Modal isOpen={isOpen} onClose={onClose} title={data ? "Edit Class" : "Add Class"}><form onSubmit={e => {e.preventDefault(); onSave({name, classCode, formTeacherId: formTeacherId || null})}} className="space-y-4">
         <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Class Name" className="w-full p-2 border rounded" required />
         <input type="text" value={classCode} onChange={e => setClassCode(e.target.value)} placeholder="Class Code (e.g., 001)" className="w-full p-2 border rounded" required />
-        <select value={formTeacherId} onChange={e => setFormTeacherId(e.target.value)} className="w-full p-2 border rounded"><option value="">Select Form Teacher</option>{teachers.map((t:Staff) => <option key={t.userId} value={t.userId}>{t.name}</option>)}</select><div className="flex justify-end"><button type="submit" className="px-4 py-2 bg-primary-600 text-white rounded">Save</button></div></form></Modal>
+        <select value={formTeacherId} onChange={e => setFormTeacherId(e.target.value)} className="w-full p-2 border rounded"><option value="">Select Form Teacher</option>{teachers.map((t:Staff) => <option key={t.userId} value={t.userId}>{t.name}</option>)}</select>
+        <div className="flex justify-end"><button type="submit" className="px-4 py-2 bg-primary-600 text-white rounded">Save</button></div>
+    </form></Modal>
 }
 
 const SubjectModal: React.FC<any> = ({ isOpen, onClose, onSave, data }) => {

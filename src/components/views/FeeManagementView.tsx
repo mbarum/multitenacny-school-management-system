@@ -1,82 +1,122 @@
 
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import Modal from '../components/common/Modal';
-import Pagination from '../components/common/Pagination';
+import React, { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import Modal from '../common/Modal';
+import Pagination from '../common/Pagination';
 import { initiateSTKPush } from '../../services/darajaService';
-import type { Transaction, NewTransaction, Student } from '../../types';
+import type { Transaction, NewTransaction } from '../../types';
 import { PaymentMethod, TransactionType } from '../../types';
 import { useData } from '../../contexts/DataContext';
-import GenerateInvoicesModal from '../components/common/GenerateInvoicesModal';
+import GenerateInvoicesModal from '../common/GenerateInvoicesModal';
 import * as api from '../../services/api';
-import Skeleton from '../components/common/Skeleton';
+import Skeleton from '../common/Skeleton';
 
 const FeeManagementView: React.FC = () => {
-    const { addTransaction, students, darajaSettings, addNotification, formatCurrency } = useData();
+    const { darajaSettings, addNotification, formatCurrency } = useData();
+    const queryClient = useQueryClient();
+
+    // UI State
     const [isRecordModalOpen, setIsRecordModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [isSyncInfoModalOpen, setIsSyncInfoModalOpen] = useState(false);
+    const [isGenerateInvoicesModalOpen, setIsGenerateInvoicesModalOpen] = useState(false);
     const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
-    const [paymentForm, setPaymentForm] = useState<Partial<Transaction>>({
-        studentId: '', amount: 0, date: new Date().toISOString().split('T')[0], method: PaymentMethod.Cash, description: 'Fee Payment', type: TransactionType.Payment
-    });
+    const [isPaying, setIsPaying] = useState(false);
 
-    const [transactions, setTransactions] = useState<Transaction[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [currentPage, setCurrentPage] = useState(1);
-    const [totalPages, setTotalPages] = useState(1);
-
+    // Filter State
     const [filterOption, setFilterOption] = useState('all');
     const [startDate, setStartDate] = useState('');
     const [endDate, setEndDate] = useState('');
     const [searchTerm, setSearchTerm] = useState('');
-    const [isPaying, setIsPaying] = useState(false);
-    const [isSyncInfoModalOpen, setIsSyncInfoModalOpen] = useState(false);
-    const [isGenerateInvoicesModalOpen, setIsGenerateInvoicesModalOpen] = useState(false);
+    const [page, setPage] = useState(1);
+
+    // Form State
+    const [paymentForm, setPaymentForm] = useState<Partial<Transaction>>({
+        studentId: '', amount: 0, date: new Date().toISOString().split('T')[0], method: PaymentMethod.Cash, description: 'Fee Payment', type: TransactionType.Payment
+    });
 
     const isMpesaConfigured = darajaSettings?.consumerKey && darajaSettings?.paybillNumber;
-    
-    const fetchTransactions = useCallback(async () => {
-        setLoading(true);
-        try {
-            let start = startDate;
-            let end = endDate;
 
-            if (filterOption !== 'custom' && filterOption !== 'all') {
-                 const now = new Date();
-                 if (filterOption === 'today') {
-                    start = now.toISOString().split('T')[0];
-                    end = now.toISOString().split('T')[0];
-                 } else if (filterOption === 'this_week') {
-                    const day = now.getDay();
-                    const diff = now.getDate() - day + (day === 0 ? -6 : 1); 
-                    const monday = new Date(now.setDate(diff));
-                    start = monday.toISOString().split('T')[0];
-                    end = new Date().toISOString().split('T')[0];
-                 } else if (filterOption === 'this_month') {
-                    start = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
-                    end = new Date().toISOString().split('T')[0];
-                 }
-            }
+    // --- Queries ---
 
-            const response = await api.getTransactions({
-                page: currentPage,
-                limit: 10,
-                search: searchTerm,
-                startDate: start || undefined, // Ensure empty strings are undefined
-                endDate: end || undefined,     // Ensure empty strings are undefined
-            });
-            setTransactions(response.data);
-            setTotalPages(response.last_page);
-        } catch (error) {
-            console.error("Failed to fetch transactions", error);
-            addNotification("Failed to load transactions", "error");
-        } finally {
-            setLoading(false);
+    // 1. Fetch Students for Dropdown (Cached)
+    const { data: students = [] } = useQuery({
+        queryKey: ['students-list'],
+        queryFn: () => api.getStudents({ mode: 'minimal', limit: 1000 }).then(res => Array.isArray(res) ? res : res.data)
+    });
+
+    // 2. Calculate Dates for Filters
+    const getDateRange = () => {
+        if (filterOption === 'custom') return { startDate, endDate };
+        
+        const now = new Date();
+        const range: { startDate?: string, endDate?: string } = {};
+        
+        if (filterOption === 'today') {
+            range.startDate = now.toISOString().split('T')[0];
+            range.endDate = now.toISOString().split('T')[0];
+        } else if (filterOption === 'this_week') {
+            const day = now.getDay();
+            const diff = now.getDate() - day + (day === 0 ? -6 : 1); 
+            const monday = new Date(now.setDate(diff));
+            range.startDate = monday.toISOString().split('T')[0];
+            range.endDate = new Date().toISOString().split('T')[0];
+        } else if (filterOption === 'this_month') {
+            range.startDate = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+            range.endDate = new Date().toISOString().split('T')[0];
         }
-    }, [currentPage, filterOption, startDate, endDate, searchTerm, addNotification]);
+        return range;
+    };
 
-    useEffect(() => {
-        fetchTransactions();
-    }, [fetchTransactions]);
+    const { startDate: qStart, endDate: qEnd } = getDateRange();
+
+    // 3. Fetch Transactions (Server Paginated)
+    const { data: transactionsData, isLoading } = useQuery({
+        queryKey: ['transactions', page, searchTerm, filterOption, startDate, endDate],
+        queryFn: () => api.getTransactions({
+            page,
+            limit: 10,
+            search: searchTerm,
+            startDate: qStart,
+            endDate: qEnd
+        }),
+        placeholderData: (prev) => prev
+    });
+
+    const transactions = transactionsData?.data || [];
+    const totalPages = transactionsData?.last_page || 1;
+
+    // --- Mutations ---
+
+    const createMutation = useMutation({
+        mutationFn: api.createTransaction,
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['transactions'] });
+            queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] }); // Update dashboard revenue
+            addNotification("Transaction recorded successfully.", "success");
+            setIsRecordModalOpen(false);
+        },
+        onError: () => addNotification("Failed to save transaction.", "error")
+    });
+
+    const updateMutation = useMutation({
+        mutationFn: (data: { id: string, payload: any }) => api.updateTransaction(data.id, data.payload),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['transactions'] });
+            addNotification("Transaction updated.", "success");
+            setIsRecordModalOpen(false);
+        }
+    });
+
+    const deleteMutation = useMutation({
+        mutationFn: api.deleteTransaction,
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['transactions'] });
+            addNotification("Transaction deleted.", "success");
+        }
+    });
+
+    // --- Handlers ---
 
     const handleFilterChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
         setFilterOption(e.target.value);
@@ -84,6 +124,7 @@ const FeeManagementView: React.FC = () => {
             setStartDate('');
             setEndDate('');
         }
+        setPage(1);
     };
 
     const openRecordModal = () => {
@@ -100,15 +141,9 @@ const FeeManagementView: React.FC = () => {
         setIsRecordModalOpen(true);
     };
 
-    const handleDelete = async (id: string) => {
-        if(window.confirm("Are you sure you want to delete this transaction? This will affect the student's balance.")) {
-            try {
-                await api.deleteTransaction(id);
-                addNotification("Transaction deleted successfully.", "success");
-                fetchTransactions();
-            } catch (e) {
-                addNotification("Failed to delete transaction.", "error");
-            }
+    const handleDelete = (id: string) => {
+        if(window.confirm("Are you sure you want to delete this transaction? This will affect balances.")) {
+            deleteMutation.mutate(id);
         }
     }
     
@@ -118,7 +153,7 @@ const FeeManagementView: React.FC = () => {
             return;
         }
 
-        const student = students.find(s => s.id === paymentForm.studentId);
+        const student = students.find((s: any) => s.id === paymentForm.studentId);
         if (!student) {
             addNotification("Could not find selected student.", 'error');
             return;
@@ -130,43 +165,28 @@ const FeeManagementView: React.FC = () => {
             const response = await initiateSTKPush(paymentForm.amount, student.guardianContact, student.admissionNumber);
             addNotification(response.CustomerMessage, 'info');
             setIsRecordModalOpen(false);
-        } catch (error) {
-            const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
-            addNotification(errorMessage, 'error');
+        } catch (error: any) {
+            addNotification(error.message, 'error');
         } finally {
             setIsPaying(false);
         }
     };
 
-    const handleSaveTransaction = async (e: React.FormEvent) => {
+    const handleSaveTransaction = (e: React.FormEvent) => {
         e.preventDefault();
-        try {
-            if (selectedTransaction) {
-                // Edit
-                await api.updateTransaction(selectedTransaction.id, paymentForm);
-                addNotification("Transaction updated successfully.", "success");
-            } else {
-                // Create
-                const student = students.find(s => s.id === paymentForm.studentId);
-                const paymentToAdd: NewTransaction = {
-                    type: paymentForm.type || TransactionType.Payment,
-                    studentId: paymentForm.studentId!,
-                    studentName: student?.name,
-                    amount: paymentForm.amount!,
-                    date: paymentForm.date!,
-                    description: paymentForm.description || 'Fee Payment',
-                    method: paymentForm.method,
-                    transactionCode: paymentForm.transactionCode,
-                    checkNumber: paymentForm.checkNumber,
-                    checkBank: paymentForm.checkBank,
-                };
-                await addTransaction(paymentToAdd);
-                addNotification("Transaction recorded successfully.", "success");
-            }
-            setIsRecordModalOpen(false);
-            fetchTransactions();
-        } catch (error) {
-            addNotification("Failed to save transaction.", "error");
+        if (selectedTransaction) {
+            updateMutation.mutate({ id: selectedTransaction.id, payload: paymentForm });
+        } else {
+            const student = students.find((s: any) => s.id === paymentForm.studentId);
+            createMutation.mutate({
+                ...paymentForm,
+                studentName: student?.name,
+                // Ensure required fields
+                type: paymentForm.type || TransactionType.Payment,
+                amount: paymentForm.amount || 0,
+                date: paymentForm.date || new Date().toISOString(),
+                description: paymentForm.description || 'Fee Payment'
+            } as NewTransaction);
         }
     };
 
@@ -188,6 +208,7 @@ const FeeManagementView: React.FC = () => {
                 </div>
             </div>
 
+            {/* Filters */}
             <div className="mb-4 bg-white p-4 rounded-xl shadow-lg flex flex-col sm:flex-row items-center gap-4">
                 <div className="flex items-center space-x-4 w-full sm:w-auto">
                     <label htmlFor="date-filter" className="font-medium text-slate-700 whitespace-nowrap">Filter by:</label>
@@ -211,15 +232,16 @@ const FeeManagementView: React.FC = () => {
                 <div className="flex-grow">
                     <input 
                         type="text" 
-                        placeholder="Search student name, description or code..." 
+                        placeholder="Search student, description or code..." 
                         value={searchTerm} 
-                        onChange={e => setSearchTerm(e.target.value)} 
+                        onChange={e => { setSearchTerm(e.target.value); setPage(1); }} 
                         className="w-full p-2 border border-slate-300 rounded-lg"
                     />
                 </div>
             </div>
 
-            <div className="bg-white rounded-xl shadow-lg overflow-x-auto">
+            {/* Table */}
+            <div className="bg-white rounded-xl shadow-lg overflow-x-auto min-h-[400px]">
                 <table className="w-full text-left table-auto">
                     <thead>
                         <tr className="bg-slate-50 border-b border-slate-200">
@@ -227,13 +249,13 @@ const FeeManagementView: React.FC = () => {
                             <th className="px-4 py-3 font-semibold text-slate-600">Type</th>
                             <th className="px-4 py-3 font-semibold text-slate-600">Student Name</th>
                             <th className="px-4 py-3 font-semibold text-slate-600">Description</th>
-                            <th className="px-4 py-3 font-semibold text-slate-600 text-right">Amount (KES)</th>
+                            <th className="px-4 py-3 font-semibold text-slate-600 text-right">Amount</th>
                             <th className="px-4 py-3 font-semibold text-slate-600">Method</th>
                             <th className="px-4 py-3 font-semibold text-slate-600">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {loading ? (
+                        {isLoading ? (
                              Array.from({ length: 5 }).map((_, i) => (
                                 <tr key={i} className="border-b border-slate-100">
                                     <td className="px-4 py-4"><Skeleton className="h-4 w-24"/></td>
@@ -248,7 +270,7 @@ const FeeManagementView: React.FC = () => {
                         ) : transactions.length === 0 ? (
                              <tr><td colSpan={7} className="text-center py-8 text-slate-500">No transactions found.</td></tr>
                         ) : (
-                            transactions.map(p => (
+                            transactions.map((p: any) => (
                                 <tr key={p.id} className="border-b border-slate-100 hover:bg-slate-50">
                                     <td className="px-4 py-3 text-slate-500">{new Date(p.date).toLocaleDateString()}</td>
                                     <td className="px-4 py-3">
@@ -270,8 +292,9 @@ const FeeManagementView: React.FC = () => {
                     </tbody>
                 </table>
             </div>
-             <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
+             <Pagination currentPage={page} totalPages={totalPages} onPageChange={setPage} />
             
+            {/* Record/Edit Modal */}
             <Modal isOpen={isRecordModalOpen} onClose={() => setIsRecordModalOpen(false)} title={selectedTransaction ? "Edit Transaction" : "Record New Transaction"}>
                 <form onSubmit={handleSaveTransaction} className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -297,7 +320,7 @@ const FeeManagementView: React.FC = () => {
 
                     <select name="studentId" value={paymentForm.studentId} onChange={e => setPaymentForm(p => ({...p, studentId: e.target.value}))} required className="w-full p-2 border border-slate-300 rounded-lg" disabled={!!selectedTransaction}>
                         <option value="">Select Student</option>
-                        {students.map(s => <option key={s.id} value={s.id}>{s.name} ({s.admissionNumber})</option>)}
+                        {students.map((s: any) => <option key={s.id} value={s.id}>{s.name} ({s.admissionNumber})</option>)}
                     </select>
                     
                     <input type="number" name="amount" placeholder="Amount" value={paymentForm.amount || ''} onChange={e => setPaymentForm(p => ({...p, amount: parseFloat(e.target.value)}))} required className="w-full p-2 border border-slate-300 rounded-lg" />

@@ -3,41 +3,27 @@ import React, { useEffect, useState } from 'react';
 import type { Student } from '../../types';
 import { useData } from '../../contexts/DataContext';
 import * as api from '../../services/api';
-import Skeleton from '../common/Skeleton';
+import Skeleton from '../../components/common/Skeleton';
+import { useQuery } from '@tanstack/react-query';
 
 const ParentDashboard: React.FC = () => {
     const { parentChildren, setSelectedChild, setActiveView } = useData();
-    const [balances, setBalances] = useState<Record<string, number>>({});
-    const [loading, setLoading] = useState(true);
     
-    useEffect(() => {
-        const loadBalances = async () => {
-            setLoading(true);
+    // We can use a query to enrich student data with balances
+    const { data: balances = {}, isLoading } = useQuery({
+        queryKey: ['parent-balances', parentChildren.map(c => c.id).join(',')],
+        queryFn: async () => {
             const newBalances: Record<string, number> = {};
-            try {
-                // Since parentChildren only has basic info, we might need to fetch updated info to get real-time balances
-                // Or use a specific endpoint for parent dashboard stats
-                for (const child of parentChildren) {
-                    const res = await api.getStudents({ search: child.admissionNumber, limit: 1, pagination: 'false' });
-                    // API returns array or object with data
-                    const list = Array.isArray(res) ? res : res.data;
-                    const student = list.find((s: Student) => s.id === child.id);
-                    newBalances[child.id] = student?.balance || 0;
-                }
-                setBalances(newBalances);
-            } catch (e) {
-                console.error("Error loading balances", e);
-            } finally {
-                setLoading(false);
+            for (const child of parentChildren) {
+                const res = await api.getStudents({ search: child.admissionNumber, limit: 1, pagination: 'false' });
+                const list = Array.isArray(res) ? res : res.data;
+                const student = list.find((s: Student) => s.id === child.id);
+                newBalances[child.id] = student?.balance || 0;
             }
-        };
-        
-        if (parentChildren.length > 0) {
-            loadBalances();
-        } else {
-            setLoading(false);
-        }
-    }, [parentChildren]);
+            return newBalances;
+        },
+        enabled: parentChildren.length > 0
+    });
 
     const handleSelectChild = (child: Student) => {
         setSelectedChild(child);
@@ -48,7 +34,7 @@ const ParentDashboard: React.FC = () => {
         <div className="p-6 md:p-8">
             <h2 className="text-3xl font-bold text-slate-800 mb-6">My Children</h2>
             <div className="space-y-6">
-                {loading ? <Skeleton className="h-32 w-full rounded-xl" /> : 
+                {isLoading ? <Skeleton className="h-32 w-full rounded-xl" /> : 
                 parentChildren.map(child => {
                     const balance = balances[child.id] || 0;
                     return (

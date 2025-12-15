@@ -1,12 +1,13 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { initiateSTKPush } from '../../services/darajaService';
 import type { Student, Transaction } from '../../types';
-import Modal from '../common/Modal';
-import Spinner from '../common/Spinner';
+import Modal from '../../components/common/Modal';
+import Spinner from '../../components/common/Spinner';
 import { useData } from '../../contexts/DataContext';
 import * as api from '../../services/api';
-import Skeleton from '../common/Skeleton';
+import Skeleton from '../../components/common/Skeleton';
+import { useQuery } from '@tanstack/react-query';
 
 const ParentFinances: React.FC = () => {
     const { parentChildren, darajaSettings, addNotification } = useData();
@@ -15,25 +16,17 @@ const ParentFinances: React.FC = () => {
     const [paymentAmount, setPaymentAmount] = useState(0);
     const [isPaying, setIsPaying] = useState(false);
     
-    // Local state for financials per child
-    const [childData, setChildData] = useState<Record<string, { balance: number, recentTransactions: Transaction[] }>>({});
-    const [loading, setLoading] = useState(true);
-
-    useEffect(() => {
-        const fetchFinancials = async () => {
-            setLoading(true);
-            const data: Record<string, { balance: number, recentTransactions: Transaction[] }> = {};
-            
-            try {
-                for (const child of parentChildren) {
-                    // Fetch student details to get the balance (calculated on backend)
-                    // API getStudents returns array or object
+    // Fetch financial data for all children
+    const { data: childData = {}, isLoading } = useQuery({
+        queryKey: ['parent-financials-detailed', parentChildren.map(c => c.id).join(',')],
+        queryFn: async () => {
+             const data: Record<string, { balance: number, recentTransactions: Transaction[] }> = {};
+             for (const child of parentChildren) {
                     const res = await api.getStudents({ search: child.admissionNumber, limit: 1, pagination: 'false' });
                     const list = Array.isArray(res) ? res : res.data;
                     const updatedChild = list.find((s: Student) => s.id === child.id);
                     const balance = updatedChild?.balance || 0;
 
-                    // Fetch recent transactions
                     const transactionsRes = await api.getTransactions({ studentId: child.id, type: 'Payment', limit: 3 });
                     
                     data[child.id] = {
@@ -41,21 +34,10 @@ const ParentFinances: React.FC = () => {
                         recentTransactions: transactionsRes.data || []
                     };
                 }
-                setChildData(data);
-            } catch (error) {
-                console.error("Error fetching financial data for parent view", error);
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        if (parentChildren.length > 0) {
-            fetchFinancials();
-        } else {
-            setLoading(false);
-        }
-    }, [parentChildren]);
-
+                return data;
+        },
+        enabled: parentChildren.length > 0
+    });
 
     const openPaymentModal = (child: Student) => {
         setSelectedChildForPayment(child);
@@ -93,7 +75,7 @@ const ParentFinances: React.FC = () => {
         }
     };
     
-    if (loading) {
+    if (isLoading) {
         return (
             <div className="p-6 md:p-8 space-y-6">
                 <h2 className="text-3xl font-bold text-slate-800 mb-6">Financial Overview</h2>
@@ -124,7 +106,7 @@ const ParentFinances: React.FC = () => {
                             <h4 className="font-semibold text-slate-700 mb-2">Recent Payments</h4>
                             <table className="w-full text-left text-sm">
                                 <tbody>
-                                    {financials.recentTransactions.map(p => (
+                                    {financials.recentTransactions.map((p: Transaction) => (
                                         <tr key={p.id}><td>{new Date(p.date).toLocaleDateString()}</td><td>{p.method}</td><td>{p.transactionCode}</td><td className="text-right font-medium">KES {p.amount.toLocaleString()}</td></tr>
                                     ))}
                                      {financials.recentTransactions.length === 0 && (

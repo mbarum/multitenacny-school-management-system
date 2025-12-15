@@ -4,14 +4,29 @@ import type { AttendanceRecord, Student } from '../../types';
 import { AttendanceStatus } from '../../types';
 import { useData } from '../../contexts/DataContext';
 import * as api from '../../services/api';
+import { useQuery } from '@tanstack/react-query';
 
 const TeacherAttendanceView: React.FC = () => {
     const { updateAttendance, assignedClass, isLoading } = useData();
     const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
     const [dailyRecords, setDailyRecords] = useState<Map<string, AttendanceStatus>>(new Map());
-    const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
-    const [studentsInClass, setStudentsInClass] = useState<Student[]>([]);
-    const [loadingData, setLoadingData] = useState(false);
+    
+    // Fetch Data
+    const { data: students = [] } = useQuery({
+        queryKey: ['my-class-students', assignedClass?.id],
+        queryFn: () => assignedClass 
+            ? api.getStudents({ classId: assignedClass.id, status: 'Active', pagination: 'false' }).then(res => Array.isArray(res) ? res : res.data)
+            : Promise.resolve([]),
+        enabled: !!assignedClass
+    });
+
+    const { data: existingRecords = [], refetch: refetchAttendance } = useQuery({
+        queryKey: ['attendance', assignedClass?.id, selectedDate],
+        queryFn: () => assignedClass 
+            ? api.getAttendance({ classId: assignedClass.id, date: selectedDate }).then(res => Array.isArray(res) ? res : res.data)
+            : Promise.resolve([]),
+        enabled: !!assignedClass
+    });
 
     if (isLoading) return <div className="p-8 text-center">Loading...</div>;
 
@@ -24,30 +39,15 @@ const TeacherAttendanceView: React.FC = () => {
         );
     }
 
-    // Fetch students and attendance on load or date change
+    // Sync state with fetched data
     useEffect(() => {
-        setLoadingData(true);
-        Promise.all([
-             api.getStudents({ classId: assignedClass.id, status: 'Active', pagination: 'false' }),
-             api.getAttendance({ classId: assignedClass.id, date: selectedDate })
-        ]).then(([studentsRes, attendanceRes]) => {
-             const students = Array.isArray(studentsRes) ? studentsRes : studentsRes.data;
-             setStudentsInClass(students);
-             
-             const records = Array.isArray(attendanceRes) ? attendanceRes : attendanceRes.data;
-             setAttendanceRecords(records);
-             
-             const newDailyRecords = new Map<string, AttendanceStatus>();
-             students.forEach((student: Student) => {
-                const existingRecord = records.find((r: AttendanceRecord) => r.studentId === student.id);
-                newDailyRecords.set(student.id, existingRecord ? existingRecord.status : AttendanceStatus.Present);
-             });
-             setDailyRecords(newDailyRecords);
-        })
-        .catch(err => console.error("Failed to load data", err))
-        .finally(() => setLoadingData(false));
-
-    }, [selectedDate, assignedClass.id]);
+         const newDailyRecords = new Map<string, AttendanceStatus>();
+         students.forEach((student: Student) => {
+            const existingRecord = existingRecords.find((r: AttendanceRecord) => r.studentId === student.id);
+            newDailyRecords.set(student.id, existingRecord ? existingRecord.status : AttendanceStatus.Present);
+         });
+         setDailyRecords(newDailyRecords);
+    }, [students, existingRecords]);
 
     const handleStatusChange = (studentId: string, status: AttendanceStatus) => {
         setDailyRecords(prev => new Map(prev).set(studentId, status));
@@ -57,7 +57,7 @@ const TeacherAttendanceView: React.FC = () => {
         const updatedRecords: AttendanceRecord[] = [];
         
         dailyRecords.forEach((status, studentId) => {
-            const existingRecord = attendanceRecords.find(r => r.date === selectedDate && r.studentId === studentId);
+            const existingRecord = existingRecords.find((r: any) => r.studentId === studentId);
             const record: AttendanceRecord = {
                 id: existingRecord ? existingRecord.id : `att-${studentId}-${selectedDate}`, // ID might be temporary if new
                 studentId,
@@ -70,8 +70,7 @@ const TeacherAttendanceView: React.FC = () => {
 
         updateAttendance(updatedRecords).then(() => {
             alert(`Attendance for ${selectedDate} saved successfully.`);
-            // Refresh local state to get real IDs
-            api.getAttendance({ classId: assignedClass.id, date: selectedDate }).then(res => setAttendanceRecords(Array.isArray(res) ? res : res.data));
+            refetchAttendance();
         });
     };
 
@@ -97,8 +96,7 @@ const TeacherAttendanceView: React.FC = () => {
                     />
                     <button 
                         onClick={handleSaveAttendance} 
-                        disabled={loadingData}
-                        className="px-4 py-2 bg-primary-600 text-white font-semibold rounded-lg shadow-md hover:bg-primary-700 transition-colors disabled:bg-slate-400"
+                        className="px-4 py-2 bg-primary-600 text-white font-semibold rounded-lg shadow-md hover:bg-primary-700 transition-colors"
                     >
                         Save Attendance
                     </button>
@@ -113,7 +111,6 @@ const TeacherAttendanceView: React.FC = () => {
             </div>
 
             <div className="bg-white rounded-xl shadow-lg overflow-x-auto">
-                 {loadingData ? <div className="p-8 text-center text-slate-500">Loading student list...</div> :
                  <table className="w-full text-left table-auto">
                     <thead>
                         <tr className="bg-slate-50 border-b border-slate-200">
@@ -122,7 +119,7 @@ const TeacherAttendanceView: React.FC = () => {
                         </tr>
                     </thead>
                     <tbody>
-                        {studentsInClass.map(student => (
+                        {students.map((student: any) => (
                             <tr key={student.id} className="border-b border-slate-100">
                                 <td className="px-4 py-2 font-medium text-slate-800">{student.name}</td>
                                 <td className="px-4 py-2">
@@ -145,7 +142,7 @@ const TeacherAttendanceView: React.FC = () => {
                             </tr>
                         ))}
                     </tbody>
-                </table>}
+                </table>
             </div>
         </div>
     );

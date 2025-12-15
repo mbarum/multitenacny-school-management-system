@@ -1,19 +1,11 @@
 
-import React, { useEffect, useState } from 'react';
+import React from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import * as api from '../services/api';
 import Skeleton from './common/Skeleton';
 import { useData } from '../contexts/DataContext';
-
-interface DashboardStats {
-    totalStudents: number;
-    totalRevenue: number;
-    totalExpenses: number;
-    feesOverdue: number;
-    totalProfit: number;
-    monthlyData: { name: string; income: number; expenses: number }[];
-    expenseDistribution: { name: string; value: number }[];
-}
+import { useNavigate } from 'react-router-dom';
 
 const StatCard: React.FC<{ title: string; value: string; icon: React.ReactElement, loading?: boolean, onClick?: () => void, colorClass?: string }> = ({ title, value, icon, loading, onClick, colorClass }) => (
     <div 
@@ -37,23 +29,15 @@ const StatCard: React.FC<{ title: string; value: string; icon: React.ReactElemen
 );
 
 const Dashboard: React.FC = () => {
-    const { formatCurrency, setActiveView } = useData();
-    const [stats, setStats] = useState<DashboardStats | null>(null);
-    const [loading, setLoading] = useState(true);
+    const { formatCurrency } = useData();
+    const navigate = useNavigate();
 
-    useEffect(() => {
-        const loadStats = async () => {
-            try {
-                const data = await api.getDashboardStats();
-                setStats(data);
-            } catch (error) {
-                console.error("Failed to load dashboard stats", error);
-            } finally {
-                setLoading(false);
-            }
-        };
-        loadStats();
-    }, []);
+    // Replaced useEffect with useQuery for better caching and automatic refetching on window focus/mount
+    const { data: stats, isLoading } = useQuery({
+        queryKey: ['dashboard-stats'],
+        queryFn: api.getDashboardStats,
+        staleTime: 60 * 1000, // Data fresh for 1 minute
+    });
 
     const COLORS = ['#346955', '#475569', '#BB9C5F', '#3b82f6', '#8b5cf6', '#f43f5e'];
     const profit = stats?.totalProfit || 0;
@@ -64,52 +48,52 @@ const Dashboard: React.FC = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
                 <StatCard 
                     title="Active Students" 
-                    value={stats?.totalStudents.toLocaleString() || '0'} 
-                    loading={loading}
+                    value={stats?.totalStudents?.toLocaleString() || '0'} 
+                    loading={isLoading}
                     icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.653-.122-1.28-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.653.122-1.28.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>} 
-                    onClick={() => setActiveView('students')}
+                    onClick={() => navigate('/students')}
                 />
                 <StatCard 
                     title="Total Revenue" 
                     value={stats?.totalRevenue ? formatCurrency(stats.totalRevenue) : formatCurrency(0)} 
-                    loading={loading}
+                    loading={isLoading}
                     colorClass="bg-green-100 text-green-700"
                     icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v.01" /></svg>} 
-                    onClick={() => setActiveView('fees')}
+                    onClick={() => navigate('/fees')}
                 />
                 <StatCard 
                     title="Total Expenses" 
                     value={stats?.totalExpenses ? formatCurrency(stats.totalExpenses) : formatCurrency(0)} 
-                    loading={loading}
+                    loading={isLoading}
                     colorClass="bg-red-100 text-red-700"
                     icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" /></svg>} 
-                    onClick={() => setActiveView('expenses')}
+                    onClick={() => navigate('/expenses')}
                 />
                 <StatCard 
                     title="Fees Overdue" 
                     value={stats?.feesOverdue ? formatCurrency(stats.feesOverdue) : formatCurrency(0)} 
-                    loading={loading}
+                    loading={isLoading}
                     colorClass="bg-yellow-100 text-yellow-700"
                     icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>} 
-                    onClick={() => setActiveView('fees')}
+                    onClick={() => navigate('/fees')}
                 />
                 <StatCard 
                     title="Net Profit" 
                     value={formatCurrency(profit)} 
-                    loading={loading}
+                    loading={isLoading}
                     colorClass={isProfitPositive ? 'bg-primary-100 text-primary-700' : 'bg-red-100 text-red-700'}
                     icon={
                         isProfitPositive 
                         ? <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>
                         : <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" /></svg>
                     }
-                    onClick={() => setActiveView('reporting')}
+                    onClick={() => navigate('/reporting')}
                 />
             </div>
             <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
                 <div className="lg:col-span-3 bg-white p-6 rounded-xl shadow-lg h-[400px]">
                     <h3 className="text-xl font-semibold text-slate-700 mb-4">Income vs Expenses Overview (Last 6 Months)</h3>
-                    {loading ? <Skeleton className="w-full h-full" /> : (
+                    {isLoading ? <Skeleton className="w-full h-full" /> : (
                         <ResponsiveContainer width="100%" height="100%">
                             <BarChart data={stats?.monthlyData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
                                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
@@ -125,7 +109,7 @@ const Dashboard: React.FC = () => {
                 </div>
                  <div className="lg:col-span-2 bg-white p-6 rounded-xl shadow-lg h-[400px]">
                     <h3 className="text-xl font-semibold text-slate-700 mb-4">Expense Distribution</h3>
-                    {loading ? <Skeleton className="w-full h-full" /> : (
+                    {isLoading ? <Skeleton className="w-full h-full" /> : (
                          <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
                                 <Pie 
@@ -147,7 +131,7 @@ const Dashboard: React.FC = () => {
                                         ) : null;
                                     }}
                                 >
-                                    {stats?.expenseDistribution.map((entry, index) => (
+                                    {stats?.expenseDistribution.map((entry: any, index: number) => (
                                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                                     ))}
                                 </Pie>

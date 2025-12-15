@@ -1,16 +1,26 @@
 
 import React, { useState, useMemo } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { Announcement, NewAnnouncement } from '../types';
 import Modal from '../components/common/Modal';
 import { useData } from '../contexts/DataContext';
 import { sendBulkEmail } from '../services/emailService';
 import * as api from '../services/api';
 
-
 const CommunicationView: React.FC = () => {
-    const { announcements, addAnnouncement, classes, students, currentUser, addNotification } = useData();
+    const { addNotification, currentUser } = useData();
+    const queryClient = useQueryClient();
     const [activeTab, setActiveTab] = useState('announcement');
     
+    // Queries
+    const { data: announcements = [] } = useQuery({ queryKey: ['announcements'], queryFn: () => api.findAllAnnouncements() });
+    const { data: classes = [] } = useQuery({ queryKey: ['classes'], queryFn: () => api.getClasses().then(res => Array.isArray(res) ? res : res.data) });
+    // Note: Fetching students on demand might be better, but for email list filtering by class, we might need basic student info
+    const { data: students = [] } = useQuery({ 
+        queryKey: ['students-list'], 
+        queryFn: () => api.getStudents({ mode: 'minimal', limit: 2000 }).then(res => Array.isArray(res) ? res : res.data) 
+    });
+
     // State for announcements
     const [announcementTitle, setAnnouncementTitle] = useState('');
     const [announcementContent, setAnnouncementContent] = useState('');
@@ -26,10 +36,39 @@ const CommunicationView: React.FC = () => {
     const [emailAudience, setEmailAudience] = useState('all');
     const [isSending, setIsSending] = useState(false);
 
-
     const sortedAnnouncements = useMemo(() => {
         return [...announcements].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     }, [announcements]);
+
+    // Mutations
+    const createAnnouncementMutation = useMutation({
+        mutationFn: api.createAnnouncement,
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['announcements'] });
+            setAnnouncementTitle('');
+            setAnnouncementContent('');
+            setAnnouncementAudience('all');
+            addNotification('Announcement sent successfully!', 'success');
+            setActiveTab('history');
+        }
+    });
+
+    const updateAnnouncementMutation = useMutation({
+        mutationFn: (data: { id: string, payload: Partial<Announcement> }) => api.updateAnnouncement(data.id, data.payload),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['announcements'] });
+            addNotification('Announcement updated successfully.', 'success');
+            setIsEditModalOpen(false);
+        }
+    });
+
+    const deleteAnnouncementMutation = useMutation({
+        mutationFn: api.deleteAnnouncement,
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['announcements'] });
+            addNotification('Announcement deleted.', 'success');
+        }
+    });
 
     const handleSendAnnouncement = (e: React.FormEvent) => {
         e.preventDefault();
@@ -41,37 +80,18 @@ const CommunicationView: React.FC = () => {
             audience: announcementAudience,
             sentBy: currentUser.name,
         };
-        addAnnouncement(newAnnouncement).then(() => {
-            setAnnouncementTitle('');
-            setAnnouncementContent('');
-            setAnnouncementAudience('all');
-            addNotification('Announcement sent successfully!', 'success');
-            setActiveTab('history');
-        });
+        createAnnouncementMutation.mutate(newAnnouncement);
     };
     
-    const handleUpdateAnnouncement = async (e: React.FormEvent) => {
+    const handleUpdateAnnouncement = (e: React.FormEvent) => {
         e.preventDefault();
         if (!editingAnnouncement) return;
-        try {
-            await api.updateAnnouncement(editingAnnouncement.id, editingAnnouncement);
-            addNotification('Announcement updated successfully.', 'success');
-            setIsEditModalOpen(false);
-            window.location.reload(); // Simple reload to refresh data since context doesn't have granular update for this yet
-        } catch (error) {
-            addNotification('Failed to update announcement.', 'error');
-        }
+        updateAnnouncementMutation.mutate({ id: editingAnnouncement.id, payload: editingAnnouncement });
     };
 
-    const handleDeleteAnnouncement = async (id: string) => {
+    const handleDeleteAnnouncement = (id: string) => {
         if(window.confirm("Are you sure you want to delete this announcement?")) {
-            try {
-                await api.deleteAnnouncement(id);
-                addNotification('Announcement deleted.', 'success');
-                window.location.reload(); // Refresh
-            } catch (error) {
-                addNotification('Failed to delete announcement.', 'error');
-            }
+            deleteAnnouncementMutation.mutate(id);
         }
     };
     
@@ -85,9 +105,9 @@ const CommunicationView: React.FC = () => {
         setIsSending(true);
 
         const recipients = students
-            .filter(s => emailAudience === 'all' || s.classId === emailAudience)
-            .map(s => s.guardianEmail)
-            .filter((email, index, self) => email && self.indexOf(email) === index); // Get unique, non-empty emails
+            .filter((s:any) => emailAudience === 'all' || s.classId === emailAudience)
+            .map((s:any) => s.guardianEmail)
+            .filter((email:any, index:number, self:any) => email && self.indexOf(email) === index);
 
         if (recipients.length === 0) {
             addNotification('No recipients found for the selected audience.', 'info');
@@ -108,7 +128,6 @@ const CommunicationView: React.FC = () => {
         }
     };
 
-
     return (
         <div className="p-6 md:p-8">
             <h2 className="text-3xl font-bold text-slate-800 mb-6">Communication Center</h2>
@@ -128,7 +147,7 @@ const CommunicationView: React.FC = () => {
                         <textarea value={announcementContent} onChange={e => setAnnouncementContent(e.target.value)} placeholder="Message content..." rows={8} className="w-full p-2 border rounded" required />
                         <select value={announcementAudience} onChange={e => setAnnouncementAudience(e.target.value)} className="w-full p-2 border rounded">
                             <option value="all">All Parents</option>
-                            {classes.map(c => <option key={c.id} value={c.id}>Parents of {c.name}</option>)}
+                            {classes.map((c:any) => <option key={c.id} value={c.id}>Parents of {c.name}</option>)}
                         </select>
                         <div className="flex justify-end">
                             <button type="submit" className="px-6 py-2 bg-primary-600 text-white rounded-lg">Post Announcement</button>
@@ -145,7 +164,7 @@ const CommunicationView: React.FC = () => {
                         <textarea value={emailContent} onChange={e => setEmailContent(e.target.value)} placeholder="Email body..." rows={8} className="w-full p-2 border rounded" required />
                         <select value={emailAudience} onChange={e => setEmailAudience(e.target.value)} className="w-full p-2 border rounded">
                             <option value="all">All Parents</option>
-                            {classes.map(c => <option key={c.id} value={c.id}>Parents of {c.name}</option>)}
+                            {classes.map((c:any) => <option key={c.id} value={c.id}>Parents of {c.name}</option>)}
                         </select>
                         <div className="flex justify-end">
                             <button type="submit" disabled={isSending} className="px-6 py-2 bg-blue-600 text-white rounded-lg disabled:bg-slate-400">
@@ -160,13 +179,13 @@ const CommunicationView: React.FC = () => {
                 <div className="bg-white p-6 rounded-xl shadow-lg">
                     <h3 className="text-xl font-bold text-slate-800 mb-4">Announcement History</h3>
                     <div className="space-y-4 max-h-[70vh] overflow-y-auto">
-                        {sortedAnnouncements.map(ann => (
+                        {sortedAnnouncements.map((ann:any) => (
                             <div key={ann.id} className="bg-slate-50 p-4 rounded-lg relative group">
                                 <div className="flex justify-between items-center text-sm text-slate-500 mb-1">
                                     <span className="font-semibold text-slate-800">{ann.title}</span>
                                     <span>{new Date(ann.date).toLocaleString()}</span>
                                 </div>
-                                <p className="text-xs text-slate-500">To: {ann.audience === 'all' ? 'All' : classes.find(c=>c.id === ann.audience)?.name} | By: {ann.sentBy}</p>
+                                <p className="text-xs text-slate-500">To: {ann.audience === 'all' ? 'All' : classes.find((c:any)=>c.id === ann.audience)?.name} | By: {ann.sentBy}</p>
                                 <p className="text-slate-700 text-sm mt-2">{ann.content}</p>
                                 <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity space-x-2 bg-white p-1 rounded shadow">
                                     <button onClick={() => { setEditingAnnouncement(ann); setIsEditModalOpen(true); }} className="text-blue-600 hover:text-blue-800 text-xs font-semibold">Edit</button>

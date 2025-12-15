@@ -1,191 +1,146 @@
 
-import React, { createContext, useState, useEffect, useMemo, useContext, useCallback } from 'react';
+import React, { createContext, useState, useEffect, useContext, useCallback } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import * as api from '../services/api';
 import { Role } from '../types';
 import type { 
-    User, Student, Staff, Transaction, Expense, Payroll, Subject, SchoolClass, ClassSubjectAssignment, 
-    TimetableEntry, Exam, Grade, AttendanceRecord, SchoolEvent, SchoolInfo, GradingRule, FeeItem, 
-    CommunicationLog, Announcement, PayrollItem, DarajaSettings, MpesaC2BTransaction, 
-    Notification, NewStudent, NewStaff, NewTransaction, NewExpense, NewPayrollItem, NewAnnouncement, 
-    NewCommunicationLog, NewUser, NewGradingRule, NewFeeItem, Book, LibraryTransaction, IssueBookData,
-    NewBook, Currency
+    User, Student, Staff, SchoolInfo, Notification, DarajaSettings, 
+    SchoolClass, Announcement, Payroll, PayrollItem, FeeItem, GradingRule,
+    CommunicationLog, AttendanceRecord, TimetableEntry, ClassSubjectAssignment,
+    Exam, Grade, SchoolEvent, Transaction, Expense,
+    NewStudent, NewStaff, NewTransaction, NewExpense, NewPayrollItem,
+    NewAnnouncement, NewCommunicationLog, NewUser, NewGradingRule, NewFeeItem
 } from '../types';
-import { NAVIGATION_ITEMS, TEACHER_NAVIGATION_ITEMS, PARENT_NAVIGATION_ITEMS, SUPER_ADMIN_NAVIGATION_ITEMS } from '../constants';
 import type { NavItem } from '../constants';
+import { NAVIGATION_ITEMS, TEACHER_NAVIGATION_ITEMS, PARENT_NAVIGATION_ITEMS, SUPER_ADMIN_NAVIGATION_ITEMS } from '../constants';
 import IDCardModal from '../components/common/IDCardModal';
 
 interface IDataContext {
-    // State
     isLoading: boolean;
-    isOffline: boolean;
     schoolInfo: SchoolInfo | null;
     currentUser: User | null;
-    activeView: string;
-    users: User[];
-    students: Student[];
-    transactions: Transaction[];
-    expenses: Expense[];
-    staff: Staff[];
-    payrollHistory: Payroll[];
-    subjects: Subject[];
-    classes: SchoolClass[];
-    classSubjectAssignments: ClassSubjectAssignment[];
-    timetableEntries: TimetableEntry[];
-    exams: Exam[];
-    grades: Grade[];
-    attendanceRecords: AttendanceRecord[];
-    events: SchoolEvent[];
-    gradingScale: GradingRule[];
-    feeStructure: FeeItem[];
-    communicationLogs: CommunicationLog[];
-    announcements: Announcement[];
-    payrollItems: PayrollItem[];
     darajaSettings: DarajaSettings | null;
-    mpesaC2BTransactions: MpesaC2BTransaction[];
-    notifications: Notification[];
-    assignedClass: SchoolClass | null;
-    parentChildren: Student[];
-    selectedChild: Student | null;
-
-    // Library
-    books: Book[];
-    libraryTransactions: LibraryTransaction[];
     
-    // Currency
-    exchangeRates: Record<string, number>;
-
-    // UI State
+    // UI
     isSidebarCollapsed: boolean;
     isMobileSidebarOpen: boolean;
     setIsSidebarCollapsed: React.Dispatch<React.SetStateAction<boolean>>;
     setIsMobileSidebarOpen: React.Dispatch<React.SetStateAction<boolean>>;
     
-    // Setters
-    setActiveView: React.Dispatch<React.SetStateAction<string>>;
-    setSelectedChild: React.Dispatch<React.SetStateAction<Student | null>>;
-    
-    // Action Functions
+    // Notifications
+    notifications: Notification[];
     addNotification: (message: string, type?: 'success' | 'error' | 'info') => void;
+
+    // Actions
     handleLogin: (user: User, token: string) => void;
     handleLogout: () => void;
     getNavigationItems: () => NavItem[];
     openIdCardModal: (person: Student | Staff, type: 'student' | 'staff') => void;
     formatCurrency: (amount: number, currency?: string) => string;
-    convertCurrency: (amount: number, targetCurrency: string) => number;
+    refreshSchoolInfo: () => Promise<void>;
+    convertCurrency: (amount: number, toCurrency: string) => number;
     
-    // Granular Actions
-    addStudent: (studentData: NewStudent) => Promise<Student>;
-    updateStudent: (studentId: string, updates: Partial<Student>) => Promise<Student>;
-    deleteStudent: (studentId: string) => Promise<void>;
-    updateMultipleStudents: (updates: Array<Partial<Student> & { id: string }>) => Promise<void>;
+    // Context Specific
+    activeView: string; 
+    setActiveView: (view: string) => void;
+    parentChildren: Student[]; 
+    selectedChild: Student | null;
+    setSelectedChild: (child: Student | null) => void;
+    assignedClass: SchoolClass | null;
     
-    addTransaction: (transactionData: NewTransaction) => Promise<Transaction>;
-    addMultipleTransactions: (transactionsData: NewTransaction[]) => Promise<void>;
-
-    addExpense: (expenseData: NewExpense) => Promise<Expense>;
-
-    addStaff: (staffData: NewStaff) => Promise<Staff>;
-    updateStaff: (staffId: string, updates: Partial<Staff>) => Promise<Staff>;
-    savePayrollRun: (payrollData: Payroll[]) => Promise<void>;
-    addPayrollItem: (itemData: NewPayrollItem) => Promise<PayrollItem>;
-    updatePayrollItem: (itemId: string, updates: Partial<PayrollItem>) => Promise<void>;
-    deletePayrollItem: (itemId: string) => Promise<void>;
-    
-    updateSchoolInfo: (info: SchoolInfo) => Promise<void>;
-    uploadLogo: (formData: FormData) => Promise<void>;
-    addUser: (userData: NewUser) => Promise<User>;
-    updateUser: (userId: string, updates: Partial<User>) => Promise<User>;
-    updateUserProfile: (data: Partial<User>) => Promise<void>;
-    uploadUserAvatar: (formData: FormData) => Promise<{avatarUrl: string}>;
-    adminUploadUserPhoto: (formData: FormData) => Promise<{url: string}>;
-    deleteUser: (userId: string) => Promise<void>;
-    
-    addGradingRule: (ruleData: NewGradingRule) => Promise<GradingRule>;
-    updateGradingRule: (ruleId: string, updates: Partial<GradingRule>) => Promise<GradingRule>;
-    deleteGradingRule: (ruleId: string) => Promise<void>;
-    
-    addFeeItem: (itemData: NewFeeItem) => Promise<FeeItem>;
-    updateFeeItem: (itemId: string, updates: Partial<FeeItem>) => Promise<FeeItem>;
-    deleteFeeItem: (itemId: string) => Promise<void>;
-    
-    updateDarajaSettings: (settings: DarajaSettings) => Promise<void>;
-
+    // API Pass-throughs
+    addStudent: (data: NewStudent) => Promise<Student>;
+    updateStudent: (id: string, data: Partial<Student>) => Promise<any>;
+    deleteStudent: (id: string) => Promise<void>;
+    updateMultipleStudents: (updates: any[]) => Promise<any>;
+    addTransaction: (data: NewTransaction) => Promise<Transaction>;
+    addMultipleTransactions: (data: NewTransaction[]) => Promise<void>;
+    addExpense: (data: NewExpense) => Promise<Expense>;
+    addStaff: (data: NewStaff) => Promise<Staff>;
+    updateStaff: (id: string, data: Partial<Staff>) => Promise<any>;
+    savePayrollRun: (data: Payroll[]) => Promise<any>;
+    addPayrollItem: (data: NewPayrollItem) => Promise<PayrollItem>;
+    updatePayrollItem: (id: string, data: Partial<PayrollItem>) => Promise<any>;
+    deletePayrollItem: (id: string) => Promise<void>;
+    updateSchoolInfo: (data: SchoolInfo) => Promise<any>;
+    updateDarajaSettings: (data: DarajaSettings) => Promise<any>;
+    uploadLogo: (data: FormData) => Promise<any>;
+    addUser: (data: NewUser) => Promise<User>;
+    updateUser: (id: string, data: Partial<User>) => Promise<any>;
+    deleteUser: (id: string) => Promise<void>;
+    updateUserProfile: (data: Partial<User>) => Promise<any>;
+    uploadUserAvatar: (data: FormData) => Promise<any>;
+    adminUploadUserPhoto: (data: FormData) => Promise<any>;
+    addGradingRule: (data: NewGradingRule) => Promise<GradingRule>;
+    updateGradingRule: (id: string, data: Partial<GradingRule>) => Promise<any>;
+    deleteGradingRule: (id: string) => Promise<void>;
+    addFeeItem: (data: NewFeeItem) => Promise<FeeItem>;
+    updateFeeItem: (id: string, data: Partial<FeeItem>) => Promise<any>;
+    deleteFeeItem: (id: string) => Promise<void>;
     addAnnouncement: (data: NewAnnouncement) => Promise<Announcement>;
     addCommunicationLog: (data: NewCommunicationLog) => Promise<CommunicationLog>;
     addBulkCommunicationLogs: (data: NewCommunicationLog[]) => Promise<void>;
-
-    // Library Actions
-    addBook: (book: NewBook) => Promise<Book>;
-    updateBook: (id: string, book: Partial<Book>) => Promise<Book>;
-    deleteBook: (id: string) => Promise<void>;
-    issueBook: (data: IssueBookData) => Promise<LibraryTransaction>;
-    returnBook: (id: string) => Promise<LibraryTransaction>;
-    markBookLost: (id: string) => Promise<LibraryTransaction>;
-
-    // Batch update actions
     updateClasses: (data: SchoolClass[]) => Promise<void>;
-    updateSubjects: (data: Subject[]) => Promise<void>;
-    updateAssignments: (data: ClassSubjectAssignment[]) => Promise<void>;
-    updateTimetable: (data: TimetableEntry[]) => Promise<void>;
-    updateExams: (data: Exam[]) => Promise<void>;
-    updateGrades: (data: Grade[]) => Promise<void>;
-    updateAttendance: (data: AttendanceRecord[]) => Promise<void>;
-    updateEvents: (data: SchoolEvent[]) => Promise<void>;
+    updateSubjects: (data: any[]) => Promise<void>;
+    updateAssignments: (data: any[]) => Promise<void>;
+    updateTimetable: (data: any[]) => Promise<void>;
+    updateExams: (data: any[]) => Promise<void>;
+    updateGrades: (data: any[]) => Promise<void>;
+    updateAttendance: (data: any[]) => Promise<void>;
+    updateEvents: (data: any[]) => Promise<void>;
+    addBook: (data: any) => Promise<any>;
+    updateBook: (id: string, data: any) => Promise<any>;
+    deleteBook: (id: string) => Promise<void>;
+    issueBook: (data: any) => Promise<any>;
+    returnBook: (id: string) => Promise<any>;
+    markBookLost: (id: string) => Promise<any>;
     
-    studentFinancials: Record<string, { balance: number; overpayment: number; lastPaymentDate: string | null }>;
+    // Empty Arrays / Placeholders for legacy compatibility until full migration
+    // These ensure components importing from Context but not yet refactored don't crash immediately,
+    // though they will show empty data until refactored to useQuery.
+    students: Student[];
+    classes: SchoolClass[];
+    subjects: any[];
+    exams: any[];
+    feeStructure: any[];
+    expenses: any[];
+    staff: Staff[];
+    payrollItems: any[];
+    users: User[];
+    gradingScale: any[];
+    announcements: Announcement[];
+    communicationLogs: any[];
+    attendanceRecords: any[];
+    timetableEntries: any[];
+    classSubjectAssignments: any[];
+    events: any[];
+    grades: any[];
+    transactions: any[];
+    studentFinancials: Record<string, { balance: number }>;
 }
 
 const DataContext = createContext<IDataContext | undefined>(undefined);
 
-const clearAllData = (setters: any) => {
-    Object.values(setters).forEach((setter: any) => setter([]));
-};
-
 export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+    const navigate = useNavigate();
+    const queryClient = useQueryClient();
+
     const [isLoading, setIsLoading] = useState(true);
-    const [isOffline, setIsOffline] = useState(false);
     const [currentUser, setCurrentUser] = useState<User | null>(null);
-    const [activeView, setActiveView] = useState('dashboard');
-    const [assignedClass, setAssignedClass] = useState<SchoolClass | null>(null);
-    const [parentChildren, setParentChildren] = useState<Student[]>([]);
-    const [selectedChild, setSelectedChild] = useState<Student | null>(null);
-    // All data states
-    const [users, setUsers] = useState<User[]>([]);
-    const [students, setStudents] = useState<Student[]>([]);
-    const [transactions, setTransactions] = useState<Transaction[]>([]);
-    const [expenses, setExpenses] = useState<Expense[]>([]);
-    const [staff, setStaff] = useState<Staff[]>([]);
-    const [payrollHistory, setPayrollHistory] = useState<Payroll[]>([]);
-    const [subjects, setSubjects] = useState<Subject[]>([]);
-    const [classes, setClasses] = useState<SchoolClass[]>([]);
-    const [classSubjectAssignments, setClassSubjectAssignments] = useState<ClassSubjectAssignment[]>([]);
-    const [timetableEntries, setTimetableEntries] = useState<TimetableEntry[]>([]);
-    const [exams, setExams] = useState<Exam[]>([]);
-    const [grades, setGrades] = useState<Grade[]>([]);
-    const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
-    const [events, setEvents] = useState<SchoolEvent[]>([]);
     const [schoolInfo, setSchoolInfo] = useState<SchoolInfo | null>(null);
-    const [gradingScale, setGradingScale] = useState<GradingRule[]>([]);
-    const [feeStructure, setFeeStructure] = useState<FeeItem[]>([]);
-    const [communicationLogs, setCommunicationLogs] = useState<CommunicationLog[]>([]);
-    const [announcements, setAnnouncements] = useState<Announcement[]>([]);
-    const [payrollItems, setPayrollItems] = useState<PayrollItem[]>([]);
     const [darajaSettings, setDarajaSettings] = useState<DarajaSettings | null>(null);
-    const [mpesaC2BTransactions, setMpesaC2BTransactions] = useState<MpesaC2BTransaction[]>([]);
-    const [notifications, setNotifications] = useState<Notification[]>([]);
     
-    // Library
-    const [books, setBooks] = useState<Book[]>([]);
-    const [libraryTransactions, setLibraryTransactions] = useState<LibraryTransaction[]>([]);
-
-    // Currency Rates (Fetched from backend)
-    const [exchangeRates, setExchangeRates] = useState<Record<string, number>>({});
-
-    // UI State
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
     const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
     const [isIdCardModalOpen, setIsIdCardModalOpen] = useState(false);
     const [idCardData, setIdCardData] = useState<{ type: 'student' | 'staff', data: Student | Staff } | null>(null);
+    const [notifications, setNotifications] = useState<Notification[]>([]);
+    
+    const [activeView, setActiveView] = useState('dashboard');
+    const [parentChildren, setParentChildren] = useState<Student[]>([]);
+    const [selectedChild, setSelectedChild] = useState<Student | null>(null);
+    const [assignedClass, setAssignedClass] = useState<SchoolClass | null>(null);
 
     const addNotification = useCallback((message: string, type: 'success' | 'error' | 'info' = 'info') => {
         const id = Date.now();
@@ -197,242 +152,71 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         localStorage.removeItem('authToken');
         localStorage.removeItem('currentUser');
         setCurrentUser(null);
-        setAssignedClass(null); // Reset assigned class
-        // Clear all sensitive data
-        setUsers([]); setStudents([]); setTransactions([]); setExpenses([]); setStaff([]); setPayrollHistory([]); 
-        setSubjects([]); setClasses([]); setClassSubjectAssignments([]); setTimetableEntries([]); setExams([]); 
-        setGrades([]); setAttendanceRecords([]); setEvents([]); setGradingScale([]); setFeeStructure([]); 
-        setCommunicationLogs([]); setAnnouncements([]); setPayrollItems([]); setDarajaSettings([]); setBooks([]); setLibraryTransactions([]);
-    }, []);
+        queryClient.clear();
+        navigate('/login');
+    }, [navigate, queryClient]);
 
-    // Effect to check for an existing session on app load
+    // Initial Auth Check & Global Settings Load
     useEffect(() => {
         const checkSession = async () => {
             const token = localStorage.getItem('authToken');
             const userJson = localStorage.getItem('currentUser');
+            
             if (token && userJson) {
                 try {
                     const user = JSON.parse(userJson);
                     setCurrentUser(user);
+                    
+                    try {
+                        const [info, daraja] = await Promise.all([
+                            api.getSchoolInfo(),
+                            api.getDarajaSettings()
+                        ]);
+                        setSchoolInfo(info);
+                        setDarajaSettings(daraja);
+                    } catch (e) { console.error("Failed to load settings", e); }
+
+                    // Pre-load role specific lightweight data
+                    if (user.role === Role.Teacher) {
+                         const classes = await api.getClasses().then((res: any) => Array.isArray(res) ? res : res.data);
+                         const myClass = classes.find((c: any) => c.formTeacherId === user.id);
+                         setAssignedClass(myClass || null);
+                         if(myClass) setActiveView('teacher_dashboard');
+                    } else if (user.role === Role.Parent) {
+                         const childrenRes = await api.getStudents({ search: user.email, pagination: 'false' });
+                         const children = Array.isArray(childrenRes) ? childrenRes : childrenRes.data;
+                         setParentChildren(children);
+                         setActiveView('parent_dashboard');
+                    } else if (user.role === Role.SuperAdmin) {
+                         setActiveView('super_admin_dashboard');
+                    }
+
                 } catch (error) {
                     handleLogout();
                 }
-            }
-            try {
-                const info = await api.getPublicSchoolInfo();
-                setSchoolInfo(info);
-                // Also fetch public rates on load for Pricing page
-                const rates = await api.getExchangeRates();
-                setExchangeRates(rates);
-                setIsOffline(false);
-            } catch (error) {
-                 console.error("Could not load school information", error);
+            } else {
+                 try {
+                     const publicInfo = await api.getPublicSchoolInfo();
+                     setSchoolInfo(publicInfo);
+                 } catch(e) { console.error(e); }
             }
             setIsLoading(false);
         };
         checkSession();
-    }, [handleLogout, addNotification]);
+    }, [handleLogout]);
 
-    // Helper to safely extract array from potentially paginated response
-    const getArray = (data: any): any[] => {
-        if (!data) return [];
-        if (Array.isArray(data)) return data;
-        if (data.data && Array.isArray(data.data)) return data.data;
-        return [];
-    };
-
-    // Effect to fetch all app data when a user logs in
-    useEffect(() => {
-        if (currentUser && currentUser.role !== Role.SuperAdmin) {
-            setIsLoading(true);
-            // Pass the user role to fetchInitialData so it knows which endpoints to skip
-            api.fetchInitialData(currentUser.role).then(data => {
-                const [
-                    usersData, studentsData, transactionsData, expensesData, staffData, payrollHistoryData, 
-                    subjectsData, classesData, assignmentsData, timetableData, examsData, gradesData, 
-                    attendanceData, eventsData, gradingData, feeData, payrollItemsData, logsData, 
-                    announcementsData, schoolInfoData, darajaData
-                ] = data;
-
-                const classesList = getArray(classesData);
-                const validStudents: Student[] = getArray(studentsData);
-
-                setUsers(getArray(usersData)); 
-                setStudents(validStudents.sort((a: Student,b: Student) => a.name.localeCompare(b.name)));
-                setTransactions(getArray(transactionsData)); 
-                setExpenses(getArray(expensesData)); 
-                setStaff(getArray(staffData)); 
-                setPayrollHistory(getArray(payrollHistoryData)); 
-                setSubjects(getArray(subjectsData)); 
-                setClasses(classesList); 
-                setClassSubjectAssignments(getArray(assignmentsData)); 
-                setTimetableEntries(getArray(timetableData)); 
-                setExams(getArray(examsData)); 
-                setGrades(getArray(gradesData)); 
-                setAttendanceRecords(getArray(attendanceData)); 
-                setEvents(getArray(eventsData)); 
-                setGradingScale(getArray(gradingData)); 
-                setFeeStructure(getArray(feeData)); 
-                setPayrollItems(getArray(payrollItemsData)); 
-                setCommunicationLogs(getArray(logsData)); 
-                setAnnouncements(getArray(announcementsData)); 
-                
-                if (schoolInfoData) setSchoolInfo(schoolInfoData); 
-                setDarajaSettings(darajaData);
-                
-                api.getBooks().then((res) => setBooks(getArray(res))).catch(console.error);
-                api.getLibraryTransactions().then((res) => setLibraryTransactions(getArray(res))).catch(console.error);
-                
-                // Fetch rates again when authenticated to ensure freshness
-                api.getExchangeRates().then(setExchangeRates).catch(console.error);
-
-                 if (currentUser.role === Role.Teacher) {
-                    // Find the class where this user is the form teacher
-                    const teacherClass = classesList.find((c: SchoolClass) => c.formTeacherId === currentUser.id);
-                    setAssignedClass(teacherClass || null);
-                } else if (currentUser.role === Role.Parent) {
-                    setParentChildren(validStudents.filter((s: Student) => s.guardianEmail === currentUser.email));
-                }
-                setIsLoading(false);
-                setIsOffline(false);
-            }).catch(error => {
-                console.error("Data fetch error:", error);
-                setIsOffline(true);
-                setIsLoading(false);
-                if (error.message && (error.message.includes('401') || error.message.includes('Unauthorized'))) {
-                    // FORCE LOGOUT AND REDIRECT
-                    localStorage.removeItem('authToken');
-                    localStorage.removeItem('currentUser');
-                    setCurrentUser(null);
-                    window.location.href = '/login'; 
-                } else {
-                    addNotification("Failed to load data. Please check connection.", "error");
-                }
-            });
-        } else if (currentUser && currentUser.role === Role.SuperAdmin) {
-            setIsLoading(false);
-            setActiveView('super_admin_dashboard');
-        }
-    }, [currentUser, addNotification, handleLogout]);
-    
     const handleLogin = useCallback((user: User, token: string) => {
         localStorage.setItem('authToken', token);
         localStorage.setItem('currentUser', JSON.stringify(user));
         setCurrentUser(user);
-        if (user.role === Role.SuperAdmin) setActiveView('super_admin_dashboard');
-        else if (user.role === Role.Teacher) setActiveView('teacher_dashboard');
-        else if (user.role === Role.Parent) setActiveView('parent_dashboard');
-        else setActiveView('dashboard');
-    }, []);
+        
+        api.getSchoolInfo().then(setSchoolInfo).catch(console.error);
 
-    const createApiAction = <P, S>(setter: React.Dispatch<React.SetStateAction<S[]>>, apiFn: (data: P) => Promise<S>, sortFn?: (a: S, b: S) => number) => 
-        useCallback(async (data: P) => {
-            const newItem = await apiFn(data);
-            setter(prev => {
-                const newArr = [...prev, newItem];
-                return sortFn ? newArr.sort(sortFn) : newArr;
-            });
-            return newItem;
-        }, [setter]);
-
-    const updateApiAction = <P extends {id: string}, S extends {id: string}>(setter: React.Dispatch<React.SetStateAction<S[]>>, apiFn: (id: string, data: Partial<P>) => Promise<S>) =>
-        useCallback(async (id: string, data: Partial<P>) => {
-            const updatedItem = await apiFn(id, data);
-            setter(prev => prev.map(item => item.id === id ? updatedItem : item));
-            return updatedItem;
-        }, [setter]);
-
-    const deleteApiAction = (setter: React.Dispatch<React.SetStateAction<any[]>>, apiFn: (id: string) => Promise<void>) =>
-        useCallback(async (id: string) => {
-            await apiFn(id);
-            setter(prev => prev.filter(item => item.id !== id));
-        }, [setter]);
-
-    const addStudent = createApiAction(setStudents, api.createStudent, (a, b) => a.name.localeCompare(b.name));
-    const updateStudent = updateApiAction(setStudents, api.updateStudent);
-    const deleteStudent = deleteApiAction(setStudents, api.deleteStudent);
-    
-    const addTransaction = createApiAction(setTransactions, api.createTransaction);
-    const addExpense = createApiAction(setExpenses, api.createExpense);
-    const addStaff = createApiAction(setStaff, api.createStaff);
-    const updateStaff = updateApiAction(setStaff, api.updateStaff);
-    const addUser = createApiAction(setUsers, api.createUser);
-    const updateUser = updateApiAction(setUsers, api.updateUser);
-    const deleteUser = deleteApiAction(setUsers, api.deleteUser);
-    const addPayrollItem = createApiAction(setPayrollItems, api.createPayrollItem);
-    const updatePayrollItem = updateApiAction(setPayrollItems, api.updatePayrollItem);
-    const deletePayrollItem = deleteApiAction(setPayrollItems, api.deletePayrollItem);
-    const addGradingRule = createApiAction(setGradingScale, api.createGradingRule);
-    const updateGradingRule = updateApiAction(setGradingScale, api.updateGradingRule);
-    const deleteGradingRule = deleteApiAction(setGradingScale, api.deleteGradingRule);
-    const addFeeItem = createApiAction(setFeeStructure, api.createFeeItem);
-    const updateFeeItem = updateApiAction(setFeeStructure, api.updateFeeItem);
-    const deleteFeeItem = deleteApiAction(setFeeStructure, api.deleteFeeItem);
-    const addAnnouncement = createApiAction(setAnnouncements, api.createAnnouncement);
-    const addCommunicationLog = createApiAction(setCommunicationLogs, api.createCommunicationLog);
-    
-    const addBook = createApiAction(setBooks, api.createBook);
-    const updateBook = updateApiAction(setBooks, api.updateBook);
-    const deleteBook = deleteApiAction(setBooks, api.deleteBook);
-    const issueBook = async (data: IssueBookData) => { const res = await api.issueBook(data); setLibraryTransactions(prev => [res, ...prev]); return res; }
-    const returnBook = async (id: string) => { const res = await api.returnBook(id); setLibraryTransactions(prev => prev.map(t => t.id === id ? res : t)); return res; }
-    const markBookLost = async (id: string) => { const res = await api.markBookLost(id); setLibraryTransactions(prev => prev.map(t => t.id === id ? res : t)); return res; }
-
-    const updateMultipleStudents = useCallback(async (updates: Array<Partial<Student> & { id: string }>) => {
-        const updatedStudents = await api.updateMultipleStudents(updates);
-        setStudents(prev => {
-            const studentMap = new Map(prev.map(s => [s.id, s]));
-            updatedStudents.forEach(updated => studentMap.set(updated.id, updated));
-            return Array.from(studentMap.values()).sort((a: Student, b: Student) => a.name.localeCompare(b.name));
-        });
-    }, []);
-    const addMultipleTransactions = useCallback(async (data: NewTransaction[]) => {
-        const newItems = await api.createMultipleTransactions(data);
-        setTransactions(prev => [...prev, ...newItems]);
-    }, []);
-    const savePayrollRun = useCallback(async (data: Payroll[]) => {
-        const newItems = await api.savePayrollRun(data);
-        setPayrollHistory(prev => [...prev, ...newItems]);
-    }, []);
-    const updateSchoolInfo = useCallback(async (data: any) => { setSchoolInfo(await api.updateSchoolInfo(data)); }, []);
-    const uploadLogo = useCallback(async (formData: FormData) => { const res = await fetch('/api/settings/upload-logo', { method: 'POST', headers: { Authorization: `Bearer ${localStorage.getItem('authToken')}` }, body: formData }); const data = await res.json(); setSchoolInfo(prev => prev ? ({...prev, logoUrl: data.logoUrl}) : null); }, []);
-    
-    const updateDarajaSettings = useCallback(async (data: DarajaSettings) => { setDarajaSettings(await api.updateDarajaSettings(data)); }, []);
-    const addBulkCommunicationLogs = useCallback(async (data: NewCommunicationLog[]) => {
-        const newItems = await api.createBulkCommunicationLogs(data);
-        setCommunicationLogs(prev => [...prev, ...newItems]);
-    }, []);
-    const updateUserProfile = useCallback(async (data: Partial<User>) => { const updated = await api.updateUserProfile(data); setCurrentUser(updated); }, []);
-    const uploadUserAvatar = useCallback(async (formData: FormData) => { const res = await api.uploadUserAvatar(formData); setCurrentUser(prev => prev ? ({...prev, avatarUrl: res.avatarUrl}) : null); return res; }, []);
-    const adminUploadUserPhoto = useCallback(async (formData: FormData) => { return api.adminUploadUserPhoto(formData); }, []);
-
-    const createBatchUpdateAction = (setter: Function, apiFn: Function) => useCallback(async (data: any[]) => { const result = await apiFn(data); setter(result); }, [setter, apiFn]);
-    const updateClasses = createBatchUpdateAction(setClasses, api.batchUpdateClasses);
-    const updateSubjects = createBatchUpdateAction(setSubjects, api.batchUpdateSubjects);
-    const updateAssignments = createBatchUpdateAction(setClassSubjectAssignments, api.batchUpdateAssignments);
-    const updateTimetable = createBatchUpdateAction(setTimetableEntries, api.batchUpdateTimetable);
-    const updateExams = createBatchUpdateAction(setExams, api.batchUpdateExams);
-    const updateGrades = createBatchUpdateAction(setGrades, api.batchUpdateGrades);
-    const updateAttendance = createBatchUpdateAction(setAttendanceRecords, api.batchUpdateAttendance);
-    const updateEvents = createBatchUpdateAction(setEvents, api.batchUpdateEvents);
-
-    const studentFinancials = useMemo(() => {
-        const financials: Record<string, { balance: number; overpayment: number; lastPaymentDate: string | null }> = {};
-        students.forEach(student => {
-            if (student.balance !== undefined) {
-                financials[student.id] = { balance: student.balance, overpayment: 0, lastPaymentDate: null };
-            } else {
-                const studentTransactions = transactions.filter(t => t.studentId === student.id).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-                let balance = 0; let lastPaymentDate: string | null = null;
-                studentTransactions.forEach(t => {
-                    if (t.type === 'Invoice' || t.type === 'ManualDebit') balance += t.amount;
-                    else { balance -= t.amount; if (t.type === 'Payment') lastPaymentDate = t.date; }
-                });
-                financials[student.id] = { balance: Math.max(0, balance), overpayment: Math.abs(Math.min(0, balance)), lastPaymentDate };
-            }
-        });
-        return financials;
-    }, [students, transactions]);
+        if (user.role === Role.SuperAdmin) navigate('/super-admin');
+        else if (user.role === Role.Teacher) navigate('/teacher');
+        else if (user.role === Role.Parent) navigate('/parent');
+        else navigate('/');
+    }, [navigate]);
 
     const getNavigationItems = useCallback(() => {
         if (currentUser?.role === Role.SuperAdmin) return SUPER_ADMIN_NAVIGATION_ITEMS;
@@ -447,7 +231,6 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }, []);
 
     const formatCurrency = useCallback((amount: number, currency?: string) => {
-        // Use school's selected currency or fallback to provided one/KES
         const targetCurrency = currency || schoolInfo?.currency || 'KES';
         return new Intl.NumberFormat('en-US', {
             style: 'currency',
@@ -457,27 +240,75 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }).format(amount);
     }, [schoolInfo]);
 
-    const convertCurrency = useCallback((amount: number, targetCurrency: string) => {
-        // Base is KES. If target is different, convert using loaded rates.
-        if (targetCurrency === 'KES' || !exchangeRates[targetCurrency]) return amount;
-        return amount * exchangeRates[targetCurrency];
-    }, [exchangeRates]);
+    const convertCurrency = (amount: number, toCurrency: string) => amount; // Placeholder
+
+    const refreshSchoolInfo = async () => {
+        const info = await api.getSchoolInfo();
+        setSchoolInfo(info);
+    };
 
     const value: IDataContext = {
-        isLoading, isOffline, schoolInfo, currentUser, activeView, users, students, transactions, expenses, staff, payrollHistory, subjects, classes, classSubjectAssignments, timetableEntries, exams, grades, attendanceRecords, events, gradingScale, feeStructure, communicationLogs, announcements, payrollItems, darajaSettings, mpesaC2BTransactions, notifications, assignedClass, parentChildren, selectedChild, isSidebarCollapsed, isMobileSidebarOpen, setIsSidebarCollapsed, setIsMobileSidebarOpen, setActiveView, setSelectedChild, addNotification, handleLogin, handleLogout, getNavigationItems, openIdCardModal, studentFinancials, 
-        books, libraryTransactions,
-        exchangeRates, formatCurrency, convertCurrency,
-        addStudent, updateStudent, deleteStudent, updateMultipleStudents, 
-        addTransaction, addMultipleTransactions, 
-        addExpense, 
-        addStaff, updateStaff, savePayrollRun, addPayrollItem, updatePayrollItem, deletePayrollItem, 
-        updateSchoolInfo, uploadLogo, addUser, updateUser, updateUserProfile, uploadUserAvatar, adminUploadUserPhoto, deleteUser, 
-        addGradingRule, updateGradingRule, deleteGradingRule, 
-        addFeeItem, updateFeeItem, deleteFeeItem, 
-        updateDarajaSettings, 
-        addAnnouncement, addCommunicationLog, addBulkCommunicationLogs, 
-        updateClasses, updateSubjects, updateAssignments, updateTimetable, updateExams, updateGrades, updateAttendance, updateEvents,
-        addBook, updateBook, deleteBook, issueBook, returnBook, markBookLost
+        isLoading, schoolInfo, currentUser, darajaSettings,
+        isSidebarCollapsed, isMobileSidebarOpen, setIsSidebarCollapsed, setIsMobileSidebarOpen,
+        notifications, addNotification, handleLogin, handleLogout, getNavigationItems,
+        openIdCardModal, formatCurrency, refreshSchoolInfo, convertCurrency,
+        
+        // API Wrappers
+        addStudent: api.createStudent,
+        updateStudent: api.updateStudent,
+        deleteStudent: api.deleteStudent,
+        updateMultipleStudents: api.updateMultipleStudents,
+        addTransaction: api.createTransaction,
+        addMultipleTransactions: api.createMultipleTransactions,
+        addExpense: api.createExpense,
+        addStaff: api.createStaff,
+        updateStaff: api.updateStaff,
+        savePayrollRun: api.savePayrollRun,
+        addPayrollItem: api.createPayrollItem,
+        updatePayrollItem: api.updatePayrollItem,
+        deletePayrollItem: api.deletePayrollItem,
+        updateSchoolInfo: async (data) => { const res = await api.updateSchoolInfo(data); setSchoolInfo(res); return res; },
+        updateDarajaSettings: async (data) => { const res = await api.updateDarajaSettings(data); setDarajaSettings(res); return res; },
+        uploadLogo: async (data) => { const res = await api.uploadLogo(data); refreshSchoolInfo(); return res; },
+        addUser: api.createUser,
+        updateUser: api.updateUser,
+        deleteUser: api.deleteUser,
+        updateUserProfile: api.updateUserProfile,
+        uploadUserAvatar: api.uploadUserAvatar,
+        adminUploadUserPhoto: api.adminUploadUserPhoto,
+        addGradingRule: api.createGradingRule,
+        updateGradingRule: api.updateGradingRule,
+        deleteGradingRule: api.deleteGradingRule,
+        addFeeItem: api.createFeeItem,
+        updateFeeItem: api.updateFeeItem,
+        deleteFeeItem: api.deleteFeeItem,
+        addAnnouncement: api.createAnnouncement,
+        addCommunicationLog: api.createCommunicationLog,
+        addBulkCommunicationLogs: api.createBulkCommunicationLogs,
+        updateClasses: (data) => api.updateClasses(data),
+        updateSubjects: (data) => api.updateSubjects(data),
+        updateAssignments: (data) => api.updateAssignments(data),
+        updateTimetable: (data) => api.updateTimetable(data),
+        updateExams: (data) => api.updateExams(data),
+        updateGrades: (data) => api.updateGrades(data),
+        updateAttendance: (data) => api.updateAttendance(data),
+        updateEvents: (data) => api.updateEvents(data),
+        addBook: api.addBook,
+        updateBook: api.updateBook,
+        deleteBook: api.deleteBook,
+        issueBook: api.issueBook,
+        returnBook: api.returnBook,
+        markBookLost: api.markBookLost,
+        
+        // Empty Arrays / Placeholders (Legacy support)
+        students: [], classes: [], subjects: [], exams: [], feeStructure: [], expenses: [], 
+        staff: [], payrollItems: [], users: [], gradingScale: [], announcements: [],
+        communicationLogs: [], attendanceRecords: [], timetableEntries: [], classSubjectAssignments: [],
+        events: [], grades: [], transactions: [],
+        
+        activeView, setActiveView,
+        parentChildren, selectedChild, setSelectedChild, assignedClass,
+        studentFinancials: {},
     };
 
     return (

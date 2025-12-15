@@ -1,31 +1,25 @@
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Modal from '../components/common/Modal';
 import WebcamCaptureModal from '../components/common/WebcamCaptureModal';
 import Pagination from '../components/common/Pagination';
 import Skeleton from '../components/common/Skeleton';
-import type { Staff, Payroll, PayrollItem, SchoolInfo, NewStaff, NewPayrollItem, PayrollEntry } from '../../types';
+import type { Staff, Payroll, PayrollItem, NewStaff, NewPayrollItem, PayrollEntry } from '../../types';
 import { PayrollItemType, PayrollItemCategory, CalculationType, Role } from '../../types';
 import { useData } from '../../contexts/DataContext';
 import * as api from '../../services/api';
 
 const DEFAULT_AVATAR = 'https://i.imgur.com/S5o7W44.png';
 
-// --- Sub-components for better organization ---
-
-const PayrollEditModal: React.FC<{
-    isOpen: boolean;
-    onClose: () => void;
-    entry: Payroll | null;
-    onSave: (updatedEntry: Payroll) => void;
-}> = ({ isOpen, onClose, entry, onSave }) => {
-    // ... [No changes in PayrollEditModal logic] ...
+// ... PayrollEditModal Component remains the same ...
+const PayrollEditModal: React.FC<{ isOpen: boolean; onClose: () => void; entry: Payroll | null; onSave: (updatedEntry: Payroll) => void; }> = ({ isOpen, onClose, entry, onSave }) => {
     const [localEntry, setLocalEntry] = useState<Payroll | null>(null);
     const [newItemName, setNewItemName] = useState('');
     const [newItemAmount, setNewItemAmount] = useState(0);
     const [newItemType, setNewItemType] = useState<PayrollItemType>(PayrollItemType.Earning);
 
-    useEffect(() => {
+    React.useEffect(() => {
         setLocalEntry(entry ? JSON.parse(JSON.stringify(entry)) : null);
     }, [entry, isOpen]);
 
@@ -39,7 +33,6 @@ const PayrollEditModal: React.FC<{
         if (!localEntry) return;
         const list = [...localEntry[type]];
         list[index].amount = val;
-        
         const updated = { ...localEntry, [type]: list };
         const { gross, ded, net } = calculateTotals(updated);
         setLocalEntry({ ...updated, grossPay: gross, totalDeductions: ded, netPay: net });
@@ -49,7 +42,6 @@ const PayrollEditModal: React.FC<{
         if (!localEntry) return;
         const list = [...localEntry[type]];
         list.splice(index, 1);
-        
         const updated = { ...localEntry, [type]: list };
         const { gross, ded, net } = calculateTotals(updated);
         setLocalEntry({ ...updated, grossPay: gross, totalDeductions: ded, netPay: net });
@@ -59,11 +51,9 @@ const PayrollEditModal: React.FC<{
         if (!localEntry || !newItemName || newItemAmount <= 0) return;
         const newItem: PayrollEntry = { name: newItemName, amount: newItemAmount };
         const typeKey = newItemType === PayrollItemType.Earning ? 'earnings' : 'deductions';
-        
         const updated = { ...localEntry, [typeKey]: [...localEntry[typeKey], newItem] };
         const { gross, ded, net } = calculateTotals(updated);
         setLocalEntry({ ...updated, grossPay: gross, totalDeductions: ded, netPay: net });
-        
         setNewItemName('');
         setNewItemAmount(0);
     };
@@ -73,61 +63,34 @@ const PayrollEditModal: React.FC<{
     return (
         <Modal isOpen={isOpen} onClose={onClose} title={`Edit Payroll: ${localEntry.staffName}`}>
             <div className="space-y-6">
-                {/* Earnings Section */}
                 <div>
                     <h4 className="font-semibold text-green-700 border-b pb-1 mb-2">Earnings</h4>
                     <table className="w-full text-sm">
-                        <tbody>
-                            {localEntry.earnings.map((item, idx) => (
-                                <tr key={idx} className="border-b border-slate-100">
-                                    <td className="py-2">{item.name}</td>
-                                    <td className="py-2 text-right">
-                                        <input 
-                                            type="number" 
-                                            value={item.amount} 
-                                            onChange={e => handleAmountChange('earnings', idx, parseFloat(e.target.value) || 0)}
-                                            className="w-24 p-1 border rounded text-right"
-                                        />
-                                    </td>
-                                    <td className="py-2 text-right w-8">
-                                        <button onClick={() => handleDeleteItem('earnings', idx)} className="text-red-500 hover:text-red-700">&times;</button>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
+                        <tbody>{localEntry.earnings.map((item, idx) => (
+                            <tr key={idx} className="border-b border-slate-100">
+                                <td className="py-2">{item.name}</td>
+                                <td className="py-2 text-right"><input type="number" value={item.amount} onChange={e => handleAmountChange('earnings', idx, parseFloat(e.target.value) || 0)} className="w-24 p-1 border rounded text-right"/></td>
+                                <td className="py-2 text-right w-8"><button onClick={() => handleDeleteItem('earnings', idx)} className="text-red-500 hover:text-red-700">&times;</button></td>
+                            </tr>
+                        ))}</tbody>
                     </table>
                 </div>
-
-                {/* Deductions Section */}
                 <div>
                     <h4 className="font-semibold text-red-700 border-b pb-1 mb-2">Deductions</h4>
                     <table className="w-full text-sm">
-                        <tbody>
-                            {localEntry.deductions.map((item, idx) => (
-                                <tr key={idx} className="border-b border-slate-100">
-                                    <td className="py-2">{item.name}</td>
-                                    <td className="py-2 text-right">
-                                        <input 
-                                            type="number" 
-                                            value={item.amount} 
-                                            onChange={e => handleAmountChange('deductions', idx, parseFloat(e.target.value) || 0)}
-                                            className="w-24 p-1 border rounded text-right"
-                                        />
-                                    </td>
-                                    <td className="py-2 text-right w-8">
-                                        <button onClick={() => handleDeleteItem('deductions', idx)} className="text-red-500 hover:text-red-700">&times;</button>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
+                        <tbody>{localEntry.deductions.map((item, idx) => (
+                            <tr key={idx} className="border-b border-slate-100">
+                                <td className="py-2">{item.name}</td>
+                                <td className="py-2 text-right"><input type="number" value={item.amount} onChange={e => handleAmountChange('deductions', idx, parseFloat(e.target.value) || 0)} className="w-24 p-1 border rounded text-right"/></td>
+                                <td className="py-2 text-right w-8"><button onClick={() => handleDeleteItem('deductions', idx)} className="text-red-500 hover:text-red-700">&times;</button></td>
+                            </tr>
+                        ))}</tbody>
                     </table>
                 </div>
-
-                {/* Add New Item */}
                 <div className="bg-slate-50 p-3 rounded border">
                     <h5 className="text-sm font-semibold mb-2">Add Line Item</h5>
                     <div className="flex gap-2">
-                        <input placeholder="Name (e.g. Bonus)" value={newItemName} onChange={e => setNewItemName(e.target.value)} className="flex-1 p-1 border rounded text-sm"/>
+                        <input placeholder="Name" value={newItemName} onChange={e => setNewItemName(e.target.value)} className="flex-1 p-1 border rounded text-sm"/>
                         <select value={newItemType} onChange={e => setNewItemType(e.target.value as PayrollItemType)} className="p-1 border rounded text-sm">
                             <option value={PayrollItemType.Earning}>Earning</option>
                             <option value={PayrollItemType.Deduction}>Deduction</option>
@@ -136,169 +99,142 @@ const PayrollEditModal: React.FC<{
                         <button onClick={handleAddItem} className="px-3 py-1 bg-blue-600 text-white rounded text-sm">Add</button>
                     </div>
                 </div>
-
-                {/* Summary */}
                 <div className="grid grid-cols-3 gap-4 bg-slate-100 p-4 rounded font-bold text-center">
-                    <div>
-                        <div className="text-xs text-slate-500">Gross Pay</div>
-                        <div className="text-green-700">{localEntry.grossPay.toLocaleString()}</div>
-                    </div>
-                    <div>
-                        <div className="text-xs text-slate-500">Deductions</div>
-                        <div className="text-red-700">{localEntry.totalDeductions.toLocaleString()}</div>
-                    </div>
-                    <div>
-                        <div className="text-xs text-slate-500">Net Pay</div>
-                        <div className="text-slate-800">{localEntry.netPay.toLocaleString()}</div>
-                    </div>
+                    <div><div className="text-xs text-slate-500">Gross Pay</div><div className="text-green-700">{localEntry.grossPay.toLocaleString()}</div></div>
+                    <div><div className="text-xs text-slate-500">Deductions</div><div className="text-red-700">{localEntry.totalDeductions.toLocaleString()}</div></div>
+                    <div><div className="text-xs text-slate-500">Net Pay</div><div className="text-slate-800">{localEntry.netPay.toLocaleString()}</div></div>
                 </div>
-
-                <div className="flex justify-end pt-4 border-t">
-                    <button onClick={() => onSave(localEntry)} className="px-6 py-2 bg-primary-600 text-white font-semibold rounded shadow hover:bg-primary-700">Update Entry</button>
-                </div>
+                <div className="flex justify-end pt-4 border-t"><button onClick={() => onSave(localEntry)} className="px-6 py-2 bg-primary-600 text-white font-semibold rounded shadow hover:bg-primary-700">Update Entry</button></div>
             </div>
         </Modal>
     );
 };
 
-// --- Main Component ---
-
 const StaffAndPayrollView: React.FC = () => {
-    const { staff, addStaff, updateStaff, savePayrollRun, payrollItems, addPayrollItem, updatePayrollItem, deletePayrollItem, schoolInfo, openIdCardModal, addNotification } = useData();
+    const { schoolInfo, openIdCardModal, addNotification } = useData();
+    const queryClient = useQueryClient();
     
-    // ... [Existing state variables] ...
+    // UI State
     const [activeTab, setActiveTab] = useState('roster');
     const [isStaffModalOpen, setIsStaffModalOpen] = useState(false);
-    const [editingStaff, setEditingStaff] = useState<Staff | null>(null);
+    const [isItemModalOpen, setIsItemModalOpen] = useState(false);
     const [isRunPayrollModalOpen, setIsRunPayrollModalOpen] = useState(false);
     const [isPayslipModalOpen, setIsPayslipModalOpen] = useState(false);
+    const [isStaffCaptureModalOpen, setIsStaffCaptureModalOpen] = useState(false);
     const [isP9ModalOpen, setIsP9ModalOpen] = useState(false);
+    
+    const [editingStaff, setEditingStaff] = useState<Staff | null>(null);
+    const [editingItem, setEditingItem] = useState<PayrollItem | null>(null);
     const [selectedPayroll, setSelectedPayroll] = useState<Payroll | null>(null);
     const [selectedStaffForP9, setSelectedStaffForP9] = useState<Staff | null>(null);
-    const [p9Data, setP9Data] = useState<Payroll[]>([]);
-    
     const [payrollWorksheet, setPayrollWorksheet] = useState<Payroll[]>([]);
+    
     const [editingWorksheetEntry, setEditingWorksheetEntry] = useState<Payroll | null>(null);
     const [isEditEntryModalOpen, setIsEditEntryModalOpen] = useState(false);
     
-    const [payrollHistory, setPayrollHistory] = useState<Payroll[]>([]);
-    const [historyLoading, setHistoryLoading] = useState(false);
+    // Filters
     const [historyPage, setHistoryPage] = useState(1);
-    const [historyTotalPages, setHistoryTotalPages] = useState(1);
     const [selectedStaffFilter, setSelectedStaffFilter] = useState('');
     const [selectedMonthFilter, setSelectedMonthFilter] = useState('');
     const [isGeneratingPayroll, setIsGeneratingPayroll] = useState(false);
     
-    const [isItemModalOpen, setIsItemModalOpen] = useState(false);
-    const [editingItem, setEditingItem] = useState<PayrollItem | null>(null);
-    const [itemFormData, setItemFormData] = useState<NewPayrollItem>({
-        name: '', type: PayrollItemType.Earning, category: PayrollItemCategory.Allowance, calculationType: CalculationType.Fixed, value: 0, isRecurring: false
+    const staffPhotoInputRef = useRef<HTMLInputElement>(null);
+
+    // --- Queries ---
+
+    // 1. Fetch Staff (Roster)
+    const { data: staffList = [] } = useQuery({
+        queryKey: ['staff'],
+        queryFn: () => api.getStaff(),
+        enabled: activeTab === 'roster' || activeTab === 'history' 
+    });
+
+    // 2. Fetch Payroll Items
+    const { data: payrollItems = [] } = useQuery({
+        queryKey: ['payroll-items'],
+        queryFn: () => api.getPayrollItems(),
+        enabled: activeTab === 'items' || activeTab === 'roster' 
+    });
+
+    // 3. Fetch Payroll History
+    const { data: historyData, isLoading: historyLoading } = useQuery({
+        queryKey: ['payroll-history', historyPage, selectedStaffFilter, selectedMonthFilter],
+        queryFn: () => api.getPayrollHistory({ 
+            page: historyPage, 
+            limit: 10,
+            staffId: selectedStaffFilter || undefined,
+            month: selectedMonthFilter || undefined
+        }),
+        enabled: activeTab === 'history',
+        placeholderData: (prev) => prev
     });
     
-    const [isStaffCaptureModalOpen, setIsStaffCaptureModalOpen] = useState(false);
-    const staffPhotoInputRef = useRef<HTMLInputElement>(null);
+    // 4. Fetch P9 Data (On Demand)
+    const { data: p9Data = [], isLoading: p9Loading } = useQuery({
+        queryKey: ['p9-history', selectedStaffForP9?.id],
+        queryFn: () => api.getPayrollHistory({ staffId: selectedStaffForP9!.id, limit: 50 }).then(res => res.data),
+        enabled: !!selectedStaffForP9 && isP9ModalOpen
+    });
     
+    const payrollHistory = historyData?.data || [];
+    const historyTotalPages = historyData?.last_page || 1;
+
+    // --- Mutations ---
+
+    const addStaffMutation = useMutation({ mutationFn: api.createStaff, onSuccess: () => { queryClient.invalidateQueries({queryKey:['staff']}); setIsStaffModalOpen(false); addNotification('Staff added', 'success'); } });
+    const updateStaffMutation = useMutation({ mutationFn: (d: any) => api.updateStaff(d.id, d.data), onSuccess: () => { queryClient.invalidateQueries({queryKey:['staff']}); setIsStaffModalOpen(false); addNotification('Staff updated', 'success'); } });
+    
+    const addItemMutation = useMutation({ mutationFn: api.createPayrollItem, onSuccess: () => { queryClient.invalidateQueries({queryKey:['payroll-items']}); setIsItemModalOpen(false); } });
+    const updateItemMutation = useMutation({ mutationFn: (d: any) => api.updatePayrollItem(d.id, d.data), onSuccess: () => { queryClient.invalidateQueries({queryKey:['payroll-items']}); setIsItemModalOpen(false); } });
+    const deleteItemMutation = useMutation({ mutationFn: api.deletePayrollItem, onSuccess: () => { queryClient.invalidateQueries({queryKey:['payroll-items']}); } });
+    
+    const savePayrollMutation = useMutation({ mutationFn: api.savePayrollRun, onSuccess: () => { queryClient.invalidateQueries({queryKey:['payroll-history']}); setIsRunPayrollModalOpen(false); addNotification('Payroll saved', 'success'); } });
+
+    // --- Form State ---
     const initialStaffState: NewStaff = {
         name: '', email: '', userRole: Role.Teacher, role: '', salary: 0, joinDate: '', kraPin: '', nssfNumber: '', shaNumber: '',
         bankName: '', accountNumber: '', photoUrl: DEFAULT_AVATAR
     };
+    const [staffFormData, setStaffFormData] = useState<any>(initialStaffState);
+    const [itemFormData, setItemFormData] = useState<any>({});
+    const [staffPhotoUrl, setStaffPhotoUrl] = useState(DEFAULT_AVATAR);
 
-    const [staffFormData, setStaffFormData] = useState<NewStaff | Staff>(initialStaffState);
-    const [staffPhotoUrl, setStaffPhotoUrl] = useState<string>(DEFAULT_AVATAR);
+    // --- Handlers ---
 
-    useEffect(() => {
-        if (isStaffModalOpen) {
-            setStaffFormData(editingStaff || initialStaffState);
-            setStaffPhotoUrl(editingStaff?.photoUrl || DEFAULT_AVATAR);
-        }
-        if (isItemModalOpen) {
-            setItemFormData(editingItem || { name: '', type: PayrollItemType.Earning, category: PayrollItemCategory.Allowance, calculationType: CalculationType.Fixed, value: 0, isRecurring: false });
-        }
-    }, [isStaffModalOpen, editingStaff, isItemModalOpen, editingItem]);
-    
-    // ... [Existing fetch logic and handlers] ...
-
-    const fetchPayrollHistory = useCallback(async (page: number, staffId?: string, month?: string) => {
-        setHistoryLoading(true);
-        try {
-            const response = await api.getPayrollHistory({ page, limit: 10, staffId, month });
-            setPayrollHistory(response.data);
-            setHistoryTotalPages(response.last_page);
-            setHistoryPage(page);
-        } catch (error) {
-            console.error("Error fetching payroll history:", error);
-            addNotification("Failed to fetch payroll history", "error");
-        } finally {
-            setHistoryLoading(false);
-        }
-    }, [addNotification]);
-
-    useEffect(() => {
-        if (activeTab === 'history') {
-            fetchPayrollHistory(historyPage, selectedStaffFilter, selectedMonthFilter);
-        }
-    }, [activeTab, historyPage, selectedStaffFilter, selectedMonthFilter, fetchPayrollHistory]);
+    const openStaffModal = (staff?: Staff) => {
+        setEditingStaff(staff || null);
+        setStaffFormData(staff || initialStaffState);
+        setStaffPhotoUrl(staff?.photoUrl || DEFAULT_AVATAR);
+        setIsStaffModalOpen(true);
+    };
 
     const handleStaffFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
-        setStaffFormData(prev => ({ ...prev, [name]: name === 'salary' ? parseFloat(value) || 0 : value }));
+        setStaffFormData((prev:any) => ({ ...prev, [name]: name === 'salary' ? parseFloat(value) || 0 : value }));
     };
 
-    const handleStaffPhotoCapture = (imageDataUrl: string) => {
-        setStaffPhotoUrl(imageDataUrl);
-    };
-
-    const handleStaffPhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files && e.target.files[0]) {
-            const reader = new FileReader();
-            reader.onload = (event) => {
-                setStaffPhotoUrl(event.target?.result as string);
-            };
-            reader.readAsDataURL(e.target.files[0]);
-        }
-    };
-    
     const handleSaveStaff = (e: React.FormEvent) => {
         e.preventDefault();
-        const staffData = { ...staffFormData, photoUrl: staffPhotoUrl };
-        if ('id' in staffFormData) { // Editing
-            // Destructure to remove system fields that cause 400 Bad Request
+        const payload = { ...staffFormData, photoUrl: staffPhotoUrl };
+        if (editingStaff) {
             // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            const { id, userId, schoolId, createdAt, updatedAt, deletedAt, payrolls, school, user, ...updates } = staffData as any;
-            
-            updateStaff(staffFormData.id, updates);
-        } else { // Adding
-            addStaff(staffData as NewStaff);
-        }
-        setIsStaffModalOpen(false);
-    };
-
-    const openStaffModal = (staffMember: Staff | null = null) => {
-        setEditingStaff(staffMember);
-        setIsStaffModalOpen(true);
-    };
-    
-    const openItemModal = (item: PayrollItem | null) => {
-        setEditingItem(item);
-        setIsItemModalOpen(true);
-    };
-    
-    const handleSaveItem = (e: React.FormEvent) => {
-        e.preventDefault();
-        if (editingItem) {
-            updatePayrollItem(editingItem.id, itemFormData);
+            const { id, userId, schoolId, user, ...rest } = payload;
+            updateStaffMutation.mutate({ id: editingStaff.id, data: rest });
         } else {
-            addPayrollItem(itemFormData);
+            addStaffMutation.mutate(payload);
         }
-        setIsItemModalOpen(false);
     };
     
-    const handleDeleteItem = (itemId: string) => {
-        if (window.confirm("Are you sure you want to delete this payroll item?")) {
-            deletePayrollItem(itemId);
+    const handleStaffPhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files?.[0]) {
+            const formData = new FormData();
+            formData.append('file', e.target.files[0]);
+            api.uploadStudentPhoto(formData).then(res => { // Reusing existing upload endpoint if generic enough, or assume specific staff endpoint exists
+                 setStaffPhotoUrl(res.url); 
+            });
         }
     };
-
+    
     const calculatePAYE = (taxablePay: number) => {
         const annualPay = taxablePay * 12;
         let tax = 0;
@@ -307,56 +243,49 @@ const StaffAndPayrollView: React.FC = () => {
         else tax = 28800 + 25000 + (annualPay - 388000) * 0.30;
         return Math.max(0, (tax / 12) - 2400);
     };
-
-    const calculateSHA = (grossPay: number) => grossPay * 0.0275;
-    const calculateNSSF = (grossPay: number) => Math.min(grossPay, 18000) * 0.06;
-    const calculateHousingLevy = (grossPay: number) => grossPay * 0.015;
-
+    
     const generatePayrollWorksheet = () => {
-        const month = new Date().toLocaleString('default', { month: 'long', year: 'numeric' });
-        const worksheet = staff.map(staffMember => {
-            const earnings: PayrollEntry[] = [{ name: 'Basic Salary', amount: staffMember.salary }];
+        const month = new Date().toLocaleString('en-US', { month: 'long', year: 'numeric' });
+        const worksheet = staffList.map((s: any) => {
+            const earnings: any[] = [{ name: 'Basic Salary', amount: Number(s.salary) }];
+            // Add recurring earnings
+            payrollItems.filter((i:any) => i.type === PayrollItemType.Earning && i.isRecurring).forEach((i:any) => {
+                const amt = i.calculationType === CalculationType.Percentage ? (i.value/100)*s.salary : i.value;
+                earnings.push({ name: i.name, amount: amt });
+            });
             
-            payrollItems
-                .filter(i => i.type === PayrollItemType.Earning && i.isRecurring)
-                .forEach(item => {
-                    const earningAmount = item.calculationType === CalculationType.Percentage
-                        ? (item.value / 100) * staffMember.salary
-                        : item.value;
-                    earnings.push({ name: item.name, amount: earningAmount });
-                });
-
-            const grossPay = earnings.reduce((sum, item) => sum + item.amount, 0);
+            const gross = earnings.reduce((sum, i) => sum + i.amount, 0);
             
-            const deductions: PayrollEntry[] = [
-                { name: 'PAYE', amount: calculatePAYE(grossPay) },
-                { name: 'SHA Contribution', amount: calculateSHA(grossPay) },
-                { name: 'NSSF', amount: calculateNSSF(grossPay) },
-                { name: 'Housing Levy', amount: calculateHousingLevy(grossPay) },
+            const deductions: any[] = [
+                { name: 'PAYE', amount: calculatePAYE(gross) },
+                { name: 'SHA', amount: gross * 0.0275 },
+                { name: 'NSSF', amount: Math.min(gross, 18000) * 0.06 },
+                { name: 'Levy', amount: gross * 0.015 },
             ];
+             // Add recurring deductions
+            payrollItems.filter((i:any) => i.type === PayrollItemType.Deduction && i.isRecurring).forEach((i:any) => {
+                 const amt = i.calculationType === CalculationType.Percentage ? (i.value/100)*s.salary : i.value;
+                 deductions.push({ name: i.name, amount: amt });
+            });
             
-             payrollItems
-                .filter(i => i.type === PayrollItemType.Deduction && i.isRecurring)
-                .forEach(item => {
-                     const deductionAmount = item.calculationType === CalculationType.Percentage
-                        ? (item.value / 100) * staffMember.salary
-                        : item.value;
-                     deductions.push({ name: item.name, amount: deductionAmount });
-                });
-
-            const totalDeductions = deductions.reduce((sum, d) => sum + d.amount, 0);
-            const netPay = grossPay - totalDeductions;
-            
+            const totalDed = deductions.reduce((sum, d) => sum + d.amount, 0);
             return {
-                id: `payroll-${staffMember.id}-${Date.now()}`, staffId: staffMember.id, staffName: staffMember.name,
-                month, payDate: new Date().toISOString().split('T')[0],
-                grossPay, totalDeductions, netPay, earnings, deductions,
+                id: `temp-${s.id}`,
+                staffId: s.id,
+                staffName: s.name,
+                month,
+                payDate: new Date().toISOString().split('T')[0],
+                grossPay: gross,
+                totalDeductions: totalDed,
+                netPay: gross - totalDed,
+                earnings,
+                deductions
             };
         });
-        setPayrollWorksheet(worksheet);
+        setPayrollWorksheet(worksheet as any);
         setIsRunPayrollModalOpen(true);
     };
-
+    
     const handleOpenEditEntry = (entry: Payroll) => {
         setEditingWorksheetEntry(entry);
         setIsEditEntryModalOpen(true);
@@ -369,14 +298,9 @@ const StaffAndPayrollView: React.FC = () => {
 
     const finalizePayroll = () => {
         setIsGeneratingPayroll(true);
-        savePayrollRun(payrollWorksheet).then(() => {
-            setIsGeneratingPayroll(false);
-            setIsRunPayrollModalOpen(false);
-            addNotification(`Payroll for ${payrollWorksheet[0]?.month} finalized successfully.`, "success");
-            if (activeTab === 'history') {
-                fetchPayrollHistory(1, selectedStaffFilter, selectedMonthFilter);
-            }
-        }).catch(() => setIsGeneratingPayroll(false));
+        savePayrollMutation.mutate(payrollWorksheet, {
+             onSettled: () => setIsGeneratingPayroll(false)
+        });
     };
     
     const openPayslipModal = (payrollEntry: Payroll) => {
@@ -384,44 +308,42 @@ const StaffAndPayrollView: React.FC = () => {
         setIsPayslipModalOpen(true);
     };
     
-    const openP9Modal = async (staffMember: Staff) => {
+    const openP9Modal = (staffMember: Staff) => {
         setSelectedStaffForP9(staffMember);
-        try {
-            const history = await api.getPayrollHistory({ staffId: staffMember.id, limit: 50 }); 
-            setP9Data(history.data);
-            setIsP9ModalOpen(true);
-        } catch (e) {
-            addNotification('Failed to load P9 data', 'error');
-        }
+        setIsP9ModalOpen(true);
     };
     
-    const staffMemberForPayslip = selectedPayroll ? staff.find(s => s.id === selectedPayroll.staffId) : null;
+    const staffMemberForPayslip = selectedPayroll ? staffList.find((s:Staff) => s.id === selectedPayroll.staffId) : null;
     
     const p9Aggregates = useMemo(() => {
         if(!p9Data.length) return null;
         const year = new Date().getFullYear();
-        const yearData = p9Data.filter(p => new Date(p.payDate).getFullYear() === year);
-        yearData.sort((a,b) => new Date(a.payDate).getTime() - new Date(b.payDate).getTime());
+        const yearData = p9Data.filter((p:any) => new Date(p.payDate).getFullYear() === year);
+        yearData.sort((a:any,b:any) => new Date(a.payDate).getTime() - new Date(b.payDate).getTime());
 
-        const totals = yearData.reduce((acc, curr) => ({
-            basic: acc.basic + (curr.earnings.find(e => e.name === 'Basic Salary')?.amount || 0),
+        const totals = yearData.reduce((acc:any, curr:any) => ({
+            basic: acc.basic + (curr.earnings.find((e:any) => e.name === 'Basic Salary')?.amount || 0),
             gross: acc.gross + curr.grossPay,
-            paye: acc.paye + (curr.deductions.find(d => d.name === 'PAYE')?.amount || 0),
-            nssf: acc.nssf + (curr.deductions.find(d => d.name === 'NSSF')?.amount || 0),
-            sha: acc.sha + (curr.deductions.find(d => d.name === 'SHA Contribution')?.amount || 0),
-            levy: acc.levy + (curr.deductions.find(d => d.name === 'Housing Levy')?.amount || 0),
+            paye: acc.paye + (curr.deductions.find((d:any) => d.name === 'PAYE')?.amount || 0),
+            nssf: acc.nssf + (curr.deductions.find((d:any) => d.name === 'NSSF')?.amount || 0),
+            sha: acc.sha + (curr.deductions.find((d:any) => d.name === 'SHA')?.amount || 0),
+            levy: acc.levy + (curr.deductions.find((d:any) => d.name === 'Levy')?.amount || 0),
         }), { basic: 0, gross: 0, paye: 0, nssf: 0, sha: 0, levy: 0 });
 
         return { yearData, totals };
     }, [p9Data]);
 
     if (!schoolInfo) return null;
-
-    const staffRoles = Object.values(Role).filter(r => r !== Role.Parent);
+    
+    // ... [Save Item/Delete Item Handlers - Simplified] ...
+    const handleSaveItem = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (editingItem) updateItemMutation.mutate({ id: editingItem.id, data: itemFormData });
+        else addItemMutation.mutate(itemFormData);
+    };
 
     return (
         <div className="p-6 md:p-8">
-             {/* ... [Header and Tabs logic remains same] ... */}
              <div className="flex justify-between items-center mb-6">
                 <h2 className="text-3xl font-bold text-slate-800">Staff & Payroll</h2>
                 <div>
@@ -441,7 +363,7 @@ const StaffAndPayrollView: React.FC = () => {
                 <div className="mt-6 bg-white rounded-xl shadow-lg overflow-x-auto">
                     <table className="w-full text-left table-auto">
                         <thead><tr className="bg-slate-50 border-b border-slate-200"><th className="px-4 py-3 font-semibold text-slate-600">Photo</th><th className="px-4 py-3 font-semibold text-slate-600">Name</th><th className="px-4 py-3 font-semibold text-slate-600">Role</th><th className="px-4 py-3 font-semibold text-slate-600">Basic Salary (KES)</th><th className="px-4 py-3 font-semibold text-slate-600">Actions</th></tr></thead>
-                        <tbody>{staff.map(s => (
+                        <tbody>{staffList.map((s: any) => (
                             <tr key={s.id} className="border-b border-slate-100 hover:bg-slate-50">
                                 <td className="px-4 py-3">
                                     <img 
@@ -461,103 +383,55 @@ const StaffAndPayrollView: React.FC = () => {
                 </div>
             )}
             
-            {/* ... [Rest of the components (items, history, modals) remain largely unchanged] ... */}
-            
             {activeTab === 'items' && (
                  <div className="mt-6">
-                    <div className="flex justify-between items-center mb-4"><h3 className="text-xl font-bold text-slate-700">Custom Payroll Earnings & Deductions</h3><button onClick={() => openItemModal(null)} className="px-4 py-2 bg-primary-600 text-white font-semibold rounded-lg shadow-md hover:bg-primary-700">Add Item</button></div>
+                    <div className="flex justify-between items-center mb-4"><h3 className="text-xl font-bold text-slate-700">Payroll Config</h3><button onClick={() => { setEditingItem(null); setItemFormData({}); setIsItemModalOpen(true); }} className="px-4 py-2 bg-primary-600 text-white rounded-lg shadow-md">Add Item</button></div>
                     <div className="bg-white rounded-xl shadow-lg overflow-x-auto">
                          <table className="w-full text-left table-auto">
-                            <thead><tr className="bg-slate-50 border-b border-slate-200"><th className="px-4 py-3 font-semibold text-slate-600">Name</th><th className="px-4 py-3 font-semibold text-slate-600">Type</th><th className="px-4 py-3 font-semibold text-slate-600">Value</th><th className="px-4 py-3 font-semibold text-slate-600">Recurring</th><th className="px-4 py-3 font-semibold text-slate-600">Actions</th></tr></thead>
-                            <tbody>{payrollItems.map(item => (<tr key={item.id} className="border-b border-slate-100 hover:bg-slate-50"><td className="px-4 py-3 text-slate-800 font-medium">{item.name}</td><td className="px-4 py-3"><span className={`px-2 py-1 text-xs font-semibold rounded-full ${item.type === 'Earning' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>{item.type}</span></td>
-                                <td className="px-4 py-3 text-slate-500">
-                                    {item.calculationType === CalculationType.Percentage
-                                        ? `${item.value}% of Basic`
-                                        : item.value.toLocaleString('en-KE', { style: 'currency', currency: 'KES' })}
-                                </td>
-                            <td className="px-4 py-3 text-slate-500">{item.isRecurring ? 'Yes' : 'No'}</td><td className="px-4 py-3 space-x-4"><button onClick={() => openItemModal(item)} className="text-blue-600 hover:underline">Edit</button><button onClick={() => handleDeleteItem(item.id)} className="text-red-600 hover:underline">Delete</button></td></tr>))}</tbody>
+                            <thead><tr className="bg-slate-50 border-b border-slate-200"><th className="px-4 py-3">Name</th><th className="px-4 py-3">Type</th><th className="px-4 py-3">Value</th><th className="px-4 py-3">Recurring</th><th className="px-4 py-3">Actions</th></tr></thead>
+                            <tbody>{payrollItems.map((item: any) => (
+                                <tr key={item.id} className="border-b border-slate-100">
+                                    <td className="px-4 py-3">{item.name}</td>
+                                    <td className="px-4 py-3"><span className={`px-2 py-1 text-xs rounded-full ${item.type === 'Earning' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>{item.type}</span></td>
+                                    <td className="px-4 py-3">{item.calculationType === 'Percentage' ? `${item.value}%` : item.value}</td>
+                                    <td className="px-4 py-3">{item.isRecurring ? 'Yes' : 'No'}</td>
+                                    <td className="px-4 py-3 space-x-2">
+                                        <button onClick={() => { setEditingItem(item); setItemFormData(item); setIsItemModalOpen(true); }} className="text-blue-600 hover:underline">Edit</button>
+                                        <button onClick={() => { if(confirm('Delete?')) deleteItemMutation.mutate(item.id); }} className="text-red-600 hover:underline">Delete</button>
+                                    </td>
+                                </tr>
+                            ))}</tbody>
                         </table>
                     </div>
                 </div>
             )}
-            {activeTab === 'history' && (
-                <div className="mt-6 space-y-4">
-                    <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4">
-                        <select 
-                            value={selectedStaffFilter} 
-                            onChange={e => setSelectedStaffFilter(e.target.value)} 
-                            className="p-2 border border-slate-300 rounded-lg"
-                        >
-                            <option value="">All Staff</option>
-                            {staff.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                        </select>
-                        <input 
-                            type="text" 
-                            placeholder="Filter by month (e.g. October 2023)" 
-                            value={selectedMonthFilter} 
-                            onChange={e => setSelectedMonthFilter(e.target.value)} 
-                            className="p-2 border border-slate-300 rounded-lg"
-                        />
-                    </div>
 
-                    <div className="bg-white rounded-xl shadow-lg overflow-x-auto">
-                        <table className="w-full text-left table-auto">
-                            <thead><tr className="bg-slate-50 border-b border-slate-200"><th className="px-4 py-3 font-semibold text-slate-600">Month</th><th className="px-4 py-3 font-semibold text-slate-600">Staff Name</th><th className="px-4 py-3 font-semibold text-slate-600">Net Pay (KES)</th><th className="px-4 py-3 font-semibold text-slate-600">Actions</th></tr></thead>
-                            <tbody>
-                                {historyLoading ? (
-                                    Array.from({ length: 5 }).map((_, i) => (
-                                        <tr key={i} className="border-b border-slate-100">
-                                            <td className="px-4 py-4"><Skeleton className="h-4 w-24"/></td>
-                                            <td className="px-4 py-4"><Skeleton className="h-4 w-32"/></td>
-                                            <td className="px-4 py-4"><Skeleton className="h-4 w-20"/></td>
-                                            <td className="px-4 py-4"><Skeleton className="h-4 w-24"/></td>
-                                        </tr>
-                                    ))
-                                ) : payrollHistory.length === 0 ? (
-                                    <tr><td colSpan={4} className="text-center py-8 text-slate-500">No payroll records found.</td></tr>
-                                ) : (
-                                    payrollHistory.map(p => (
-                                        <tr key={p.id} className="border-b border-slate-100 hover:bg-slate-50">
-                                            <td className="px-4 py-3 text-slate-500">{p.month}</td>
-                                            <td className="px-4 py-3 text-slate-800 font-medium">{p.staffName}</td>
-                                            <td className="px-4 py-3 font-semibold text-slate-800">{p.netPay.toLocaleString('en-KE', { style: 'currency', currency: 'KES' })}</td>
-                                            <td className="px-4 py-3"><button onClick={() => openPayslipModal(p)} className="text-blue-600 hover:underline">View Payslip</button></td>
-                                        </tr>
-                                    ))
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
+            {activeTab === 'history' && (
+                <div className="mt-6 bg-white rounded-xl shadow-lg overflow-x-auto">
+                     <div className="flex gap-4 p-4">
+                         <select value={selectedStaffFilter} onChange={e => { setSelectedStaffFilter(e.target.value); setHistoryPage(1); }} className="p-2 border rounded">
+                             <option value="">All Staff</option>
+                             {staffList.map((s:Staff) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                         </select>
+                         <input placeholder="Month (e.g. October)" value={selectedMonthFilter} onChange={e => { setSelectedMonthFilter(e.target.value); setHistoryPage(1); }} className="p-2 border rounded"/>
+                     </div>
+                    <table className="w-full text-left table-auto">
+                        <thead><tr className="bg-slate-50 border-b border-slate-200"><th className="px-4 py-3">Month</th><th className="px-4 py-3">Staff</th><th className="px-4 py-3">Net Pay</th><th className="px-4 py-3">Actions</th></tr></thead>
+                        <tbody>
+                            {historyLoading ? <tr><td colSpan={4} className="p-4"><Skeleton className="h-8 w-full"/></td></tr> : 
+                            payrollHistory.map((p: any) => (
+                                <tr key={p.id} className="border-b border-slate-100">
+                                    <td className="px-4 py-3">{p.month}</td>
+                                    <td className="px-4 py-3">{p.staffName}</td>
+                                    <td className="px-4 py-3 font-bold">{p.netPay.toLocaleString()}</td>
+                                    <td className="px-4 py-3"><button onClick={() => { setSelectedPayroll(p); setIsPayslipModalOpen(true); }} className="text-blue-600 hover:underline">Payslip</button></td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
                     <Pagination currentPage={historyPage} totalPages={historyTotalPages} onPageChange={setHistoryPage} />
                 </div>
             )}
-            
-            <Modal isOpen={isItemModalOpen} onClose={() => setIsItemModalOpen(false)} title={editingItem ? "Edit Payroll Item" : "Add Payroll Item"}>
-                <form onSubmit={handleSaveItem} className="space-y-4">
-                    <input type="text" placeholder="Item Name" value={itemFormData.name} onChange={e => setItemFormData(p => ({...p, name: e.target.value}))} required className="w-full p-2 border border-slate-300 rounded-lg"/>
-                    <select value={itemFormData.type} onChange={e => setItemFormData(p => ({...p, type: e.target.value as PayrollItemType}))} className="w-full p-2 border border-slate-300 rounded-lg"><option value="Earning">Earning</option><option value="Deduction">Deduction</option></select>
-                     <select value={itemFormData.calculationType} onChange={e => setItemFormData(p => ({...p, calculationType: e.target.value as CalculationType}))} className="w-full p-2 border border-slate-300 rounded-lg">
-                        <option value={CalculationType.Fixed}>Fixed Amount</option>
-                        <option value={CalculationType.Percentage}>Percentage of Basic</option>
-                    </select>
-                    <div className="relative">
-                        <input 
-                            type="number" 
-                            placeholder={itemFormData.calculationType === CalculationType.Fixed ? 'Amount in KES' : 'Percentage'}
-                            value={itemFormData.value || ''} 
-                            onChange={e => setItemFormData(p => ({...p, value: parseFloat(e.target.value) || 0 }))} 
-                            required 
-                            className="w-full p-2 border border-slate-300 rounded-lg pr-12"
-                        />
-                        <span className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm text-slate-500">
-                            {itemFormData.calculationType === CalculationType.Fixed ? 'KES' : '%'}
-                        </span>
-                    </div>
-
-                    <label className="flex items-center"><input type="checkbox" checked={itemFormData.isRecurring} onChange={e => setItemFormData(p => ({...p, isRecurring: e.target.checked}))} className="h-4 w-4 text-primary-600 border-slate-300 rounded focus:ring-primary-500"/> <span className="ml-2 text-slate-700">Is this a recurring monthly item?</span></label>
-                    <div className="flex justify-end"><button type="submit" className="px-6 py-2 bg-primary-600 text-white font-semibold rounded-lg shadow-md hover:bg-primary-700">Save Item</button></div>
-                </form>
-            </Modal>
             
             <Modal isOpen={isStaffModalOpen} onClose={() => setIsStaffModalOpen(false)} title={editingStaff ? 'Edit Staff Details' : 'Add New Staff Member'} size="3xl">
                 <form onSubmit={handleSaveStaff} className="space-y-6">
@@ -611,14 +485,41 @@ const StaffAndPayrollView: React.FC = () => {
                     <div className="flex justify-end pt-4"><button type="submit" className="px-6 py-2 bg-primary-600 text-white font-semibold rounded-lg shadow-md hover:bg-primary-700">Save Staff</button></div>
                 </form>
             </Modal>
+            
+             <Modal isOpen={isItemModalOpen} onClose={() => setIsItemModalOpen(false)} title={editingItem ? "Edit Payroll Item" : "Add Payroll Item"}>
+                <form onSubmit={handleSaveItem} className="space-y-4">
+                    <input type="text" placeholder="Item Name" value={itemFormData.name} onChange={e => setItemFormData({...itemFormData, name: e.target.value})} required className="w-full p-2 border border-slate-300 rounded-lg"/>
+                    <select value={itemFormData.type} onChange={e => setItemFormData({...itemFormData, type: e.target.value as PayrollItemType})} className="w-full p-2 border border-slate-300 rounded-lg"><option value="Earning">Earning</option><option value="Deduction">Deduction</option></select>
+                     <select value={itemFormData.calculationType} onChange={e => setItemFormData({...itemFormData, calculationType: e.target.value as CalculationType})} className="w-full p-2 border border-slate-300 rounded-lg">
+                        <option value={CalculationType.Fixed}>Fixed Amount</option>
+                        <option value={CalculationType.Percentage}>Percentage of Basic</option>
+                    </select>
+                    <div className="relative">
+                        <input 
+                            type="number" 
+                            placeholder={itemFormData.calculationType === CalculationType.Fixed ? 'Amount in KES' : 'Percentage'}
+                            value={itemFormData.value || ''} 
+                            onChange={e => setItemFormData({...itemFormData, value: parseFloat(e.target.value) || 0 })} 
+                            required 
+                            className="w-full p-2 border border-slate-300 rounded-lg pr-12"
+                        />
+                        <span className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm text-slate-500">
+                            {itemFormData.calculationType === CalculationType.Fixed ? 'KES' : '%'}
+                        </span>
+                    </div>
+
+                    <label className="flex items-center"><input type="checkbox" checked={itemFormData.isRecurring} onChange={e => setItemFormData({...itemFormData, isRecurring: e.target.checked})} className="h-4 w-4 text-primary-600 border-slate-300 rounded focus:ring-primary-500"/> <span className="ml-2 text-slate-700">Is this a recurring monthly item?</span></label>
+                    <div className="flex justify-end"><button type="submit" className="px-6 py-2 bg-primary-600 text-white font-semibold rounded-lg shadow-md hover:bg-primary-700">Save Item</button></div>
+                </form>
+            </Modal>
 
             <WebcamCaptureModal 
                 isOpen={isStaffCaptureModalOpen} 
                 onClose={() => setIsStaffCaptureModalOpen(false)} 
-                onCapture={handleStaffPhotoCapture} 
+                onCapture={(url) => { setStaffPhotoUrl(url); setIsStaffCaptureModalOpen(false); }} 
             />
 
-            <Modal isOpen={isRunPayrollModalOpen} onClose={() => setIsRunPayrollModalOpen(false)} title={`Generate Payroll for ${new Date().toLocaleString('default', { month: 'long', year: 'numeric' })}`} size="3xl">
+            <Modal isOpen={isRunPayrollModalOpen} onClose={() => setIsRunPayrollModalOpen(false)} title={`Generate Payroll`} size="3xl">
                 <div className="overflow-x-auto">
                     <table className="w-full text-left text-sm table-auto">
                         <thead>
@@ -631,7 +532,7 @@ const StaffAndPayrollView: React.FC = () => {
                             </tr>
                         </thead>
                         <tbody>
-                            {payrollWorksheet.map(p => (
+                            {payrollWorksheet.map((p:any) => (
                                 <tr key={p.staffId} className="border-b border-slate-100">
                                     <td className="p-2 font-medium">{p.staffName}</td>
                                     <td className="p-2 text-green-700">{p.grossPay.toLocaleString()}</td>
@@ -659,7 +560,8 @@ const StaffAndPayrollView: React.FC = () => {
                 onSave={handleUpdateWorksheetEntry}
             />
             
-            {isPayslipModalOpen && selectedPayroll && staffMemberForPayslip && (
+            {/* Payslip & P9 Modals same structure as previous ... */}
+             {isPayslipModalOpen && selectedPayroll && staffMemberForPayslip && (
                  <Modal isOpen={isPayslipModalOpen} onClose={() => setIsPayslipModalOpen(false)} title={`Payslip`} size="2xl" footer={<button onClick={() => window.print()} className="px-4 py-2 bg-slate-600 text-white rounded no-print">Print</button>}>
                      <div className="printable-area font-sans text-slate-800 bg-white">
                          <div className="p-8 border border-slate-200 rounded-lg">
@@ -727,7 +629,6 @@ const StaffAndPayrollView: React.FC = () => {
             )}
              {isP9ModalOpen && selectedStaffForP9 && p9Aggregates && (
                 <Modal isOpen={isP9ModalOpen} onClose={() => setIsP9ModalOpen(false)} title={`P9 Form: ${selectedStaffForP9.name}`} size="2xl" footer={<button onClick={() => window.print()} className="px-4 py-2 bg-slate-600 text-white rounded no-print">Print</button>}>
-                    {/* ... [P9 Form Content - No changes needed here, assuming layout is fine] ... */}
                      <div className="printable-area p-4 border border-slate-200 rounded-lg bg-white">
                         <h2 className="text-center font-bold text-xl uppercase">P9 A - Tax Deduction Card {new Date().getFullYear()}</h2>
                         <div className="my-4 text-sm grid grid-cols-2 gap-4">
@@ -754,13 +655,13 @@ const StaffAndPayrollView: React.FC = () => {
                                 </tr>
                             </thead>
                             <tbody>
-                                {p9Aggregates.yearData.map(p => {
-                                    const basic = p.earnings.find(e => e.name === 'Basic Salary')?.amount || 0;
+                                {p9Aggregates.yearData.map((p:any) => {
+                                    const basic = p.earnings.find((e:any) => e.name === 'Basic Salary')?.amount || 0;
                                     const benefits = p.grossPay - basic;
-                                    const paye = p.deductions.find(d => d.name === 'PAYE')?.amount || 0;
-                                    const nssf = p.deductions.find(d => d.name === 'NSSF')?.amount || 0;
-                                    const sha = p.deductions.find(d => d.name === 'SHA Contribution')?.amount || 0;
-                                    const levy = p.deductions.find(d => d.name === 'Housing Levy')?.amount || 0;
+                                    const paye = p.deductions.find((d:any) => d.name === 'PAYE')?.amount || 0;
+                                    const nssf = p.deductions.find((d:any) => d.name === 'NSSF')?.amount || 0;
+                                    const sha = p.deductions.find((d:any) => d.name === 'SHA')?.amount || 0;
+                                    const levy = p.deductions.find((d:any) => d.name === 'Levy')?.amount || 0;
 
                                     return (
                                         <tr key={p.id} className="border border-slate-400 text-right">

@@ -1,12 +1,12 @@
 
 import React, { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import Modal from '../common/Modal';
+import Modal from '../../components/common/Modal';
 import type { Student, CommunicationLog, NewCommunicationLog } from '../../types';
 import { CommunicationType } from '../../types';
 import { useData } from '../../contexts/DataContext';
 import * as api from '../../services/api';
-import Skeleton from '../common/Skeleton';
+import Skeleton from '../../components/common/Skeleton';
 
 interface StudentProfileModalProps {
     isOpen: boolean;
@@ -20,7 +20,6 @@ const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ isOpen, onClo
     const [activeTab, setActiveTab] = useState<'details' | 'communication'>('details');
     const [message, setMessage] = useState('');
     
-    // Local state for logs
     const [studentLogs, setStudentLogs] = useState<CommunicationLog[]>([]);
     const [loadingLogs, setLoadingLogs] = useState(false);
 
@@ -30,7 +29,7 @@ const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ isOpen, onClo
             setMessage('');
             if (student) {
                 setLoadingLogs(true);
-                api.getCommunicationLogs({ studentId: student.id, limit: 50 })
+                api.getCommunicationLogs({ studentId: student.id, limit: 20 })
                     .then(res => setStudentLogs(res.data))
                     .catch(err => console.error("Failed to fetch logs", err))
                     .finally(() => setLoadingLogs(false));
@@ -61,7 +60,7 @@ const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ isOpen, onClo
     return (
         <Modal isOpen={isOpen} onClose={onClose} title={`${student.name}'s Profile`} size="xl">
             <div className="border-b border-slate-200 mb-4">
-                <nav className="-mb-px flex space-x-8" aria-label="Tabs">
+                <nav className="-mb-px flex space-x-8">
                     <button onClick={() => setActiveTab('details')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'details' ? 'border-primary-500 text-primary-600' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'}`}>Details</button>
                     <button onClick={() => setActiveTab('communication')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'communication' ? 'border-primary-500 text-primary-600' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'}`}>Communication</button>
                 </nav>
@@ -89,9 +88,9 @@ const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ isOpen, onClo
                 </div>
             )}
             {activeTab === 'communication' && (
-                 <div className="flex flex-col h-[60vh]">
-                    <div className="flex-1 overflow-y-auto pr-4 -mr-4 space-y-4">
-                       {loadingLogs ? <div className="p-4"><Skeleton className="h-16 w-full mb-2"/><Skeleton className="h-16 w-full"/></div> : 
+                 <div className="flex flex-col h-[50vh]">
+                    <div className="flex-1 overflow-y-auto pr-4 space-y-4">
+                       {loadingLogs ? <div className="p-4"><Skeleton className="h-12 w-full mb-2"/><Skeleton className="h-12 w-full"/></div> : 
                        studentLogs.length > 0 ? studentLogs.map(log => (
                            <div key={log.id} className="bg-slate-50 p-3 rounded-lg">
                                <div className="flex justify-between items-center text-xs text-slate-500 mb-1">
@@ -100,7 +99,7 @@ const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ isOpen, onClo
                                </div>
                                <p className="text-slate-800">{log.message}</p>
                            </div>
-                       )) : <p className="text-center text-slate-500">No communication history.</p>}
+                       )) : <p className="text-center text-slate-500 mt-10">No communication history.</p>}
                     </div>
                     <form onSubmit={handleSendMessage} className="mt-4 border-t pt-4">
                         <textarea
@@ -123,7 +122,6 @@ const MyClassView: React.FC = () => {
     const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
     const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
 
-    // Fetch students specific to this class
     const { data: studentsInClass = [], isLoading } = useQuery({
         queryKey: ['my-class-students', assignedClass?.id],
         queryFn: () => assignedClass 

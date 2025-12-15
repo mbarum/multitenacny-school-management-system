@@ -1,9 +1,9 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import type { Student, SchoolClass, Exam, Grade, Subject, GradingRule, SchoolInfo } from '../types';
+import type { Student, SchoolClass, Exam, Grade, Subject, GradingRule, SchoolInfo } from '../../types';
 import Modal from '../components/common/Modal';
-import { useData } from '../contexts/DataContext';
+import { useData } from '../../contexts/DataContext';
 import * as api from '../services/api';
 
 const ReportCardsView: React.FC = () => {

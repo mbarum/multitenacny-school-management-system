@@ -14,6 +14,7 @@ export enum StudentStatus {
 @Entity('students')
 @Index(['schoolId', 'admissionNumber'], { unique: true }) // Ensure unique admission per school
 @Index(['schoolId', 'name']) // Optimize search
+@Index(['schoolId', 'status']) // Optimize filtering active students
 export class Student extends BaseEntity {
   @Index()
   @Column({ name: 'school_id', type: 'uuid', nullable: true })
