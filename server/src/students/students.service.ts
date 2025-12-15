@@ -234,26 +234,45 @@ export class StudentsService {
     const classes = await this.classesRepository.find({ where: { schoolId: schoolId as any } });
     const classMap = new Map(classes.map(c => [c.name.toLowerCase(), c]));
 
+    // Generate batch info
+    const count = await this.studentsRepository.count({ where: { schoolId: schoolId as any } });
+    const year = new Date().getFullYear();
+
     for (const [index, record] of records.entries()) {
       try {
-        const rowNumber = index + 1;
+        // Normalize keys to allow flexible headers (e.g. "Guardian Name", "guardianName", "guardian_name")
+        const normalize = (obj: any) => {
+            const normalized: any = {};
+            Object.keys(obj).forEach(key => {
+                normalized[key.toLowerCase().replace(/[\s_]+/g, '')] = obj[key];
+            });
+            return normalized;
+        };
+        const nRecord = normalize(record);
+
+        // Extract fields using normalized keys
+        const name = nRecord['name'] || nRecord['studentname'];
+        const guardianName = nRecord['guardianname'] || nRecord['guardian'];
+        const className = nRecord['class'] || nRecord['classname'] || nRecord['grade']; // Support 'class' or 'classId' if user provides name there
         
-        // Basic Validation
-        if (!record.name || !record.guardianName || !record.class) {
-            throw new Error('Missing required fields (name, guardianName, or class)');
+        // Validation
+        if (!name || !guardianName || !className) {
+            throw new Error(`Missing required fields. Found: ${name ? 'Name' : ''} ${guardianName ? 'Guardian' : ''} ${className ? 'Class' : ''}. Required: Name, Guardian Name, Class`);
         }
 
         // Find Class
-        const targetClass = classMap.get(record.class.toString().toLowerCase());
+        const targetClass = classMap.get(String(className).toLowerCase());
         if (!targetClass) {
-            throw new Error(`Class '${record.class}' not found. Please create it first.`);
+            throw new Error(`Class '${className}' not found. Please create class "${className}" first in Academics.`);
         }
+
+        const guardianContact = nRecord['guardiancontact'] || nRecord['phone'] || '';
 
         // Check for duplicates (Simple check by name + guardian contact)
         const existing = await this.studentsRepository.findOne({
             where: { 
-                name: record.name, 
-                guardianContact: record.guardianContact,
+                name: name, 
+                guardianContact: guardianContact,
                 schoolId: schoolId as any 
             }
         });
@@ -262,20 +281,17 @@ export class StudentsService {
             throw new Error('Student already exists (Name + Guardian Contact match)');
         }
 
-        // Generate Admission Number
-        const count = await this.studentsRepository.count({ where: { schoolId: schoolId as any } });
-        const year = new Date().getFullYear();
         // Add random suffix to avoid race conditions in simple imports
         const admissionNumber = `ADM-${year}-${String(count + imported + 1).padStart(4, '0')}-${Math.floor(Math.random() * 1000)}`;
 
         const student = this.studentsRepository.create({
-            name: record.name,
-            guardianName: record.guardianName,
-            guardianContact: record.guardianContact || '',
-            guardianAddress: record.guardianAddress || '',
-            guardianEmail: record.guardianEmail || '',
-            emergencyContact: record.emergencyContact || '',
-            dateOfBirth: record.dateOfBirth || new Date().toISOString().split('T')[0],
+            name: name,
+            guardianName: guardianName,
+            guardianContact: guardianContact,
+            guardianAddress: nRecord['guardianaddress'] || nRecord['address'] || '',
+            guardianEmail: nRecord['guardianemail'] || nRecord['email'] || '',
+            emergencyContact: nRecord['emergencycontact'] || '',
+            dateOfBirth: nRecord['dateofbirth'] || nRecord['dob'] || new Date().toISOString().split('T')[0],
             admissionNumber,
             status: StudentStatus.Active,
             schoolClass: targetClass,

@@ -9,6 +9,8 @@ import { PayrollItemType, PayrollItemCategory, CalculationType, Role } from '../
 import { useData } from '../../contexts/DataContext';
 import * as api from '../../services/api';
 
+const DEFAULT_AVATAR = 'https://i.imgur.com/S5o7W44.png';
+
 // --- Sub-components for better organization ---
 
 const PayrollEditModal: React.FC<{
@@ -17,13 +19,14 @@ const PayrollEditModal: React.FC<{
     entry: Payroll | null;
     onSave: (updatedEntry: Payroll) => void;
 }> = ({ isOpen, onClose, entry, onSave }) => {
+    // ... [No changes in PayrollEditModal logic] ...
     const [localEntry, setLocalEntry] = useState<Payroll | null>(null);
     const [newItemName, setNewItemName] = useState('');
     const [newItemAmount, setNewItemAmount] = useState(0);
     const [newItemType, setNewItemType] = useState<PayrollItemType>(PayrollItemType.Earning);
 
     useEffect(() => {
-        setLocalEntry(entry ? JSON.parse(JSON.stringify(entry)) : null); // Deep copy to avoid mutating prop
+        setLocalEntry(entry ? JSON.parse(JSON.stringify(entry)) : null);
     }, [entry, isOpen]);
 
     const calculateTotals = (e: Payroll) => {
@@ -162,7 +165,8 @@ const PayrollEditModal: React.FC<{
 
 const StaffAndPayrollView: React.FC = () => {
     const { staff, addStaff, updateStaff, savePayrollRun, payrollItems, addPayrollItem, updatePayrollItem, deletePayrollItem, schoolInfo, openIdCardModal, addNotification } = useData();
-
+    
+    // ... [Existing state variables] ...
     const [activeTab, setActiveTab] = useState('roster');
     const [isStaffModalOpen, setIsStaffModalOpen] = useState(false);
     const [editingStaff, setEditingStaff] = useState<Staff | null>(null);
@@ -173,12 +177,10 @@ const StaffAndPayrollView: React.FC = () => {
     const [selectedStaffForP9, setSelectedStaffForP9] = useState<Staff | null>(null);
     const [p9Data, setP9Data] = useState<Payroll[]>([]);
     
-    // Worksheet State
     const [payrollWorksheet, setPayrollWorksheet] = useState<Payroll[]>([]);
     const [editingWorksheetEntry, setEditingWorksheetEntry] = useState<Payroll | null>(null);
     const [isEditEntryModalOpen, setIsEditEntryModalOpen] = useState(false);
     
-    // Payroll History State
     const [payrollHistory, setPayrollHistory] = useState<Payroll[]>([]);
     const [historyLoading, setHistoryLoading] = useState(false);
     const [historyPage, setHistoryPage] = useState(1);
@@ -198,22 +200,24 @@ const StaffAndPayrollView: React.FC = () => {
     
     const initialStaffState: NewStaff = {
         name: '', email: '', userRole: Role.Teacher, role: '', salary: 0, joinDate: '', kraPin: '', nssfNumber: '', shaNumber: '',
-        bankName: '', accountNumber: '', photoUrl: 'https://i.imgur.com/S5o7W44.png'
+        bankName: '', accountNumber: '', photoUrl: DEFAULT_AVATAR
     };
 
     const [staffFormData, setStaffFormData] = useState<NewStaff | Staff>(initialStaffState);
-    const [staffPhotoUrl, setStaffPhotoUrl] = useState<string>('https://i.imgur.com/S5o7W44.png');
+    const [staffPhotoUrl, setStaffPhotoUrl] = useState<string>(DEFAULT_AVATAR);
 
     useEffect(() => {
         if (isStaffModalOpen) {
             setStaffFormData(editingStaff || initialStaffState);
-            setStaffPhotoUrl(editingStaff?.photoUrl || 'https://i.imgur.com/S5o7W44.png');
+            setStaffPhotoUrl(editingStaff?.photoUrl || DEFAULT_AVATAR);
         }
         if (isItemModalOpen) {
             setItemFormData(editingItem || { name: '', type: PayrollItemType.Earning, category: PayrollItemCategory.Allowance, calculationType: CalculationType.Fixed, value: 0, isRecurring: false });
         }
     }, [isStaffModalOpen, editingStaff, isItemModalOpen, editingItem]);
     
+    // ... [Existing fetch logic and handlers] ...
+
     const fetchPayrollHistory = useCallback(async (page: number, staffId?: string, month?: string) => {
         setHistoryLoading(true);
         try {
@@ -274,7 +278,6 @@ const StaffAndPayrollView: React.FC = () => {
         setIsStaffModalOpen(true);
     };
     
-    // Payroll Item Management
     const openItemModal = (item: PayrollItem | null) => {
         setEditingItem(item);
         setIsItemModalOpen(true);
@@ -296,7 +299,6 @@ const StaffAndPayrollView: React.FC = () => {
         }
     };
 
-    // Payroll Calculation Logic
     const calculatePAYE = (taxablePay: number) => {
         const annualPay = taxablePay * 12;
         let tax = 0;
@@ -333,7 +335,6 @@ const StaffAndPayrollView: React.FC = () => {
                 { name: 'Housing Levy', amount: calculateHousingLevy(grossPay) },
             ];
             
-            // Add Recurring Deductions
              payrollItems
                 .filter(i => i.type === PayrollItemType.Deduction && i.isRecurring)
                 .forEach(item => {
@@ -385,11 +386,8 @@ const StaffAndPayrollView: React.FC = () => {
     
     const openP9Modal = async (staffMember: Staff) => {
         setSelectedStaffForP9(staffMember);
-        // Fetch full history for P9 aggregation
-        // In a real scenario, this should be a specialized endpoint getting yearly aggregates
-        // Here we rely on fetching all history for simplicity, filtering client-side
         try {
-            const history = await api.getPayrollHistory({ staffId: staffMember.id, limit: 50 }); // Get plenty of history
+            const history = await api.getPayrollHistory({ staffId: staffMember.id, limit: 50 }); 
             setP9Data(history.data);
             setIsP9ModalOpen(true);
         } catch (e) {
@@ -399,14 +397,10 @@ const StaffAndPayrollView: React.FC = () => {
     
     const staffMemberForPayslip = selectedPayroll ? staff.find(s => s.id === selectedPayroll.staffId) : null;
     
-    // Calculate P9 Aggregates
     const p9Aggregates = useMemo(() => {
         if(!p9Data.length) return null;
         const year = new Date().getFullYear();
-        // Filter for current year
         const yearData = p9Data.filter(p => new Date(p.payDate).getFullYear() === year);
-        
-        // Sort months jan-dec
         yearData.sort((a,b) => new Date(a.payDate).getTime() - new Date(b.payDate).getTime());
 
         const totals = yearData.reduce((acc, curr) => ({
@@ -427,6 +421,7 @@ const StaffAndPayrollView: React.FC = () => {
 
     return (
         <div className="p-6 md:p-8">
+             {/* ... [Header and Tabs logic remains same] ... */}
              <div className="flex justify-between items-center mb-6">
                 <h2 className="text-3xl font-bold text-slate-800">Staff & Payroll</h2>
                 <div>
@@ -441,14 +436,33 @@ const StaffAndPayrollView: React.FC = () => {
                     <button onClick={() => setActiveTab('history')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'history' ? 'border-primary-500 text-primary-600' : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'}`}>Payroll History</button>
                 </nav>
             </div>
+            
             {activeTab === 'roster' && (
                 <div className="mt-6 bg-white rounded-xl shadow-lg overflow-x-auto">
                     <table className="w-full text-left table-auto">
-                        <thead><tr className="bg-slate-50 border-b border-slate-200"><th className="px-4 py-3 font-semibold text-slate-600">Name</th><th className="px-4 py-3 font-semibold text-slate-600">Role</th><th className="px-4 py-3 font-semibold text-slate-600">Basic Salary (KES)</th><th className="px-4 py-3 font-semibold text-slate-600">Actions</th></tr></thead>
-                        <tbody>{staff.map(s => (<tr key={s.id} className="border-b border-slate-100 hover:bg-slate-50"><td className="px-4 py-3 text-slate-800 font-medium">{s.name}</td><td className="px-4 py-3 text-slate-500">{s.role}</td><td className="px-4 py-3 text-slate-500">{s.salary.toLocaleString()}</td><td className="px-4 py-3 space-x-4"><button onClick={() => openStaffModal(s)} className="text-blue-600 hover:underline">Edit</button><button onClick={() => openIdCardModal(s, 'staff')} className="text-purple-600 hover:underline">ID Card</button><button onClick={() => openP9Modal(s)} className="text-green-600 hover:underline">View P9</button></td></tr>))}</tbody>
+                        <thead><tr className="bg-slate-50 border-b border-slate-200"><th className="px-4 py-3 font-semibold text-slate-600">Photo</th><th className="px-4 py-3 font-semibold text-slate-600">Name</th><th className="px-4 py-3 font-semibold text-slate-600">Role</th><th className="px-4 py-3 font-semibold text-slate-600">Basic Salary (KES)</th><th className="px-4 py-3 font-semibold text-slate-600">Actions</th></tr></thead>
+                        <tbody>{staff.map(s => (
+                            <tr key={s.id} className="border-b border-slate-100 hover:bg-slate-50">
+                                <td className="px-4 py-3">
+                                    <img 
+                                        src={s.photoUrl || DEFAULT_AVATAR} 
+                                        onError={(e) => { e.currentTarget.src = DEFAULT_AVATAR; }}
+                                        alt="staff" 
+                                        className="h-10 w-10 rounded-full object-cover"
+                                    />
+                                </td>
+                                <td className="px-4 py-3 text-slate-800 font-medium">{s.name}</td>
+                                <td className="px-4 py-3 text-slate-500">{s.role}</td>
+                                <td className="px-4 py-3 text-slate-500">{s.salary.toLocaleString()}</td>
+                                <td className="px-4 py-3 space-x-4"><button onClick={() => openStaffModal(s)} className="text-blue-600 hover:underline">Edit</button><button onClick={() => openIdCardModal(s, 'staff')} className="text-purple-600 hover:underline">ID Card</button><button onClick={() => openP9Modal(s)} className="text-green-600 hover:underline">View P9</button></td>
+                            </tr>
+                        ))}</tbody>
                     </table>
                 </div>
             )}
+            
+            {/* ... [Rest of the components (items, history, modals) remain largely unchanged] ... */}
+            
             {activeTab === 'items' && (
                  <div className="mt-6">
                     <div className="flex justify-between items-center mb-4"><h3 className="text-xl font-bold text-slate-700">Custom Payroll Earnings & Deductions</h3><button onClick={() => openItemModal(null)} className="px-4 py-2 bg-primary-600 text-white font-semibold rounded-lg shadow-md hover:bg-primary-700">Add Item</button></div>
@@ -551,6 +565,7 @@ const StaffAndPayrollView: React.FC = () => {
                         <div className="md:col-span-1 flex flex-col items-center">
                             <img 
                                 src={staffPhotoUrl} 
+                                onError={(e) => { e.currentTarget.src = DEFAULT_AVATAR; }}
                                 alt="Staff" 
                                 className="h-32 w-32 rounded-full object-cover border-4 border-slate-200 mb-4" 
                             />
@@ -567,7 +582,7 @@ const StaffAndPayrollView: React.FC = () => {
                                 <input type="email" name="email" placeholder="Email Address" value={staffFormData.email} onChange={handleStaffFormChange} required className="p-2 border border-slate-300 rounded-lg"/>
                                 <input type="password" name="password" placeholder={editingStaff ? 'New Password (optional)' : 'Password'} onChange={handleStaffFormChange} className="p-2 border border-slate-300 rounded-lg" />
                                 <select name="userRole" value={staffFormData.userRole} onChange={handleStaffFormChange} required className="p-2 border border-slate-300 rounded-lg">
-                                    {staffRoles.map(r => <option key={r} value={r}>{r}</option>)}
+                                    {Object.values(Role).filter(r => r !== Role.Parent).map(r => <option key={r} value={r}>{r}</option>)}
                                 </select>
                             </div>
                         </div>
@@ -651,7 +666,7 @@ const StaffAndPayrollView: React.FC = () => {
                             {/* Header */}
                             <div className="flex justify-between items-start pb-4 border-b border-slate-200">
                                 <div className="flex items-center space-x-4">
-                                    {schoolInfo.logoUrl && <img src={schoolInfo.logoUrl} alt="logo" className="h-20 w-20 rounded-full object-cover" />}
+                                    {schoolInfo.logoUrl && <img src={schoolInfo.logoUrl} alt="logo" className="h-20 w-20 rounded-full object-cover" onError={(e) => e.currentTarget.style.display = 'none'} />}
                                     <div>
                                         <h2 className="text-3xl font-bold text-primary-800">{schoolInfo.name}</h2>
                                         <p className="text-slate-500 text-sm">{schoolInfo.address}</p>
@@ -665,7 +680,7 @@ const StaffAndPayrollView: React.FC = () => {
                             {/* Employee Details */}
                             <div className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-3 my-6 text-sm">
                                 <div><strong className="text-slate-500 block">Employee:</strong> <span className="font-semibold">{selectedPayroll.staffName}</span></div>
-                                <div><strong className="text-slate-500 block">Employee ID:</strong> <span className="font-semibold">{selectedPayroll.staffId}</span></div>
+                                <div><strong className="text-slate-500 block">Employee ID:</strong> <span className="font-semibold">{selectedPayroll.staffId.substring(0, 8).toUpperCase()}</span></div>
                                 <div><strong className="text-slate-500 block">Pay Date:</strong> <span className="font-semibold">{selectedPayroll.payDate}</span></div>
                                 <div><strong className="text-slate-500 block">KRA PIN:</strong> <span className="font-semibold">{staffMemberForPayslip.kraPin}</span></div>
                                 <div><strong className="text-slate-500 block">NSSF No:</strong> <span className="font-semibold">{staffMemberForPayslip.nssfNumber}</span></div>
@@ -712,6 +727,7 @@ const StaffAndPayrollView: React.FC = () => {
             )}
              {isP9ModalOpen && selectedStaffForP9 && p9Aggregates && (
                 <Modal isOpen={isP9ModalOpen} onClose={() => setIsP9ModalOpen(false)} title={`P9 Form: ${selectedStaffForP9.name}`} size="2xl" footer={<button onClick={() => window.print()} className="px-4 py-2 bg-slate-600 text-white rounded no-print">Print</button>}>
+                    {/* ... [P9 Form Content - No changes needed here, assuming layout is fine] ... */}
                      <div className="printable-area p-4 border border-slate-200 rounded-lg bg-white">
                         <h2 className="text-center font-bold text-xl uppercase">P9 A - Tax Deduction Card {new Date().getFullYear()}</h2>
                         <div className="my-4 text-sm grid grid-cols-2 gap-4">

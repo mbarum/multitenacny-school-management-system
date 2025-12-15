@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import * as api from '../../services/api';
 import { useData } from '../../contexts/DataContext';
 import { SubscriptionPlan, PlatformPricing } from '../../types';
@@ -7,9 +7,9 @@ import { initiateSTKPush } from '../../services/darajaService';
 import Spinner from '../common/Spinner';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
+import Modal from '../common/Modal';
 
 // Replace with your actual publishable key in .env or hardcode for testing
-// Fix: Cast import.meta to any to resolve TS error "Property 'env' does not exist on type 'ImportMeta'"
 const stripePromise = loadStripe((import.meta as any).env.VITE_STRIPE_PUBLIC_KEY || 'pk_test_placeholder_key_replace_me');
 
 interface RegisterSchoolProps {
@@ -18,6 +18,85 @@ interface RegisterSchoolProps {
         billing?: 'MONTHLY' | 'ANNUALLY';
     };
 }
+
+// Legal Documents Content
+const LEGAL_DOCS = {
+    TERMS: (
+        <div className="space-y-4 text-sm text-slate-700">
+            <h4 className="font-bold">1. Introduction</h4>
+            <p>These Terms of Service ("Terms") govern your use of the school management software provided by <strong>SaasLink Technologies Limited</strong> ("Company", "we", "us"). By registering an account, you agree to these Terms.</p>
+            
+            <h4 className="font-bold">2. License Grant</h4>
+            <p>Subject to your compliance with these Terms and payment of applicable fees, we grant you a non-exclusive, non-transferable, limited license to access and use the Platform for your internal school administration purposes.</p>
+            
+            <h4 className="font-bold">3. User Obligations</h4>
+            <p>You are responsible for maintaining the confidentiality of your account credentials. You represent that all information provided during registration is accurate. You are solely responsible for all content (student data, financial records) uploaded to the platform.</p>
+            
+            <h4 className="font-bold">4. Fees and Payments</h4>
+            <p>Subscription fees are billed in advance on a monthly or annual basis. All payments are non-refundable. Failure to pay may result in suspension of access.</p>
+            
+            <h4 className="font-bold">5. Limitation of Liability</h4>
+            <p className="uppercase">To the maximum extent permitted by law, SaasLink Technologies Limited shall not be liable for any indirect, incidental, special, consequential, or punitive damages, including loss of profits, data, or business interruption. In no event shall our total liability exceed the amount paid by you in the twelve (12) months preceding the claim.</p>
+            
+            <h4 className="font-bold">6. Disclaimer of Warranties</h4>
+            <p>The Service is provided "AS IS" and "AS AVAILABLE" without warranties of any kind, whether express or implied, including fitness for a particular purpose.</p>
+            
+            <h4 className="font-bold">7. Termination</h4>
+            <p>We reserve the right to terminate or suspend your account immediately, without prior notice or liability, for any reason, including breach of these Terms.</p>
+        </div>
+    ),
+    PRIVACY: (
+        <div className="space-y-4 text-sm text-slate-700">
+            <h4 className="font-bold">1. Data Collection</h4>
+            <p>We collect information necessary to provide our services, including:</p>
+            <ul className="list-disc pl-5">
+                <li>School details (Name, Address, Registration No).</li>
+                <li>Administrator contact details (Name, Email, Phone).</li>
+                <li>Student and Parent Personal Identifiable Information (PII) uploaded by the School.</li>
+                <li>Financial transaction data.</li>
+            </ul>
+
+            <h4 className="font-bold">2. Use of Data</h4>
+            <p>We use your data to:</p>
+            <ul className="list-disc pl-5">
+                <li>Provide, maintain, and improve the Platform.</li>
+                <li>Process payments and generate financial reports.</li>
+                <li>Communicate with you regarding updates, security alerts, and support.</li>
+            </ul>
+
+            <h4 className="font-bold">3. Data Sharing</h4>
+            <p>We do not sell your data. We may share data with trusted third-party service providers (Sub-processors) solely for the purpose of running the application, including:</p>
+            <ul className="list-disc pl-5">
+                <li><strong>Safaricom PLC</strong> (M-Pesa integrations).</li>
+                <li><strong>Stripe</strong> (Card payment processing).</li>
+                <li><strong>Google Cloud</strong> (Hosting and AI services).</li>
+            </ul>
+
+            <h4 className="font-bold">4. Data Security</h4>
+            <p>We implement industry-standard security measures, including encryption in transit and at rest, to protect your data from unauthorized access.</p>
+        </div>
+    ),
+    DPA: (
+        <div className="space-y-4 text-sm text-slate-700">
+            <p>This Data Processing Agreement ("DPA") forms part of the Terms of Service between the School ("Data Controller") and SaasLink Technologies Limited ("Data Processor").</p>
+            
+            <h4 className="font-bold">1. Nature of Processing</h4>
+            <p>The Data Processor shall process Personal Data solely on behalf of the Data Controller for the purpose of providing School Management Services.</p>
+            
+            <h4 className="font-bold">2. Compliance with Laws</h4>
+            <p>Both parties agree to comply with all applicable data protection laws, including the Data Protection Act, 2019 (Kenya) and GDPR where applicable.</p>
+            
+            <h4 className="font-bold">3. Confidentiality</h4>
+            <p>The Processor ensures that persons authorized to process the personal data have committed themselves to confidentiality.</p>
+            
+            <h4 className="font-bold">4. Security</h4>
+            <p>The Processor shall implement appropriate technical and organizational measures to ensure a level of security appropriate to the risk.</p>
+            
+            <h4 className="font-bold">5. Sub-processors</h4>
+            <p>The Controller authorizes the Processor to engage sub-processors (e.g., Cloud Providers, Payment Gateways) to support the delivery of services.</p>
+        </div>
+    )
+};
 
 const StripePaymentForm: React.FC<{ 
     amount: number, 
@@ -36,23 +115,12 @@ const StripePaymentForm: React.FC<{
 
         setProcessing(true);
 
-        // 1. In a real app, create PaymentIntent on server and get clientSecret
-        // This relies on the new API endpoint we added
-        // Since we are inside the registration flow, we fetch the intent first
-        // Note: The main registration hasn't happened yet in the parent component logic,
-        // but for Stripe we need an intent.
-        
         try {
-            // Trigger the payment
             const cardElement = elements.getElement(CardElement);
             if (!cardElement) throw new Error("Card element not found");
 
             // Mocking the flow for this specific UI component to show structure. 
             // In production, you MUST call backend to create intent.
-            // Assuming `api.createPaymentIntent` returns { clientSecret }
-            // const { clientSecret } = await api.createPaymentIntent({ plan: 'BASIC', billingCycle: 'MONTHLY', email });
-            
-            // For now, we simulate a successful tokenization to pass to the registration endpoint
             const { error, paymentMethod } = await stripe.createPaymentMethod({
                 type: 'card',
                 card: cardElement,
@@ -61,8 +129,6 @@ const StripePaymentForm: React.FC<{
             if (error) {
                 onFailure(error.message || 'Payment failed');
             } else {
-                // Determine if we need actual charge or just method setup.
-                // Here we just pass success to parent to proceed with registration
                 onSuccess('Card'); 
             }
         } catch (err: any) {
@@ -116,6 +182,9 @@ const RegisterSchool: React.FC<RegisterSchoolProps> = ({ initialState }) => {
     // Legal Consent
     const [agreedToTerms, setAgreedToTerms] = useState(false);
     const [agreedToPrivacy, setAgreedToPrivacy] = useState(false);
+
+    // Modal State
+    const [activeLegalDoc, setActiveLegalDoc] = useState<'TERMS' | 'PRIVACY' | 'DPA' | null>(null);
 
     const [isLoading, setIsLoading] = useState(false);
     const [pricing, setPricing] = useState<PlatformPricing | null>(null);
@@ -202,6 +271,15 @@ const RegisterSchool: React.FC<RegisterSchoolProps> = ({ initialState }) => {
         executeRegistration();
     };
 
+    const getLegalTitle = () => {
+        switch(activeLegalDoc) {
+            case 'TERMS': return 'Terms of Service';
+            case 'PRIVACY': return 'Privacy Policy';
+            case 'DPA': return 'Data Processing Agreement';
+            default: return '';
+        }
+    }
+
     return (
         <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
             <div className="bg-white rounded-xl shadow-2xl w-full max-w-5xl overflow-hidden flex flex-col md:flex-row">
@@ -231,7 +309,7 @@ const RegisterSchool: React.FC<RegisterSchoolProps> = ({ initialState }) => {
                         </div>
                     </div>
                     <div className="mt-8 text-xs text-slate-500 relative z-10">
-                        &copy; 2024 Saaslink Technologies
+                        &copy; {new Date().getFullYear()} SaasLink Technologies Limited
                     </div>
                     <div className="absolute top-0 right-0 -mr-20 -mt-20 w-64 h-64 bg-primary-900 rounded-full opacity-50 blur-3xl"></div>
                     <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-64 h-64 bg-blue-900 rounded-full opacity-50 blur-3xl"></div>
@@ -286,13 +364,13 @@ const RegisterSchool: React.FC<RegisterSchoolProps> = ({ initialState }) => {
                                 <label className="flex items-start space-x-3 cursor-pointer">
                                     <input type="checkbox" checked={agreedToTerms} onChange={e => setAgreedToTerms(e.target.checked)} className="mt-1 h-4 w-4 text-primary-600 rounded border-slate-300 focus:ring-primary-500" />
                                     <span className="text-sm text-slate-600">
-                                        I agree to the <a href="#" className="text-primary-600 hover:underline">Terms of Service</a>. I understand that my data will be processed securely.
+                                        I agree to the <button type="button" onClick={(e) => { e.preventDefault(); setActiveLegalDoc('TERMS'); }} className="text-primary-600 hover:underline font-semibold bg-transparent border-0 p-0 inline">Terms of Service</button>.
                                     </span>
                                 </label>
                                 <label className="flex items-start space-x-3 cursor-pointer">
                                     <input type="checkbox" checked={agreedToPrivacy} onChange={e => setAgreedToPrivacy(e.target.checked)} className="mt-1 h-4 w-4 text-primary-600 rounded border-slate-300 focus:ring-primary-500" />
                                     <span className="text-sm text-slate-600">
-                                        I accept the <a href="#" className="text-primary-600 hover:underline">Privacy Policy</a> and Data Processing Agreement.
+                                        I accept the <button type="button" onClick={(e) => { e.preventDefault(); setActiveLegalDoc('PRIVACY'); }} className="text-primary-600 hover:underline font-semibold bg-transparent border-0 p-0 inline">Privacy Policy</button> and <button type="button" onClick={(e) => { e.preventDefault(); setActiveLegalDoc('DPA'); }} className="text-primary-600 hover:underline font-semibold bg-transparent border-0 p-0 inline">Data Processing Agreement</button>.
                                     </span>
                                 </label>
                             </div>
@@ -354,6 +432,26 @@ const RegisterSchool: React.FC<RegisterSchoolProps> = ({ initialState }) => {
                     )}
                 </div>
             </div>
+
+            {/* Legal Document Modal */}
+            <Modal
+                isOpen={activeLegalDoc !== null}
+                onClose={() => setActiveLegalDoc(null)}
+                title={getLegalTitle()}
+                size="xl"
+            >
+                <div className="max-h-[60vh] overflow-y-auto p-2">
+                    {activeLegalDoc && LEGAL_DOCS[activeLegalDoc]}
+                </div>
+                <div className="mt-4 pt-4 border-t flex justify-end">
+                    <button 
+                        onClick={() => setActiveLegalDoc(null)}
+                        className="px-4 py-2 bg-slate-200 text-slate-800 rounded-lg hover:bg-slate-300 font-semibold"
+                    >
+                        Close
+                    </button>
+                </div>
+            </Modal>
         </div>
     );
 };

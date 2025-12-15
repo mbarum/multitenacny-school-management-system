@@ -14,6 +14,8 @@ import Pagination from '../common/Pagination';
 import Skeleton from '../common/Skeleton';
 import * as api from '../../services/api';
 
+const DEFAULT_AVATAR = 'https://i.imgur.com/S5o7W44.png';
+
 interface StudentProfileModalProps {
     isOpen: boolean;
     onClose: () => void;
@@ -69,20 +71,8 @@ const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ isOpen, onClo
         e.preventDefault();
         if (!student) return;
         
-        // Sanitize the payload. Only send fields that are allowed to be updated.
-        // Backend rejects: id, schoolId, createdAt, updatedAt, admissionNumber
-        const updates: any = {
-            name: formData.name,
-            classId: formData.classId,
-            status: formData.status,
-            profileImage: formData.profileImage,
-            guardianName: formData.guardianName,
-            guardianContact: formData.guardianContact,
-            guardianAddress: formData.guardianAddress,
-            guardianEmail: formData.guardianEmail,
-            emergencyContact: formData.emergencyContact,
-            dateOfBirth: formData.dateOfBirth,
-        };
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { class: _, balance, ...updates } = formData;
         
         updateStudent(student.id, updates).then(() => {
             addNotification(`${student.name}'s profile updated successfully.`, 'success');
@@ -125,7 +115,8 @@ const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ isOpen, onClo
                     <div className="flex items-start space-x-6">
                         <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
                             <img 
-                                src={formData.profileImage || student.profileImage || 'https://i.imgur.com/S5o7W44.png'} 
+                                src={formData.profileImage || DEFAULT_AVATAR} 
+                                onError={(e) => { e.currentTarget.src = DEFAULT_AVATAR; }}
                                 alt={student.name} 
                                 className="h-24 w-24 rounded-full object-cover border-2 border-slate-200 group-hover:opacity-75 transition-opacity"
                             />
@@ -149,6 +140,7 @@ const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ isOpen, onClo
                         </div>
                         <button type="button" onClick={onViewIdCard} className="px-3 py-1.5 bg-slate-200 text-slate-700 font-semibold rounded-lg hover:bg-slate-300 text-sm whitespace-nowrap">View ID Card</button>
                     </div>
+                    {/* ... rest of the form ... */}
                     <div className="pt-4 border-t">
                         <h4 className="text-lg font-semibold text-slate-800 mb-2">Biodata</h4>
                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-slate-700 mb-4">
@@ -204,8 +196,10 @@ const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ isOpen, onClo
 
 
 const StudentsView: React.FC = () => {
+    // ... [Existing Hook Calls] ...
     const { students, updateStudent, deleteStudent, addStudent, addMultipleTransactions, addBulkCommunicationLogs, classes, currentUser, feeStructure, studentFinancials, addNotification, openIdCardModal, updateMultipleStudents } = useData();
 
+    // ... [Existing State Variables] ...
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedClass, setSelectedClass] = useState('all');
     const [statusFilter, setStatusFilter] = useState<StudentStatus | 'all'>(StudentStatus.Active);
@@ -228,18 +222,17 @@ const StudentsView: React.FC = () => {
     const [totalPages, setTotalPages] = useState(1);
 
     const initialStudentState: NewStudent = {
-        name: '', class: classes[0]?.name || '', classId: classes[0]?.id || '', profileImage: 'https://i.imgur.com/S5o7W44.png',
+        name: '', class: classes[0]?.name || '', classId: classes[0]?.id || '', profileImage: DEFAULT_AVATAR,
         guardianName: '', guardianContact: '', guardianAddress: '', guardianEmail: '', emergencyContact: '', dateOfBirth: ''
     };
     
     const [newStudent, setNewStudent] = useState(initialStudentState);
 
-    // Debounced Fetch Logic
+    // ... [Fetch Logic] ...
     const fetchStudents = useCallback(async (page: number, search: string, classId: string, status: string) => {
         setLoading(true);
         try {
             const response = await api.getStudents({ page, limit: 10, search, classId, status });
-            // Fix: Robust check for pagination vs array format
             if (Array.isArray(response)) {
                  setStudentsList(response);
                  setTotalPages(1);
@@ -271,7 +264,6 @@ const StudentsView: React.FC = () => {
     }, [currentPage, selectedClass, statusFilter, fetchStudents]);
 
     useEffect(() => {
-        // Only trigger debounce search if searchTerm changes
         if (searchTerm) {
              debouncedFetch(1, searchTerm, selectedClass, statusFilter);
         }
@@ -288,10 +280,11 @@ const StudentsView: React.FC = () => {
         }
     };
 
+    // ... [Other Handlers like handleAddStudent, etc.] ...
+
     const handleAddStudent = async (e: React.FormEvent) => {
         e.preventDefault();
         
-        // Remove 'class' property which causes 400 Bad Request on backend validation
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { class: className, ...studentData } = newStudent;
 
@@ -345,7 +338,6 @@ const StudentsView: React.FC = () => {
     }
     
     const handlePhotoCapture = async (imageDataUrl: string) => {
-         // Convert base64 to file
          const res = await fetch(imageDataUrl);
          const blob = await res.blob();
          const file = new File([blob], "capture.jpg", { type: "image/jpeg" });
@@ -410,7 +402,6 @@ const StudentsView: React.FC = () => {
         }
     };
 
-    // Bulk Actions Handlers
     const handleSelectStudent = (studentId: string, isSelected: boolean) => {
         if (isSelected) {
             setSelectedStudentIds(prev => [...prev, studentId]);
@@ -459,6 +450,7 @@ const StudentsView: React.FC = () => {
         });
     };
 
+
     return (
         <div className="p-6 md:p-8">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
@@ -470,6 +462,7 @@ const StudentsView: React.FC = () => {
                     <button onClick={handleOpenAddStudentModal} className="px-4 py-2 bg-primary-600 text-white font-semibold rounded-lg shadow-md hover:bg-primary-700 transition-colors">Add New Student</button>
                 </div>
             </div>
+            {/* Filters */}
             <div className="mb-4 flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4 items-center">
                 <input type="text" placeholder="Search by name or admission no..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full sm:w-1/3 p-2 border border-slate-300 rounded-lg shadow-sm focus:ring-primary-500 focus:border-primary-500"/>
                 <select value={selectedClass} onChange={e => setSelectedClass(e.target.value)} className="p-2 border border-slate-300 rounded-lg shadow-sm focus:ring-primary-500 focus:border-primary-500">
@@ -558,7 +551,12 @@ const StudentsView: React.FC = () => {
                                             />
                                         </td>
                                         <td className="px-4 py-2 flex items-center space-x-3">
-                                            <img src={student.profileImage} alt={student.name} className={`h-10 w-10 rounded-full object-cover border border-slate-200 ${student.status !== 'Active' ? 'filter grayscale' : ''}`}/>
+                                            <img 
+                                                src={student.profileImage || DEFAULT_AVATAR} 
+                                                alt={student.name} 
+                                                onError={(e) => { e.currentTarget.src = DEFAULT_AVATAR; }}
+                                                className={`h-10 w-10 rounded-full object-cover border border-slate-200 ${student.status !== 'Active' ? 'filter grayscale' : ''}`}
+                                            />
                                             <div>
                                                 <span className={`font-semibold ${student.status === 'Active' ? 'text-slate-800' : ''}`}>{student.name}</span>
                                                 {student.status !== 'Active' && <span className={`ml-2 px-2 py-0.5 text-xs font-semibold rounded-full ${student.status === 'Graduated' ? 'bg-blue-100 text-blue-700' : 'bg-slate-200 text-slate-600'}`}>{student.status}</span>}
@@ -584,11 +582,17 @@ const StudentsView: React.FC = () => {
             
              <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
 
+             {/* Modals ... */}
             <Modal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} title="Add New Student" size="2xl">
                 <form onSubmit={handleAddStudent} className="space-y-4">
                     <div className="flex items-center space-x-4">
                         <div className="relative h-24 w-24 rounded-full overflow-hidden border group">
-                            <img src={newStudent.profileImage} alt="New student" className="h-full w-full object-cover"/>
+                            <img 
+                                src={newStudent.profileImage || DEFAULT_AVATAR} 
+                                onError={(e) => { e.currentTarget.src = DEFAULT_AVATAR; }}
+                                alt="New student" 
+                                className="h-full w-full object-cover"
+                            />
                         </div>
                         <div className="flex space-x-2">
                              <input 
@@ -602,6 +606,7 @@ const StudentsView: React.FC = () => {
                             <button type="button" onClick={() => setIsCaptureModalOpen(true)} className="px-4 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700">Capture</button>
                         </div>
                     </div>
+                    {/* ... rest of add student form ... */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <input type="text" name="name" placeholder="Full Name" value={newStudent.name} onChange={handleInputChange} required className="p-2 border border-slate-300 rounded-lg"/>
                         <input type="text" name="admissionNumber" placeholder="Admission Number (auto-generated)" value="" readOnly disabled className="p-2 border border-slate-300 rounded-lg bg-slate-100"/>

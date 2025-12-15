@@ -4,7 +4,13 @@ import { Buffer } from 'buffer';
 
 export class CsvUtil {
   static async parse(buffer: Buffer): Promise<any[]> {
-    const text = buffer.toString('utf-8');
+    let text = buffer.toString('utf-8');
+    
+    // Strip BOM (Byte Order Mark) if present
+    if (text.charCodeAt(0) === 0xFEFF) {
+      text = text.slice(1);
+    }
+
     const [headerLine, ...lines] = text.split(/\r?\n/).filter(line => line.trim() !== '');
     
     if (!headerLine) return [];
