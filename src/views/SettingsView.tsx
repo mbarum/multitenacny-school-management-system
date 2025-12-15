@@ -2,10 +2,10 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Modal from '../components/common/Modal';
-import type { SchoolInfo, User, FeeItem, SchoolClass, NewUser, NewFeeItem } from '../types';
-import { GradingSystem, CbetScore, Role } from '../types';
-import { useData } from '../contexts/DataContext';
-import * as api from '../services/api';
+import type { SchoolInfo, User, FeeItem, SchoolClass, DarajaSettings, ClassFee, NewUser, NewFeeItem } from '../../types';
+import { GradingSystem, CbetScore, Role, Currency } from '../../types';
+import { useData } from '../../contexts/DataContext';
+import * as api from '../../services/api';
 
 const FeeItemModal: React.FC<{ isOpen: boolean; onClose: () => void; onSave: (item: any) => void; item: FeeItem | null; classes: SchoolClass[]; feeCategories: string[]; }> = ({ isOpen, onClose, onSave, item, classes, feeCategories }) => {
     const [name, setName] = useState('');
@@ -47,7 +47,7 @@ const FeeItemModal: React.FC<{ isOpen: boolean; onClose: () => void; onSave: (it
                          <div key={c.id} className="flex items-center space-x-2 mb-2">
                              <input type="checkbox" checked={classFees[c.id] !== undefined} onChange={() => setClassFees(prev => { const n = {...prev}; if(n[c.id]!==undefined) delete n[c.id]; else n[c.id]=''; return n; })}/>
                              <span className="flex-1">{c.name}</span>
-                             {classFees[c.id] !== undefined && <input type="number" value={classFees[c.id]} onChange={e=>setClassFees(p=>({...p, [c.id]: e.target.value}))} className="w-24 p-1 border rounded" placeholder="KES"/>}
+                             {classFees[c.id] !== undefined && <input type="number" value={classFees[c.id]} onChange={e=>setClassFees(p=>({...p, [c.id]: e.target.value}))} className="w-24 p-1 border rounded" placeholder="Amount"/>}
                          </div>
                      ))}
                  </div>
@@ -152,10 +152,28 @@ const SettingsView: React.FC = () => {
                             <input type="file" ref={logoInputRef} onChange={e => e.target.files?.[0] && uploadLogo(new FormData().append('logo', e.target.files[0]) as any)} className="hidden" />
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <input value={localSchoolInfo.name} onChange={e => setLocalSchoolInfo({...localSchoolInfo, name: e.target.value})} className="p-2 border rounded" placeholder="School Name" />
-                            <input value={localSchoolInfo.phone} onChange={e => setLocalSchoolInfo({...localSchoolInfo, phone: e.target.value})} className="p-2 border rounded" placeholder="Phone" />
-                            <input value={localSchoolInfo.email} onChange={e => setLocalSchoolInfo({...localSchoolInfo, email: e.target.value})} className="p-2 border rounded" placeholder="Email" />
-                            <input value={localSchoolInfo.address} onChange={e => setLocalSchoolInfo({...localSchoolInfo, address: e.target.value})} className="p-2 border rounded" placeholder="Address" />
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700">School Name</label>
+                                <input value={localSchoolInfo.name} onChange={e => setLocalSchoolInfo({...localSchoolInfo, name: e.target.value})} className="mt-1 p-2 border rounded w-full" />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700">Currency</label>
+                                <select value={localSchoolInfo.currency || 'KES'} onChange={e => setLocalSchoolInfo({...localSchoolInfo, currency: e.target.value as any})} className="mt-1 p-2 border rounded w-full bg-white">
+                                    {Object.values(Currency).map(c => <option key={c} value={c}>{c}</option>)}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700">Phone</label>
+                                <input value={localSchoolInfo.phone} onChange={e => setLocalSchoolInfo({...localSchoolInfo, phone: e.target.value})} className="mt-1 p-2 border rounded w-full" />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700">Email</label>
+                                <input value={localSchoolInfo.email} onChange={e => setLocalSchoolInfo({...localSchoolInfo, email: e.target.value})} className="mt-1 p-2 border rounded w-full" />
+                            </div>
+                            <div className="col-span-2">
+                                <label className="block text-sm font-medium text-slate-700">Address</label>
+                                <input value={localSchoolInfo.address} onChange={e => setLocalSchoolInfo({...localSchoolInfo, address: e.target.value})} className="mt-1 p-2 border rounded w-full" />
+                            </div>
                         </div>
                         <button type="submit" className="px-6 py-2 bg-primary-600 text-white rounded">Save Changes</button>
                     </form>

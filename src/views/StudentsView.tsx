@@ -3,17 +3,17 @@ import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Modal from '../components/common/Modal';
 import WebcamCaptureModal from '../components/common/WebcamCaptureModal';
-import type { Student, NewStudent, NewCommunicationLog, NewTransaction, SchoolClass, CommunicationLog, FeeItem } from '../types';
-import { CommunicationType, StudentStatus, TransactionType } from '../types';
+import type { Student, NewStudent, NewCommunicationLog, NewTransaction, SchoolClass, CommunicationLog, FeeItem } from '../../types';
+import { CommunicationType, StudentStatus, TransactionType } from '../../types';
 import StudentBillingModal from '../components/common/StudentBillingModal';
 import BulkMessageModal from '../components/common/BulkMessageModal';
 import PromotionModal from '../components/common/PromotionModal';
-import { useData } from '../contexts/DataContext';
+import { useData } from '../../contexts/DataContext';
 import ImportModal from '../components/common/ImportModal';
 import Pagination from '../components/common/Pagination';
 import Skeleton from '../components/common/Skeleton';
-import * as api from '../services/api';
-import { calculateAge } from '../utils/helpers';
+import * as api from '../../services/api';
+import { calculateAge } from '../../utils/helpers';
 
 const DEFAULT_AVATAR = 'https://i.imgur.com/S5o7W44.png';
 
@@ -425,8 +425,7 @@ const StudentsView: React.FC = () => {
                 </div>
             </div>
             
-            {/* Filters */}
-             <div className="mb-4 flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4 items-center">
+            <div className="mb-4 flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4 items-center">
                 <input type="text" placeholder="Search by name or admission no..." value={searchTerm} onChange={e => { setSearchTerm(e.target.value); setPage(1); }} className="w-full sm:w-1/3 p-2 border border-slate-300 rounded-lg shadow-sm focus:ring-primary-500 focus:border-primary-500"/>
                 <select value={selectedClass} onChange={e => { setSelectedClass(e.target.value); setPage(1); }} className="p-2 border border-slate-300 rounded-lg shadow-sm focus:ring-primary-500 focus:border-primary-500">
                     <option value="all">All Classes</option>
@@ -516,23 +515,27 @@ const StudentsView: React.FC = () => {
             </div>
              <Pagination currentPage={page} totalPages={totalPages} onPageChange={setPage} />
 
-             {/* ... Modals (StudentProfileModal, etc) ... */}
-            <StudentProfileModal isOpen={isProfileModalOpen} onClose={() => setIsProfileModalOpen(false)} student={selectedStudent} onViewIdCard={() => { openIdCardModal(selectedStudent!, 'student'); setIsProfileModalOpen(false); }} />
-            <StudentBillingModal isOpen={isBillingModalOpen} onClose={() => setIsBillingModalOpen(false)} student={selectedStudent} />
+             {/* Modals */}
             <Modal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} title="Add New Student" size="xl">
                 <form onSubmit={handleAddStudent} className="space-y-4">
-                    {/* Form fields here matching initialStudentState */}
-                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <input name="name" placeholder="Full Name" value={newStudent.name} onChange={(e) => setNewStudent({...newStudent, name: e.target.value})} className="p-2 border border-slate-300 rounded-lg" required/>
-                        <select name="classId" value={newStudent.classId} onChange={handleInputChange} required className="p-2 border border-slate-300 rounded-lg">
-                            {classes.map((c:SchoolClass) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    <div className="flex items-center space-x-4">
+                        <img src={newStudent.profileImage} className="h-20 w-20 rounded-full border" alt="Profile" />
+                        <button type="button" onClick={() => addStudentPhotoInputRef.current?.click()} className="px-3 py-1 bg-slate-200 rounded">Upload</button>
+                        <input type="file" ref={addStudentPhotoInputRef} className="hidden" onChange={handleAddStudentPhotoUpload}/>
+                        <button type="button" onClick={() => setIsCaptureModalOpen(true)} className="px-3 py-1 bg-slate-200 rounded">Capture</button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <input name="name" placeholder="Full Name" value={newStudent.name} onChange={handleInputChange} className="p-2 border rounded" required/>
+                        <select name="classId" value={newStudent.classId} onChange={handleInputChange} className="p-2 border rounded" required>
+                             <option value="">Select Class</option>
+                             {classes.map((c:SchoolClass) => <option key={c.id} value={c.id}>{c.name}</option>)}
                         </select>
-                        <input name="guardianName" placeholder="Guardian Name" value={newStudent.guardianName} onChange={e => setNewStudent({...newStudent, guardianName: e.target.value})} className="p-2 border rounded" required/>
-                        <input name="guardianContact" placeholder="Contact" value={newStudent.guardianContact} onChange={e => setNewStudent({...newStudent, guardianContact: e.target.value})} className="p-2 border rounded" required/>
-                        <input name="guardianEmail" placeholder="Email" value={newStudent.guardianEmail} onChange={e => setNewStudent({...newStudent, guardianEmail: e.target.value})} className="p-2 border rounded"/>
-                        <input name="dateOfBirth" type="date" value={newStudent.dateOfBirth} onChange={e => setNewStudent({...newStudent, dateOfBirth: e.target.value})} className="p-2 border rounded" required/>
-                        <input name="guardianAddress" placeholder="Address" value={newStudent.guardianAddress} onChange={e => setNewStudent({...newStudent, guardianAddress: e.target.value})} className="p-2 border rounded col-span-2" required/>
-                        <input name="emergencyContact" placeholder="Emergency Contact" value={newStudent.emergencyContact} onChange={e => setNewStudent({...newStudent, emergencyContact: e.target.value})} className="p-2 border rounded" required/>
+                        <input name="guardianName" placeholder="Guardian Name" value={newStudent.guardianName} onChange={handleInputChange} className="p-2 border rounded" required/>
+                        <input name="guardianContact" placeholder="Contact" value={newStudent.guardianContact} onChange={handleInputChange} className="p-2 border rounded" required/>
+                        <input name="guardianEmail" placeholder="Email" value={newStudent.guardianEmail} onChange={handleInputChange} className="p-2 border rounded"/>
+                        <input name="dateOfBirth" type="date" value={newStudent.dateOfBirth} onChange={handleInputChange} className="p-2 border rounded" required/>
+                        <input name="guardianAddress" placeholder="Address" value={newStudent.guardianAddress} onChange={handleInputChange} className="p-2 border rounded col-span-2" required/>
+                        <input name="emergencyContact" placeholder="Emergency Contact" value={newStudent.emergencyContact} onChange={handleInputChange} className="p-2 border rounded" required/>
                     </div>
                     <div className="flex justify-end"><button type="submit" className="px-6 py-2 bg-primary-600 text-white rounded">Save Student</button></div>
                 </form>

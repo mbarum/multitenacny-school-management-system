@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import * as api from '../../services/api';
 import { useData } from '../../contexts/DataContext';
-import { SubscriptionPlan, PlatformPricing } from '../../types';
+import { SubscriptionPlan, PlatformPricing, Currency } from '../../types';
 import { initiateSTKPush } from '../../services/darajaService';
 import Spinner from '../common/Spinner';
 import { loadStripe } from '@stripe/stripe-js';
@@ -168,7 +168,7 @@ const StripePaymentForm: React.FC<{
 };
 
 const RegisterSchool: React.FC<RegisterSchoolProps> = ({ initialState }) => {
-    const { handleLogin, addNotification } = useData();
+    const { handleLogin, addNotification, formatCurrency } = useData();
     const [formData, setFormData] = useState({
         schoolName: '',
         adminName: '',
@@ -176,7 +176,8 @@ const RegisterSchool: React.FC<RegisterSchoolProps> = ({ initialState }) => {
         password: '',
         phone: '',
         plan: initialState?.plan || SubscriptionPlan.FREE,
-        billingCycle: initialState?.billing || 'MONTHLY'
+        billingCycle: initialState?.billing || 'MONTHLY',
+        currency: 'KES'
     });
     
     // Legal Consent
@@ -188,22 +189,27 @@ const RegisterSchool: React.FC<RegisterSchoolProps> = ({ initialState }) => {
 
     const [isLoading, setIsLoading] = useState(false);
     const [pricing, setPricing] = useState<PlatformPricing | null>(null);
+    const [exchangeRates, setExchangeRates] = useState<Record<string, number>>({});
     const [error, setError] = useState('');
     
     const [paymentMethod, setPaymentMethod] = useState<'MPESA' | 'CARD'>('MPESA');
     const [paymentStatus, setPaymentStatus] = useState<'idle' | 'processing' | 'success'>('idle');
 
     useEffect(() => {
-        const fetchPricing = async () => {
+        const fetchPricingAndRates = async () => {
             try {
-                const data = await api.getPlatformPricing();
-                setPricing(data);
+                const [priceData, ratesData] = await Promise.all([
+                    api.getPlatformPricing(),
+                    api.getExchangeRates()
+                ]);
+                setPricing(priceData);
+                setExchangeRates(ratesData);
             } catch (error) {
-                console.error("Failed to fetch pricing", error);
+                console.error("Failed to load pricing or rates", error);
                 setPricing({ id: 0, basicMonthlyPrice: 3000, basicAnnualPrice: 30000, premiumMonthlyPrice: 5000, premiumAnnualPrice: 50000 });
             }
         };
-        fetchPricing();
+        fetchPricingAndRates();
     }, []);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -212,9 +218,13 @@ const RegisterSchool: React.FC<RegisterSchoolProps> = ({ initialState }) => {
 
     const calculatePrice = () => {
         if (formData.plan === SubscriptionPlan.FREE || !pricing) return 0;
-        if (formData.plan === SubscriptionPlan.BASIC) return formData.billingCycle === 'MONTHLY' ? pricing.basicMonthlyPrice : pricing.basicAnnualPrice;
-        if (formData.plan === SubscriptionPlan.PREMIUM) return formData.billingCycle === 'MONTHLY' ? pricing.premiumMonthlyPrice : pricing.premiumAnnualPrice;
-        return 0;
+        let basePrice = 0;
+        if (formData.plan === SubscriptionPlan.BASIC) basePrice = formData.billingCycle === 'MONTHLY' ? pricing.basicMonthlyPrice : pricing.basicAnnualPrice;
+        if (formData.plan === SubscriptionPlan.PREMIUM) basePrice = formData.billingCycle === 'MONTHLY' ? pricing.premiumMonthlyPrice : pricing.premiumAnnualPrice;
+        
+        // Convert based on selected currency
+        const rate = exchangeRates[formData.currency] || 1;
+        return basePrice * rate;
     };
 
     // Main Registration Logic
@@ -232,7 +242,20 @@ const RegisterSchool: React.FC<RegisterSchoolProps> = ({ initialState }) => {
                  const price = calculatePrice();
                  try {
                      if (user && user.schoolId) {
-                         const stkResponse = await initiateSTKPush(price, formData.phone, 'SUB_' + user.schoolId.substring(0, 8));
+                         // Note: initiateSTKPush expects KES amount if using standard Paybill. 
+                         // If paying in other currencies, ensure payment gateway handles it or convert back to KES for MPesa.
+                         // For simplicity here, assuming we pay in KES for MPesa regardless of display currency, OR user selects KES for MPesa.
+                         // If user selected USD but pays via M-Pesa, M-Pesa charges KES.
+                         
+                         let payAmount = price;
+                         if (formData.currency !== 'KES') {
+                             // Convert back to KES for M-Pesa stk push if not KES
+                             // Using simplistic inverse rate
+                             const rate = exchangeRates[formData.currency] || 1;
+                             payAmount = price / rate;
+                         }
+
+                         const stkResponse = await initiateSTKPush(Math.round(payAmount), formData.phone, 'SUB_' + user.schoolId.substring(0, 8));
                          addNotification(stkResponse.CustomerMessage, 'info');
                          setPaymentStatus('success'); 
                      }
@@ -280,6 +303,8 @@ const RegisterSchool: React.FC<RegisterSchoolProps> = ({ initialState }) => {
         }
     }
 
+    const price = calculatePrice();
+
     return (
         <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
             <div className="bg-white rounded-xl shadow-2xl w-full max-w-5xl overflow-hidden flex flex-col md:flex-row">
@@ -302,7 +327,9 @@ const RegisterSchool: React.FC<RegisterSchoolProps> = ({ initialState }) => {
                                 <span className="font-bold text-xl text-white">{formData.plan} Plan</span>
                                 <span className="text-xs bg-primary-600 text-white px-2 py-1 rounded font-bold">{formData.billingCycle}</span>
                             </div>
-                            <div className="text-3xl font-bold text-primary-400 mb-2">KES {calculatePrice().toLocaleString()}</div>
+                            <div className="text-3xl font-bold text-primary-400 mb-2">
+                                {formatCurrency(price, formData.currency)}
+                            </div>
                             <p className="text-xs text-slate-400">
                                 {formData.plan === SubscriptionPlan.FREE ? 'Forever free.' : 'Payment processed securely.'}
                             </p>
@@ -349,9 +376,24 @@ const RegisterSchool: React.FC<RegisterSchoolProps> = ({ initialState }) => {
                                 </div>
                             </div>
 
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Email Address</label>
-                                <input type="email" name="adminEmail" value={formData.adminEmail} onChange={handleChange} required className="block w-full p-3 border border-slate-300 rounded-lg" placeholder="admin@school.com" />
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">Email Address</label>
+                                    <input type="email" name="adminEmail" value={formData.adminEmail} onChange={handleChange} required className="block w-full p-3 border border-slate-300 rounded-lg" placeholder="admin@school.com" />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">Currency</label>
+                                    <select 
+                                        name="currency" 
+                                        value={formData.currency} 
+                                        onChange={handleChange} 
+                                        className="block w-full p-3 border border-slate-300 rounded-lg bg-white"
+                                    >
+                                        {Object.values(Currency).map(curr => (
+                                            <option key={curr} value={curr}>{curr}</option>
+                                        ))}
+                                    </select>
+                                </div>
                             </div>
 
                             <div>
@@ -399,7 +441,7 @@ const RegisterSchool: React.FC<RegisterSchoolProps> = ({ initialState }) => {
                                     {paymentMethod === 'CARD' && (
                                         <Elements stripe={stripePromise}>
                                             <StripePaymentForm 
-                                                amount={calculatePrice()} 
+                                                amount={price} 
                                                 email={formData.adminEmail}
                                                 onSuccess={(method) => {
                                                     console.log('Stripe success via', method);

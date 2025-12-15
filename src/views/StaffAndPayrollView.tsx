@@ -5,10 +5,10 @@ import Modal from '../components/common/Modal';
 import WebcamCaptureModal from '../components/common/WebcamCaptureModal';
 import Pagination from '../components/common/Pagination';
 import Skeleton from '../components/common/Skeleton';
-import type { Staff, Payroll, PayrollItem, NewStaff, NewPayrollItem, PayrollEntry } from '../types';
-import { PayrollItemType, PayrollItemCategory, CalculationType, Role } from '../types';
-import { useData } from '../contexts/DataContext';
-import * as api from '../services/api';
+import type { Staff, Payroll, PayrollItem, NewStaff, NewPayrollItem, PayrollEntry } from '../../types';
+import { PayrollItemType, PayrollItemCategory, CalculationType, Role } from '../../types';
+import { useData } from '../../contexts/DataContext';
+import * as api from '../../services/api';
 
 const DEFAULT_AVATAR = 'https://i.imgur.com/S5o7W44.png';
 
@@ -110,7 +110,7 @@ const PayrollEditModal: React.FC<{ isOpen: boolean; onClose: () => void; entry: 
 };
 
 const StaffAndPayrollView: React.FC = () => {
-    const { schoolInfo, openIdCardModal, addNotification } = useData();
+    const { schoolInfo, openIdCardModal, addNotification, formatCurrency } = useData();
     const queryClient = useQueryClient();
     
     // UI State
@@ -362,7 +362,7 @@ const StaffAndPayrollView: React.FC = () => {
             {activeTab === 'roster' && (
                 <div className="mt-6 bg-white rounded-xl shadow-lg overflow-x-auto">
                     <table className="w-full text-left table-auto">
-                        <thead><tr className="bg-slate-50 border-b border-slate-200"><th className="px-4 py-3 font-semibold text-slate-600">Photo</th><th className="px-4 py-3 font-semibold text-slate-600">Name</th><th className="px-4 py-3 font-semibold text-slate-600">Role</th><th className="px-4 py-3 font-semibold text-slate-600">Basic Salary (KES)</th><th className="px-4 py-3 font-semibold text-slate-600">Actions</th></tr></thead>
+                        <thead><tr className="bg-slate-50 border-b border-slate-200"><th className="px-4 py-3 font-semibold text-slate-600">Photo</th><th className="px-4 py-3 font-semibold text-slate-600">Name</th><th className="px-4 py-3 font-semibold text-slate-600">Role</th><th className="px-4 py-3 font-semibold text-slate-600">Basic Salary</th><th className="px-4 py-3 font-semibold text-slate-600">Actions</th></tr></thead>
                         <tbody>{staffList.map((s: any) => (
                             <tr key={s.id} className="border-b border-slate-100 hover:bg-slate-50">
                                 <td className="px-4 py-3">
@@ -375,7 +375,7 @@ const StaffAndPayrollView: React.FC = () => {
                                 </td>
                                 <td className="px-4 py-3 text-slate-800 font-medium">{s.name}</td>
                                 <td className="px-4 py-3 text-slate-500">{s.role}</td>
-                                <td className="px-4 py-3 text-slate-500">{s.salary.toLocaleString()}</td>
+                                <td className="px-4 py-3 text-slate-500">{formatCurrency(s.salary)}</td>
                                 <td className="px-4 py-3 space-x-4"><button onClick={() => openStaffModal(s)} className="text-blue-600 hover:underline">Edit</button><button onClick={() => openIdCardModal(s, 'staff')} className="text-purple-600 hover:underline">ID Card</button><button onClick={() => openP9Modal(s)} className="text-green-600 hover:underline">View P9</button></td>
                             </tr>
                         ))}</tbody>
@@ -423,7 +423,7 @@ const StaffAndPayrollView: React.FC = () => {
                                 <tr key={p.id} className="border-b border-slate-100">
                                     <td className="px-4 py-3">{p.month}</td>
                                     <td className="px-4 py-3">{p.staffName}</td>
-                                    <td className="px-4 py-3 font-bold">{p.netPay.toLocaleString()}</td>
+                                    <td className="px-4 py-3 font-bold">{formatCurrency(p.netPay)}</td>
                                     <td className="px-4 py-3"><button onClick={() => { setSelectedPayroll(p); setIsPayslipModalOpen(true); }} className="text-blue-600 hover:underline">Payslip</button></td>
                                 </tr>
                             ))}
@@ -497,7 +497,7 @@ const StaffAndPayrollView: React.FC = () => {
                     <div className="relative">
                         <input 
                             type="number" 
-                            placeholder={itemFormData.calculationType === CalculationType.Fixed ? 'Amount in KES' : 'Percentage'}
+                            placeholder={itemFormData.calculationType === CalculationType.Fixed ? 'Amount' : 'Percentage'}
                             value={itemFormData.value || ''} 
                             onChange={e => setItemFormData({...itemFormData, value: parseFloat(e.target.value) || 0 })} 
                             required 
@@ -535,9 +535,9 @@ const StaffAndPayrollView: React.FC = () => {
                             {payrollWorksheet.map((p:any) => (
                                 <tr key={p.staffId} className="border-b border-slate-100">
                                     <td className="p-2 font-medium">{p.staffName}</td>
-                                    <td className="p-2 text-green-700">{p.grossPay.toLocaleString()}</td>
-                                    <td className="p-2 text-red-700">{p.totalDeductions.toLocaleString()}</td>
-                                    <td className="p-2 font-bold text-slate-800">{p.netPay.toLocaleString()}</td>
+                                    <td className="p-2 text-green-700">{formatCurrency(p.grossPay)}</td>
+                                    <td className="p-2 text-red-700">{formatCurrency(p.totalDeductions)}</td>
+                                    <td className="p-2 font-bold text-slate-800">{formatCurrency(p.netPay)}</td>
                                     <td className="p-2">
                                         <button onClick={() => handleOpenEditEntry(p)} className="text-blue-600 hover:underline font-medium">Edit</button>
                                     </td>
@@ -594,7 +594,7 @@ const StaffAndPayrollView: React.FC = () => {
                                     <h4 className="text-lg font-semibold border-b pb-1 text-slate-700">Earnings</h4>
                                     <table className="w-full text-sm">
                                         <tbody>
-                                            {selectedPayroll.earnings.map((item, i) => (<tr key={i}><td className="py-1">{item.name}</td><td className="py-1 text-right">{item.amount.toLocaleString('en-KE', { style: 'currency', currency: 'KES' })}</td></tr>))}
+                                            {selectedPayroll.earnings.map((item, i) => (<tr key={i}><td className="py-1">{item.name}</td><td className="py-1 text-right">{formatCurrency(item.amount)}</td></tr>))}
                                         </tbody>
                                     </table>
                                 </div>
@@ -602,7 +602,7 @@ const StaffAndPayrollView: React.FC = () => {
                                     <h4 className="text-lg font-semibold border-b pb-1 text-slate-700">Deductions</h4>
                                     <table className="w-full text-sm">
                                         <tbody>
-                                            {selectedPayroll.deductions.map((item, i) => (<tr key={i}><td className="py-1">{item.name}</td><td className="py-1 text-right">({item.amount.toLocaleString('en-KE', { style: 'currency', currency: 'KES' })})</td></tr>))}
+                                            {selectedPayroll.deductions.map((item, i) => (<tr key={i}><td className="py-1">{item.name}</td><td className="py-1 text-right">({formatCurrency(item.amount)})</td></tr>))}
                                         </tbody>
                                     </table>
                                 </div>
@@ -610,12 +610,12 @@ const StaffAndPayrollView: React.FC = () => {
                              {/* Summary Section */}
                             <div className="mt-6 pt-4 border-t-2 border-slate-200 grid grid-cols-2 gap-8 items-end">
                                 <div className="text-sm space-y-1">
-                                    <div className="flex justify-between font-semibold"><span className="text-slate-600">Gross Pay:</span><span>{selectedPayroll.grossPay.toLocaleString('en-KE', { style: 'currency', currency: 'KES' })}</span></div>
-                                    <div className="flex justify-between font-semibold"><span className="text-slate-600">Total Deductions:</span><span>({selectedPayroll.totalDeductions.toLocaleString('en-KE', { style: 'currency', currency: 'KES' })})</span></div>
+                                    <div className="flex justify-between font-semibold"><span className="text-slate-600">Gross Pay:</span><span>{formatCurrency(selectedPayroll.grossPay)}</span></div>
+                                    <div className="flex justify-between font-semibold"><span className="text-slate-600">Total Deductions:</span><span>({formatCurrency(selectedPayroll.totalDeductions)})</span></div>
                                 </div>
                                 <div className="bg-primary-50 p-4 rounded-lg text-right">
                                     <p className="text-sm font-semibold text-primary-700">Net Pay</p>
-                                    <p className="text-3xl font-bold text-primary-800">{selectedPayroll.netPay.toLocaleString('en-KE', { style: 'currency', currency: 'KES' })}</p>
+                                    <p className="text-3xl font-bold text-primary-800">{formatCurrency(selectedPayroll.netPay)}</p>
                                 </div>
                             </div>
                             {/* Footer */}

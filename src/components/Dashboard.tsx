@@ -101,8 +101,8 @@ const Dashboard: React.FC = () => {
                                 <YAxis tick={{ fill: '#64748b' }} tickFormatter={(value) => new Intl.NumberFormat('en-US', { notation: 'compact', compactDisplay: 'short' }).format(value)} />
                                 <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '0.75rem' }} formatter={(value: number) => formatCurrency(value)} />
                                 <Legend />
-                                <Bar dataKey="income" fill="#346955" name="Income (KES)" radius={[4, 4, 0, 0]} />
-                                <Bar dataKey="expenses" fill="#475569" name="Expenses (KES)" radius={[4, 4, 0, 0]}/>
+                                <Bar dataKey="income" fill="#346955" name="Income" radius={[4, 4, 0, 0]} />
+                                <Bar dataKey="expenses" fill="#475569" name="Expenses" radius={[4, 4, 0, 0]}/>
                             </BarChart>
                         </ResponsiveContainer>
                     )}

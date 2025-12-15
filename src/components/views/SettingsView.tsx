@@ -47,7 +47,7 @@ const FeeItemModal: React.FC<{ isOpen: boolean; onClose: () => void; onSave: (it
                          <div key={c.id} className="flex items-center space-x-2 mb-2">
                              <input type="checkbox" checked={classFees[c.id] !== undefined} onChange={() => setClassFees(prev => { const n = {...prev}; if(n[c.id]!==undefined) delete n[c.id]; else n[c.id]=''; return n; })}/>
                              <span className="flex-1">{c.name}</span>
-                             {classFees[c.id] !== undefined && <input type="number" value={classFees[c.id]} onChange={e=>setClassFees(p=>({...p, [c.id]: e.target.value}))} className="w-24 p-1 border rounded" placeholder="KES"/>}
+                             {classFees[c.id] !== undefined && <input type="number" value={classFees[c.id]} onChange={e=>setClassFees(p=>({...p, [c.id]: e.target.value}))} className="w-24 p-1 border rounded" placeholder="Amount"/>}
                          </div>
                      ))}
                  </div>
@@ -57,9 +57,7 @@ const FeeItemModal: React.FC<{ isOpen: boolean; onClose: () => void; onSave: (it
     );
 };
 
-// ... UserModal component (omitted for brevity, assume similar structure but updated to use API calls if needed, otherwise parent handles save) ...
 const UserModal: React.FC<any> = ({ isOpen, onClose, onSave, user }) => {
-    // Basic implementation for structure
      const [formData, setFormData] = useState({ name: '', email: '', password: '', role: Role.Parent });
      useEffect(() => { if(user) setFormData({name: user.name, email: user.email, password: '', role: user.role}); else setFormData({name: '', email: '', password: '', role: Role.Parent}) }, [user, isOpen]);
      const handleChange = (e: any) => setFormData(p => ({...p, [e.target.name]: e.target.value}));
@@ -95,6 +93,11 @@ const SettingsView: React.FC = () => {
     const [editingFeeItem, setEditingFeeItem] = useState<FeeItem | null>(null);
     const [isUserModalOpen, setIsUserModalOpen] = useState(false);
     const [editingUser, setEditingUser] = useState<User | null>(null);
+    const [localDaraja, setLocalDaraja] = useState<any>({});
+    const [localGradingScale, setLocalGradingScale] = useState<any[]>([]);
+
+    useEffect(() => { if(darajaSettings) setLocalDaraja(darajaSettings); }, [darajaSettings]);
+    useEffect(() => { if(gradingScale) setLocalGradingScale(gradingScale); }, [gradingScale]);
 
     // Mutations
     const feeMutation = useMutation({ mutationFn: (data:any) => data.id ? api.updateFeeItem(data.id, data) : api.createFeeItem(data), onSuccess: () => { queryClient.invalidateQueries({queryKey:['fee-structure']}); setIsFeeModalOpen(false); addNotification('Fee structure updated', 'success'); }});
@@ -118,16 +121,16 @@ const SettingsView: React.FC = () => {
         addNotification('School info updated', 'success');
     };
     
-    // Grading handlers
-    const handleGradingRuleChange = (id: string, field: string, value: any) => {
-        // Optimistic UI for table inputs would be complex, here just direct mutation call on blur would be better,
-        // but for simplicity in this refactor, we assume a save button per row or global save isn't implemented fully in this snippet.
-        // A real impl would use local state for the list then bulk save.
-        // For now, let's just assume individual row edits via a modal or direct API call.
-        // This view needs a proper editable table component.
-    };
-
     const feeCategories = [...new Set((feeStructure as FeeItem[]).map(i => i.category))];
+
+    const handleGradingChange = (id: string, field: string, value: any) => {
+        setLocalGradingScale(prev => prev.map(rule => rule.id === id ? { ...rule, [field]: value } : rule));
+    }
+    
+    const saveGrading = () => {
+         // In a real app we'd bulk update or diff. Here we just loop for simplicity.
+         localGradingScale.forEach(rule => gradingMutation.mutate(rule));
+    }
 
     return (
         <div className="p-6 md:p-8">
@@ -149,10 +152,28 @@ const SettingsView: React.FC = () => {
                             <input type="file" ref={logoInputRef} onChange={e => e.target.files?.[0] && uploadLogo(new FormData().append('logo', e.target.files[0]) as any)} className="hidden" />
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <input value={localSchoolInfo.name} onChange={e => setLocalSchoolInfo({...localSchoolInfo, name: e.target.value})} className="p-2 border rounded" placeholder="School Name" />
-                            <input value={localSchoolInfo.phone} onChange={e => setLocalSchoolInfo({...localSchoolInfo, phone: e.target.value})} className="p-2 border rounded" placeholder="Phone" />
-                            <input value={localSchoolInfo.email} onChange={e => setLocalSchoolInfo({...localSchoolInfo, email: e.target.value})} className="p-2 border rounded" placeholder="Email" />
-                            <input value={localSchoolInfo.address} onChange={e => setLocalSchoolInfo({...localSchoolInfo, address: e.target.value})} className="p-2 border rounded" placeholder="Address" />
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700">School Name</label>
+                                <input value={localSchoolInfo.name} onChange={e => setLocalSchoolInfo({...localSchoolInfo, name: e.target.value})} className="mt-1 p-2 border rounded w-full" />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700">Currency</label>
+                                <select value={localSchoolInfo.currency || 'KES'} onChange={e => setLocalSchoolInfo({...localSchoolInfo, currency: e.target.value as any})} className="mt-1 p-2 border rounded w-full bg-white">
+                                    {Object.values(Currency).map(c => <option key={c} value={c}>{c}</option>)}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700">Phone</label>
+                                <input value={localSchoolInfo.phone} onChange={e => setLocalSchoolInfo({...localSchoolInfo, phone: e.target.value})} className="mt-1 p-2 border rounded w-full" />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700">Email</label>
+                                <input value={localSchoolInfo.email} onChange={e => setLocalSchoolInfo({...localSchoolInfo, email: e.target.value})} className="mt-1 p-2 border rounded w-full" />
+                            </div>
+                            <div className="col-span-2">
+                                <label className="block text-sm font-medium text-slate-700">Address</label>
+                                <input value={localSchoolInfo.address} onChange={e => setLocalSchoolInfo({...localSchoolInfo, address: e.target.value})} className="mt-1 p-2 border rounded w-full" />
+                            </div>
                         </div>
                         <button type="submit" className="px-6 py-2 bg-primary-600 text-white rounded">Save Changes</button>
                     </form>
@@ -190,9 +211,41 @@ const SettingsView: React.FC = () => {
                     </div>
                 </div>
             )}
-
-            {/* Other tabs simplified for brevity but follow same pattern using useQuery data */}
             
+            {activeTab === 'mpesa' && (
+                <div className="bg-white p-6 rounded-xl shadow-lg">
+                    <h3 className="text-xl font-bold mb-4">M-Pesa Settings</h3>
+                    <div className="space-y-4 max-w-lg">
+                        <input value={localDaraja.paybillNumber || ''} onChange={e => setLocalDaraja({...localDaraja, paybillNumber: e.target.value})} placeholder="Paybill Number" className="p-2 border rounded w-full"/>
+                        <input value={localDaraja.consumerKey || ''} onChange={e => setLocalDaraja({...localDaraja, consumerKey: e.target.value})} placeholder="Consumer Key" className="p-2 border rounded w-full"/>
+                        <input type="password" value={localDaraja.consumerSecret || ''} onChange={e => setLocalDaraja({...localDaraja, consumerSecret: e.target.value})} placeholder="Consumer Secret" className="p-2 border rounded w-full"/>
+                        <input type="password" value={localDaraja.passkey || ''} onChange={e => setLocalDaraja({...localDaraja, passkey: e.target.value})} placeholder="Passkey" className="p-2 border rounded w-full"/>
+                        <button onClick={() => darajaMutation.mutate(localDaraja)} className="px-6 py-2 bg-primary-600 text-white rounded">Save M-Pesa Settings</button>
+                    </div>
+                </div>
+            )}
+            
+            {activeTab === 'grading' && (
+                <div className="bg-white p-6 rounded-xl shadow-lg">
+                    <h3 className="text-xl font-semibold mb-4">Grading Rules (Traditional)</h3>
+                    {localGradingScale.map(rule => (
+                        <div key={rule.id} className="grid grid-cols-4 gap-4 mb-2">
+                             <input value={rule.grade} onChange={e=>handleGradingChange(rule.id, 'grade', e.target.value)} className="p-1 border rounded" placeholder="Grade"/>
+                             <input type="number" value={rule.minScore} onChange={e=>handleGradingChange(rule.id, 'minScore', parseInt(e.target.value))} className="p-1 border rounded" placeholder="Min"/>
+                             <input type="number" value={rule.maxScore} onChange={e=>handleGradingChange(rule.id, 'maxScore', parseInt(e.target.value))} className="p-1 border rounded" placeholder="Max"/>
+                             <button onClick={()=>deleteGradingMutation.mutate(rule.id)} className="text-red-500">Delete</button>
+                        </div>
+                    ))}
+                    <button onClick={()=>gradingMutation.mutate({grade: 'New', minScore: 0, maxScore: 100})} className="mt-2 text-blue-600">+ Add Rule</button>
+                    <div className="mt-4 border-t pt-4"><button onClick={saveGrading} className="px-4 py-2 bg-primary-600 text-white rounded">Save Changes</button></div>
+                    
+                    <div className="mt-8 pt-6 border-t">
+                         <h3 className="text-xl font-semibold mb-4">CBC Levels</h3>
+                         <ul className="list-disc pl-5">{Object.values(CbetScore).map(l=><li key={l}>{l}</li>)}</ul>
+                    </div>
+                </div>
+            )}
+
             <FeeItemModal isOpen={isFeeModalOpen} onClose={() => setIsFeeModalOpen(false)} onSave={(d) => feeMutation.mutate(d)} item={editingFeeItem} classes={classes} feeCategories={feeCategories}/>
             <UserModal isOpen={isUserModalOpen} onClose={() => setIsUserModalOpen(false)} onSave={(d: any) => userMutation.mutate(d)} user={editingUser} />
         </div>

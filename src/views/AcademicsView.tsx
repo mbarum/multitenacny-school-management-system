@@ -60,9 +60,9 @@ const AcademicsView: React.FC = () => {
     const teachers = staff.filter((s:any) => s.userRole === Role.Teacher);
 
     return (
-        <div className="p-6 md:p-8">
+        <div className="p-4 sm:p-6">
             <h2 className="text-3xl font-bold text-slate-800 mb-6">Academics Management</h2>
-            <div className="border-b border-slate-200 mb-6">
+            <div className="border-b border-slate-200 mb-6 overflow-x-auto">
                 <nav className="-mb-px flex space-x-8">
                     <button onClick={() => setActiveTab('classes')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'classes' ? 'border-primary-500 text-primary-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>Classes</button>
                     <button onClick={() => setActiveTab('subjects')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'subjects' ? 'border-primary-500 text-primary-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>Subjects</button>

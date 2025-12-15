@@ -89,6 +89,7 @@ export class AuthService {
             slug: dto.schoolName.toLowerCase().replace(/[^a-z0-9]/g, '-') + '-' + Date.now().toString().slice(-4),
             email: dto.adminEmail,
             phone: dto.phone,
+            currency: dto.currency || 'KES',
         });
         const savedSchool = await manager.save(school);
         this.logger.log(`School created with ID: ${savedSchool.id}`);

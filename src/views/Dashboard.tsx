@@ -10,7 +10,7 @@ import { useNavigate } from 'react-router-dom';
 const StatCard: React.FC<{ title: string; value: string; icon: React.ReactElement, loading?: boolean, onClick?: () => void, colorClass?: string }> = ({ title, value, icon, loading, onClick, colorClass }) => (
     <div 
         onClick={onClick}
-        className={`bg-white p-6 rounded-xl shadow-lg flex items-center space-x-4 transition-transform transform hover:-translate-y-1 h-32 cursor-pointer hover:shadow-xl border border-transparent hover:border-slate-100`}
+        className={`bg-white p-4 sm:p-6 rounded-xl shadow-lg flex items-center space-x-4 transition-transform transform hover:-translate-y-1 h-32 cursor-pointer hover:shadow-xl border border-transparent hover:border-slate-100`}
         role="button"
         tabIndex={0}
     >
@@ -22,7 +22,7 @@ const StatCard: React.FC<{ title: string; value: string; icon: React.ReactElemen
             {loading ? (
                 <Skeleton className="h-8 w-3/4 mt-1" />
             ) : (
-                <p className={`text-2xl font-bold text-slate-800 ${value.includes('-') ? 'text-red-600' : ''}`}>{value}</p>
+                <p className={`text-xl sm:text-2xl font-bold text-slate-800 ${value.includes('-') ? 'text-red-600' : ''}`}>{value}</p>
             )}
         </div>
     </div>
@@ -43,7 +43,7 @@ const Dashboard: React.FC = () => {
     const isProfitPositive = profit >= 0;
 
     return (
-        <div className="p-6 md:p-8 space-y-8">
+        <div className="p-4 sm:p-6 space-y-6">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
                 <StatCard 
                     title="Active Students" 
@@ -89,9 +89,9 @@ const Dashboard: React.FC = () => {
                     onClick={() => navigate('/reporting')}
                 />
             </div>
-            <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
-                <div className="lg:col-span-3 bg-white p-6 rounded-xl shadow-lg h-[400px]">
-                    <h3 className="text-xl font-semibold text-slate-700 mb-4">Income vs Expenses Overview (Last 6 Months)</h3>
+            <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+                <div className="lg:col-span-3 bg-white p-4 sm:p-6 rounded-xl shadow-lg h-[400px]">
+                    <h3 className="text-lg sm:text-xl font-semibold text-slate-700 mb-4">Income vs Expenses Overview (Last 6 Months)</h3>
                     {isLoading ? <Skeleton className="w-full h-full" /> : (
                         <ResponsiveContainer width="100%" height="100%">
                             <BarChart data={stats?.monthlyData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
@@ -106,8 +106,8 @@ const Dashboard: React.FC = () => {
                         </ResponsiveContainer>
                     )}
                 </div>
-                 <div className="lg:col-span-2 bg-white p-6 rounded-xl shadow-lg h-[400px]">
-                    <h3 className="text-xl font-semibold text-slate-700 mb-4">Expense Distribution</h3>
+                 <div className="lg:col-span-2 bg-white p-4 sm:p-6 rounded-xl shadow-lg h-[400px]">
+                    <h3 className="text-lg sm:text-xl font-semibold text-slate-700 mb-4">Expense Distribution</h3>
                     {isLoading ? <Skeleton className="w-full h-full" /> : (
                          <ResponsiveContainer width="100%" height="100%">
                             <PieChart>

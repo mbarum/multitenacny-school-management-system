@@ -8,6 +8,7 @@ import Skeleton from '../components/common/Skeleton';
 import { useQuery } from '@tanstack/react-query';
 
 const AttendanceView: React.FC = () => {
+    // We only need classes from context to populate the filter dropdown
     const { data: classes = [] } = useQuery({ queryKey: ['classes'], queryFn: () => api.getClasses().then(res => Array.isArray(res) ? res : res.data) });
     
     const [selectedClassId, setSelectedClassId] = useState<string>('all');
@@ -30,7 +31,9 @@ const AttendanceView: React.FC = () => {
     const attendanceRecords = attendanceData ? (Array.isArray(attendanceData) ? attendanceData : attendanceData.data) : [];
     const totalPages = attendanceData && !Array.isArray(attendanceData) ? attendanceData.last_page : 1;
 
-    // Client-side filter as fallback if API returns mixed data
+    // Filter out 'Present' records client-side if the API doesn't support filtering them (optional based on requirement)
+    // Here we show all returned by API, assuming API can be updated to filter if needed. 
+    // The previous implementation filtered in memory.
     const displayRecords = attendanceRecords.filter((r: AttendanceRecord) => r.status !== AttendanceStatus.Present);
 
     return (
@@ -71,6 +74,7 @@ const AttendanceView: React.FC = () => {
                                 displayRecords.map((record: any) => (
                                     <tr key={record.id} className="border-b">
                                         <td className="p-2">{record.date}</td>
+                                        {/* Use record.student.name if available from backend relation, fallback to ID */}
                                         <td className="p-2">{record.student?.name || 'Unknown Student'}</td>
                                         <td className="p-2">{classes.find((c: any) => c.id === record.classId)?.name || 'N/A'}</td>
                                         <td className="p-2">

@@ -50,11 +50,11 @@ const Header: React.FC = () => {
     return (
         <>
             <header className="bg-white border-b border-slate-200 sticky top-0 z-30">
-                <div className="px-4 sm:px-6 lg:px-8">
+                <div className="px-4 sm:px-6">
                     <div className="flex justify-between items-center h-16 -mb-px">
                         {/* Hamburger menu for mobile */}
                         <div className="lg:hidden">
-                            <button onClick={() => setIsMobileSidebarOpen(true)} className="text-slate-500 hover:text-slate-600">
+                            <button onClick={() => setIsMobileSidebarOpen(true)} className="text-slate-500 hover:text-slate-600 p-2 -ml-2">
                                 <span className="sr-only">Open sidebar</span>
                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
@@ -63,10 +63,10 @@ const Header: React.FC = () => {
                         </div>
                         {/* Welcome message - hidden on mobile to give space */}
                         <div className="hidden sm:block">
-                            <h1 className="text-2xl font-bold text-primary-800">Welcome, {currentUser.name.split(' ')[0]}!</h1>
+                            <h1 className="text-xl sm:text-2xl font-bold text-primary-800 truncate">Welcome, {currentUser.name.split(' ')[0]}!</h1>
                         </div>
 
-                        <div className="flex items-center space-x-4">
+                        <div className="flex items-center space-x-2 sm:space-x-4">
                             {/* Notification Bell */}
                             <div className="relative" ref={notificationsRef}>
                                 <button 
@@ -112,7 +112,7 @@ const Header: React.FC = () => {
                             {/* User Avatar and Dropdown */}
                             <div className="relative" ref={menuRef}>
                                 <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="flex text-sm rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500">
-                                    <img className="h-10 w-10 rounded-full object-cover" src={currentUser.avatarUrl || 'https://i.pravatar.cc/150'} alt="User avatar" />
+                                    <img className="h-9 w-9 sm:h-10 sm:w-10 rounded-full object-cover" src={currentUser.avatarUrl || 'https://i.pravatar.cc/150'} alt="User avatar" />
                                 </button>
                                 {isMenuOpen && (
                                     <div className="origin-top-right absolute right-0 mt-2 w-56 rounded-md shadow-lg py-1 bg-white ring-1 ring-black ring-opacity-5 focus:outline-none">

@@ -1,9 +1,9 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { useData } from '../contexts/DataContext';
-import { LibraryStatus, Book, NewBook, LibraryTransaction } from '../types';
+import { useData } from '../../contexts/DataContext';
+import { LibraryStatus, Book, NewBook, LibraryTransaction } from '../../types';
 import Modal from '../components/common/Modal';
-import * as api from '../services/api';
+import * as api from '../../services/api';
 import Pagination from '../components/common/Pagination';
 import Skeleton from '../components/common/Skeleton';
 import { useQuery } from '@tanstack/react-query';

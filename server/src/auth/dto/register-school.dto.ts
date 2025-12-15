@@ -29,4 +29,8 @@ export class RegisterSchoolDto {
   @IsString()
   @IsOptional()
   billingCycle?: 'MONTHLY' | 'ANNUALLY' = 'MONTHLY';
+
+  @IsString()
+  @IsOptional()
+  currency?: string = 'KES';
 }
