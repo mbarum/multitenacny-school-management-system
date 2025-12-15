@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
+import { Helmet } from 'react-helmet-async';
 import Pricing from './Pricing';
 import { SubscriptionPlan } from '../../types';
 
@@ -58,9 +59,34 @@ const WhatsAppFAB: React.FC = () => (
     </a>
 );
 
+// FAQ Data
+const faqs = [
+    {
+        question: "Is Saaslink compliant with the Kenyan CBC curriculum?",
+        answer: "Yes, Saaslink is fully optimized for the Competency-Based Curriculum (CBC). It handles assessment rubrics, learning areas, and generates reports compliant with KNEC standards."
+    },
+    {
+        question: "How does the M-Pesa integration work?",
+        answer: "We integrate directly with Safaricom's Daraja API. When a parent pays via Paybill, the transaction is automatically detected, matched to the student's admission number, and the fee balance is updated instantly. No manual entry required."
+    },
+    {
+        question: "Is my school's data secure?",
+        answer: "Absolutely. We use bank-grade AES-256 encryption for all data storage and SSL/TLS for all data transmission. We also perform automated daily backups to ensure you never lose your records."
+    },
+    {
+        question: "Can I manage multiple school branches?",
+        answer: "Yes, Saaslink supports multi-tenancy. You can manage multiple branches from a single Super Admin dashboard with our Enterprise plan."
+    },
+    {
+        question: "Do you offer training for teachers?",
+        answer: "Yes, we provide free onboarding training for your administration and teaching staff to ensure everyone is comfortable using the system from day one."
+    }
+];
+
 const LandingPage: React.FC<LandingPageProps> = ({ onNavigate }) => {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [scrolled, setScrolled] = useState(false);
+    const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
 
     useEffect(() => {
         const handleScroll = () => setScrolled(window.scrollY > 20);
@@ -76,10 +102,68 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate }) => {
         { name: 'Features', href: '#features' },
         { name: 'How it Works', href: '#how-it-works' },
         { name: 'Pricing', href: '#pricing' },
+        { name: 'FAQ', href: '#faq' },
     ];
+
+    // Structured Data (Schema.org)
+    const schemaData = {
+        "@context": "https://schema.org",
+        "@graph": [
+            {
+                "@type": "SoftwareApplication",
+                "name": "Saaslink School Management System",
+                "operatingSystem": "Web",
+                "applicationCategory": "EducationalApplication",
+                "offers": {
+                    "@type": "Offer",
+                    "price": "0",
+                    "priceCurrency": "KES"
+                },
+                "description": "Comprehensive school management software for East Africa featuring M-Pesa integration, CBC grading, and AI financial reporting."
+            },
+            {
+                "@type": "Organization",
+                "name": "Saaslink Technologies",
+                "url": "https://saaslink.com",
+                "logo": "https://saaslink.com/logo.png",
+                "contactPoint": {
+                    "@type": "ContactPoint",
+                    "telephone": "+254-720-935-895",
+                    "contactType": "sales",
+                    "areaServed": ["KE", "UG", "TZ", "RW"]
+                }
+            }
+        ]
+    };
 
     return (
         <div className="min-h-screen bg-slate-50 font-sans text-slate-900 selection:bg-primary-100 selection:text-primary-900 overflow-x-hidden">
+            <Helmet>
+                <title>Saaslink | #1 School Management System with M-Pesa & CBC</title>
+                <meta name="description" content="Best School Management System in Kenya & East Africa. Automate fees with M-Pesa, manage CBC exams, generate reports, and track finances with AI. Try for free." />
+                <meta name="keywords" content="School Management System Kenya, M-Pesa School Fees, CBC Grading System, School ERP East Africa, School Accounting Software" />
+                <link rel="canonical" href="https://saaslink.com" />
+                
+                {/* Open Graph / Facebook */}
+                <meta property="og:type" content="website" />
+                <meta property="og:url" content="https://saaslink.com/" />
+                <meta property="og:title" content="Saaslink - The Modern School OS for Africa" />
+                <meta property="og:description" content="Streamline your school with automated fee collection, academic reporting, and financial insights. Built for Kenya, Uganda, Tanzania, and Rwanda." />
+                <meta property="og:image" content="https://saaslink.com/og-image.jpg" />
+
+                {/* Twitter */}
+                <meta property="twitter:card" content="summary_large_image" />
+                <meta property="twitter:url" content="https://saaslink.com/" />
+                <meta property="twitter:title" content="Saaslink - School Management Simplified" />
+                <meta property="twitter:description" content="The all-in-one platform for schools. Finance, Academics, Communication." />
+                <meta property="twitter:image" content="https://saaslink.com/og-image.jpg" />
+                
+                {/* Structured Data */}
+                <script type="application/ld+json">
+                    {JSON.stringify(schemaData)}
+                </script>
+            </Helmet>
+
             {/* Navbar */}
             <nav className={`fixed w-full z-50 transition-all duration-300 ${scrolled ? 'bg-white/90 backdrop-blur-md shadow-sm border-b border-slate-200 py-2' : 'bg-transparent py-4'}`}>
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -396,32 +480,38 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate }) => {
                 </div>
             </section>
 
-            {/* Social Proof */}
-            <section className="py-20 bg-slate-900 text-white">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                     <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
-                        <div>
-                            <div className="text-4xl font-bold text-primary-400 mb-2">500+</div>
-                            <div className="text-slate-400 text-sm uppercase tracking-wide">Schools Trusted</div>
-                        </div>
-                        <div>
-                            <div className="text-4xl font-bold text-primary-400 mb-2">50k+</div>
-                            <div className="text-slate-400 text-sm uppercase tracking-wide">Students Managed</div>
-                        </div>
-                        <div>
-                            <div className="text-4xl font-bold text-primary-400 mb-2">99.9%</div>
-                            <div className="text-slate-400 text-sm uppercase tracking-wide">Uptime Guarantee</div>
-                        </div>
-                        <div>
-                            <div className="text-4xl font-bold text-primary-400 mb-2">24/7</div>
-                            <div className="text-slate-400 text-sm uppercase tracking-wide">Customer Support</div>
-                        </div>
-                     </div>
-                </div>
-            </section>
-
             {/* Pricing Section */}
             <Pricing onSelectPlan={handleSelectPlan} />
+
+            {/* FAQ Section (SEO Optimized) */}
+            <section id="faq" className="py-20 bg-slate-50 border-t border-slate-100">
+                <div className="max-w-4xl mx-auto px-4">
+                    <div className="text-center mb-12">
+                        <h2 className="text-3xl font-extrabold text-slate-900">Frequently Asked Questions</h2>
+                        <p className="mt-4 text-lg text-slate-600">Everything you need to know about the product and billing.</p>
+                    </div>
+                    <div className="space-y-4">
+                        {faqs.map((faq, index) => (
+                            <div key={index} className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                                <button
+                                    onClick={() => setOpenFaqIndex(openFaqIndex === index ? null : index)}
+                                    className="w-full flex justify-between items-center p-6 text-left focus:outline-none"
+                                >
+                                    <span className="text-lg font-medium text-slate-800">{faq.question}</span>
+                                    <svg className={`w-5 h-5 text-slate-500 transform transition-transform ${openFaqIndex === index ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                    </svg>
+                                </button>
+                                {openFaqIndex === index && (
+                                    <div className="px-6 pb-6 text-slate-600 animate-fade-in-down">
+                                        {faq.answer}
+                                    </div>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </section>
 
             {/* CTA Section */}
             <section className="py-20 bg-gradient-to-br from-primary-600 to-primary-800 text-white relative overflow-hidden">

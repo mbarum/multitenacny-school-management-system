@@ -1,6 +1,7 @@
 
 import React from 'react';
 import ReactDOM from 'react-dom/client';
+import { HelmetProvider } from 'react-helmet-async';
 import App from './App';
 import { DataProvider } from './contexts/DataContext';
 import ErrorBoundary from './components/common/ErrorBoundary';
@@ -15,9 +16,11 @@ const root = ReactDOM.createRoot(rootElement);
 root.render(
   <React.StrictMode>
     <ErrorBoundary>
-      <DataProvider>
-        <App />
-      </DataProvider>
+      <HelmetProvider>
+        <DataProvider>
+          <App />
+        </DataProvider>
+      </HelmetProvider>
     </ErrorBoundary>
   </React.StrictMode>
 );
