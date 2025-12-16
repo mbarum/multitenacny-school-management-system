@@ -24,12 +24,23 @@ export class AiService {
     }
   }
 
+  // Safety: Basic sanitization to prevent prompt injection
+  private sanitizeInput(input: string): string {
+      return input.replace(/[^\w\s.,-]/gi, '').trim().slice(0, 100);
+  }
+
   async generateFinancialSummary(schoolId: string): Promise<{ summary: string }> {
     if (!this.ai) {
         return { summary: "AI configuration is missing (API_KEY not set). Please contact the administrator." };
     }
 
     try {
+      // 1. Data Sufficiency Check
+      const transactionCount = await this.transactionRepo.count({ where: { schoolId: schoolId as any } });
+      if (transactionCount < 5) {
+          return { summary: "Insufficient data to generate a meaningful analysis. Please record at least 5 transactions." };
+      }
+
       const revenueResult = await this.transactionRepo
         .createQueryBuilder('t')
         .select('SUM(t.amount)', 'total')
@@ -51,8 +62,9 @@ export class AiService {
           take: 5
       });
       
+      // Safety: Sanitize description to prevent injection attacks via expense notes
       const expenseSummary = recentExpenses
-        .map(e => `- ${e.category}: KES ${e.amount.toLocaleString()} for ${e.description}`)
+        .map(e => `- ${e.category}: KES ${e.amount.toLocaleString()} for ${this.sanitizeInput(e.description)}`)
         .join('\n');
 
       const prompt = `
@@ -83,7 +95,6 @@ export class AiService {
       return { summary: response.text ?? 'AI summary could not be generated at this time.' };
 
     } catch (error: any) {
-      // Check for specific API errors
       if (error && error.message && error.message.includes('API key not valid')) {
            this.logger.error("AI Generation Failed: Invalid API Key.");
            return { summary: "System Error: The AI service API key is invalid. Please contact support." };

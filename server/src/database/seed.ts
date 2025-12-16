@@ -13,6 +13,12 @@ import {
 
 console.log('Starting seeder...');
 
+// Safety Check
+if (process.env.NODE_ENV === 'production') {
+    console.error('❌  CRITICAL: Seeding is not allowed in PRODUCTION environment to prevent data loss.');
+    (process as any).exit(1);
+}
+
 const dataSourceOptions: DataSourceOptions = {
     type: 'mysql',
     host: process.env.MYSQL_HOST || 'localhost',
@@ -26,8 +32,8 @@ const dataSourceOptions: DataSourceOptions = {
         GradingRule, Payroll, PayrollEntry, PayrollItem, ReportShareLog, SchoolEvent, TimetableEntry, 
         Transaction, SchoolSetting, DarajaSetting, School, Subscription, Book, LibraryTransaction, PlatformSetting
     ],
-    synchronize: false, 
-    dropSchema: false,
+    synchronize: true, // Use synchronize to update schema without dropping
+    dropSchema: false, // Ensure we don't drop the schema
     logging: ['error'],
 };
 
@@ -38,24 +44,6 @@ const runSeed = async () => {
         console.log('Connecting to database...');
         await AppDataSource.initialize();
         
-        console.log('⚠️  NUCLEAR OPTION: Dropping all tables to fix Foreign Key issues...');
-        await AppDataSource.query('SET FOREIGN_KEY_CHECKS = 0');
-        
-        const tables = await AppDataSource.query(`
-            SELECT table_name 
-            FROM information_schema.tables 
-            WHERE table_schema = '${dataSourceOptions.database}';
-        `);
-
-        for (const table of tables) {
-            const tableName = table.TABLE_NAME || table.table_name;
-            await AppDataSource.query(`DROP TABLE IF EXISTS \`${tableName}\``);
-            console.log(`Dropped table: ${tableName}`);
-        }
-
-        await AppDataSource.query('SET FOREIGN_KEY_CHECKS = 1');
-        console.log('✅  All tables dropped.');
-
         console.log('🔄  Synchronizing Schema...');
         await AppDataSource.synchronize();
         console.log('✅  Schema synchronized.');

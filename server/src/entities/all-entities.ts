@@ -28,7 +28,8 @@ export * from './audit-log.entity';
 export * from './book.entity';
 export * from './library-transaction.entity';
 export * from './platform-setting.entity';
-export * from './subscription-payment.entity'; // New Entity
+export * from './subscription-payment.entity';
+export * from './monthly-financial.entity'; // Added
 // Deprecated: SchoolSetting is replaced by School entity
 export { SchoolSetting } from './school-setting.entity'; 
 export * from './daraja-setting.entity';

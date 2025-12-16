@@ -3,10 +3,10 @@ import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Modal from '../components/common/Modal';
 import Pagination from '../components/common/Pagination';
-import { initiateSTKPush } from '../../services/darajaService';
-import type { Transaction, NewTransaction } from '../../types';
-import { PaymentMethod, TransactionType } from '../../types';
-import { useData } from '../../contexts/DataContext';
+import { initiateSTKPush } from '../services/darajaService';
+import type { Transaction, NewTransaction } from '../types';
+import { PaymentMethod, TransactionType } from '../types';
+import { useData } from '../contexts/DataContext';
 import GenerateInvoicesModal from '../components/common/GenerateInvoicesModal';
 import * as api from '../services/api';
 import Skeleton from '../components/common/Skeleton';
@@ -248,10 +248,10 @@ const FeeManagementView: React.FC = () => {
                             <th className="px-4 py-3 font-semibold text-slate-600">Date</th>
                             <th className="px-4 py-3 font-semibold text-slate-600">Type</th>
                             <th className="px-4 py-3 font-semibold text-slate-600">Student Name</th>
-                            <th className="px-4 py-3 font-semibold text-slate-600">Description</th>
+                            <th className="px-4 py-3 font-semibold text-slate-600 hidden sm:table-cell">Description</th>
                             <th className="px-4 py-3 font-semibold text-slate-600 text-right">Amount</th>
-                            <th className="px-4 py-3 font-semibold text-slate-600">Method</th>
-                            <th className="px-4 py-3 font-semibold text-slate-600">Actions</th>
+                            <th className="px-4 py-3 font-semibold text-slate-600 hidden md:table-cell">Method</th>
+                            <th className="px-4 py-3 font-semibold text-slate-600 text-center">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -261,9 +261,9 @@ const FeeManagementView: React.FC = () => {
                                     <td className="px-4 py-4"><Skeleton className="h-4 w-24"/></td>
                                     <td className="px-4 py-4"><Skeleton className="h-4 w-20"/></td>
                                     <td className="px-4 py-4"><Skeleton className="h-4 w-48"/></td>
-                                    <td className="px-4 py-4"><Skeleton className="h-4 w-32"/></td>
+                                    <td className="px-4 py-4 hidden sm:table-cell"><Skeleton className="h-4 w-32"/></td>
                                     <td className="px-4 py-4"><Skeleton className="h-4 w-24"/></td>
-                                    <td className="px-4 py-4"><Skeleton className="h-4 w-20"/></td>
+                                    <td className="px-4 py-4 hidden md:table-cell"><Skeleton className="h-4 w-20"/></td>
                                     <td className="px-4 py-4"><Skeleton className="h-4 w-24"/></td>
                                 </tr>
                             ))
@@ -272,17 +272,17 @@ const FeeManagementView: React.FC = () => {
                         ) : (
                             transactions.map((p: any) => (
                                 <tr key={p.id} className="border-b border-slate-100 hover:bg-slate-50">
-                                    <td className="px-4 py-3 text-slate-500">{new Date(p.date).toLocaleDateString()}</td>
+                                    <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{new Date(p.date).toLocaleDateString()}</td>
                                     <td className="px-4 py-3">
-                                        <span className={`px-2 py-1 rounded text-xs font-semibold ${p.type === TransactionType.Payment ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                                        <span className={`px-2 py-1 rounded text-xs font-semibold whitespace-nowrap ${p.type === TransactionType.Payment ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
                                             {p.type}
                                         </span>
                                     </td>
                                     <td className="px-4 py-3 font-semibold text-slate-800">{p.studentName || 'Unknown'}</td>
-                                    <td className="px-4 py-3 text-slate-600">{p.description}</td>
+                                    <td className="px-4 py-3 text-slate-600 hidden sm:table-cell">{p.description}</td>
                                     <td className="px-4 py-3 text-right font-medium text-slate-800">{formatCurrency(p.amount)}</td>
-                                    <td className="px-4 py-3 text-slate-600">{p.method || '-'}</td>
-                                    <td className="px-4 py-3 space-x-2">
+                                    <td className="px-4 py-3 text-slate-600 hidden md:table-cell">{p.method || '-'}</td>
+                                    <td className="px-4 py-3 text-center space-x-2 whitespace-nowrap">
                                         <button onClick={() => openEditModal(p)} className="text-blue-600 hover:underline">Edit</button>
                                         <button onClick={() => handleDelete(p.id)} className="text-red-600 hover:underline">Delete</button>
                                     </td>

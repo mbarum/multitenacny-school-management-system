@@ -34,6 +34,9 @@ import { BullModule } from '@nestjs/bullmq';
 import { QueuesModule } from './queues/queues.module';
 import { join } from 'path';
 import { School } from './entities/school.entity';
+import { AuditSubscriber } from './audit/audit.subscriber';
+import { FinancialSubscriber } from './dashboard/financial.subscriber';
+import { TenancyModule } from './tenancy/tenancy.module';
 
 @Module({
   imports: [
@@ -64,6 +67,7 @@ import { School } from './entities/school.entity';
       exclude: ['/api/(.*)'],
     }),
     ScheduleModule.forRoot(),
+    TenancyModule, // New Module
     AuthModule, 
     UsersModule, 
     StudentsModule, 
@@ -105,6 +109,8 @@ import { School } from './entities/school.entity';
       provide: APP_INTERCEPTOR,
       useClass: AuditInterceptor,
     },
+    AuditSubscriber,
+    FinancialSubscriber
   ],
 })
 export class AppModule {}

@@ -5,10 +5,10 @@ import Modal from '../components/common/Modal';
 import WebcamCaptureModal from '../components/common/WebcamCaptureModal';
 import Pagination from '../components/common/Pagination';
 import Skeleton from '../components/common/Skeleton';
-import type { Staff, Payroll, PayrollItem, NewStaff, NewPayrollItem, PayrollEntry } from '../../types';
-import { PayrollItemType, PayrollItemCategory, CalculationType, Role } from '../../types';
-import { useData } from '../../contexts/DataContext';
-import * as api from '../../services/api';
+import type { Staff, Payroll, PayrollItem, NewStaff, NewPayrollItem, PayrollEntry } from '../types';
+import { PayrollItemType, PayrollItemCategory, CalculationType, Role } from '../types';
+import { useData } from '../contexts/DataContext';
+import * as api from '../services/api';
 
 const DEFAULT_AVATAR = 'https://i.imgur.com/S5o7W44.png';
 

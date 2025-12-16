@@ -18,10 +18,16 @@ import { PlatformSetting } from '../entities/platform-setting.entity';
     TypeOrmModule.forFeature([School, PlatformSetting]),
     JwtModule.registerAsync({
       inject: [ConfigService],
-      useFactory: (configService: ConfigService) => ({
-        secret: configService.get<string>('JWT_SECRET') || 'dev_fallback_secret_do_not_use_in_prod',
-        signOptions: { expiresIn: '24h' },
-      }),
+      useFactory: (configService: ConfigService) => {
+        const secret = configService.get<string>('JWT_SECRET');
+        if (!secret) {
+          throw new Error('FATAL: JWT_SECRET is not defined in environment variables.');
+        }
+        return {
+          secret: secret,
+          signOptions: { expiresIn: '24h' },
+        };
+      },
     }),
   ],
   providers: [AuthService, JwtStrategy],

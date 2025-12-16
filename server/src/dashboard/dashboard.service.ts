@@ -5,6 +5,7 @@ import { Repository } from 'typeorm';
 import { Student, StudentStatus } from '../entities/student.entity';
 import { Transaction, TransactionType } from '../entities/transaction.entity';
 import { Expense } from '../entities/expense.entity';
+import { MonthlyFinancial } from '../entities/monthly-financial.entity';
 
 @Injectable()
 export class DashboardService {
@@ -12,6 +13,7 @@ export class DashboardService {
     @InjectRepository(Student) private studentRepo: Repository<Student>,
     @InjectRepository(Transaction) private transactionRepo: Repository<Transaction>,
     @InjectRepository(Expense) private expenseRepo: Repository<Expense>,
+    @InjectRepository(MonthlyFinancial) private monthlyFinancialRepo: Repository<MonthlyFinancial>,
   ) {}
 
   async getDashboardStats(schoolId: string) {
@@ -59,7 +61,7 @@ export class DashboardService {
     // 5. Calculate Profit
     const totalProfit = totalRevenue - totalExpenses;
 
-    // 6. Get Monthly Data (Filtered by School)
+    // 6. Get Monthly Data (Optimized via Pre-calculated table)
     const monthlyData = await this.getMonthlyFinancials(schoolId);
 
     // 7. Get Expense Distribution (Filtered by School)
@@ -78,46 +80,35 @@ export class DashboardService {
 
   private async getMonthlyFinancials(schoolId: string) {
     const today = new Date();
-    const sixMonthsAgo = new Date(today.getFullYear(), today.getMonth() - 5, 1);
-    const startDateStr = sixMonthsAgo.toISOString().split('T')[0];
-
-    const incomeData = await this.transactionRepo
-      .createQueryBuilder('t')
-      .select("SUBSTRING(t.date, 1, 7)", 'month')
-      .addSelect("SUM(t.amount)", 'income')
-      .where("t.type = :type", { type: TransactionType.Payment })
-      .andWhere("t.date >= :startDate", { startDate: startDateStr })
-      .andWhere("t.schoolId = :schoolId", { schoolId })
-      .groupBy("month")
-      .orderBy("month", "ASC")
-      .getRawMany();
-
-    const expenseData = await this.expenseRepo
-      .createQueryBuilder('e')
-      .select("SUBSTRING(e.date, 1, 7)", 'month')
-      .addSelect("SUM(e.amount)", 'expense')
-      .where("e.date >= :startDate", { startDate: startDateStr })
-      .andWhere("e.schoolId = :schoolId", { schoolId })
-      .groupBy("month")
-      .orderBy("month", "ASC")
-      .getRawMany();
-
-    const months: { name: string; income: number; expenses: number }[] = [];
+    // Get last 6 months
+    const targetMonths: string[] = [];
     for (let i = 5; i >= 0; i--) {
         const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
-        const monthKey = d.toISOString().slice(0, 7);
-        const monthName = d.toLocaleString('default', { month: 'short' });
-        
-        const incomeEntry = incomeData.find(i => i.month === monthKey);
-        const expenseEntry = expenseData.find(e => e.month === monthKey);
-
-        months.push({
-            name: monthName,
-            income: parseFloat(incomeEntry?.income) || 0,
-            expenses: parseFloat(expenseEntry?.expense) || 0
-        });
+        targetMonths.push(d.toISOString().slice(0, 7)); // YYYY-MM
     }
-    return months;
+
+    // Query pre-calculated table
+    const financials = await this.monthlyFinancialRepo
+        .createQueryBuilder('mf')
+        .where('mf.schoolId = :schoolId', { schoolId })
+        .andWhere('mf.monthKey IN (:...keys)', { keys: targetMonths })
+        .orderBy('mf.monthKey', 'ASC')
+        .getMany();
+
+    // Map to response format, filling gaps with zeros
+    const result = targetMonths.map(key => {
+        const entry = financials.find(f => f.monthKey === key);
+        const [year, month] = key.split('-');
+        const dateObj = new Date(parseInt(year), parseInt(month) - 1, 1);
+        
+        return {
+            name: dateObj.toLocaleString('default', { month: 'short' }),
+            income: entry ? Number(entry.totalIncome) : 0,
+            expenses: entry ? Number(entry.totalExpenses) : 0
+        };
+    });
+
+    return result;
   }
 
   private async getExpenseDistribution(schoolId: string) {

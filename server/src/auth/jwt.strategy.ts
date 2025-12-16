@@ -15,13 +15,13 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   ) {
     const secret = configService.get<string>('JWT_SECRET');
     if (!secret) {
-        new Logger(JwtStrategy.name).warn('JWT_SECRET not found in env. Using fallback. DO NOT USE IN PRODUCTION.');
+        throw new Error('FATAL: JWT_SECRET not found in env.');
     }
 
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey: secret || 'dev_fallback_secret_do_not_use_in_prod',
+      secretOrKey: secret,
     });
   }
 

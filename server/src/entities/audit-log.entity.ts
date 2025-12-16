@@ -3,7 +3,7 @@ import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, Jo
 import { User } from './user.entity';
 import { School } from './school.entity';
 
-@Entity()
+@Entity('audit_logs')
 export class AuditLog {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
@@ -24,15 +24,24 @@ export class AuditLog {
   user!: User;
 
   @Column()
-  action!: string; // e.g., 'POST /students'
+  action!: string; // e.g., 'POST /students' or 'UPDATE Student'
 
   @Column()
   resource!: string; // e.g., 'Student'
 
   @Column({ nullable: true })
-  details!: string; // Short description or ID of affected item
+  entityId!: string; // The ID of the specific record changed
 
-  @Column()
+  @Column({ type: 'json', nullable: true })
+  previousState!: any;
+
+  @Column({ type: 'json', nullable: true })
+  newState!: any;
+
+  @Column({ nullable: true })
+  details!: string;
+
+  @Column({ nullable: true })
   ipAddress!: string;
 
   @CreateDateColumn()

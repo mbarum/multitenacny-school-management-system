@@ -2,10 +2,10 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Modal from '../components/common/Modal';
-import type { SchoolInfo, User, FeeItem, SchoolClass, DarajaSettings, ClassFee, NewUser, NewFeeItem } from '../../types';
-import { GradingSystem, CbetScore, Role, Currency } from '../../types';
-import { useData } from '../../contexts/DataContext';
-import * as api from '../../services/api';
+import type { SchoolInfo, User, FeeItem, SchoolClass, DarajaSettings, ClassFee, NewUser, NewFeeItem } from '../types';
+import { GradingSystem, CbetScore, Role, Currency } from '../types';
+import { useData } from '../contexts/DataContext';
+import * as api from '../services/api';
 
 const FeeItemModal: React.FC<{ isOpen: boolean; onClose: () => void; onSave: (item: any) => void; item: FeeItem | null; classes: SchoolClass[]; feeCategories: string[]; }> = ({ isOpen, onClose, onSave, item, classes, feeCategories }) => {
     const [name, setName] = useState('');
@@ -81,12 +81,12 @@ const SettingsView: React.FC = () => {
     const logoInputRef = useRef<HTMLInputElement>(null);
     const [localSchoolInfo, setLocalSchoolInfo] = useState<SchoolInfo | null>(null);
 
-    // Queries (Fetch on demand based on tab)
+    // Queries
     const { data: users = [] } = useQuery({ queryKey: ['users'], queryFn: () => api.getUsers(), enabled: activeTab === 'users' });
     const { data: feeStructure = [] } = useQuery({ queryKey: ['fee-structure'], queryFn: () => api.getFeeStructure(), enabled: activeTab === 'fee_structure' });
     const { data: gradingScale = [] } = useQuery({ queryKey: ['grading-scale'], queryFn: () => api.getGradingScale(), enabled: activeTab === 'grading' });
     const { data: classes = [] } = useQuery({ queryKey: ['classes'], queryFn: () => api.getClasses().then(res => Array.isArray(res) ? res : res.data) });
-    const { data: darajaSettings } = useQuery({ queryKey: ['daraja'], queryFn: () => api.getDarajaSettings('current'), enabled: activeTab === 'mpesa' });
+    const { data: fetchedDarajaSettings } = useQuery({ queryKey: ['daraja'], queryFn: () => api.getDarajaSettings('current'), enabled: activeTab === 'mpesa' });
 
     // Local State for Edit
     const [isFeeModalOpen, setIsFeeModalOpen] = useState(false);
@@ -96,7 +96,7 @@ const SettingsView: React.FC = () => {
     const [localDaraja, setLocalDaraja] = useState<any>({});
     const [localGradingScale, setLocalGradingScale] = useState<any[]>([]);
 
-    useEffect(() => { if(darajaSettings) setLocalDaraja(darajaSettings); }, [darajaSettings]);
+    useEffect(() => { if(fetchedDarajaSettings) setLocalDaraja(fetchedDarajaSettings); }, [fetchedDarajaSettings]);
     useEffect(() => { if(gradingScale) setLocalGradingScale(gradingScale); }, [gradingScale]);
 
     // Mutations
@@ -128,7 +128,6 @@ const SettingsView: React.FC = () => {
     }
     
     const saveGrading = () => {
-         // In a real app we'd bulk update or diff. Here we just loop for simplicity.
          localGradingScale.forEach(rule => gradingMutation.mutate(rule));
     }
 

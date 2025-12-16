@@ -97,8 +97,6 @@ interface IDataContext {
     markBookLost: (id: string) => Promise<any>;
     
     // Empty Arrays / Placeholders for legacy compatibility until full migration
-    // These ensure components importing from Context but not yet refactored don't crash immediately,
-    // though they will show empty data until refactored to useQuery.
     students: Student[];
     classes: SchoolClass[];
     subjects: any[];
@@ -247,43 +245,70 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setSchoolInfo(info);
     };
 
+    // API ACTION FUNCTIONS (Wrapped for Context consistency)
+    const createApiAction = <P, S>(apiFn: (data: P) => Promise<S>) => 
+        useCallback(async (data: P) => {
+            return await apiFn(data);
+        }, [apiFn]);
+
+    const updateApiAction = <P, S>(apiFn: (id: string, data: Partial<P>) => Promise<S>) =>
+        useCallback(async (id: string, data: Partial<P>) => {
+            return await apiFn(id, data);
+        }, [apiFn]);
+
+    const deleteApiAction = (apiFn: (id: string) => Promise<void>) =>
+        useCallback(async (id: string) => {
+            await apiFn(id);
+        }, [apiFn]);
+    
+    // Bind actions
+    const addStudent = createApiAction(api.createStudent);
+    const updateStudent = updateApiAction(api.updateStudent);
+    const deleteStudent = deleteApiAction(api.deleteStudent);
+    const addTransaction = createApiAction(api.createTransaction);
+    const addExpense = createApiAction(api.createExpense);
+    const addStaff = createApiAction(api.createStaff);
+    const updateStaff = updateApiAction(api.updateStaff);
+    const addUser = createApiAction(api.createUser);
+    const updateUser = updateApiAction(api.updateUser);
+    const deleteUser = deleteApiAction(api.deleteUser);
+    const addPayrollItem = createApiAction(api.createPayrollItem);
+    const updatePayrollItem = updateApiAction(api.updatePayrollItem);
+    const deletePayrollItem = deleteApiAction(api.deletePayrollItem);
+    const addGradingRule = createApiAction(api.createGradingRule);
+    const updateGradingRule = updateApiAction(api.updateGradingRule);
+    const deleteGradingRule = deleteApiAction(api.deleteGradingRule);
+    const addFeeItem = createApiAction(api.createFeeItem);
+    const updateFeeItem = updateApiAction(api.updateFeeItem);
+    const deleteFeeItem = deleteApiAction(api.deleteFeeItem);
+    const addAnnouncement = createApiAction(api.createAnnouncement);
+    const addCommunicationLog = createApiAction(api.createCommunicationLog);
+    
     const value: IDataContext = {
         isLoading, schoolInfo, currentUser, darajaSettings,
         isSidebarCollapsed, isMobileSidebarOpen, setIsSidebarCollapsed, setIsMobileSidebarOpen,
         notifications, addNotification, handleLogin, handleLogout, getNavigationItems,
         openIdCardModal, formatCurrency, refreshSchoolInfo, convertCurrency,
         
-        // API Wrappers
-        addStudent: api.createStudent,
-        updateStudent: api.updateStudent,
-        deleteStudent: api.deleteStudent,
-        updateMultipleStudents: api.updateMultipleStudents,
-        addTransaction: api.createTransaction,
-        addMultipleTransactions: api.createMultipleTransactions,
-        addExpense: api.createExpense,
-        addStaff: api.createStaff,
-        updateStaff: api.updateStaff,
+        // Actions
+        addStudent, updateStudent, deleteStudent,
+        updateMultipleStudents: (updates) => api.updateMultipleStudents(updates),
+        addTransaction, 
+        addMultipleTransactions: (data) => api.createMultipleTransactions(data),
+        addExpense,
+        addStaff, updateStaff,
         savePayrollRun: api.savePayrollRun,
-        addPayrollItem: api.createPayrollItem,
-        updatePayrollItem: api.updatePayrollItem,
-        deletePayrollItem: api.deletePayrollItem,
+        addPayrollItem, updatePayrollItem, deletePayrollItem,
         updateSchoolInfo: async (data) => { const res = await api.updateSchoolInfo(data); setSchoolInfo(res); return res; },
         updateDarajaSettings: async (data) => { const res = await api.updateDarajaSettings(data); setDarajaSettings(res); return res; },
         uploadLogo: async (data) => { const res = await api.uploadLogo(data); refreshSchoolInfo(); return res; },
-        addUser: api.createUser,
-        updateUser: api.updateUser,
-        deleteUser: api.deleteUser,
+        addUser, updateUser, deleteUser,
         updateUserProfile: api.updateUserProfile,
         uploadUserAvatar: api.uploadUserAvatar,
         adminUploadUserPhoto: api.adminUploadUserPhoto,
-        addGradingRule: api.createGradingRule,
-        updateGradingRule: api.updateGradingRule,
-        deleteGradingRule: api.deleteGradingRule,
-        addFeeItem: api.createFeeItem,
-        updateFeeItem: api.updateFeeItem,
-        deleteFeeItem: api.deleteFeeItem,
-        addAnnouncement: api.createAnnouncement,
-        addCommunicationLog: api.createCommunicationLog,
+        addGradingRule, updateGradingRule, deleteGradingRule,
+        addFeeItem, updateFeeItem, deleteFeeItem,
+        addAnnouncement, addCommunicationLog,
         addBulkCommunicationLogs: api.createBulkCommunicationLogs,
         updateClasses: (data) => api.updateClasses(data),
         updateSubjects: (data) => api.updateSubjects(data),
@@ -300,7 +325,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         returnBook: api.returnBook,
         markBookLost: api.markBookLost,
         
-        // Empty Arrays / Placeholders (Legacy support)
+        // Empty Arrays / Placeholders (Data is now fetched locally via React Query)
         students: [], classes: [], subjects: [], exams: [], feeStructure: [], expenses: [], 
         staff: [], payrollItems: [], users: [], gradingScale: [], announcements: [],
         communicationLogs: [], attendanceRecords: [], timetableEntries: [], classSubjectAssignments: [],
