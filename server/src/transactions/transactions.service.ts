@@ -1,7 +1,7 @@
 
 import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DeepPartial, Repository } from 'typeorm';
+import { DeepPartial, Repository, Like } from 'typeorm';
 import { Transaction, TransactionType, PaymentMethod } from '../entities/transaction.entity';
 import { GetTransactionsDto } from './dto/get-transactions.dto';
 import { Student } from '../entities/student.entity';
@@ -36,6 +36,38 @@ export class TransactionsService {
       return phone.replace(/^\+/, '').replace(/^0/, '254');
   }
 
+  private async generateNextCode(schoolId: string, type: TransactionType): Promise<string> {
+      let prefix = 'TRX';
+      if (type === TransactionType.Invoice) prefix = 'INV';
+      else if (type === TransactionType.Payment) prefix = 'RCT';
+      else if (type === TransactionType.ManualCredit) prefix = 'CN'; // Credit Note
+      else if (type === TransactionType.ManualDebit) prefix = 'DN'; // Debit Note
+
+      const year = new Date().getFullYear();
+      
+      // Find the last transaction of this type for this school to increment sequence
+      const lastTransaction = await this.transactionsRepository.findOne({
+          where: { 
+              schoolId: schoolId as any,
+              type: type,
+              transactionCode: Like(`${prefix}-${year}-%`)
+          },
+          order: { id: 'DESC' } 
+      });
+
+      let seq = 1;
+      if (lastTransaction && lastTransaction.transactionCode) {
+          const parts = lastTransaction.transactionCode.split('-');
+          // Format is PREFIX-YEAR-SEQUENCE (e.g. INV-2024-00001)
+          if (parts.length === 3) {
+              const lastSeq = parseInt(parts[2], 10);
+              if (!isNaN(lastSeq)) seq = lastSeq + 1;
+          }
+      }
+
+      return `${prefix}-${year}-${String(seq).padStart(5, '0')}`;
+  }
+
   async create(createTransactionDto: any, schoolId: string): Promise<any> {
     const { studentId, ...rest } = createTransactionDto;
 
@@ -45,9 +77,13 @@ export class TransactionsService {
         throw new NotFoundException(`Student with ID ${studentId} not found in this school.`);
     }
 
+    // Auto-generate code if not provided
+    const code = rest.transactionCode || await this.generateNextCode(schoolId, rest.type || TransactionType.Payment);
+
     // Create and save with schoolId
     const transaction = this.transactionsRepository.create({
         ...rest,
+        transactionCode: code,
         student: student,
         school: { id: schoolId } as any
     } as DeepPartial<Transaction>);
@@ -67,10 +103,40 @@ export class TransactionsService {
   }
 
   async createBatch(createTransactionDtos: any[], schoolId: string): Promise<Transaction[]> {
-    const transactions = createTransactionDtos.map(dto => {
+    if (createTransactionDtos.length === 0) return [];
+
+    // Assuming batch is homogeneous (e.g. all Invoices) to optimize code generation
+    const firstType = createTransactionDtos[0].type || TransactionType.Invoice;
+    let prefix = 'TRX';
+    if (firstType === TransactionType.Invoice) prefix = 'INV';
+    else if (firstType === TransactionType.Payment) prefix = 'RCT';
+
+    const year = new Date().getFullYear();
+
+    // Get last sequence once
+    const lastTransaction = await this.transactionsRepository.findOne({
+        where: { 
+            schoolId: schoolId as any,
+            type: firstType,
+            transactionCode: Like(`${prefix}-${year}-%`)
+        },
+        order: { id: 'DESC' } 
+    });
+
+    let currentSeq = 1;
+    if (lastTransaction && lastTransaction.transactionCode) {
+        const parts = lastTransaction.transactionCode.split('-');
+        const lastSeq = parseInt(parts[2], 10);
+        if (!isNaN(lastSeq)) currentSeq = lastSeq + 1;
+    }
+
+    const transactions = createTransactionDtos.map((dto, index) => {
         const { studentId, ...rest } = dto;
+        const code = rest.transactionCode || `${prefix}-${year}-${String(currentSeq + index).padStart(5, '0')}`;
+
         return this.transactionsRepository.create({
             ...rest,
+            transactionCode: code,
             student: { id: studentId },
             school: { id: schoolId } as any
         } as DeepPartial<Transaction>);
@@ -165,16 +231,16 @@ export class TransactionsService {
 
       const data = transactions.map(t => ({
           Date: t.date,
+          Reference: t.transactionCode,
           Student: t.student ? t.student.name : 'Unknown',
           AdmissionNo: t.student ? t.student.admissionNumber : 'N/A',
           Type: t.type,
           Amount: t.amount,
           Description: t.description,
           Method: t.method || '',
-          Reference: t.transactionCode || t.checkNumber || '',
       }));
 
-      return CsvUtil.generate(data, ['Date', 'Student', 'AdmissionNo', 'Type', 'Amount', 'Description', 'Method', 'Reference']);
+      return CsvUtil.generate(data, ['Date', 'Reference', 'Student', 'AdmissionNo', 'Type', 'Amount', 'Description', 'Method']);
   }
 
   // --- M-Pesa Callback Handling ---
@@ -222,6 +288,20 @@ export class TransactionsService {
         .getOne();
       
       if (student) {
+          // Generate RCT code
+          const year = new Date().getFullYear();
+          const last = await this.transactionsRepository.findOne({
+               where: { schoolId: student.schoolId as any, type: TransactionType.Payment, transactionCode: Like(`RCT-${year}-%`) },
+               order: { id: 'DESC' }
+          });
+          let seq = 1;
+          if (last?.transactionCode) {
+              const parts = last.transactionCode.split('-');
+              const lastSeq = parseInt(parts[2], 10);
+              if (!isNaN(lastSeq)) seq = lastSeq + 1;
+          }
+          const code = `RCT-${year}-${String(seq).padStart(5, '0')}`;
+
           const transaction = this.transactionsRepository.create({
               student: student,
               school: { id: student.schoolId } as any,
@@ -230,7 +310,8 @@ export class TransactionsService {
               description: 'M-Pesa Fee Payment (Auto)',
               amount: Number(amount),
               method: PaymentMethod.MPesa,
-              transactionCode: receipt,
+              transactionCode: code, // Our internal RCT code
+              checkNumber: receipt, // Store M-Pesa Receipt here as external ref
               checkStatus: 'Cleared'
           });
           await this.transactionsRepository.save(transaction);

@@ -8,6 +8,7 @@ import type { Transaction, NewTransaction } from '../types';
 import { PaymentMethod, TransactionType } from '../types';
 import { useData } from '../contexts/DataContext';
 import GenerateInvoicesModal from '../components/common/GenerateInvoicesModal';
+import ReceiptModal from '../components/common/ReceiptModal';
 import * as api from '../services/api';
 import Skeleton from '../components/common/Skeleton';
 
@@ -20,6 +21,7 @@ const FeeManagementView: React.FC = () => {
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [isSyncInfoModalOpen, setIsSyncInfoModalOpen] = useState(false);
     const [isGenerateInvoicesModalOpen, setIsGenerateInvoicesModalOpen] = useState(false);
+    const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
     const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
     const [isPaying, setIsPaying] = useState(false);
 
@@ -92,7 +94,7 @@ const FeeManagementView: React.FC = () => {
         mutationFn: api.createTransaction,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['transactions'] });
-            queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] }); // Update dashboard revenue
+            queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] }); 
             addNotification("Transaction recorded successfully.", "success");
             setIsRecordModalOpen(false);
         },
@@ -141,6 +143,11 @@ const FeeManagementView: React.FC = () => {
         setIsRecordModalOpen(true);
     };
 
+    const openReceiptModal = (transaction: Transaction) => {
+        setSelectedTransaction(transaction);
+        setIsReceiptModalOpen(true);
+    };
+
     const handleDelete = (id: string) => {
         if(window.confirm("Are you sure you want to delete this transaction? This will affect balances.")) {
             deleteMutation.mutate(id);
@@ -181,7 +188,6 @@ const FeeManagementView: React.FC = () => {
             createMutation.mutate({
                 ...paymentForm,
                 studentName: student?.name,
-                // Ensure required fields
                 type: paymentForm.type || TransactionType.Payment,
                 amount: paymentForm.amount || 0,
                 date: paymentForm.date || new Date().toISOString(),
@@ -246,9 +252,9 @@ const FeeManagementView: React.FC = () => {
                     <thead>
                         <tr className="bg-slate-50 border-b border-slate-200">
                             <th className="px-4 py-3 font-semibold text-slate-600">Date</th>
+                            <th className="px-4 py-3 font-semibold text-slate-600">Reference #</th>
                             <th className="px-4 py-3 font-semibold text-slate-600">Type</th>
                             <th className="px-4 py-3 font-semibold text-slate-600">Student Name</th>
-                            <th className="px-4 py-3 font-semibold text-slate-600 hidden sm:table-cell">Description</th>
                             <th className="px-4 py-3 font-semibold text-slate-600 text-right">Amount</th>
                             <th className="px-4 py-3 font-semibold text-slate-600 hidden md:table-cell">Method</th>
                             <th className="px-4 py-3 font-semibold text-slate-600 text-center">Actions</th>
@@ -259,11 +265,11 @@ const FeeManagementView: React.FC = () => {
                              Array.from({ length: 5 }).map((_, i) => (
                                 <tr key={i} className="border-b border-slate-100">
                                     <td className="px-4 py-4"><Skeleton className="h-4 w-24"/></td>
+                                    <td className="px-4 py-4"><Skeleton className="h-4 w-24"/></td>
                                     <td className="px-4 py-4"><Skeleton className="h-4 w-20"/></td>
                                     <td className="px-4 py-4"><Skeleton className="h-4 w-48"/></td>
-                                    <td className="px-4 py-4 hidden sm:table-cell"><Skeleton className="h-4 w-32"/></td>
                                     <td className="px-4 py-4"><Skeleton className="h-4 w-24"/></td>
-                                    <td className="px-4 py-4 hidden md:table-cell"><Skeleton className="h-4 w-20"/></td>
+                                    <td className="px-4 py-4"><Skeleton className="h-4 w-20"/></td>
                                     <td className="px-4 py-4"><Skeleton className="h-4 w-24"/></td>
                                 </tr>
                             ))
@@ -273,16 +279,17 @@ const FeeManagementView: React.FC = () => {
                             transactions.map((p: any) => (
                                 <tr key={p.id} className="border-b border-slate-100 hover:bg-slate-50">
                                     <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{new Date(p.date).toLocaleDateString()}</td>
+                                    <td className="px-4 py-3 font-mono text-sm text-slate-600">{p.transactionCode || '-'}</td>
                                     <td className="px-4 py-3">
                                         <span className={`px-2 py-1 rounded text-xs font-semibold whitespace-nowrap ${p.type === TransactionType.Payment ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
                                             {p.type}
                                         </span>
                                     </td>
                                     <td className="px-4 py-3 font-semibold text-slate-800">{p.studentName || 'Unknown'}</td>
-                                    <td className="px-4 py-3 text-slate-600 hidden sm:table-cell">{p.description}</td>
                                     <td className="px-4 py-3 text-right font-medium text-slate-800">{formatCurrency(p.amount)}</td>
                                     <td className="px-4 py-3 text-slate-600 hidden md:table-cell">{p.method || '-'}</td>
                                     <td className="px-4 py-3 text-center space-x-2 whitespace-nowrap">
+                                        <button onClick={() => openReceiptModal(p)} className="text-purple-600 hover:underline text-xs uppercase font-bold">Print</button>
                                         <button onClick={() => openEditModal(p)} className="text-blue-600 hover:underline">Edit</button>
                                         <button onClick={() => handleDelete(p.id)} className="text-red-600 hover:underline">Delete</button>
                                     </td>
@@ -374,6 +381,11 @@ const FeeManagementView: React.FC = () => {
             <GenerateInvoicesModal 
                 isOpen={isGenerateInvoicesModalOpen}
                 onClose={() => setIsGenerateInvoicesModalOpen(false)}
+            />
+            <ReceiptModal
+                isOpen={isReceiptModalOpen}
+                onClose={() => setIsReceiptModalOpen(false)}
+                transaction={selectedTransaction}
             />
         </div>
     );
