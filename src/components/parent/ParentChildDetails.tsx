@@ -37,6 +37,7 @@ const ParentChildDetails: React.FC = () => {
                 .finally(() => setLoadingAttendance(false));
                 
             setLoadingFinance(true);
+            // Fix: Updated api.getTransactions parameter with updated type that includes studentId.
             api.getTransactions({ studentId: selectedChild.id, limit: 50 })
                 .then((res: any) => setTransactions(res.data))
                 .catch(err => console.error("Failed to load transactions", err))

@@ -6,7 +6,6 @@ import { GradingSystem, CBC_LEVEL_MAP } from '../types';
 import Modal from '../components/common/Modal';
 import { useData } from '../contexts/DataContext';
 import * as api from '../services/api';
-import Skeleton from '../components/common/Skeleton';
 import Spinner from '../components/common/Spinner';
 
 const ReportCardsView: React.FC = () => {
@@ -136,11 +135,21 @@ const ReportCardModal: React.FC<ReportCardModalProps> = ({ isOpen, onClose, stud
 
     const subjectMap = new Map<string, Subject>(subjects.map((s:Subject) => [s.id, s]));
     
+    // Traditional Calc
+    const validGrades = grades.filter(g => g.score !== null);
+    const totalMarks = validGrades.reduce((sum, g) => sum + (g.score || 0), 0);
+    const average = validGrades.length > 0 ? totalMarks / validGrades.length : 0;
+    const meanGrade = gradingScale.find(r => average >= r.minScore && average <= r.maxScore)?.grade || 'N/A';
+
+    const getTraditionalGrade = (score: number | null) => {
+        if (score === null) return 'N/A';
+        return gradingScale.find(r => score >= r.minScore && score <= r.maxScore)?.grade || 'N/A';
+    };
+
     return (
         <Modal isOpen={isOpen} onClose={onClose} title="Performance Report Card" size="3xl" footer={<button onClick={() => window.print()} className="px-10 py-4 bg-slate-900 text-white font-black uppercase tracking-widest text-xs rounded-2xl shadow-xl no-print hover:scale-105 transition-all">Export PDF / Print</button>}>
             {loading ? <div className="p-20 text-center"><Spinner /></div> : 
             <div className="printable-area p-8 bg-white text-slate-900 font-sans border-8 border-slate-50 m-2">
-                {/* Formal Header */}
                 <div className="flex flex-col items-center text-center mb-12 border-b-4 border-slate-900 pb-10">
                     {schoolInfo.logoUrl && <img src={schoolInfo.logoUrl} className="h-32 w-auto mb-6 object-contain" alt="School Logo" crossOrigin="anonymous" />}
                     <h1 className="text-5xl font-black uppercase tracking-tighter text-slate-900 leading-none">{schoolInfo.name}</h1>
@@ -150,7 +159,6 @@ const ReportCardModal: React.FC<ReportCardModalProps> = ({ isOpen, onClose, stud
                     </div>
                 </div>
 
-                {/* Student Info Bar */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-10 mb-16 bg-slate-50 p-10 rounded-[2rem] border-2 border-slate-100 relative">
                     <div className="space-y-1">
                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Student Name</p>
@@ -170,16 +178,19 @@ const ReportCardModal: React.FC<ReportCardModalProps> = ({ isOpen, onClose, stud
                     </div>
                 </div>
                 
-                {/* Results Table - Optimized for Kenyan CBC */}
                 <div className="border-2 border-slate-200 rounded-3xl overflow-hidden shadow-inner bg-white mb-12">
                     <table className="w-full text-left text-sm border-collapse">
                         <thead>
                             <tr className="bg-slate-900 text-white">
                                 <th className="p-6 font-black uppercase tracking-widest text-[10px] border-r border-slate-700">Sub Code</th>
                                 <th className="p-6 font-black uppercase tracking-widest text-[10px] border-r border-slate-700">Learning Area</th>
-                                <th className="p-6 font-black uppercase tracking-widest text-[10px] border-r border-slate-700 text-center">Level</th>
-                                <th className="p-6 font-black uppercase tracking-widest text-[10px] border-r border-slate-700 text-center">Points</th>
-                                <th className="p-6 font-black uppercase tracking-widest text-[10px]">Description</th>
+                                <th className="p-6 font-black uppercase tracking-widest text-[10px] border-r border-slate-700 text-center">
+                                    {schoolInfo.gradingSystem === GradingSystem.CBC ? 'Level' : 'Marks'}
+                                </th>
+                                <th className="p-6 font-black uppercase tracking-widest text-[10px] border-r border-slate-700 text-center">
+                                    {schoolInfo.gradingSystem === GradingSystem.CBC ? 'Points' : 'Grade'}
+                                </th>
+                                <th className="p-6 font-black uppercase tracking-widest text-[10px]">Remarks</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y-2 divide-slate-100">
@@ -195,10 +206,10 @@ const ReportCardModal: React.FC<ReportCardModalProps> = ({ isOpen, onClose, stud
                                             {schoolInfo.gradingSystem === GradingSystem.CBC ? (g.cbetScore || '-') : (g.score ? `${g.score}%` : '-')}
                                         </td>
                                         <td className="p-6 text-center font-black text-slate-900 border-r border-slate-100 text-2xl">
-                                            {schoolInfo.gradingSystem === GradingSystem.CBC ? (levelInfo?.points || '-') : '-'}
+                                            {schoolInfo.gradingSystem === GradingSystem.CBC ? (levelInfo?.points || '-') : getTraditionalGrade(g.score)}
                                         </td>
                                         <td className="p-6 font-bold text-slate-500 uppercase text-[10px] leading-relaxed max-w-[200px]">
-                                            {schoolInfo.gradingSystem === GradingSystem.CBC ? (levelInfo?.description || '-') : '-'}
+                                            {schoolInfo.gradingSystem === GradingSystem.CBC ? (levelInfo?.description || '-') : (g.comments || '-')}
                                         </td>
                                     </tr>
                                 );
@@ -207,35 +218,32 @@ const ReportCardModal: React.FC<ReportCardModalProps> = ({ isOpen, onClose, stud
                     </table>
                 </div>
 
-                {/* Subject Remarks Section */}
-                <div className="mb-16">
-                     <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em] mb-10 flex items-center">
-                         <span className="bg-slate-200 h-0.5 flex-grow mr-6"></span>
-                         Teacher Assessments & Remarks
-                         <span className="bg-slate-200 h-0.5 flex-grow ml-6"></span>
-                     </h3>
-                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        {grades.filter(g => g.comments).map((g: Grade) => {
-                            const subj = subjectMap.get(g.subjectId);
-                            return (
-                                <div key={g.id} className="flex gap-5 items-start bg-slate-50 p-6 rounded-[2rem] border-2 border-slate-100 hover:border-primary-200 transition-colors group">
-                                    <div className="bg-white px-4 py-1.5 rounded-xl border-2 border-slate-200 font-black text-primary-700 text-[10px] uppercase shadow-sm group-hover:bg-primary-600 group-hover:text-white group-hover:border-primary-600 transition-all">
-                                        {subj?.name}
-                                    </div>
-                                    <p className="text-sm text-slate-600 font-bold leading-relaxed">"{g.comments}"</p>
-                                </div>
-                            )
-                        })}
-                        {!grades.some(g => g.comments) && <p className="text-center col-span-2 text-slate-300 font-black uppercase tracking-widest py-10 border-2 border-dashed border-slate-100 rounded-3xl">No Qualitative learning area remarks recorded.</p>}
-                     </div>
-                </div>
+                {schoolInfo.gradingSystem === GradingSystem.Traditional && (
+                    <div className="grid grid-cols-3 gap-10 mb-16 px-10">
+                        <div className="bg-slate-900 text-white p-6 rounded-3xl text-center shadow-lg">
+                            <p className="text-[10px] font-black uppercase tracking-widest mb-1 opacity-60">Total Aggregate</p>
+                            <p className="text-3xl font-black">{totalMarks}</p>
+                        </div>
+                        <div className="bg-primary-600 text-white p-6 rounded-3xl text-center shadow-lg">
+                            <p className="text-[10px] font-black uppercase tracking-widest mb-1 opacity-80">Mean Average</p>
+                            <p className="text-3xl font-black">{average.toFixed(1)}%</p>
+                        </div>
+                        <div className="bg-amber-500 text-white p-6 rounded-3xl text-center shadow-lg">
+                            <p className="text-[10px] font-black uppercase tracking-widest mb-1 opacity-90">Mean Grade</p>
+                            <p className="text-3xl font-black">{meanGrade}</p>
+                        </div>
+                    </div>
+                )}
 
-                {/* Signatures & Seal */}
                 <div className="mt-20 pt-16 border-t-4 border-slate-900 grid grid-cols-1 md:grid-cols-2 gap-20">
                     <div className="relative p-8 border-4 border-slate-100 rounded-[2.5rem] bg-slate-50/30">
                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-6">Headteacher's Comments</p>
                         <div className="h-20 flex items-center">
-                            <p className="text-base text-slate-800 font-black leading-snug">Consistently meeting and exceeding core competencies in literacy and numeracy. A highly focused learner.</p>
+                            <p className="text-base text-slate-800 font-black leading-snug">
+                                {schoolInfo.gradingSystem === GradingSystem.CBC 
+                                    ? "Consistently meeting and exceeding core competencies." 
+                                    : `Achieved a mean grade of ${meanGrade}. Maintain consistency in all subjects.`}
+                            </p>
                         </div>
                         <div className="mt-12 pt-6 border-t-2 border-slate-300 w-full">
                             <p className="text-[10px] text-slate-900 uppercase font-black tracking-widest">Official Signatory & Date</p>
@@ -245,14 +253,13 @@ const ReportCardModal: React.FC<ReportCardModalProps> = ({ isOpen, onClose, stud
                         <div>
                             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-6">Institutional Stamp</p>
                             <div className="w-36 h-36 border-4 border-dashed border-slate-300 rounded-full flex items-center justify-center opacity-30">
-                                <p className="text-[10px] font-black uppercase p-6">Place Official Seal Here</p>
+                                <p className="text-[10px] font-black uppercase p-6">Official Seal</p>
                             </div>
                         </div>
-                        <p className="text-[9px] font-black text-slate-400 mt-6 uppercase tracking-widest">Valid only with original stamp and signature</p>
+                        <p className="text-[9px] font-black text-slate-400 mt-6 uppercase tracking-widest">Valid only with original stamp</p>
                     </div>
                 </div>
 
-                {/* Branding */}
                 <div className="mt-24 pt-8 border-t-2 border-dashed border-slate-100 text-center">
                     <p className="text-[10px] text-slate-300 font-black uppercase tracking-[0.5em]">Saaslink Education Cloud Platform &copy; {new Date().getFullYear()}</p>
                 </div>

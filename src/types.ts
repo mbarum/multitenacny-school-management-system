@@ -1,4 +1,6 @@
 
+// These types are used throughout the application for data consistency.
+
 export enum Role {
   SuperAdmin = 'SuperAdmin',
   Admin = 'Admin',
@@ -41,7 +43,7 @@ export interface Student {
   guardianEmail: string;
   emergencyContact: string;
   dateOfBirth: string; // YYYY-MM-DD
-  balance?: number; // Calculated field
+  balance?: number;
 }
 export type NewStudent = Omit<Student, 'id' | 'status' | 'admissionNumber' | 'balance'>;
 
@@ -52,17 +54,6 @@ export interface SchoolClass {
     formTeacherId?: string | null;
     formTeacherName?: string | null;
 }
-export type NewSchoolClass = Omit<SchoolClass, 'id'>;
-
-export interface Exam {
-    id: string;
-    name: string;
-    date: string; // YYYY-MM-DD
-    classId: string;
-    type: ExamType;
-    schoolClass?: SchoolClass;
-}
-export type NewExam = Omit<Exam, 'id'>;
 
 export enum PaymentMethod {
     MPesa = 'MPesa',
@@ -115,6 +106,7 @@ export interface Expense {
   date: string; // YYYY-MM-DD
   attachmentUrl?: string;
 }
+// Add missing NewExpense type
 export type NewExpense = Omit<Expense, 'id'>;
 
 export interface Staff {
@@ -133,7 +125,8 @@ export interface Staff {
     nssfNumber: string;
     shaNumber: string;
 }
-export type NewStaff = Omit<Staff, 'id' | 'userId'> & { password?: string };
+// Add missing NewStaff type
+export type NewStaff = Omit<Staff, 'id' | 'userId' | 'photoUrl'> & { password?: string };
 
 export enum PayrollItemType {
     Earning = 'Earning',
@@ -163,12 +156,13 @@ export interface PayrollItem {
     value: number;
     isRecurring: boolean;
 }
+// Add missing NewPayrollItem type
 export type NewPayrollItem = Omit<PayrollItem, 'id'>;
 
+// Add missing PayrollEntry type
 export interface PayrollEntry {
     name: string;
     amount: number;
-    type?: PayrollItemType;
 }
 
 export interface Payroll {
@@ -187,18 +181,18 @@ export interface Payroll {
 export interface Subject {
     id: string;
     name: string;
-    code: string; // Kenyan Subject Code e.g. 901
+    code: string;
 }
-export type NewSubject = Omit<Subject, 'id'>;
 
+// Add missing ClassSubjectAssignment type
 export interface ClassSubjectAssignment {
     id: string;
     classId: string;
     subjectId: string;
     teacherId: string;
 }
-export type NewClassSubjectAssignment = Omit<ClassSubjectAssignment, 'id'>;
 
+// Add missing DayOfWeek enum
 export enum DayOfWeek {
     Monday = 'Monday',
     Tuesday = 'Tuesday',
@@ -207,6 +201,7 @@ export enum DayOfWeek {
     Friday = 'Friday',
 }
 
+// Add missing TimetableEntry interface
 export interface TimetableEntry {
     id: string;
     classId: string;
@@ -216,35 +211,28 @@ export interface TimetableEntry {
     startTime: string; // "HH:MM"
     endTime: string; // "HH:MM"
 }
-export type NewTimetableEntry = Omit<TimetableEntry, 'id'>;
 
+// Add missing ExamType enum
 export enum ExamType {
     Traditional = 'Traditional',
     CBC = 'CBC'
 }
 
-export enum CbetScore {
-  EE1 = 'EE1',
-  EE2 = 'EE2',
-  ME1 = 'ME1',
-  ME2 = 'ME2',
-  AE1 = 'AE1',
-  AE2 = 'AE2',
-  BE1 = 'BE1',
-  BE2 = 'BE2'
+export interface Exam {
+    id: string;
+    name: string;
+    date: string; 
+    classId: string;
+    type: ExamType;
 }
 
-// CBC Points and Description Mapping for Kenya
-export const CBC_LEVEL_MAP: Record<CbetScore, { points: number, description: string }> = {
-    [CbetScore.EE1]: { points: 8, description: 'Exceeding Expectation' },
-    [CbetScore.EE2]: { points: 7, description: 'Exceeding Expectation' },
-    [CbetScore.ME1]: { points: 6, description: 'Meeting Expectation' },
-    [CbetScore.ME2]: { points: 5, description: 'Meeting Expectation' },
-    [CbetScore.AE1]: { points: 4, description: 'Approaching Expectation' },
-    [CbetScore.AE2]: { points: 3, description: 'Approaching Expectation' },
-    [CbetScore.BE1]: { points: 2, description: 'Below Expectation' },
-    [CbetScore.BE2]: { points: 1, description: 'Below Expectation' },
-};
+// Add missing CbetScore enum
+export enum CbetScore {
+  EE = 'EE',
+  ME = 'ME',
+  AE = 'AE',
+  BE = 'BE'
+}
 
 export interface Grade {
     id: string;
@@ -255,8 +243,8 @@ export interface Grade {
     cbetScore?: CbetScore | null;
     comments?: string;
 }
-export type NewGrade = Omit<Grade, 'id'>;
 
+// Add missing AttendanceStatus enum
 export enum AttendanceStatus {
     Present = 'Present',
     Absent = 'Absent',
@@ -264,6 +252,7 @@ export enum AttendanceStatus {
     Excused = 'Excused'
 }
 
+// Add missing AttendanceRecord interface
 export interface AttendanceRecord {
     id: string;
     studentId: string;
@@ -272,8 +261,8 @@ export interface AttendanceRecord {
     status: AttendanceStatus;
     remarks?: string;
 }
-export type NewAttendanceRecord = Omit<AttendanceRecord, 'id'>;
 
+// Add missing EventCategory enum
 export enum EventCategory {
     Holiday = 'Holiday',
     Academic = 'Academic',
@@ -282,6 +271,7 @@ export enum EventCategory {
     General = 'General'
 }
 
+// Add missing SchoolEvent interface
 export interface SchoolEvent {
     id: string;
     title: string;
@@ -290,24 +280,10 @@ export interface SchoolEvent {
     endDate?: string; // YYYY-MM-DD
     category: EventCategory;
 }
-export type NewSchoolEvent = Omit<SchoolEvent, 'id'>;
 
 export enum GradingSystem {
     Traditional = 'Traditional',
     CBC = 'CBC'
-}
-
-export enum Currency {
-    KES = 'KES',
-    UGX = 'UGX',
-    TZS = 'TZS',
-    RWF = 'RWF',
-    BIF = 'BIF',
-    USD = 'USD',
-    ZMW = 'ZMW',
-    ETB = 'ETB',
-    SDG = 'SDG',
-    SSP = 'SSP'
 }
 
 export interface SchoolInfo {
@@ -319,24 +295,18 @@ export interface SchoolInfo {
     logoUrl?: string;
     schoolCode: string;
     gradingSystem: GradingSystem;
-    currency?: Currency;
-}
-
-export interface School {
-    id: string;
-    name: string;
-    slug: string;
-    email?: string;
-    phone?: string;
-    logoUrl?: string;
-    createdAt?: string;
-    adminName?: string;
-    studentCount?: number;
+    currency?: string;
     subscription?: {
         plan: SubscriptionPlan;
         status: SubscriptionStatus;
-        endDate?: string;
+        endDate: string;
     };
+}
+
+// Add School alias for SchoolInfo
+export interface School extends SchoolInfo {
+    slug: string;
+    createdAt: string;
 }
 
 export interface GradingRule {
@@ -345,6 +315,7 @@ export interface GradingRule {
     minScore: number;
     maxScore: number;
 }
+// Add missing NewGradingRule type
 export type NewGradingRule = Omit<GradingRule, 'id'>;
 
 export interface ClassFee {
@@ -362,12 +333,25 @@ export interface FeeItem {
 }
 export type NewFeeItem = Omit<FeeItem, 'id'>;
 
+// Add missing Announcement and related types
+export interface Announcement {
+    id: string;
+    title: string;
+    content: string;
+    date: string; // ISO String
+    audience: string; // 'all' or classId
+    sentBy: string; // User's name
+}
+export type NewAnnouncement = Omit<Announcement, 'id'>;
+
+// Add missing CommunicationType enum
 export enum CommunicationType {
     SMS = 'SMS',
     Email = 'Email',
     PortalMessage = 'PortalMessage'
 }
 
+// Add missing CommunicationLog interface
 export interface CommunicationLog {
     id: string;
     studentId: string;
@@ -378,25 +362,6 @@ export interface CommunicationLog {
 }
 export type NewCommunicationLog = Omit<CommunicationLog, 'id'>;
 
-export interface Announcement {
-    id: string;
-    title: string;
-    content: string;
-    date: string; // ISO String
-    audience: string; // 'all' or classId
-    sentBy: string; // User's name
-    sentById?: string;
-}
-export type NewAnnouncement = Omit<Announcement, 'id'>;
-
-export interface ReportShareLog {
-    id: string;
-    studentId: string;
-    examId: string;
-    sharedDate: string; // ISO String
-    sharedBy: string; // User's name
-}
-
 export interface DarajaSettings {
     consumerKey: string;
     consumerSecret: string;
@@ -405,26 +370,48 @@ export interface DarajaSettings {
     paybillNumber: string;
 }
 
-export interface MpesaC2BTransaction {
-    id: string;
-    transactionType: 'Pay Bill' | 'STK Push';
-    transID: string;
-    transTime: string;
-    transAmount: string;
-    businessShortCode: string;
-    billRefNumber: string; // Student Admission Number
-    msisdn: string;
-    firstName: string;
-    lastName: string;
-    isProcessed: boolean;
-}
-
 export interface Notification {
     id: number;
     message: string;
     type: 'success' | 'error' | 'info';
 }
 
+export enum SubscriptionPlan {
+  FREE = 'FREE',
+  BASIC = 'BASIC',
+  PREMIUM = 'PREMIUM'
+}
+
+export enum SubscriptionStatus {
+  ACTIVE = 'ACTIVE',
+  PAST_DUE = 'PAST_DUE',
+  CANCELLED = 'CANCELLED',
+  TRIAL = 'TRIAL'
+}
+
+export interface PlatformPricing {
+    id: number;
+    basicMonthlyPrice: number;
+    basicAnnualPrice: number;
+    premiumMonthlyPrice: number;
+    premiumAnnualPrice: number;
+}
+
+// Add missing Currency enum
+export enum Currency {
+    KES = 'KES',
+    USD = 'USD',
+    UGX = 'UGX',
+    TZS = 'TZS',
+    RWF = 'RWF',
+    BIF = 'BIF',
+    ZMW = 'ZMW',
+    ETB = 'ETB',
+    SDG = 'SDG',
+    SSP = 'SSP'
+}
+
+// Add Library related types
 export interface Book {
     id: string;
     title: string;
@@ -449,44 +436,18 @@ export interface LibraryTransaction {
     id: string;
     bookId: string;
     bookTitle: string;
-    studentId: string;
+    studentId: string | null;
     borrowerName: string;
     borrowDate: string;
     dueDate: string;
-    returnDate?: string;
+    returnDate: string | null;
     status: LibraryStatus;
+    remarks?: string;
 }
 
-export interface IssueBookData {
-    bookId: string;
-    studentId: string;
-    dueDate: string;
-}
-
-export enum SubscriptionPlan {
-  FREE = 'FREE',
-  BASIC = 'BASIC',
-  PREMIUM = 'PREMIUM'
-}
-
-export enum SubscriptionStatus {
-  ACTIVE = 'ACTIVE',
-  PAST_DUE = 'PAST_DUE',
-  CANCELLED = 'CANCELLED',
-  TRIAL = 'TRIAL'
-}
-
-export interface PlatformPricing {
-    id: number;
-    basicMonthlyPrice: number;
-    basicAnnualPrice: number;
-    premiumMonthlyPrice: number;
-    premiumAnnualPrice: number;
-    mpesaPaybill?: string;
-    mpesaConsumerKey?: string;
-    mpesaConsumerSecret?: string;
-    mpesaPasskey?: string;
-    stripePublishableKey?: string;
-    stripeSecretKey?: string;
-    stripeWebhookSecret?: string;
-}
+export const CBC_LEVEL_MAP: Record<string, { points: number, description: string }> = {
+    'EE': { points: 4, description: 'Exceeding Expectation' },
+    'ME': { points: 3, description: 'Meeting Expectation' },
+    'AE': { points: 2, description: 'Approaching Expectation' },
+    'BE': { points: 1, description: 'Below Expectation' },
+};

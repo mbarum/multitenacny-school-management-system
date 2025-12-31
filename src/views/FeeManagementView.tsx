@@ -18,7 +18,6 @@ const FeeManagementView: React.FC = () => {
 
     // UI State
     const [isRecordModalOpen, setIsRecordModalOpen] = useState(false);
-    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [isSyncInfoModalOpen, setIsSyncInfoModalOpen] = useState(false);
     const [isGenerateInvoicesModalOpen, setIsGenerateInvoicesModalOpen] = useState(false);
     const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
@@ -41,26 +40,19 @@ const FeeManagementView: React.FC = () => {
 
     // --- Queries ---
 
-    // 1. Fetch Students for Dropdown (Cached)
     const { data: students = [] } = useQuery({
         queryKey: ['students-list'],
-        queryFn: () => api.getStudents({ mode: 'minimal', limit: 1000 }).then(res => Array.isArray(res) ? res : res.data)
+        queryFn: () => api.getStudents({ limit: 1000 }).then(res => Array.isArray(res) ? res : res.data)
     });
 
-    // 2. Calculate Dates for Filters
     const getDateRange = () => {
         if (filterOption === 'custom') return { startDate, endDate };
-        
         const now = new Date();
         const range: { startDate?: string, endDate?: string } = {};
-        
-        if (filterOption === 'today') {
-            range.startDate = now.toISOString().split('T')[0];
-            range.endDate = now.toISOString().split('T')[0];
-        } else if (filterOption === 'this_week') {
+        if (filterOption === 'today') range.startDate = range.endDate = now.toISOString().split('T')[0];
+        else if (filterOption === 'this_week') {
             const day = now.getDay();
-            const diff = now.getDate() - day + (day === 0 ? -6 : 1); 
-            const monday = new Date(now.setDate(diff));
+            const monday = new Date(now.setDate(now.getDate() - day + (day === 0 ? -6 : 1)));
             range.startDate = monday.toISOString().split('T')[0];
             range.endDate = new Date().toISOString().split('T')[0];
         } else if (filterOption === 'this_month') {
@@ -72,7 +64,6 @@ const FeeManagementView: React.FC = () => {
 
     const { startDate: qStart, endDate: qEnd } = getDateRange();
 
-    // 3. Fetch Transactions (Server Paginated)
     const { data: transactionsData, isLoading } = useQuery({
         queryKey: ['transactions', page, searchTerm, filterOption, startDate, endDate],
         queryFn: () => api.getTransactions({
@@ -94,7 +85,6 @@ const FeeManagementView: React.FC = () => {
         mutationFn: api.createTransaction,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['transactions'] });
-            queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] }); 
             addNotification("Transaction recorded successfully.", "success");
             setIsRecordModalOpen(false);
         },
@@ -122,10 +112,6 @@ const FeeManagementView: React.FC = () => {
 
     const handleFilterChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
         setFilterOption(e.target.value);
-        if (e.target.value !== 'custom') {
-            setStartDate('');
-            setEndDate('');
-        }
         setPage(1);
     };
 
@@ -148,26 +134,14 @@ const FeeManagementView: React.FC = () => {
         setIsReceiptModalOpen(true);
     };
 
-    const handleDelete = (id: string) => {
-        if(window.confirm("Are you sure you want to delete this transaction? This will affect balances.")) {
-            deleteMutation.mutate(id);
-        }
-    }
-    
     const handleStkPush = async () => {
         if (!paymentForm.studentId || !paymentForm.amount || paymentForm.amount <= 0) {
-            addNotification("Please select a student and enter a valid amount.", 'error');
+            addNotification("Invalid payment details.", 'error');
             return;
         }
-
         const student = students.find((s: any) => s.id === paymentForm.studentId);
-        if (!student) {
-            addNotification("Could not find selected student.", 'error');
-            return;
-        }
-
+        if (!student) return;
         setIsPaying(true);
-        addNotification("Sending payment request to guardian's phone...", 'info');
         try {
             const response = await initiateSTKPush(paymentForm.amount, student.guardianContact, student.admissionNumber);
             addNotification(response.CustomerMessage, 'info');
@@ -198,28 +172,29 @@ const FeeManagementView: React.FC = () => {
 
     return (
         <div className="p-6 md:p-8">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
-                <h2 className="text-3xl font-bold text-slate-800">Fee Management</h2>
-                <div className="flex items-center space-x-2 mt-2 sm:mt-0">
-                     <button 
-                        onClick={() => setIsSyncInfoModalOpen(true)}
-                        disabled={!isMpesaConfigured}
-                        className="px-4 py-2 bg-slate-500 text-white font-semibold rounded-lg shadow-md hover:bg-slate-600 disabled:bg-slate-400 disabled:cursor-not-allowed"
-                        title={!isMpesaConfigured ? "Please configure M-Pesa settings first" : "About M-Pesa Payment Confirmation"}
-                    >
-                        M-Pesa Info
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+                <div>
+                    <h2 className="text-3xl font-black text-slate-800 tracking-tight uppercase">Fees & Ledger</h2>
+                    <p className="text-slate-500 font-medium">Manage school revenue and student balances.</p>
+                </div>
+                <div className="flex items-center space-x-3">
+                    <button onClick={() => setIsGenerateInvoicesModalOpen(true)} className="px-5 py-2.5 bg-blue-600 text-white font-bold rounded-xl shadow-lg shadow-blue-500/30 hover:bg-blue-700 transition-all flex items-center">
+                        <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                        Bulk Bill
                     </button>
-                    <button onClick={() => setIsGenerateInvoicesModalOpen(true)} className="px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700">Generate Invoices</button>
-                    <button onClick={openRecordModal} className="px-4 py-2 bg-primary-600 text-white font-semibold rounded-lg shadow-md hover:bg-primary-700">Record Transaction</button>
+                    <button onClick={openRecordModal} className="px-5 py-2.5 bg-primary-600 text-white font-bold rounded-xl shadow-lg shadow-primary-500/30 hover:bg-primary-700 transition-all flex items-center">
+                        <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
+                        Add Entry
+                    </button>
                 </div>
             </div>
 
-            {/* Filters */}
-            <div className="mb-4 bg-white p-4 rounded-xl shadow-lg flex flex-col sm:flex-row items-center gap-4">
-                <div className="flex items-center space-x-4 w-full sm:w-auto">
-                    <label htmlFor="date-filter" className="font-medium text-slate-700 whitespace-nowrap">Filter by:</label>
-                    <select id="date-filter" value={filterOption} onChange={handleFilterChange} className="p-2 border border-slate-300 rounded-lg w-full sm:w-auto">
-                        <option value="all">All Time</option>
+            {/* Powerful Filtering Bar */}
+            <div className="mb-6 bg-white p-6 rounded-[2rem] shadow-xl border border-slate-100 flex flex-col lg:row items-center gap-6">
+                <div className="flex items-center space-x-3 w-full lg:w-auto">
+                    <label className="text-xs font-black text-slate-400 uppercase tracking-widest">Timeframe</label>
+                    <select value={filterOption} onChange={handleFilterChange} className="p-3 border-2 border-slate-100 rounded-2xl focus:border-primary-500 outline-none bg-slate-50 font-bold text-slate-700">
+                        <option value="all">All Records</option>
                         <option value="today">Today</option>
                         <option value="this_week">This Week</option>
                         <option value="this_month">This Month</option>
@@ -228,70 +203,66 @@ const FeeManagementView: React.FC = () => {
                 </div>
 
                 {filterOption === 'custom' && (
-                    <div className="flex items-center space-x-2 w-full sm:w-auto">
-                        <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="p-2 border border-slate-300 rounded-lg w-full"/>
-                        <span className="text-slate-500">to</span>
-                        <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="p-2 border border-slate-300 rounded-lg w-full"/>
+                    <div className="flex items-center space-x-3 w-full lg:w-auto animate-fade-in-right">
+                        <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="p-3 border-2 border-slate-100 rounded-2xl outline-none font-bold"/>
+                        <span className="text-slate-300">to</span>
+                        <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="p-3 border-2 border-slate-100 rounded-2xl outline-none font-bold"/>
                     </div>
                 )}
                 
-                <div className="flex-grow">
+                <div className="relative flex-grow w-full">
+                    <svg className="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
                     <input 
                         type="text" 
-                        placeholder="Search student, description or code..." 
+                        placeholder="Search student name, ID or reference code..." 
                         value={searchTerm} 
                         onChange={e => { setSearchTerm(e.target.value); setPage(1); }} 
-                        className="w-full p-2 border border-slate-300 rounded-lg"
+                        className="w-full pl-12 pr-4 py-3.5 border-2 border-slate-100 rounded-2xl outline-none focus:border-primary-500 font-medium placeholder:text-slate-300 transition-all"
                     />
                 </div>
             </div>
 
-            {/* Table */}
-            <div className="bg-white rounded-xl shadow-lg overflow-x-auto min-h-[400px]">
-                <table className="w-full text-left table-auto">
+            {/* World Class Data Table */}
+            <div className="bg-white rounded-[2rem] shadow-2xl overflow-hidden border border-slate-100">
+                <table className="w-full text-left">
                     <thead>
-                        <tr className="bg-slate-50 border-b border-slate-200">
-                            <th className="px-4 py-3 font-semibold text-slate-600">Date</th>
-                            <th className="px-4 py-3 font-semibold text-slate-600">Reference #</th>
-                            <th className="px-4 py-3 font-semibold text-slate-600">Type</th>
-                            <th className="px-4 py-3 font-semibold text-slate-600">Student Name</th>
-                            <th className="px-4 py-3 font-semibold text-slate-600 text-right">Amount</th>
-                            <th className="px-4 py-3 font-semibold text-slate-600 hidden md:table-cell">Method</th>
-                            <th className="px-4 py-3 font-semibold text-slate-600 text-center">Actions</th>
+                        <tr className="bg-slate-900 text-white">
+                            <th className="px-6 py-5 font-black uppercase tracking-widest text-[10px]">Date</th>
+                            <th className="px-6 py-5 font-black uppercase tracking-widest text-[10px]">Ref #</th>
+                            <th className="px-6 py-5 font-black uppercase tracking-widest text-[10px]">Type</th>
+                            <th className="px-6 py-5 font-black uppercase tracking-widest text-[10px]">Student Identity</th>
+                            <th className="px-6 py-5 font-black uppercase tracking-widest text-[10px] text-right">Amount</th>
+                            <th className="px-6 py-5 font-black uppercase tracking-widest text-[10px] text-center">Manage</th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody className="divide-y divide-slate-100">
                         {isLoading ? (
                              Array.from({ length: 5 }).map((_, i) => (
-                                <tr key={i} className="border-b border-slate-100">
-                                    <td className="px-4 py-4"><Skeleton className="h-4 w-24"/></td>
-                                    <td className="px-4 py-4"><Skeleton className="h-4 w-24"/></td>
-                                    <td className="px-4 py-4"><Skeleton className="h-4 w-20"/></td>
-                                    <td className="px-4 py-4"><Skeleton className="h-4 w-48"/></td>
-                                    <td className="px-4 py-4"><Skeleton className="h-4 w-24"/></td>
-                                    <td className="px-4 py-4"><Skeleton className="h-4 w-20"/></td>
-                                    <td className="px-4 py-4"><Skeleton className="h-4 w-24"/></td>
-                                </tr>
+                                <tr key={i}><td colSpan={6} className="px-6 py-4"><Skeleton className="h-6 w-full"/></td></tr>
                             ))
                         ) : transactions.length === 0 ? (
-                             <tr><td colSpan={7} className="text-center py-8 text-slate-500">No transactions found.</td></tr>
+                             <tr><td colSpan={6} className="text-center py-20 text-slate-400 font-bold uppercase tracking-widest">No entries found.</td></tr>
                         ) : (
                             transactions.map((p: any) => (
-                                <tr key={p.id} className="border-b border-slate-100 hover:bg-slate-50">
-                                    <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{new Date(p.date).toLocaleDateString()}</td>
-                                    <td className="px-4 py-3 font-mono text-sm text-slate-600">{p.transactionCode || '-'}</td>
-                                    <td className="px-4 py-3">
-                                        <span className={`px-2 py-1 rounded text-xs font-semibold whitespace-nowrap ${p.type === TransactionType.Payment ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                                <tr key={p.id} className="hover:bg-slate-50 transition-colors group">
+                                    <td className="px-6 py-4 font-bold text-slate-500">{new Date(p.date).toLocaleDateString()}</td>
+                                    <td className="px-6 py-4 font-mono text-xs text-primary-700 font-black">{p.transactionCode || '-'}</td>
+                                    <td className="px-6 py-4">
+                                        <span className={`px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest ${p.type === TransactionType.Payment ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
                                             {p.type}
                                         </span>
                                     </td>
-                                    <td className="px-4 py-3 font-semibold text-slate-800">{p.studentName || 'Unknown'}</td>
-                                    <td className="px-4 py-3 text-right font-medium text-slate-800">{formatCurrency(p.amount)}</td>
-                                    <td className="px-4 py-3 text-slate-600 hidden md:table-cell">{p.method || '-'}</td>
-                                    <td className="px-4 py-3 text-center space-x-2 whitespace-nowrap">
-                                        <button onClick={() => openReceiptModal(p)} className="text-purple-600 hover:underline text-xs uppercase font-bold">Print</button>
-                                        <button onClick={() => openEditModal(p)} className="text-blue-600 hover:underline">Edit</button>
-                                        <button onClick={() => handleDelete(p.id)} className="text-red-600 hover:underline">Delete</button>
+                                    <td className="px-6 py-4">
+                                        <div className="font-black text-slate-800">{p.studentName || 'Unknown'}</div>
+                                        <div className="text-[10px] text-slate-400 font-bold mt-0.5">{p.method ? `via ${p.method}` : 'Standard Billing'}</div>
+                                    </td>
+                                    <td className={`px-6 py-4 text-right font-black text-lg ${p.type === TransactionType.Payment ? 'text-green-600' : 'text-slate-800'}`}>
+                                        {formatCurrency(p.amount)}
+                                    </td>
+                                    <td className="px-6 py-4 text-center space-x-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <button onClick={() => openReceiptModal(p)} className="text-primary-600 font-black text-[10px] uppercase hover:underline">Receipt</button>
+                                        <button onClick={() => openEditModal(p)} className="text-blue-600 font-black text-[10px] uppercase hover:underline">Edit</button>
+                                        <button onClick={() => {if(confirm('Delete permanently?')) deleteMutation.mutate(p.id)}} className="text-red-500 font-black text-[10px] uppercase hover:underline">Delete</button>
                                     </td>
                                 </tr>
                             ))
@@ -301,92 +272,74 @@ const FeeManagementView: React.FC = () => {
             </div>
              <Pagination currentPage={page} totalPages={totalPages} onPageChange={setPage} />
             
-            {/* Record/Edit Modal */}
-            <Modal isOpen={isRecordModalOpen} onClose={() => setIsRecordModalOpen(false)} title={selectedTransaction ? "Edit Transaction" : "Record New Transaction"}>
-                <form onSubmit={handleSaveTransaction} className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-sm font-medium text-slate-700">Transaction Type</label>
+            {/* Entry Modal */}
+            <Modal isOpen={isRecordModalOpen} onClose={() => setIsRecordModalOpen(false)} title={selectedTransaction ? "Modify Transaction" : "New Ledger Entry"}>
+                <form onSubmit={handleSaveTransaction} className="space-y-6">
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1">
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Entry Type</label>
                             <select 
-                                name="type" 
                                 value={paymentForm.type} 
                                 onChange={e => setPaymentForm(p => ({...p, type: e.target.value as TransactionType}))} 
-                                className="w-full p-2 border border-slate-300 rounded-lg"
+                                className="w-full p-3.5 border-2 border-slate-100 rounded-2xl outline-none focus:border-primary-500 font-bold bg-slate-50"
                             >
-                                <option value={TransactionType.Payment}>Payment</option>
-                                <option value={TransactionType.Invoice}>Invoice (Charge)</option>
-                                <option value={TransactionType.ManualCredit}>Credit Note (Waiver)</option>
-                                <option value={TransactionType.ManualDebit}>Debit Note (Fine)</option>
+                                <option value={TransactionType.Payment}>Payment (Credit)</option>
+                                <option value={TransactionType.Invoice}>Invoice (Debit)</option>
+                                <option value={TransactionType.ManualCredit}>Manual Credit (Waiver)</option>
+                                <option value={TransactionType.ManualDebit}>Manual Debit (Penalty)</option>
                             </select>
                         </div>
-                        <div>
-                            <label className="block text-sm font-medium text-slate-700">Date</label>
-                            <input type="date" name="date" value={paymentForm.date} onChange={e => setPaymentForm(p => ({...p, date: e.target.value}))} required className="w-full p-2 border border-slate-300 rounded-lg" />
+                        <div className="space-y-1">
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Date</label>
+                            <input type="date" value={paymentForm.date} onChange={e => setPaymentForm(p => ({...p, date: e.target.value}))} required className="w-full p-3.5 border-2 border-slate-100 rounded-2xl outline-none focus:border-primary-500 font-bold bg-slate-50" />
                         </div>
                     </div>
 
-                    <select name="studentId" value={paymentForm.studentId} onChange={e => setPaymentForm(p => ({...p, studentId: e.target.value}))} required className="w-full p-2 border border-slate-300 rounded-lg" disabled={!!selectedTransaction}>
-                        <option value="">Select Student</option>
-                        {students.map((s: any) => <option key={s.id} value={s.id}>{s.name} ({s.admissionNumber})</option>)}
-                    </select>
+                    <div className="space-y-1">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Select Student</label>
+                        <select value={paymentForm.studentId} onChange={e => setPaymentForm(p => ({...p, studentId: e.target.value}))} required className="w-full p-3.5 border-2 border-slate-100 rounded-2xl outline-none focus:border-primary-500 font-bold bg-slate-50" disabled={!!selectedTransaction}>
+                            <option value="">Choose student...</option>
+                            {students.map((s: any) => <option key={s.id} value={s.id}>{s.name} ({s.admissionNumber})</option>)}
+                        </select>
+                    </div>
                     
-                    <input type="number" name="amount" placeholder="Amount" value={paymentForm.amount || ''} onChange={e => setPaymentForm(p => ({...p, amount: parseFloat(e.target.value)}))} required className="w-full p-2 border border-slate-300 rounded-lg" />
-                    <input type="text" name="description" placeholder="Description (e.g. Term 1 Fees)" value={paymentForm.description} onChange={e => setPaymentForm(p => ({...p, description: e.target.value}))} required className="w-full p-2 border border-slate-300 rounded-lg" />
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1">
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Amount</label>
+                            <input type="number" value={paymentForm.amount || ''} onChange={e => setPaymentForm(p => ({...p, amount: parseFloat(e.target.value)}))} required className="w-full p-3.5 border-2 border-slate-100 rounded-2xl outline-none focus:border-primary-500 font-bold bg-slate-50" placeholder="0.00" />
+                        </div>
+                        {paymentForm.type === TransactionType.Payment && (
+                            <div className="space-y-1">
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Payment Method</label>
+                                <select value={paymentForm.method} onChange={e => setPaymentForm(p => ({...p, method: e.target.value as PaymentMethod}))} className="w-full p-3.5 border-2 border-slate-100 rounded-2xl outline-none focus:border-primary-500 font-bold bg-slate-50">
+                                    {Object.values(PaymentMethod).map(m => <option key={m} value={m}>{m}</option>)}
+                                </select>
+                            </div>
+                        )}
+                    </div>
 
-                    {(paymentForm.type === TransactionType.Payment) && (
-                        <>
-                            <select name="method" value={paymentForm.method} onChange={e => setPaymentForm(p => ({...p, method: e.target.value as PaymentMethod, transactionCode: '', checkBank: '', checkNumber: ''}))} className="w-full p-2 border border-slate-300 rounded-lg">
-                                {Object.values(PaymentMethod).map(m => <option key={m} value={m}>{m}</option>)}
-                            </select>
-                            
-                            {paymentForm.method === PaymentMethod.Cash && <input type="text" name="transactionCode" placeholder="Received by..." value={paymentForm.transactionCode || ''} onChange={e => setPaymentForm(p => ({...p, transactionCode: e.target.value}))} className="w-full p-2 border border-slate-300 rounded-lg" />}
-                            {paymentForm.method === PaymentMethod.Check && (
-                                <div className="grid grid-cols-2 gap-2">
-                                    <input type="text" name="checkNumber" placeholder="Check Number" value={paymentForm.checkNumber || ''} onChange={e => setPaymentForm(p => ({...p, checkNumber: e.target.value}))} className="w-full p-2 border border-slate-300 rounded-lg" />
-                                    <input type="text" name="checkBank" placeholder="Bank Name" value={paymentForm.checkBank || ''} onChange={e => setPaymentForm(p => ({...p, checkBank: e.target.value}))} className="w-full p-2 border border-slate-300 rounded-lg" />
-                                </div>
-                            )}
-                        </>
-                    )}
+                    <div className="space-y-1">
+                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Description</label>
+                         <input type="text" value={paymentForm.description} onChange={e => setPaymentForm(p => ({...p, description: e.target.value}))} required className="w-full p-3.5 border-2 border-slate-100 rounded-2xl outline-none focus:border-primary-500 font-bold bg-slate-50" placeholder="e.g. Term 2 Tuition" />
+                    </div>
 
-                    <div className="flex justify-end pt-4">
-                        {!selectedTransaction && paymentForm.method === PaymentMethod.MPesa && paymentForm.type === TransactionType.Payment ? (
-                            <button type="button" onClick={handleStkPush} disabled={isPaying || !isMpesaConfigured} className="px-6 py-2 bg-green-600 text-white font-semibold rounded-lg shadow-md hover:bg-green-700 disabled:bg-slate-400 disabled:cursor-not-allowed">
-                                {isPaying ? 'Processing...' : 'Send STK Push'}
+                    <div className="flex justify-end pt-6 border-t gap-4">
+                        <button type="button" onClick={() => setIsRecordModalOpen(false)} className="px-6 py-3 text-slate-400 font-black text-[10px] uppercase tracking-widest hover:text-slate-600 transition-colors">Cancel</button>
+                        {paymentForm.method === PaymentMethod.MPesa && paymentForm.type === TransactionType.Payment && !selectedTransaction ? (
+                            <button type="button" onClick={handleStkPush} disabled={isPaying || !isMpesaConfigured} className="px-8 py-3 bg-green-600 text-white font-black text-[10px] uppercase tracking-widest rounded-2xl shadow-xl shadow-green-500/30 hover:bg-green-700 transition-all">
+                                {isPaying ? 'Requesting PIN...' : 'Trigger M-Pesa STK'}
                             </button>
                         ) : (
-                            <button type="submit" className="px-6 py-2 bg-primary-600 text-white font-semibold rounded-lg shadow-md hover:bg-primary-700">
-                                {selectedTransaction ? 'Update Transaction' : 'Save Transaction'}
+                            <button type="submit" className="px-8 py-3 bg-primary-600 text-white font-black text-[10px] uppercase tracking-widest rounded-2xl shadow-xl shadow-primary-500/30 hover:bg-primary-700 transition-all">
+                                {selectedTransaction ? 'Apply Changes' : 'Commit to Ledger'}
                             </button>
                         )}
                     </div>
-                     {!isMpesaConfigured && paymentForm.method === PaymentMethod.MPesa && <p className="text-xs text-red-600 text-center mt-2">M-Pesa settings are not configured. Please update them in the Settings page to enable STK push.</p>}
                 </form>
             </Modal>
             
-            <Modal isOpen={isSyncInfoModalOpen} onClose={() => setIsSyncInfoModalOpen(false)} title="M-Pesa Payment Confirmation">
-                <div className="space-y-4 text-slate-700">
-                    <h3 className="text-lg font-semibold text-slate-800">Production-Ready Architecture</h3>
-                    <p>M-Pesa payments (both Paybill and STK Push) are confirmed asynchronously. This means after a parent pays, M-Pesa sends a confirmation to a special <strong className="font-semibold">Callback URL</strong> on our secure backend server.</p>
-                    <p>The backend server is responsible for:</p>
-                    <ul className="list-disc list-inside pl-4 space-y-1">
-                        <li>Receiving the transaction confirmation from M-Pesa.</li>
-                        <li>Verifying the payment is authentic and valid.</li>
-                        <li>Automatically finding the correct student using the admission number (BillRefNumber).</li>
-                        <li>Securely adding the payment transaction to the student's ledger.</li>
-                    </ul>
-                    <p>This ensures every payment is securely processed and automatically reconciled without manual intervention.</p>
-                </div>
-            </Modal>
-            <GenerateInvoicesModal 
-                isOpen={isGenerateInvoicesModalOpen}
-                onClose={() => setIsGenerateInvoicesModalOpen(false)}
-            />
-            <ReceiptModal
-                isOpen={isReceiptModalOpen}
-                onClose={() => setIsReceiptModalOpen(false)}
-                transaction={selectedTransaction}
-            />
+            <GenerateInvoicesModal isOpen={isGenerateInvoicesModalOpen} onClose={() => setIsGenerateInvoicesModalOpen(false)} />
+            <ReceiptModal isOpen={isReceiptModalOpen} onClose={() => setIsReceiptModalOpen(false)} transaction={selectedTransaction} />
         </div>
     );
 };

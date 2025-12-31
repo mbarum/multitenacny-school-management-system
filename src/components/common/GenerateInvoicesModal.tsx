@@ -1,62 +1,53 @@
+
 import React, { useState, useMemo } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Modal from './Modal';
 import { useData } from '../../contexts/DataContext';
-import type { FeeItem, SchoolClass, NewTransaction } from '../../types';
+import type { FeeItem, NewTransaction } from '../../types';
 import { TransactionType } from '../../types';
+import * as api from '../../services/api';
+import Spinner from './Spinner';
 
-interface GenerateInvoicesModalProps {
-    isOpen: boolean;
-    onClose: () => void;
-}
-
-const GenerateInvoicesModal: React.FC<GenerateInvoicesModalProps> = ({ isOpen, onClose }) => {
-    const { feeStructure, classes, students, addMultipleTransactions, addNotification } = useData();
+const GenerateInvoicesModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ isOpen, onClose }) => {
+    const { addNotification } = useData();
+    const queryClient = useQueryClient();
     
     const [selectedFeeItemIds, setSelectedFeeItemIds] = useState<string[]>([]);
     const [selectedClassIds, setSelectedClassIds] = useState<string[]>([]);
     const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().split('T')[0]);
-    const [isProcessing, setIsProcessing] = useState(false);
 
-    const feeItemsByCategory = useMemo(() => {
-        return feeStructure.reduce((acc, item) => {
-            if (!acc[item.category]) {
-                acc[item.category] = [];
-            }
-            acc[item.category].push(item);
-            return acc;
-        }, {} as Record<string, FeeItem[]>);
-    }, [feeStructure]);
+    const { data: feeStructure = [] } = useQuery({ queryKey: ['fee-structure'], queryFn: api.getFeeStructure });
+    const { data: classes = [] } = useQuery({ queryKey: ['classes'], queryFn: () => api.getClasses().then(res => Array.isArray(res) ? res : res.data) });
+    const { data: students = [] } = useQuery({ queryKey: ['students-all-list'], queryFn: () => api.getStudents({ limit: 2000, pagination: 'false', status: 'Active' }) });
 
-    const handleToggleFeeItem = (id: string) => {
-        setSelectedFeeItemIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
-    };
+    const createBatchMutation = useMutation({
+        mutationFn: api.createMultipleTransactions,
+        onSuccess: (data) => {
+            queryClient.invalidateQueries({ queryKey: ['transactions'] });
+            addNotification(`Successfully generated ${data.length} invoices.`, 'success');
+            onClose();
+        },
+        onError: () => addNotification('Bulk billing failed.', 'error')
+    });
 
-    const handleToggleClass = (id: string) => {
-        setSelectedClassIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
-    };
-
-    const studentsToBill = useMemo(() => {
-        if (selectedClassIds.length === 0) return [];
-        return students.filter(s => selectedClassIds.includes(s.classId) && s.status === 'Active');
-    }, [students, selectedClassIds]);
-
-    const handleGenerate = async () => {
-        if (selectedFeeItemIds.length === 0 || selectedClassIds.length === 0) {
-            addNotification('Please select at least one fee item and one class.', 'error');
+    const handleGenerate = () => {
+        if (!selectedFeeItemIds.length || !selectedClassIds.length) {
+            addNotification('Select at least one fee and one class.', 'error');
             return;
         }
 
-        setIsProcessing(true);
         const newInvoices: NewTransaction[] = [];
+        const studentsList = Array.isArray(students) ? students : students.data || [];
 
-        studentsToBill.forEach(student => {
+        studentsList.filter((s:any) => selectedClassIds.includes(s.classId)).forEach((student: any) => {
             selectedFeeItemIds.forEach(itemId => {
-                const feeItem = feeStructure.find(item => item.id === itemId);
-                const classFee = feeItem?.classSpecificFees.find(cf => cf.classId === student.classId);
+                const feeItem = feeStructure.find((item:any) => item.id === itemId);
+                const classFee = feeItem?.classSpecificFees.find((cf:any) => cf.classId === student.classId);
 
                 if (feeItem && classFee && classFee.amount > 0) {
                     newInvoices.push({
                         studentId: student.id,
+                        studentName: student.name,
                         type: TransactionType.Invoice,
                         date: invoiceDate,
                         description: feeItem.name,
@@ -68,65 +59,56 @@ const GenerateInvoicesModal: React.FC<GenerateInvoicesModalProps> = ({ isOpen, o
         
         if (newInvoices.length === 0) {
             addNotification('No applicable fees found for the selected students.', 'info');
-            setIsProcessing(false);
             return;
         }
 
-        try {
-            await addMultipleTransactions(newInvoices);
-            addNotification(`${newInvoices.length} invoices generated successfully for ${studentsToBill.length} students.`, 'success');
-            onClose();
-        } finally {
-            setIsProcessing(false);
-        }
+        createBatchMutation.mutate(newInvoices);
     };
 
-
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title="Generate Bulk Invoices" size="2xl">
-            <div className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                        <h3 className="font-semibold text-slate-800 mb-2">1. Select Fee Items to Bill</h3>
-                        <div className="p-2 border rounded-md max-h-64 overflow-y-auto space-y-3 bg-slate-50">
-                           {Object.entries(feeItemsByCategory).map(([category, items]: [string, FeeItem[]]) => (
-                               <div key={category}>
-                                   <h4 className="font-medium text-sm text-slate-600 sticky top-0 bg-slate-50 py-1">{category}</h4>
-                                   {items.map(item => (
-                                       <label key={item.id} className="flex items-center space-x-2 p-1 cursor-pointer hover:bg-slate-100 rounded">
-                                           <input type="checkbox" checked={selectedFeeItemIds.includes(item.id)} onChange={() => handleToggleFeeItem(item.id)} className="h-4 w-4 rounded text-primary-600"/>
-                                           <span>{item.name} ({item.frequency})</span>
-                                       </label>
-                                   ))}
-                               </div>
+        <Modal isOpen={isOpen} onClose={onClose} title="Automated Bulk Billing" size="2xl">
+            <div className="space-y-8 p-2">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div className="space-y-4">
+                        <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest border-b pb-2">1. Select Charges</h3>
+                        <div className="max-h-60 overflow-y-auto space-y-2 pr-2">
+                           {feeStructure.map((item: any) => (
+                               <label key={item.id} className={`flex items-center p-3 rounded-2xl border-2 transition-all cursor-pointer ${selectedFeeItemIds.includes(item.id) ? 'border-primary-500 bg-primary-50/50' : 'border-slate-50 hover:border-slate-100'}`}>
+                                   <input type="checkbox" checked={selectedFeeItemIds.includes(item.id)} onChange={() => setSelectedFeeItemIds(p => p.includes(item.id) ? p.filter(i => i !== item.id) : [...p, item.id])} className="h-5 w-5 rounded-lg text-primary-600 mr-3"/>
+                                   <div className="flex-grow">
+                                       <p className="font-bold text-slate-800 text-sm">{item.name}</p>
+                                       <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{item.frequency}</p>
+                                   </div>
+                               </label>
                            ))}
                         </div>
                     </div>
-                     <div>
-                        <h3 className="font-semibold text-slate-800 mb-2">2. Select Classes to Bill</h3>
-                        <div className="p-2 border rounded-md max-h-64 overflow-y-auto space-y-2 bg-slate-50">
-                            {classes.map(c => (
-                                <label key={c.id} className="flex items-center space-x-2 p-1 cursor-pointer hover:bg-slate-100 rounded">
-                                    <input type="checkbox" checked={selectedClassIds.includes(c.id)} onChange={() => handleToggleClass(c.id)} className="h-4 w-4 rounded text-primary-600"/>
-                                    <span>{c.name}</span>
+                     <div className="space-y-4">
+                        <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest border-b pb-2">2. Target Groups</h3>
+                        <div className="max-h-60 overflow-y-auto space-y-2 pr-2">
+                            {classes.map((c: any) => (
+                                <label key={c.id} className={`flex items-center p-3 rounded-2xl border-2 transition-all cursor-pointer ${selectedClassIds.includes(c.id) ? 'border-blue-500 bg-blue-50/50' : 'border-slate-50 hover:border-slate-100'}`}>
+                                    <input type="checkbox" checked={selectedClassIds.includes(c.id)} onChange={() => setSelectedClassIds(p => p.includes(c.id) ? p.filter(i => i !== c.id) : [...p, c.id])} className="h-5 w-5 rounded-lg text-blue-600 mr-3"/>
+                                    <span className="font-bold text-slate-800 text-sm">{c.name}</span>
                                 </label>
                             ))}
                         </div>
                     </div>
                 </div>
-                <div>
-                     <label htmlFor="invoiceDate" className="block text-sm font-medium text-slate-700">3. Invoice Date</label>
-                     <input type="date" id="invoiceDate" value={invoiceDate} onChange={e => setInvoiceDate(e.target.value)} className="mt-1 block p-2 border border-slate-300 rounded-md" />
+                <div className="bg-slate-900 rounded-3xl p-6 text-white flex flex-col sm:flex-row justify-between items-center gap-6">
+                    <div className="flex-1">
+                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2">Effective Billing Date</label>
+                        <input type="date" value={invoiceDate} onChange={e => setInvoiceDate(e.target.value)} className="w-full bg-slate-800 border border-slate-700 p-3 rounded-xl font-bold outline-none focus:border-primary-500" />
+                    </div>
+                    <button onClick={handleGenerate} disabled={createBatchMutation.isPending} className="px-10 py-5 bg-primary-600 text-white font-black rounded-2xl shadow-2xl hover:scale-105 transition-all flex items-center gap-3">
+                        {createBatchMutation.isPending ? <Spinner /> : (
+                            <>
+                                <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20"><path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z"/></svg>
+                                Run Billing Engine
+                            </>
+                        )}
+                    </button>
                 </div>
-                <div className="p-4 bg-primary-50 border-l-4 border-primary-500 rounded-r-md">
-                    <h4 className="font-bold text-primary-800">Summary</h4>
-                    <p className="text-primary-700">You are about to generate invoices for <strong>{studentsToBill.length} active students</strong> in the selected classes.</p>
-                </div>
-            </div>
-            <div className="flex justify-end pt-6 border-t mt-6">
-                <button onClick={handleGenerate} disabled={isProcessing} className="px-6 py-2 bg-primary-600 text-white font-semibold rounded-lg shadow-md hover:bg-primary-700 disabled:bg-slate-400">
-                    {isProcessing ? 'Generating...' : `Generate Invoices`}
-                </button>
             </div>
         </Modal>
     );

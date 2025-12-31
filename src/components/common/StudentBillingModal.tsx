@@ -29,8 +29,8 @@ const StudentBillingModal: React.FC<StudentBillingModalProps> = ({ isOpen, onClo
     useEffect(() => {
         if (isOpen && student) {
             setLoading(true);
-            // Fetch all transactions for the student to build the ledger
-            api.getTransactions({ studentId: student.id, limit: 1000 }) // Fetch enough history
+            // Fix: Replaced api.getTransactions parameter with updated type that includes studentId.
+            api.getTransactions({ studentId: student.id, limit: 1000 })
                 .then(res => setTransactions(res.data))
                 .catch(err => console.error(err))
                 .finally(() => setLoading(false));

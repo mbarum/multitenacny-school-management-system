@@ -31,6 +31,7 @@ const ParentFinances: React.FC = () => {
                     const updatedChild = list.find((s: Student) => s.id === child.id);
                     const balance = updatedChild?.balance || 0;
 
+                    // Fix: Updated api.getTransactions parameter with updated type that includes studentId.
                     const transactionsRes = await api.getTransactions({ studentId: child.id, type: 'Payment', limit: 5 });
                     
                     data[child.id] = {
