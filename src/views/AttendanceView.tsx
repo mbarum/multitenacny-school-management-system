@@ -14,16 +14,18 @@ const AttendanceView: React.FC = () => {
     const [selectedClassId, setSelectedClassId] = useState<string>('all');
     const [startDate, setStartDate] = useState('');
     const [endDate, setEndDate] = useState('');
+    const [statusFilter, setStatusFilter] = useState<string>(''); // Default show all
     const [currentPage, setCurrentPage] = useState(1);
 
     const { data: attendanceData, isLoading } = useQuery({
-        queryKey: ['attendance', selectedClassId, startDate, endDate, currentPage],
+        queryKey: ['attendance', selectedClassId, startDate, endDate, statusFilter, currentPage],
         queryFn: () => api.getAttendance({
             page: currentPage,
             limit: 20,
             classId: selectedClassId !== 'all' ? selectedClassId : undefined,
             startDate: startDate || undefined,
-            endDate: endDate || undefined
+            endDate: endDate || undefined,
+            status: statusFilter || undefined
         }),
         placeholderData: (prev) => prev
     });
@@ -31,22 +33,26 @@ const AttendanceView: React.FC = () => {
     const attendanceRecords = attendanceData ? (Array.isArray(attendanceData) ? attendanceData : attendanceData.data) : [];
     const totalPages = attendanceData && !Array.isArray(attendanceData) ? attendanceData.last_page : 1;
 
-    // Filter out 'Present' records client-side if the API doesn't support filtering them (optional based on requirement)
-    // Here we show all returned by API, assuming API can be updated to filter if needed. 
-    // The previous implementation filtered in memory.
-    const displayRecords = attendanceRecords.filter((r: AttendanceRecord) => r.status !== AttendanceStatus.Present);
-
     return (
         <div className="p-6 md:p-8">
             <h2 className="text-3xl font-bold text-slate-800 mb-6">Attendance Overview</h2>
             <div className="bg-white p-6 rounded-xl shadow-lg">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
                     <select value={selectedClassId} onChange={e => setSelectedClassId(e.target.value)} className="p-2 border border-slate-300 rounded-lg">
                         <option value="all">All Classes</option>
                         {classes.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
                     </select>
-                    <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="p-2 border border-slate-300 rounded-lg" />
-                    <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="p-2 border border-slate-300 rounded-lg" />
+                    
+                    <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="p-2 border border-slate-300 rounded-lg">
+                        <option value="">Status: All</option>
+                        <option value={AttendanceStatus.Present}>Present</option>
+                        <option value={AttendanceStatus.Absent}>Absent</option>
+                        <option value={AttendanceStatus.Late}>Late</option>
+                        <option value={AttendanceStatus.Excused}>Excused</option>
+                    </select>
+
+                    <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="p-2 border border-slate-300 rounded-lg" placeholder="Start Date" />
+                    <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="p-2 border border-slate-300 rounded-lg" placeholder="End Date" />
                 </div>
                  <div className="overflow-x-auto">
                     {isLoading ? (
@@ -70,11 +76,10 @@ const AttendanceView: React.FC = () => {
                             </tr>
                         </thead>
                         <tbody>
-                            {displayRecords.length > 0 ? (
-                                displayRecords.map((record: any) => (
+                            {attendanceRecords.length > 0 ? (
+                                attendanceRecords.map((record: any) => (
                                     <tr key={record.id} className="border-b">
                                         <td className="p-2">{record.date}</td>
-                                        {/* Use record.student.name if available from backend relation, fallback to ID */}
                                         <td className="p-2">{record.student?.name || 'Unknown Student'}</td>
                                         <td className="p-2">{classes.find((c: any) => c.id === record.classId)?.name || 'N/A'}</td>
                                         <td className="p-2">
@@ -88,7 +93,7 @@ const AttendanceView: React.FC = () => {
                                     </tr>
                                 ))
                             ) : (
-                                <tr><td colSpan={4} className="text-center p-8 text-slate-500">No attendance issues found for the selected criteria.</td></tr>
+                                <tr><td colSpan={4} className="text-center p-8 text-slate-500">No attendance records found for the selected criteria.</td></tr>
                             )}
                         </tbody>
                     </table>

@@ -1,5 +1,6 @@
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import * as api from '../../services/api';
 import { useData } from '../../contexts/DataContext';
 import { SubscriptionPlan, PlatformPricing, Currency } from '../../types';
@@ -119,8 +120,6 @@ const StripePaymentForm: React.FC<{
             const cardElement = elements.getElement(CardElement);
             if (!cardElement) throw new Error("Card element not found");
 
-            // Mocking the flow for this specific UI component to show structure. 
-            // In production, you MUST call backend to create intent.
             const { error, paymentMethod } = await stripe.createPaymentMethod({
                 type: 'card',
                 card: cardElement,
@@ -169,14 +168,19 @@ const StripePaymentForm: React.FC<{
 
 const RegisterSchool: React.FC<RegisterSchoolProps> = ({ initialState }) => {
     const { handleLogin, addNotification, formatCurrency } = useData();
+    const location = useLocation();
+    
+    // Extract plan from navigation state if available
+    const navState = location.state as { plan?: SubscriptionPlan; billing?: 'MONTHLY' | 'ANNUALLY' } | null;
+
     const [formData, setFormData] = useState({
         schoolName: '',
         adminName: '',
         adminEmail: '',
         password: '',
         phone: '',
-        plan: initialState?.plan || SubscriptionPlan.FREE,
-        billingCycle: initialState?.billing || 'MONTHLY',
+        plan: navState?.plan || initialState?.plan || SubscriptionPlan.FREE,
+        billingCycle: navState?.billing || initialState?.billing || 'MONTHLY',
         currency: 'KES'
     });
     
@@ -222,35 +226,24 @@ const RegisterSchool: React.FC<RegisterSchoolProps> = ({ initialState }) => {
         if (formData.plan === SubscriptionPlan.BASIC) basePrice = formData.billingCycle === 'MONTHLY' ? pricing.basicMonthlyPrice : pricing.basicAnnualPrice;
         if (formData.plan === SubscriptionPlan.PREMIUM) basePrice = formData.billingCycle === 'MONTHLY' ? pricing.premiumMonthlyPrice : pricing.premiumAnnualPrice;
         
-        // Convert based on selected currency
         const rate = exchangeRates[formData.currency] || 1;
         return basePrice * rate;
     };
 
-    // Main Registration Logic
     const executeRegistration = async () => {
         setError('');
         setIsLoading(true);
         try {
-             // 1. Register
              const response = await api.registerSchool(formData);
              const { user, token } = response;
 
-             // 2. Payment (If M-Pesa selected)
              if (formData.plan !== SubscriptionPlan.FREE && paymentMethod === 'MPESA') {
                  setPaymentStatus('processing');
                  const price = calculatePrice();
                  try {
                      if (user && user.schoolId) {
-                         // Note: initiateSTKPush expects KES amount if using standard Paybill. 
-                         // If paying in other currencies, ensure payment gateway handles it or convert back to KES for MPesa.
-                         // For simplicity here, assuming we pay in KES for MPesa regardless of display currency, OR user selects KES for MPesa.
-                         // If user selected USD but pays via M-Pesa, M-Pesa charges KES.
-                         
                          let payAmount = price;
                          if (formData.currency !== 'KES') {
-                             // Convert back to KES for M-Pesa stk push if not KES
-                             // Using simplistic inverse rate
                              const rate = exchangeRates[formData.currency] || 1;
                              payAmount = price / rate;
                          }
@@ -266,7 +259,6 @@ const RegisterSchool: React.FC<RegisterSchoolProps> = ({ initialState }) => {
                  setPaymentStatus('success');
              }
 
-             // 3. Login
              setTimeout(() => {
                 handleLogin(user, token);
                 addNotification('Welcome to Saaslink!', 'success');
@@ -286,9 +278,8 @@ const RegisterSchool: React.FC<RegisterSchoolProps> = ({ initialState }) => {
             return;
         }
 
-        // If Paid Plan + Card selected, user must click the Stripe button inside component, not this main submit
         if (formData.plan !== SubscriptionPlan.FREE && paymentMethod === 'CARD') {
-            return; // Logic handled inside StripePaymentForm onSuccess
+            return;
         }
 
         executeRegistration();
@@ -303,7 +294,7 @@ const RegisterSchool: React.FC<RegisterSchoolProps> = ({ initialState }) => {
         }
     }
 
-    const price = calculatePrice();
+    const priceValue = calculatePrice();
 
     return (
         <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
@@ -328,7 +319,7 @@ const RegisterSchool: React.FC<RegisterSchoolProps> = ({ initialState }) => {
                                 <span className="text-xs bg-primary-600 text-white px-2 py-1 rounded font-bold">{formData.billingCycle}</span>
                             </div>
                             <div className="text-3xl font-bold text-primary-400 mb-2">
-                                {formatCurrency(price, formData.currency)}
+                                {formatCurrency(priceValue, formData.currency)}
                             </div>
                             <p className="text-xs text-slate-400">
                                 {formData.plan === SubscriptionPlan.FREE ? 'Forever free.' : 'Payment processed securely.'}
@@ -401,7 +392,6 @@ const RegisterSchool: React.FC<RegisterSchoolProps> = ({ initialState }) => {
                                 <input type="password" name="password" value={formData.password} onChange={handleChange} required className="block w-full p-3 border border-slate-300 rounded-lg" placeholder="Min 8 chars" minLength={8} />
                             </div>
 
-                            {/* Legal Checkboxes */}
                             <div className="pt-2 space-y-3">
                                 <label className="flex items-start space-x-3 cursor-pointer">
                                     <input type="checkbox" checked={agreedToTerms} onChange={e => setAgreedToTerms(e.target.checked)} className="mt-1 h-4 w-4 text-primary-600 rounded border-slate-300 focus:ring-primary-500" />
@@ -417,7 +407,6 @@ const RegisterSchool: React.FC<RegisterSchoolProps> = ({ initialState }) => {
                                 </label>
                             </div>
                             
-                            {/* Payment Method Toggle (Only for Paid Plans) */}
                             {formData.plan !== SubscriptionPlan.FREE && (
                                 <div className="pt-4 border-t border-slate-100">
                                     <label className="block text-sm font-medium text-slate-700 mb-2">Payment Method</label>
@@ -441,7 +430,7 @@ const RegisterSchool: React.FC<RegisterSchoolProps> = ({ initialState }) => {
                                     {paymentMethod === 'CARD' && (
                                         <Elements stripe={stripePromise}>
                                             <StripePaymentForm 
-                                                amount={price} 
+                                                amount={priceValue} 
                                                 email={formData.adminEmail}
                                                 onSuccess={(method) => {
                                                     console.log('Stripe success via', method);
@@ -454,7 +443,6 @@ const RegisterSchool: React.FC<RegisterSchoolProps> = ({ initialState }) => {
                                 </div>
                             )}
 
-                            {/* Main Submit Button (Hidden if Card selected because StripeForm has its own button) */}
                             {!(formData.plan !== SubscriptionPlan.FREE && paymentMethod === 'CARD') && (
                                 <div className="pt-4">
                                     <button 
@@ -475,7 +463,6 @@ const RegisterSchool: React.FC<RegisterSchoolProps> = ({ initialState }) => {
                 </div>
             </div>
 
-            {/* Legal Document Modal */}
             <Modal
                 isOpen={activeLegalDoc !== null}
                 onClose={() => setActiveLegalDoc(null)}

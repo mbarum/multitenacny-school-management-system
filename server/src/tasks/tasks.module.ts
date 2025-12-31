@@ -7,12 +7,19 @@ import { Student } from '../entities/student.entity';
 import { Transaction } from '../entities/transaction.entity';
 import { LibraryTransaction } from '../entities/library-transaction.entity';
 import { User } from '../entities/user.entity';
+import { Subscription } from '../entities/subscription.entity';
 import { CommunicationsModule } from '../communications/communications.module';
 import { ConfigModule } from '@nestjs/config';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Student, Transaction, LibraryTransaction, User]),
+    TypeOrmModule.forFeature([
+      Student, 
+      Transaction, 
+      LibraryTransaction, 
+      User, 
+      Subscription
+    ]),
     CommunicationsModule, 
     ConfigModule,
   ],

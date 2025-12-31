@@ -40,12 +40,24 @@ const CalendarView: React.FC = () => {
             days.push({ key: `empty-${i}`, date: null, events: [] });
         }
         for (let i = 1; i <= daysInMonth; i++) {
+            // Create a date object for the specific day in the month
             const date = new Date(currentDate.getFullYear(), currentDate.getMonth(), i);
+            
+            // Format to YYYY-MM-DD string using local time components to ensure matching
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            const dateString = `${year}-${month}-${day}`;
+
             const dayEvents = events.filter((e: SchoolEvent) => {
-                const startDate = new Date(e.startDate);
-                const endDate = e.endDate ? new Date(e.endDate) : startDate;
-                return date >= startDate && date <= endDate;
+                // Determine event range strings
+                const start = e.startDate; // API returns YYYY-MM-DD string
+                const end = e.endDate || start;
+                
+                // String comparison works perfectly for YYYY-MM-DD format
+                return dateString >= start && dateString <= end;
             });
+
             days.push({ key: i, date, events: dayEvents });
         }
         return days;
@@ -115,10 +127,19 @@ const CalendarView: React.FC = () => {
 };
 
 const EventModal: React.FC<any> = ({ isOpen, onClose, onSave, onDelete, event, date }) => {
+    // Helper to format date to YYYY-MM-DD using local time
+    const toLocalISODate = (d: Date) => {
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    };
+
     const [formData, setFormData] = useState({
         title: event?.title || '',
         description: event?.description || '',
-        startDate: event?.startDate || date?.toISOString().split('T')[0] || '',
+        // FIX: Use local date formatting instead of .toISOString() to prevent timezone shifts
+        startDate: event?.startDate || (date ? toLocalISODate(date) : ''),
         endDate: event?.endDate || '',
         category: event?.category || EventCategory.General,
     });

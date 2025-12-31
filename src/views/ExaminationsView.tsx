@@ -87,7 +87,7 @@ const EnterGradesView: React.FC<any> = ({selectedExamId, setSelectedExamId, sele
                 <select value={selectedSubjectId} onChange={e => setSelectedSubjectId(e.target.value)} className="p-2 border rounded" disabled={!selectedClassId}><option value="">Select Subject</option>{subjects.map((s:Subject) => <option key={s.id} value={s.id}>{s.name}</option>)}</select>
             </div>
             {selectedSubjectId && <>
-                <table className="w-full text-left"><thead><tr className="bg-slate-50 border-b"><th>Student</th><th>{selectedExamType === ExamType.Traditional ? 'Score' : 'Marks / Level'}</th><th>Comments</th></tr></thead>
+                <table className="w-full text-left"><thead><tr className="bg-slate-50 border-b"><th>Student</th><th>{selectedExamType === ExamType.Traditional ? 'Score (%)' : 'Performance Level'}</th><th>Comments</th></tr></thead>
                     <tbody>{studentsInClass.map((student:Student) => (<tr key={student.id} className="border-b"><td className="p-2">{student.name}</td>
                         <td className="p-2">
                              <div className="flex space-x-2 items-center">
@@ -126,7 +126,10 @@ const ExamModal: React.FC<any> = ({ isOpen, onClose, onSave, data, classes }) =>
         <input name="name" value={formData.name} onChange={handleChange} placeholder="Exam Name" className="w-full p-2 border rounded" required/>
         <input type="date" name="date" value={formData.date} onChange={handleChange} className="w-full p-2 border rounded" required/>
         <select name="classId" value={formData.classId} onChange={handleChange} className="w-full p-2 border rounded" required><option value="">Select Class</option>{classes.map((c:SchoolClass) => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
-        <select name="type" value={formData.type} onChange={handleChange} className="w-full p-2 border rounded"><option value={ExamType.Traditional}>Traditional</option><option value={ExamType.CBC}>CBC</option></select>
+        <select name="type" value={formData.type} onChange={handleChange} className="w-full p-2 border rounded">
+            <option value={ExamType.Traditional}>Traditional (Marks)</option>
+            <option value={ExamType.CBC}>CBC (Assessment Rubrics)</option>
+        </select>
         <div className="flex justify-end"><button type="submit" className="px-4 py-2 bg-primary-600 text-white rounded">Save</button></div>
     </form></Modal>
 };

@@ -90,10 +90,10 @@ const Dashboard: React.FC = () => {
                 />
             </div>
             <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-                <div className="lg:col-span-3 bg-white p-4 sm:p-6 rounded-xl shadow-lg h-[400px]">
+                <div className="lg:col-span-3 bg-white p-4 sm:p-6 rounded-xl shadow-lg min-h-[400px]">
                     <h3 className="text-lg sm:text-xl font-semibold text-slate-700 mb-4">Income vs Expenses Overview (Last 6 Months)</h3>
                     {isLoading ? <Skeleton className="w-full h-full min-h-[300px]" /> : (
-                        <div className="w-full h-[320px]">
+                        <div className="h-[320px] w-full">
                             <ResponsiveContainer width="100%" height="100%">
                                 <BarChart data={stats?.monthlyData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
                                     <CartesianGrid strokeDasharray="3 3" vertical={false} />
@@ -108,10 +108,10 @@ const Dashboard: React.FC = () => {
                         </div>
                     )}
                 </div>
-                 <div className="lg:col-span-2 bg-white p-4 sm:p-6 rounded-xl shadow-lg h-[400px]">
+                 <div className="lg:col-span-2 bg-white p-4 sm:p-6 rounded-xl shadow-lg min-h-[400px]">
                     <h3 className="text-lg sm:text-xl font-semibold text-slate-700 mb-4">Expense Distribution</h3>
                     {isLoading ? <Skeleton className="w-full h-full min-h-[300px]" /> : (
-                         <div className="w-full h-[320px]">
+                         <div className="h-[320px] w-full">
                             <ResponsiveContainer width="100%" height="100%">
                                 <PieChart>
                                     <Pie 

@@ -32,6 +32,10 @@ export class GetAttendanceDto {
   date?: string;
 
   @IsOptional()
+  @IsString()
+  status?: string;
+
+  @IsOptional()
   @IsDateString()
   startDate?: string;
 

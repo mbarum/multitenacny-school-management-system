@@ -33,13 +33,15 @@ const Login: React.FC = () => {
         setIsLoading(true);
 
         try {
-            const { user, token } = await api.login({ email, password });
+            // API call sets the cookie
+            const { user } = await api.login({ email, password });
+            
             if (user.status === 'Disabled') {
                 setError('Your account has been disabled. Please contact the administrator.');
                 setIsLoading(false);
                 return;
             }
-            onLogin(user, token);
+            onLogin(user);
         } catch (err) {
             const errorMessage = err instanceof Error ? err.message : "An unknown error occurred.";
             setError(errorMessage);

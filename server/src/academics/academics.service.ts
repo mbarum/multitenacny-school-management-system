@@ -86,7 +86,8 @@ export class AcademicsService {
   
   async findAllAttendance(query: GetAttendanceDto | undefined, schoolId: string) {
       const qb = this.attendanceRepo.createQueryBuilder('attendance');
-      qb.leftJoin('attendance.student', 'student');
+      // FIX: Changed leftJoin to leftJoinAndSelect to ensure student data is returned to frontend
+      qb.leftJoinAndSelect('attendance.student', 'student');
       qb.where('student.schoolId = :schoolId', { schoolId });
 
       const { page = 1, limit = 10, pagination } = query || {};
@@ -95,6 +96,7 @@ export class AcademicsService {
           if (query.classId) qb.andWhere('attendance.classId = :classId', { classId: query.classId });
           if (query.studentId) qb.andWhere('attendance.studentId = :studentId', { studentId: query.studentId });
           if (query.date) qb.andWhere('attendance.date = :date', { date: query.date });
+          if (query.status) qb.andWhere('attendance.status = :status', { status: query.status });
           if (query.startDate) qb.andWhere('attendance.date >= :startDate', { startDate: query.startDate });
           if (query.endDate) qb.andWhere('attendance.date <= :endDate', { endDate: query.endDate });
       }

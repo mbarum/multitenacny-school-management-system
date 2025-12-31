@@ -7,11 +7,11 @@ import Spinner from './components/common/Spinner';
 import Login from './components/auth/Login';
 import LandingPage from './components/landing/LandingPage';
 import RegisterSchool from './components/auth/RegisterSchool';
+import SubscriptionLocked from './components/auth/SubscriptionLocked';
 import { useData } from './contexts/DataContext';
-import { Notification } from './types';
+import { Notification, SubscriptionStatus } from './types';
 
 // Admin Views
-// Updated to use the refactored views in src/views
 const Dashboard = lazy(() => import('./views/Dashboard'));
 const StudentsView = lazy(() => import('./views/StudentsView'));
 const FeeManagementView = lazy(() => import('./views/FeeManagementView'));
@@ -45,6 +45,7 @@ const App: React.FC = () => {
     const {
         isLoading,
         currentUser,
+        schoolInfo,
         isSidebarCollapsed,
         setIsSidebarCollapsed,
         notifications,
@@ -60,7 +61,7 @@ const App: React.FC = () => {
     }, [setIsSidebarCollapsed]);
 
     const NotificationContainer: React.FC<{ notifications: Notification[] }> = ({ notifications }) => (
-        <div className="fixed top-5 right-5 z-50 space-y-3 w-full max-w-sm pointer-events-none">
+        <div className="fixed top-5 right-5 z-[100] space-y-3 w-full max-w-sm pointer-events-none">
             {notifications.map(n => {
                 const colors = {
                     success: 'bg-primary-100 border-primary-500 text-primary-700',
@@ -81,7 +82,7 @@ const App: React.FC = () => {
         return <div className="h-screen w-screen flex justify-center items-center"><Spinner /></div>;
     }
 
-    // Unauthenticated Routes
+    // 1. UNAUTHENTICATED ROUTING
     if (!currentUser) {
         return (
             <div className="min-h-screen bg-slate-50">
@@ -96,7 +97,21 @@ const App: React.FC = () => {
         );
     }
 
-    // Authenticated Layout
+    // 2. SUBSCRIPTION LOCKOUT CHECK (Except for SuperAdmin)
+    const isSubscriptionExpired = schoolInfo?.subscription && 
+        new Date(schoolInfo.subscription.endDate) < new Date() && 
+        schoolInfo.subscription.status !== SubscriptionStatus.ACTIVE;
+
+    if (isSubscriptionExpired && currentUser.role !== 'SuperAdmin') {
+        return (
+            <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4">
+                <NotificationContainer notifications={notifications} />
+                <SubscriptionLocked />
+            </div>
+        );
+    }
+
+    // 3. AUTHENTICATED LAYOUT
     return (
         <div className="flex h-screen bg-slate-100">
             <NotificationContainer notifications={notifications} />

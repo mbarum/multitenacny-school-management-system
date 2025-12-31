@@ -81,12 +81,13 @@ const SettingsView: React.FC = () => {
     const logoInputRef = useRef<HTMLInputElement>(null);
     const [localSchoolInfo, setLocalSchoolInfo] = useState<SchoolInfo | null>(null);
 
-    // Queries (Fetch on demand based on tab)
+    // Queries
     const { data: users = [] } = useQuery({ queryKey: ['users'], queryFn: () => api.getUsers(), enabled: activeTab === 'users' });
     const { data: feeStructure = [] } = useQuery({ queryKey: ['fee-structure'], queryFn: () => api.getFeeStructure(), enabled: activeTab === 'fee_structure' });
     const { data: gradingScale = [] } = useQuery({ queryKey: ['grading-scale'], queryFn: () => api.getGradingScale(), enabled: activeTab === 'grading' });
     const { data: classes = [] } = useQuery({ queryKey: ['classes'], queryFn: () => api.getClasses().then(res => Array.isArray(res) ? res : res.data) });
-    const { data: darajaSettings } = useQuery({ queryKey: ['daraja'], queryFn: () => api.getDarajaSettings('current'), enabled: activeTab === 'mpesa' });
+    // FIX: Removed 'current' argument.
+    const { data: fetchedDarajaSettings } = useQuery({ queryKey: ['daraja'], queryFn: () => api.getDarajaSettings(), enabled: activeTab === 'mpesa' });
 
     // Local State for Edit
     const [isFeeModalOpen, setIsFeeModalOpen] = useState(false);
@@ -96,7 +97,7 @@ const SettingsView: React.FC = () => {
     const [localDaraja, setLocalDaraja] = useState<any>({});
     const [localGradingScale, setLocalGradingScale] = useState<any[]>([]);
 
-    useEffect(() => { if(darajaSettings) setLocalDaraja(darajaSettings); }, [darajaSettings]);
+    useEffect(() => { if(fetchedDarajaSettings) setLocalDaraja(fetchedDarajaSettings); }, [fetchedDarajaSettings]);
     useEffect(() => { if(gradingScale) setLocalGradingScale(gradingScale); }, [gradingScale]);
 
     // Mutations
@@ -128,7 +129,6 @@ const SettingsView: React.FC = () => {
     }
     
     const saveGrading = () => {
-         // In a real app we'd bulk update or diff. Here we just loop for simplicity.
          localGradingScale.forEach(rule => gradingMutation.mutate(rule));
     }
 
@@ -149,7 +149,14 @@ const SettingsView: React.FC = () => {
                         <div className="flex items-center space-x-6">
                             <img src={localSchoolInfo.logoUrl} alt="School Logo" className="h-24 w-24 rounded-full object-cover border-4 border-slate-200" />
                             <button type="button" onClick={() => logoInputRef.current?.click()} className="px-4 py-2 bg-slate-200 rounded">Change Logo</button>
-                            <input type="file" ref={logoInputRef} onChange={e => e.target.files?.[0] && uploadLogo(new FormData().append('logo', e.target.files[0]) as any)} className="hidden" />
+                            {/* FIX: Ensure logo upload correctly handles the File object */}
+                            <input type="file" ref={logoInputRef} onChange={e => {
+                                if (e.target.files?.[0]) {
+                                    const formData = new FormData();
+                                    formData.append('logo', e.target.files[0]);
+                                    uploadLogo(formData);
+                                }
+                            }} className="hidden" />
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
@@ -169,6 +176,17 @@ const SettingsView: React.FC = () => {
                             <div>
                                 <label className="block text-sm font-medium text-slate-700">Email</label>
                                 <input value={localSchoolInfo.email} onChange={e => setLocalSchoolInfo({...localSchoolInfo, email: e.target.value})} className="mt-1 p-2 border rounded w-full" />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700">Grading System</label>
+                                <select 
+                                    value={localSchoolInfo.gradingSystem} 
+                                    onChange={e => setLocalSchoolInfo({...localSchoolInfo, gradingSystem: e.target.value as GradingSystem})} 
+                                    className="mt-1 p-2 border rounded w-full bg-white"
+                                >
+                                    <option value={GradingSystem.Traditional}>Traditional (Marks & Grades)</option>
+                                    <option value={GradingSystem.CBC}>Competency Based (CBC)</option>
+                                </select>
                             </div>
                             <div className="col-span-2">
                                 <label className="block text-sm font-medium text-slate-700">Address</label>
@@ -240,8 +258,14 @@ const SettingsView: React.FC = () => {
                     <div className="mt-4 border-t pt-4"><button onClick={saveGrading} className="px-4 py-2 bg-primary-600 text-white rounded">Save Changes</button></div>
                     
                     <div className="mt-8 pt-6 border-t">
-                         <h3 className="text-xl font-semibold mb-4">CBC Levels</h3>
-                         <ul className="list-disc pl-5">{Object.values(CbetScore).map(l=><li key={l}>{l}</li>)}</ul>
+                         <h3 className="text-xl font-semibold mb-4">CBC Performance Levels</h3>
+                         <div className="grid grid-cols-1 gap-2 text-sm text-slate-700 bg-slate-50 p-4 rounded-lg border border-slate-200">
+                             <div className="font-semibold text-primary-700 mb-2">Standard Levels (Fixed)</div>
+                             <div className="flex justify-between border-b pb-1"><span>Exceeding Expectations</span> <span className="font-bold">EE</span></div>
+                             <div className="flex justify-between border-b pb-1"><span>Meeting Expectations</span> <span className="font-bold">ME</span></div>
+                             <div className="flex justify-between border-b pb-1"><span>Approaching Expectations</span> <span className="font-bold">AE</span></div>
+                             <div className="flex justify-between"><span>Below Expectations</span> <span className="font-bold">BE</span></div>
+                         </div>
                     </div>
                 </div>
             )}

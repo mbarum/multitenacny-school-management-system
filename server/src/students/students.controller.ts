@@ -10,6 +10,7 @@ import { Role } from '../entities/user.entity';
 import { diskStorage } from 'multer';
 import { extname, join, resolve } from 'path';
 import * as fs from 'fs';
+import { FileValidator } from '../utils/file-validation.util';
 
 @Controller('students')
 export class StudentsController {
@@ -37,16 +38,25 @@ export class StudentsController {
         return cb(null, `${randomName}${extname(file.originalname)}`);
       },
     }),
-    fileFilter: (req: any, file: any, cb: (error: Error | null, acceptFile: boolean) => void) => {
-        if (!file.originalname.match(/\.(jpg|jpeg|png|gif|webp)$/)) {
-            return cb(new BadRequestException('Only image files are allowed!'), false);
-        }
-        cb(null, true);
-    },
     limits: { fileSize: 5 * 1024 * 1024 } // 5MB
   }))
   async uploadPhoto(@UploadedFile() file: any) {
     if (!file) throw new BadRequestException('File upload failed.');
+
+    // SECURITY: Validate Magic Numbers
+    try {
+        const buffer = fs.readFileSync(file.path);
+        if (!FileValidator.validateImageSignature(buffer)) {
+            // Delete dangerous file immediately
+            fs.unlinkSync(file.path);
+            throw new BadRequestException('Invalid file type detected. Please upload a valid image.');
+        }
+    } catch (err) {
+        // Ensure file is deleted on read error too
+        if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
+        throw err;
+    }
+
     return { url: `/public/uploads/students/${file.filename}` };
   }
 

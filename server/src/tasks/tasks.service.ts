@@ -3,9 +3,9 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, LessThan } from 'typeorm';
+import { Subscription, SubscriptionStatus } from '../entities/subscription.entity';
 import { Student } from '../entities/student.entity';
 import { Transaction, TransactionType } from '../entities/transaction.entity';
-import { LibraryTransaction, LibraryStatus } from '../entities/library-transaction.entity';
 import { User, Role } from '../entities/user.entity';
 import { CommunicationsService } from '../communications/communications.service';
 
@@ -14,81 +14,65 @@ export class TasksService {
   private readonly logger = new Logger(TasksService.name);
 
   constructor(
-    @InjectRepository(Student) private studentRepo: Repository<Student>,
-    @InjectRepository(Transaction) private transactionRepo: Repository<Transaction>,
-    @InjectRepository(LibraryTransaction) private libTransRepo: Repository<LibraryTransaction>,
+    @InjectRepository(Subscription) private subRepo: Repository<Subscription>,
     @InjectRepository(User) private userRepo: Repository<User>,
+    @InjectRepository(Transaction) private transactionRepo: Repository<Transaction>,
     private communicationsService: CommunicationsService,
   ) {}
 
-  // Helper to find a system sender (Admin) for a specific school
-  private async getSystemSenderId(schoolId: string): Promise<string | null> {
-      const admin = await this.userRepo.findOne({ where: { schoolId: schoolId as any, role: Role.Admin } });
-      return admin ? admin.id : null;
-  }
-
-  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
-  async checkLibraryOverdue() {
-    this.logger.log('Running automated check for overdue library books...');
-    const today = new Date().toISOString().split('T')[0];
+  @Cron(CronExpression.EVERY_DAY_AT_1AM)
+  async checkSubscriptionExpiry() {
+    this.logger.log('Auditing subscription statuses...');
+    const now = new Date();
     
-    // Find books borrowed and due before today
-    const overdueTransactions = await this.libTransRepo.find({
+    // 1. Find ACTIVE subscriptions that have passed their end date
+    const expiredSubs = await this.subRepo.find({
         where: { 
-            status: LibraryStatus.BORROWED,
-            dueDate: LessThan(today)
+            status: SubscriptionStatus.ACTIVE,
+            endDate: LessThan(now)
         },
-        relations: ['student', 'book', 'school']
+        relations: ['school']
     });
 
-    for (const trans of overdueTransactions) {
-        if (trans.student && trans.student.guardianContact) {
-            // 1. Mark as Overdue in DB
-            trans.status = LibraryStatus.OVERDUE;
-            await this.libTransRepo.save(trans);
-
-            // 2. Send SMS Notification
-            const senderId = await this.getSystemSenderId(trans.schoolId);
-            if (senderId) {
-                const message = `Reminder: The book "${trans.book.title}" borrowed by ${trans.student.name} was due on ${trans.dueDate}. Please return it to the library.`;
-                await this.communicationsService.sendSMS(trans.student.guardianContact, message, trans.student.id, senderId);
-            } else {
-                this.logger.warn(`No admin found for school ${trans.schoolId} to send overdue SMS.`);
-            }
+    for (const sub of expiredSubs) {
+        // Mark as PAST_DUE to trigger system lockout
+        sub.status = SubscriptionStatus.PAST_DUE;
+        await this.subRepo.save(sub);
+        
+        this.logger.warn(`Lockout triggered for school: ${sub.school.name} due to expiry.`);
+        
+        // Notify school admin
+        if (sub.school.email) {
+            await this.communicationsService.sendEmail(
+                sub.school.email,
+                'Subscription Expired - Saaslink',
+                `Your school management system access for ${sub.school.name} has been locked due to an expired subscription. Please log in to reactivate.`
+            );
         }
     }
   }
 
-  // Run weekly on Monday at 9:00 AM
-  @Cron('0 9 * * 1')
-  async generateFeeReminders() {
-    this.logger.log('Running automated fee reminder generation...');
-    
-    const students = await this.studentRepo.find({ 
-        where: { status: 'Active' } as any,
-        relations: ['school'] 
-    });
-    
-    for (const student of students) {
-        const balance = await this.calculateBalance(student.id);
-        // Configurable threshold, hardcoded to 1000 for now
-        if (balance > 1000) { 
-             const senderId = await this.getSystemSenderId(student.schoolId);
-             if (senderId) {
-                const message = `Dear Parent, outstanding fee balance for ${student.name} is KES ${balance.toLocaleString()}. Please pay via M-Pesa.`;
-                await this.communicationsService.sendSMS(student.guardianContact, message, student.id, senderId);
-             }
-        }
-    }
-  }
+  @Cron(CronExpression.EVERY_DAY_AT_9AM)
+  async sendExpiryWarnings() {
+      const threeDaysFromNow = new Date();
+      threeDaysFromNow.setDate(threeDaysFromNow.getDate() + 3);
+      
+      const nearingExpiry = await this.subRepo.find({
+          where: {
+              status: SubscriptionStatus.ACTIVE,
+              endDate: LessThan(threeDaysFromNow)
+          },
+          relations: ['school']
+      });
 
-  private async calculateBalance(studentId: string): Promise<number> {
-      const result = await this.transactionRepo
-      .createQueryBuilder('t')
-      .select('SUM(CASE WHEN t.type IN (:...debits) THEN t.amount ELSE -t.amount END)', 'balance')
-      .where('t.studentId = :studentId', { studentId })
-      .setParameters({ debits: [TransactionType.Invoice, TransactionType.ManualDebit] })
-      .getRawOne();
-      return parseFloat(result.balance) || 0;
+      for (const sub of nearingExpiry) {
+          if (sub.school.email) {
+              await this.communicationsService.sendEmail(
+                  sub.school.email,
+                  'Action Required: Subscription Expiring Soon',
+                  `Your subscription for ${sub.school.name} expires on ${sub.endDate.toLocaleDateString()}. Renew now to avoid system lockout.`
+              );
+          }
+      }
   }
 }

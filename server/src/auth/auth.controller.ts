@@ -1,5 +1,6 @@
 
-import { Controller, Post, Body, Get, Request } from '@nestjs/common';
+import { Controller, Post, Body, Get, Request, Res } from '@nestjs/common';
+import { Response } from 'express';
 import { AuthService } from './auth.service';
 import { RegisterSchoolDto } from './dto/register-school.dto';
 import { Public } from './public.decorator';
@@ -10,15 +11,43 @@ export class AuthController {
 
   @Public()
   @Post('login')
-  async login(@Body() loginDto: any) {
+  async login(@Body() loginDto: any, @Res() response: Response) {
     const { email, password } = loginDto;
-    return this.authService.login(email, password);
+    const { user, token } = await this.authService.login(email, password);
+
+    // Set HttpOnly Cookie
+    response.cookie('jwt', token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production', // Use secure in prod
+        sameSite: 'strict', // CSRF protection
+        maxAge: 24 * 60 * 60 * 1000 // 1 day
+    });
+
+    // Send user data back (without token in body)
+    return response.send({ user });
+  }
+
+  @Public()
+  @Post('logout')
+  async logout(@Res() response: Response) {
+      response.clearCookie('jwt');
+      return response.send({ message: 'Logged out successfully' });
   }
 
   @Public()
   @Post('register-school')
-  async registerSchool(@Body() registerDto: RegisterSchoolDto) {
-    return this.authService.registerSchool(registerDto);
+  async registerSchool(@Body() registerDto: RegisterSchoolDto, @Res() response: Response) {
+     const { user, token, school } = await this.authService.registerSchool(registerDto);
+     
+     // Set HttpOnly Cookie on registration too
+     response.cookie('jwt', token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: 24 * 60 * 60 * 1000 
+    });
+
+    return response.send({ user, school });
   }
 
   @Public()

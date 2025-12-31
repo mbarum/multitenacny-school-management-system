@@ -16,9 +16,9 @@ export class AuditSubscriber implements EntitySubscriberInterface {
         dataSource.subscribers.push(this);
     }
 
-    // List critical entities to audit
-    listenTo() {
-        return undefined; // We check instance in methods to support multiple entities or use `any`
+    // Listen to all entities (filtered inside methods)
+    listenTo(): any {
+        return 'all'; 
     }
 
     private isCriticalEntity(entity: any): boolean {

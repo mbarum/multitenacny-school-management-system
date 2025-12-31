@@ -1,10 +1,13 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import type { Student, SchoolClass, Exam, Grade, Subject, GradingRule, SchoolInfo } from '../types';
+import type { Student, Exam, Grade, Subject, GradingRule, SchoolInfo } from '../types';
+import { GradingSystem, CBC_LEVEL_MAP } from '../types';
 import Modal from '../components/common/Modal';
 import { useData } from '../contexts/DataContext';
 import * as api from '../services/api';
+import Skeleton from '../components/common/Skeleton';
+import Spinner from '../components/common/Spinner';
 
 const ReportCardsView: React.FC = () => {
     const { schoolInfo } = useData();
@@ -15,13 +18,11 @@ const ReportCardsView: React.FC = () => {
     const [studentGrades, setStudentGrades] = useState<Grade[]>([]);
     const [loadingGrades, setLoadingGrades] = useState(false);
 
-    // Queries
     const { data: classes = [] } = useQuery({ queryKey: ['classes'], queryFn: () => api.getClasses().then(res => Array.isArray(res) ? res : res.data) });
     const { data: exams = [] } = useQuery({ queryKey: ['exams'], queryFn: () => api.findAllExams() });
     const { data: subjects = [] } = useQuery({ queryKey: ['subjects'], queryFn: () => api.getSubjects().then(res => Array.isArray(res) ? res : res.data) });
     const { data: gradingScale = [] } = useQuery({ queryKey: ['grading-scale'], queryFn: () => api.getGradingScale() });
 
-    // Fetch students when class is selected
     const { data: studentsInClass = [] } = useQuery({
         queryKey: ['students', selectedClassId],
         queryFn: () => api.getStudents({ classId: selectedClassId, pagination: 'false' }).then(res => Array.isArray(res) ? res : res.data),
@@ -29,7 +30,7 @@ const ReportCardsView: React.FC = () => {
     });
 
     const examsForClass = useMemo(() => {
-        return exams.filter((e: Exam) => e.classId === selectedClassId);
+        return (exams as any[]).filter((e: any) => e.classId === selectedClassId);
     }, [exams, selectedClassId]);
     
     const openReportCard = (student: Student) => {
@@ -47,32 +48,60 @@ const ReportCardsView: React.FC = () => {
         }
     }, [isReportModalOpen, selectedStudent, selectedExamId]);
 
-    const selectedExam = exams.find((e: Exam) => e.id === selectedExamId);
+    const selectedExam = (exams as any[]).find((e: any) => e.id === selectedExamId);
 
     return (
         <div className="p-6 md:p-8">
-            <h2 className="text-3xl font-bold text-slate-800 mb-6">Generate Report Cards</h2>
-            <div className="bg-white p-6 rounded-xl shadow-lg">
-                <div className="flex space-x-4 mb-6">
-                    <select value={selectedClassId} onChange={e => {setSelectedClassId(e.target.value); setSelectedExamId('');}} className="p-2 border rounded">
-                        <option value="">Select Class</option>
-                        {classes.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
-                    </select>
-                    <select value={selectedExamId} onChange={e => setSelectedExamId(e.target.value)} className="p-2 border rounded" disabled={!selectedClassId}>
-                        <option value="">Select Exam</option>
-                        {examsForClass.map((e: any) => <option key={e.id} value={e.id}>{e.name}</option>)}
-                    </select>
+            <h2 className="text-3xl font-bold text-slate-800 mb-6 tracking-tight">Results Slip Generator</h2>
+            <div className="bg-white p-6 rounded-3xl shadow-xl border border-slate-100 mb-8">
+                <div className="flex flex-col md:flex-row gap-8">
+                    <div className="flex-1">
+                        <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3">1. Select Class / Level</label>
+                        <select value={selectedClassId} onChange={e => {setSelectedClassId(e.target.value); setSelectedExamId('');}} className="w-full p-4 border border-slate-300 rounded-2xl bg-slate-50 focus:ring-2 focus:ring-primary-500 transition-all font-bold">
+                            <option value="">Choose Class...</option>
+                            {classes.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                        </select>
+                    </div>
+                    <div className="flex-1">
+                        <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3">2. Select Assessment</label>
+                        <select value={selectedExamId} onChange={e => setSelectedExamId(e.target.value)} className="w-full p-4 border border-slate-300 rounded-2xl bg-slate-50 focus:ring-2 focus:ring-primary-500 transition-all font-bold" disabled={!selectedClassId}>
+                            <option value="">Choose Assessment...</option>
+                            {examsForClass.map((e: any) => <option key={e.id} value={e.id}>{e.name}</option>)}
+                        </select>
+                    </div>
                 </div>
-                {selectedExamId && (
+            </div>
+
+            {selectedExamId && (
+                <div className="bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-100 animate-fade-in-up">
                     <table className="w-full text-left">
-                        <thead><tr className="bg-slate-50 border-b"><th>Student Name</th><th>Actions</th></tr></thead>
-                        <tbody>{studentsInClass.map((student: any) => (<tr key={student.id} className="border-b">
-                            <td className="p-2">{student.name}</td>
-                            <td className="p-2"><button onClick={() => openReportCard(student)} className="text-blue-600">View Report Card</button></td></tr>))}
+                        <thead className="bg-slate-900 text-white">
+                            <tr>
+                                <th className="px-8 py-5 font-black uppercase tracking-widest text-xs">Student Name</th>
+                                <th className="px-8 py-5 font-black uppercase tracking-widest text-xs">Admission No</th>
+                                <th className="px-8 py-5 font-black uppercase tracking-widest text-xs text-center">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                            {studentsInClass.map((student: any) => (
+                                <tr key={student.id} className="hover:bg-slate-50 transition-colors">
+                                    <td className="px-8 py-4 font-black text-slate-900 text-lg">{student.name}</td>
+                                    <td className="px-8 py-4 font-mono font-bold text-primary-600">{student.admissionNumber}</td>
+                                    <td className="px-8 py-4 text-center">
+                                        <button 
+                                            onClick={() => openReportCard(student)} 
+                                            className="px-8 py-3 bg-primary-100 text-primary-700 rounded-full hover:bg-primary-600 hover:text-white font-black text-xs uppercase tracking-widest transition-all shadow-sm"
+                                        >
+                                            Preview Slip
+                                        </button>
+                                    </td>
+                                </tr>
+                            ))}
                         </tbody>
                     </table>
-                )}
-            </div>
+                </div>
+            )}
+
             {isReportModalOpen && selectedExam && schoolInfo && (
                 <ReportCardModal 
                     isOpen={isReportModalOpen} 
@@ -103,26 +132,130 @@ interface ReportCardModalProps {
 }
 
 const ReportCardModal: React.FC<ReportCardModalProps> = ({ isOpen, onClose, student, exam, grades, subjects, gradingScale, schoolInfo, loading }) => {
-    if (!isOpen || !student) {
-        return null;
-    }
+    if (!isOpen || !student) return null;
 
-    const subjectMap = new Map(subjects.map((s:Subject) => [s.id, s.name]));
-    const totalMarks = grades.reduce((sum:number, g:Grade) => sum + (g.score || 0), 0);
-    const average = grades.length > 0 ? totalMarks / grades.length : 0;
-    const gradeLetter = gradingScale.find((r:GradingRule) => average >= r.minScore && average <= r.maxScore)?.grade || 'N/A';
-
+    const subjectMap = new Map<string, Subject>(subjects.map((s:Subject) => [s.id, s]));
+    
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title="Report Card" size="2xl" footer={<button onClick={() => window.print()} className="px-4 py-2 bg-slate-600 text-white rounded" disabled={loading}>Print</button>}>
-            {loading ? <div className="p-8 text-center">Loading report card data...</div> : 
-            <div className="printable-area p-4 border rounded">
-                <div className="text-center mb-4"><img src={schoolInfo.logoUrl} className="h-16 w-16 mx-auto rounded-full" /><h2 className="text-2xl font-bold">{schoolInfo.name}</h2><p>{schoolInfo.address}</p><h3 className="text-xl font-semibold mt-2 border-y py-1">{exam.name} Report Card</h3></div>
-                <div className="grid grid-cols-2 gap-2 text-sm mb-4"><p><strong>Student:</strong> {student.name}</p><p><strong>Class:</strong> {student.class}</p><p><strong>Adm No:</strong> {student.admissionNumber}</p><p><strong>Date:</strong> {new Date().toLocaleDateString()}</p></div>
-                <table className="w-full text-left text-sm border-collapse border"><thead><tr className="bg-slate-100"><th className="p-2 border">Subject</th><th className="p-2 border">Score</th><th className="p-2 border">Grade</th><th className="p-2 border">Comments</th></tr></thead>
-                    <tbody>{grades.map((g:Grade) => <tr key={g.id} className="border"><td className="p-2 border">{subjectMap.get(g.subjectId) || 'Unknown Subject'}</td><td className="p-2 border">{g.score !== null ? `${g.score}%` : 'N/A'}</td><td className="p-2 border">{g.score !== null ? (gradingScale.find((r:GradingRule) => g.score! >= r.minScore && g.score! <= r.maxScore)?.grade || 'N/A') : 'N/A'}</td><td className="p-2 border">{g.comments}</td></tr>)}</tbody>
-                </table>
-                <div className="grid grid-cols-3 gap-4 mt-4 text-center font-bold"><div className="bg-slate-100 p-2 rounded">Total Marks: {totalMarks}</div><div className="bg-slate-100 p-2 rounded">Average: {average.toFixed(2)}%</div><div className="bg-slate-100 p-2 rounded">Mean Grade: {gradeLetter}</div></div>
-                <div className="mt-4 text-sm"><p><strong>Teacher's Comment:</strong> Good progress, keep up the hard work.</p><p><strong>Principal's Comment:</strong> Excellent performance.</p></div>
+        <Modal isOpen={isOpen} onClose={onClose} title="Performance Report Card" size="3xl" footer={<button onClick={() => window.print()} className="px-10 py-4 bg-slate-900 text-white font-black uppercase tracking-widest text-xs rounded-2xl shadow-xl no-print hover:scale-105 transition-all">Export PDF / Print</button>}>
+            {loading ? <div className="p-20 text-center"><Spinner /></div> : 
+            <div className="printable-area p-8 bg-white text-slate-900 font-sans border-8 border-slate-50 m-2">
+                {/* Formal Header */}
+                <div className="flex flex-col items-center text-center mb-12 border-b-4 border-slate-900 pb-10">
+                    {schoolInfo.logoUrl && <img src={schoolInfo.logoUrl} className="h-32 w-auto mb-6 object-contain" alt="School Logo" crossOrigin="anonymous" />}
+                    <h1 className="text-5xl font-black uppercase tracking-tighter text-slate-900 leading-none">{schoolInfo.name}</h1>
+                    <p className="text-slate-500 font-bold uppercase tracking-[0.3em] text-xs mt-3">{schoolInfo.address} | Tel: {schoolInfo.phone}</p>
+                    <div className="mt-8 px-12 py-2 bg-primary-600 text-white font-black uppercase tracking-[0.2em] text-sm skew-x-[-12deg]">
+                         {exam.name} Performance Slip
+                    </div>
+                </div>
+
+                {/* Student Info Bar */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-10 mb-16 bg-slate-50 p-10 rounded-[2rem] border-2 border-slate-100 relative">
+                    <div className="space-y-1">
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Student Name</p>
+                        <p className="font-extrabold text-slate-800 text-xl uppercase leading-none">{student.name}</p>
+                    </div>
+                    <div className="space-y-1">
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Admission No</p>
+                        <p className="font-bold text-primary-700 text-xl font-mono leading-none">{student.admissionNumber}</p>
+                    </div>
+                    <div className="space-y-1">
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Class / Level</p>
+                        <p className="font-extrabold text-slate-800 text-xl leading-none">{student.class}</p>
+                    </div>
+                    <div className="space-y-1">
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Issue Date</p>
+                        <p className="font-bold text-slate-800 text-xl leading-none">{new Date().toLocaleDateString()}</p>
+                    </div>
+                </div>
+                
+                {/* Results Table - Optimized for Kenyan CBC */}
+                <div className="border-2 border-slate-200 rounded-3xl overflow-hidden shadow-inner bg-white mb-12">
+                    <table className="w-full text-left text-sm border-collapse">
+                        <thead>
+                            <tr className="bg-slate-900 text-white">
+                                <th className="p-6 font-black uppercase tracking-widest text-[10px] border-r border-slate-700">Sub Code</th>
+                                <th className="p-6 font-black uppercase tracking-widest text-[10px] border-r border-slate-700">Learning Area</th>
+                                <th className="p-6 font-black uppercase tracking-widest text-[10px] border-r border-slate-700 text-center">Level</th>
+                                <th className="p-6 font-black uppercase tracking-widest text-[10px] border-r border-slate-700 text-center">Points</th>
+                                <th className="p-6 font-black uppercase tracking-widest text-[10px]">Description</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y-2 divide-slate-100">
+                            {grades.map((g: Grade) => {
+                                const subj = subjectMap.get(g.subjectId);
+                                const levelInfo = g.cbetScore ? CBC_LEVEL_MAP[g.cbetScore] : null;
+
+                                return (
+                                    <tr key={g.id} className="hover:bg-primary-50/20 transition-colors">
+                                        <td className="p-6 font-mono font-black text-slate-400 border-r border-slate-100">{subj?.code || '---'}</td>
+                                        <td className="p-6 font-black text-slate-900 border-r border-slate-100 uppercase">{subj?.name}</td>
+                                        <td className="p-6 text-center font-black text-primary-700 border-r border-slate-100 text-2xl">
+                                            {schoolInfo.gradingSystem === GradingSystem.CBC ? (g.cbetScore || '-') : (g.score ? `${g.score}%` : '-')}
+                                        </td>
+                                        <td className="p-6 text-center font-black text-slate-900 border-r border-slate-100 text-2xl">
+                                            {schoolInfo.gradingSystem === GradingSystem.CBC ? (levelInfo?.points || '-') : '-'}
+                                        </td>
+                                        <td className="p-6 font-bold text-slate-500 uppercase text-[10px] leading-relaxed max-w-[200px]">
+                                            {schoolInfo.gradingSystem === GradingSystem.CBC ? (levelInfo?.description || '-') : '-'}
+                                        </td>
+                                    </tr>
+                                );
+                            })}
+                        </tbody>
+                    </table>
+                </div>
+
+                {/* Subject Remarks Section */}
+                <div className="mb-16">
+                     <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em] mb-10 flex items-center">
+                         <span className="bg-slate-200 h-0.5 flex-grow mr-6"></span>
+                         Teacher Assessments & Remarks
+                         <span className="bg-slate-200 h-0.5 flex-grow ml-6"></span>
+                     </h3>
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        {grades.filter(g => g.comments).map((g: Grade) => {
+                            const subj = subjectMap.get(g.subjectId);
+                            return (
+                                <div key={g.id} className="flex gap-5 items-start bg-slate-50 p-6 rounded-[2rem] border-2 border-slate-100 hover:border-primary-200 transition-colors group">
+                                    <div className="bg-white px-4 py-1.5 rounded-xl border-2 border-slate-200 font-black text-primary-700 text-[10px] uppercase shadow-sm group-hover:bg-primary-600 group-hover:text-white group-hover:border-primary-600 transition-all">
+                                        {subj?.name}
+                                    </div>
+                                    <p className="text-sm text-slate-600 font-bold leading-relaxed">"{g.comments}"</p>
+                                </div>
+                            )
+                        })}
+                        {!grades.some(g => g.comments) && <p className="text-center col-span-2 text-slate-300 font-black uppercase tracking-widest py-10 border-2 border-dashed border-slate-100 rounded-3xl">No Qualitative learning area remarks recorded.</p>}
+                     </div>
+                </div>
+
+                {/* Signatures & Seal */}
+                <div className="mt-20 pt-16 border-t-4 border-slate-900 grid grid-cols-1 md:grid-cols-2 gap-20">
+                    <div className="relative p-8 border-4 border-slate-100 rounded-[2.5rem] bg-slate-50/30">
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-6">Headteacher's Comments</p>
+                        <div className="h-20 flex items-center">
+                            <p className="text-base text-slate-800 font-black leading-snug">Consistently meeting and exceeding core competencies in literacy and numeracy. A highly focused learner.</p>
+                        </div>
+                        <div className="mt-12 pt-6 border-t-2 border-slate-300 w-full">
+                            <p className="text-[10px] text-slate-900 uppercase font-black tracking-widest">Official Signatory & Date</p>
+                        </div>
+                    </div>
+                    <div className="relative p-8 border-4 border-slate-100 rounded-[2.5rem] bg-slate-50/30 flex flex-col justify-between items-center text-center">
+                        <div>
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-6">Institutional Stamp</p>
+                            <div className="w-36 h-36 border-4 border-dashed border-slate-300 rounded-full flex items-center justify-center opacity-30">
+                                <p className="text-[10px] font-black uppercase p-6">Place Official Seal Here</p>
+                            </div>
+                        </div>
+                        <p className="text-[9px] font-black text-slate-400 mt-6 uppercase tracking-widest">Valid only with original stamp and signature</p>
+                    </div>
+                </div>
+
+                {/* Branding */}
+                <div className="mt-24 pt-8 border-t-2 border-dashed border-slate-100 text-center">
+                    <p className="text-[10px] text-slate-300 font-black uppercase tracking-[0.5em]">Saaslink Education Cloud Platform &copy; {new Date().getFullYear()}</p>
+                </div>
             </div>}
         </Modal>
     )

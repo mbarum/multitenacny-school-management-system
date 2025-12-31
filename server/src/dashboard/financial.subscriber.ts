@@ -14,9 +14,9 @@ export class FinancialSubscriber implements EntitySubscriberInterface {
         dataSource.subscribers.push(this);
     }
 
-    listenTo() {
+    listenTo(): any {
         // We listen globally and filter in methods because we need to handle both Transaction and Expense
-        return undefined; 
+        return 'all'; 
     }
 
     async afterInsert(event: InsertEvent<any>) {

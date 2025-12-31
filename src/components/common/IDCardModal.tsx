@@ -1,6 +1,8 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import type { Student, Staff, SchoolInfo } from '../../types';
+import html2canvas from 'html2canvas';
+import { jsPDF } from 'jspdf';
 
 interface IDCardModalProps {
     isOpen: boolean;
@@ -46,7 +48,7 @@ const IDCardFront: React.FC<{ person: Student | Staff, isStudent: boolean, schoo
     const staffDisplayId = !isStudent ? `STF-${staff.id.substring(0, 6).toUpperCase()}` : '';
 
     return (
-        <div className="w-[540px] h-[340px] bg-white rounded-xl shadow-2xl flex font-sans overflow-hidden relative border border-slate-200">
+        <div className="w-[540px] h-[340px] bg-white rounded-xl shadow-2xl flex font-sans overflow-hidden relative border border-slate-200 id-card-content">
             {/* Background Pattern */}
             <div className="absolute inset-0 opacity-5 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-primary-900 to-transparent pointer-events-none" />
 
@@ -60,6 +62,7 @@ const IDCardFront: React.FC<{ person: Student | Staff, isStudent: boolean, schoo
                         alt="profile" 
                         onError={(e) => { e.currentTarget.src = DEFAULT_AVATAR; }}
                         className="w-full h-full object-cover" 
+                        crossOrigin="anonymous"
                     />
                 </div>
                 <div className="text-center z-10">
@@ -77,7 +80,7 @@ const IDCardFront: React.FC<{ person: Student | Staff, isStudent: boolean, schoo
                 {/* Header */}
                 <div className="flex items-center space-x-3 border-b pb-3 mb-3">
                     {schoolInfo.logoUrl && (
-                        <img src={schoolInfo.logoUrl} className="h-10 w-10 object-contain" alt="School Logo" onError={(e) => e.currentTarget.style.display = 'none'} />
+                        <img src={schoolInfo.logoUrl} className="h-10 w-10 object-contain" alt="School Logo" onError={(e) => e.currentTarget.style.display = 'none'} crossOrigin="anonymous"/>
                     )}
                     <div className="overflow-hidden">
                         <h2 className="font-bold text-lg text-primary-900 leading-tight uppercase truncate">{schoolInfo.name}</h2>
@@ -121,7 +124,7 @@ const IDCardFront: React.FC<{ person: Student | Staff, isStudent: boolean, schoo
 
 const IDCardBack: React.FC<{ schoolInfo: SchoolInfo }> = ({ schoolInfo }) => {
     return (
-        <div className="w-[540px] h-[340px] bg-slate-50 rounded-xl shadow-2xl p-8 flex flex-col font-sans overflow-hidden relative border border-slate-200">
+        <div className="w-[540px] h-[340px] bg-slate-50 rounded-xl shadow-2xl p-8 flex flex-col font-sans overflow-hidden relative border border-slate-200 id-card-content">
             <h3 className="font-bold text-slate-800 tracking-wider border-b-2 border-primary-600 pb-2 mb-4 inline-block w-full">TERMS & CONDITIONS</h3>
             
             <div className="text-xs text-slate-600 space-y-2 flex-grow list-decimal pl-4">
@@ -154,6 +157,8 @@ const IDCardBack: React.FC<{ schoolInfo: SchoolInfo }> = ({ schoolInfo }) => {
 
 const IDCardModal: React.FC<IDCardModalProps> = ({ isOpen, onClose, data, schoolInfo }) => {
     const [isFlipped, setIsFlipped] = useState(false);
+    const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+    const exportRef = useRef<HTMLDivElement>(null);
 
     // Reset flip state when modal opens
     useEffect(() => {
@@ -164,6 +169,69 @@ const IDCardModal: React.FC<IDCardModalProps> = ({ isOpen, onClose, data, school
 
     const isStudent = data.type === 'student';
     const person = data.data;
+
+    const handleDownloadPdf = async () => {
+        if (!exportRef.current) return;
+        setIsGeneratingPdf(true);
+        
+        try {
+            // Wait a moment for rendering to settle (images etc)
+            await new Promise(resolve => setTimeout(resolve, 500));
+
+            // Capture Front
+            const frontElement = exportRef.current.querySelector('.export-front') as HTMLElement;
+            const backElement = exportRef.current.querySelector('.export-back') as HTMLElement;
+
+            if (!frontElement || !backElement) {
+                throw new Error("Export elements not found");
+            }
+
+            // High quality capture (scale 2)
+            const frontCanvas = await html2canvas(frontElement, { 
+                scale: 2,
+                useCORS: true, 
+                backgroundColor: null,
+                logging: false
+            });
+            const backCanvas = await html2canvas(backElement, { 
+                scale: 2,
+                useCORS: true, 
+                backgroundColor: null,
+                logging: false
+            });
+
+            const frontImg = frontCanvas.toDataURL('image/png');
+            const backImg = backCanvas.toDataURL('image/png');
+
+            // ID-1 Standard Card Size is approx 85.60 x 53.98 mm
+            // We'll create a PDF with standard A4 size or custom size. 
+            // Let's use A4 and place both cards.
+            const pdf = new jsPDF('p', 'mm', 'a4');
+            
+            const cardWidth = 85.6;
+            const cardHeight = 54;
+            const margin = 10;
+            const startX = (210 - cardWidth) / 2; // Center horizontally
+
+            pdf.text(`Identity Card: ${person.name}`, 105, 20, { align: 'center' });
+            
+            // Add Front
+            pdf.addImage(frontImg, 'PNG', startX, 40, cardWidth, cardHeight);
+            pdf.text("Front", 105, 40 + cardHeight + 5, { align: 'center', fontSize: 10 });
+            
+            // Add Back
+            pdf.addImage(backImg, 'PNG', startX, 40 + cardHeight + 20, cardWidth, cardHeight);
+            pdf.text("Back", 105, 40 + cardHeight + 20 + cardHeight + 5, { align: 'center', fontSize: 10 });
+
+            pdf.save(`${person.name.replace(/\s+/g, '_')}_ID_Card.pdf`);
+
+        } catch (error) {
+            console.error("Error generating PDF:", error);
+            alert("Failed to generate PDF. Please try again.");
+        } finally {
+            setIsGeneratingPdf(false);
+        }
+    };
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-75 z-50 flex justify-center items-center p-4 backdrop-blur-sm">
@@ -236,14 +304,42 @@ const IDCardModal: React.FC<IDCardModalProps> = ({ isOpen, onClose, data, school
                         Flip Card
                     </button>
                     <button 
+                        onClick={handleDownloadPdf} 
+                        disabled={isGeneratingPdf}
+                        className="px-6 py-2.5 bg-green-600 text-white font-bold rounded-full shadow-lg hover:bg-green-500 hover:scale-105 transition-all flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                         {isGeneratingPdf ? (
+                            <svg className="animate-spin h-5 w-5 mr-2 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                         ) : (
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                            </svg>
+                         )}
+                        {isGeneratingPdf ? 'Generating...' : 'Download PDF'}
+                    </button>
+                     <button 
                         onClick={() => window.print()} 
                         className="px-6 py-2.5 bg-primary-600 text-white font-bold rounded-full shadow-lg hover:bg-primary-500 hover:scale-105 transition-all flex items-center"
                     >
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm7-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
                         </svg>
-                        Print Card
+                        Print
                     </button>
+                </div>
+            </div>
+
+            {/* Hidden container for PDF generation */}
+            <div 
+                ref={exportRef} 
+                className="fixed top-0 left-0 w-[540px] z-[-1] invisible pointer-events-none"
+                style={{ visibility: 'hidden', position: 'absolute', top: '-10000px' }}
+            >
+                <div className="export-front mb-4">
+                     <IDCardFront person={person} isStudent={isStudent} schoolInfo={schoolInfo} />
+                </div>
+                <div className="export-back">
+                     <IDCardBack schoolInfo={schoolInfo} />
                 </div>
             </div>
         </div>

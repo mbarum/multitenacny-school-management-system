@@ -1,4 +1,4 @@
-import type { DarajaSettings } from './types';
+
 
 export interface StkPushSuccessResponse {
     MerchantRequestID: string;

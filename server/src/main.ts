@@ -8,12 +8,16 @@ import { join, resolve } from 'path';
 import * as fs from 'fs';
 import helmet from 'helmet';
 import compression from 'compression';
+import cookieParser from 'cookie-parser';
 import { AllExceptionsFilter } from './common/filters/http-exception.filter';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
   const app = await NestFactory.create(AppModule);
+
+  // Security: Cookie Parser (for HttpOnly tokens)
+  app.use(cookieParser());
 
   // Security: Helmet sets various HTTP headers
   app.use(helmet({
@@ -31,7 +35,7 @@ async function bootstrap() {
       ? [frontendUrl] 
       : true, // Allow all in development
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
-    credentials: true,
+    credentials: true, // Essential for Cookies
   });
 
   // Global Prefix for API versioning

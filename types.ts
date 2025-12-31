@@ -3,6 +3,7 @@
 // Keeping them in sync is crucial for frontend type safety.
 
 export enum Role {
+  SuperAdmin = 'SuperAdmin',
   Admin = 'Admin',
   Accountant = 'Accountant',
   Teacher = 'Teacher',
@@ -19,6 +20,7 @@ export interface User {
   role: Role;
   avatarUrl: string;
   status: 'Active' | 'Disabled';
+  schoolId?: string;
 }
 export type NewUser = Omit<User, 'id' | 'avatarUrl' | 'status'>;
 
@@ -42,20 +44,24 @@ export interface Student {
   guardianEmail: string;
   emergencyContact: string;
   dateOfBirth: string; // YYYY-MM-DD
+  // Added balance property to resolve "Property 'balance' does not exist on type 'Student'" errors.
+  balance?: number;
 }
 // For creating a student, we only need the classId
-export type NewStudent = Omit<Student, 'id' | 'status' | 'admissionNumber'>;
+export type NewStudent = Omit<Student, 'id' | 'status' | 'admissionNumber' | 'balance'>;
 
 export interface SchoolClass {
     id: string;
     name: string;
-    formTeacherId?: string;
+    classCode: string;
+    formTeacherId?: string | null;
+    formTeacherName?: string | null;
 }
 export type NewSchoolClass = Omit<SchoolClass, 'id'>;
 
 
 export enum PaymentMethod {
-    MPesa = 'M-Pesa',
+    MPesa = 'MPesa',
     Cash = 'Cash',
     Check = 'Check'
 }
@@ -181,6 +187,7 @@ export interface Payroll {
 export interface Subject {
     id: string;
     name: string;
+    code: string;
 }
 export type NewSubject = Omit<Subject, 'id'>;
 
@@ -218,14 +225,14 @@ export enum ExamType {
 }
 
 export enum CbetScore {
-  Exceeds = 'Exceeds',
-  Meets = 'Meets',
-  Approaching = 'Approaching',
-  Below = 'Below',
-  Exceeds_Expectation = 'Exceeds Expectation',
-  Meets_Expectation = 'Meets Expectation',
-  Approaching_Expectation = 'Approaching Expectation',
-  Below_Expectation = 'Below Expectation'
+  EE1 = 'EE1',
+  EE2 = 'EE2',
+  ME1 = 'ME1',
+  ME2 = 'ME2',
+  AE1 = 'AE1',
+  AE2 = 'AE2',
+  BE1 = 'BE1',
+  BE2 = 'BE2'
 }
 
 export interface Exam {
@@ -289,6 +296,7 @@ export enum GradingSystem {
 }
 
 export interface SchoolInfo {
+    id: string;
     name: string;
     address: string;
     phone: string;
@@ -296,6 +304,12 @@ export interface SchoolInfo {
     logoUrl?: string;
     schoolCode: string;
     gradingSystem: GradingSystem;
+    subscription?: {
+        plan: SubscriptionPlan;
+        status: SubscriptionStatus;
+        endDate: string;
+    };
+    currency?: string;
 }
 
 export interface GradingRule {
@@ -324,7 +338,7 @@ export type NewFeeItem = Omit<FeeItem, 'id'>;
 export enum CommunicationType {
     SMS = 'SMS',
     Email = 'Email',
-    PortalMessage = 'Portal Message'
+    PortalMessage = 'PortalMessage'
 }
 
 export interface CommunicationLog {
@@ -382,4 +396,26 @@ export interface Notification {
     id: number;
     message: string;
     type: 'success' | 'error' | 'info';
+}
+
+// Added missing SubscriptionPlan and SubscriptionStatus enums for App.tsx line 12.
+export enum SubscriptionPlan {
+  FREE = 'FREE',
+  BASIC = 'BASIC',
+  PREMIUM = 'PREMIUM'
+}
+
+export enum SubscriptionStatus {
+  ACTIVE = 'ACTIVE',
+  PAST_DUE = 'PAST_DUE',
+  CANCELLED = 'CANCELLED',
+  TRIAL = 'TRIAL'
+}
+
+export interface PlatformPricing {
+    id: number;
+    basicMonthlyPrice: number;
+    basicAnnualPrice: number;
+    premiumMonthlyPrice: number;
+    premiumAnnualPrice: number;
 }

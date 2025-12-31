@@ -12,18 +12,15 @@ const AcademicsView: React.FC = () => {
     const queryClient = useQueryClient();
     const [activeTab, setActiveTab] = useState('classes');
     
-    // Modal State
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalType, setModalType] = useState('');
     const [editingData, setEditingData] = useState<any>(null);
 
-    // --- Queries ---
     const { data: classes = [] } = useQuery({ queryKey: ['classes'], queryFn: () => api.getClasses().then(res => Array.isArray(res) ? res : res.data) });
     const { data: subjects = [] } = useQuery({ queryKey: ['subjects'], queryFn: () => api.getSubjects().then(res => Array.isArray(res) ? res : res.data) });
     const { data: assignments = [] } = useQuery({ queryKey: ['assignments'], queryFn: () => api.findAllAssignments().then(res => Array.isArray(res) ? res : res.data) });
-    const { data: staff = [] } = useQuery({ queryKey: ['staff'], queryFn: () => api.getStaff() }); // Need staff for dropdowns
+    const { data: staff = [] } = useQuery({ queryKey: ['staff'], queryFn: () => api.getStaff() });
 
-    // --- Mutations ---
     const createClassMutation = useMutation({ mutationFn: api.createClass, onSuccess: () => { queryClient.invalidateQueries({queryKey:['classes']}); setIsModalOpen(false); addNotification('Class created', 'success'); } });
     const updateClassMutation = useMutation({ mutationFn: (d:any) => api.updateClass(d.id, d.data), onSuccess: () => { queryClient.invalidateQueries({queryKey:['classes']}); setIsModalOpen(false); addNotification('Class updated', 'success'); } });
     const deleteClassMutation = useMutation({ mutationFn: api.deleteClass, onSuccess: () => { queryClient.invalidateQueries({queryKey:['classes']}); addNotification('Class deleted', 'success'); } });
@@ -34,8 +31,6 @@ const AcademicsView: React.FC = () => {
 
     const createAssignMutation = useMutation({ mutationFn: api.createAssignment, onSuccess: () => { queryClient.invalidateQueries({queryKey:['assignments']}); setIsModalOpen(false); addNotification('Assignment created', 'success'); } });
     const deleteAssignMutation = useMutation({ mutationFn: api.deleteAssignment, onSuccess: () => { queryClient.invalidateQueries({queryKey:['assignments']}); addNotification('Assignment removed', 'success'); } });
-
-    // --- Handlers ---
 
     const openModal = (type: string, data: any = null) => {
         setModalType(type);
@@ -77,14 +72,14 @@ const AcademicsView: React.FC = () => {
                         <button onClick={() => openModal('class')} className="px-4 py-2 bg-primary-600 text-white rounded-lg">Add Class</button>
                     </div>
                      <table className="w-full text-left table-auto">
-                        <thead><tr className="bg-slate-50 border-b"><th className="p-2">Class Name</th><th className="p-2">Class Code</th><th className="p-2">Form Teacher</th><th className="p-2">Actions</th></tr></thead>
-                        <tbody>{classes.map((c:any) => (<tr key={c.id} className="border-b">
-                            <td className="p-2">{c.name}</td>
-                            <td className="p-2">{c.classCode}</td>
-                            <td className="p-2">{c.formTeacherName || 'Not Assigned'}</td>
-                            <td className="p-2 space-x-2">
-                                <button onClick={() => openModal('class', c)} className="text-blue-600 hover:underline">Edit</button>
-                                <button onClick={() => { if(confirm('Delete class?')) deleteClassMutation.mutate(c.id); }} className="text-red-600 hover:underline">Delete</button>
+                        <thead><tr className="bg-slate-50 border-b border-slate-200"><th className="px-4 py-3 font-semibold text-slate-600">Class Name</th><th className="px-4 py-3 font-semibold text-slate-600">Class Code</th><th className="px-4 py-3 font-semibold text-slate-600">Form Teacher</th><th className="px-4 py-3 font-semibold text-slate-600">Actions</th></tr></thead>
+                        <tbody>{classes.map((c:any) => (<tr key={c.id} className="border-b border-slate-100 hover:bg-slate-50">
+                            <td className="px-4 py-3 font-medium text-slate-800">{c.name}</td>
+                            <td className="px-4 py-3 text-slate-600">{c.classCode}</td>
+                            <td className="px-4 py-3 text-slate-600">{c.formTeacherName || 'Not Assigned'}</td>
+                            <td className="px-4 py-3 space-x-2">
+                                <button onClick={() => openModal('class', c)} className="text-blue-600 hover:underline text-sm font-bold">Edit</button>
+                                <button onClick={() => { if(confirm('Delete class?')) deleteClassMutation.mutate(c.id); }} className="text-red-600 hover:underline text-sm font-bold">Delete</button>
                             </td></tr>))}</tbody>
                     </table>
                 </div>
@@ -93,16 +88,17 @@ const AcademicsView: React.FC = () => {
             {activeTab === 'subjects' && (
                  <div className="bg-white p-6 rounded-xl shadow-lg">
                     <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-xl font-bold">Manage Subjects</h3>
+                        <h3 className="text-xl font-bold text-slate-800">Learning Areas (Subjects)</h3>
                         <button onClick={() => openModal('subject')} className="px-4 py-2 bg-primary-600 text-white rounded-lg">Add Subject</button>
                     </div>
                      <table className="w-full text-left table-auto">
-                        <thead><tr className="bg-slate-50 border-b"><th className="p-2">Subject Name</th><th className="p-2">Actions</th></tr></thead>
-                        <tbody>{subjects.map((s:any) => (<tr key={s.id} className="border-b">
-                            <td className="p-2">{s.name}</td>
-                            <td className="p-2 space-x-2">
-                                <button onClick={() => openModal('subject', s)} className="text-blue-600 hover:underline">Edit</button>
-                                <button onClick={() => { if(confirm('Delete subject?')) deleteSubjectMutation.mutate(s.id); }} className="text-red-600 hover:underline">Delete</button>
+                        <thead><tr className="bg-slate-50 border-b border-slate-200"><th className="px-4 py-3 font-semibold text-slate-600">Subject Code</th><th className="px-4 py-3 font-semibold text-slate-600">Subject Name</th><th className="px-4 py-3 font-semibold text-slate-600">Actions</th></tr></thead>
+                        <tbody>{subjects.map((s:any) => (<tr key={s.id} className="border-b border-slate-100 hover:bg-slate-50">
+                            <td className="px-4 py-3 font-mono text-primary-700 font-bold">{s.code}</td>
+                            <td className="px-4 py-3 font-medium text-slate-800 uppercase">{s.name}</td>
+                            <td className="px-4 py-3 space-x-2">
+                                <button onClick={() => openModal('subject', s)} className="text-blue-600 hover:underline text-sm font-bold">Edit</button>
+                                <button onClick={() => { if(confirm('Delete subject?')) deleteSubjectMutation.mutate(s.id); }} className="text-red-600 hover:underline text-sm font-bold">Delete</button>
                             </td></tr>))}</tbody>
                     </table>
                 </div>
@@ -111,17 +107,17 @@ const AcademicsView: React.FC = () => {
             {activeTab === 'assignments' && (
                  <div className="bg-white p-6 rounded-xl shadow-lg">
                     <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-xl font-bold">Subject & Teacher Assignments</h3>
+                        <h3 className="text-xl font-bold">Teacher Assignments</h3>
                         <button onClick={() => openModal('assignment')} className="px-4 py-2 bg-primary-600 text-white rounded-lg">New Assignment</button>
                     </div>
                      <table className="w-full text-left table-auto">
-                        <thead><tr className="bg-slate-50 border-b"><th className="p-2">Class</th><th className="p-2">Subject</th><th className="p-2">Teacher</th><th className="p-2">Actions</th></tr></thead>
-                        <tbody>{assignments.map((a:any) => (<tr key={a.id} className="border-b">
-                            <td className="p-2">{classes.find((c:any)=>c.id === a.classId)?.name}</td>
-                            <td className="p-2">{subjects.find((s:any)=>s.id === a.subjectId)?.name}</td>
-                            <td className="p-2">{staff.find((s:any)=>s.userId === a.teacherId)?.name}</td>
-                            <td className="p-2 space-x-2">
-                                <button onClick={() => { if(confirm('Remove assignment?')) deleteAssignMutation.mutate(a.id); }} className="text-red-600 hover:underline">Delete</button>
+                        <thead><tr className="bg-slate-50 border-b border-slate-200"><th className="px-4 py-3 font-semibold text-slate-600">Class</th><th className="px-4 py-3 font-semibold text-slate-600">Subject</th><th className="px-4 py-3 font-semibold text-slate-600">Teacher</th><th className="px-4 py-3 font-semibold text-slate-600">Actions</th></tr></thead>
+                        <tbody>{assignments.map((a:any) => (<tr key={a.id} className="border-b border-slate-100 hover:bg-slate-50">
+                            <td className="px-4 py-3 font-medium text-slate-800">{classes.find((c:any)=>c.id === a.classId)?.name}</td>
+                            <td className="px-4 py-3 text-slate-600">{subjects.find((s:any)=>s.id === a.subjectId)?.name}</td>
+                            <td className="px-4 py-3 text-slate-600 font-bold">{staff.find((s:any)=>s.userId === a.teacherId)?.name}</td>
+                            <td className="px-4 py-3 space-x-2">
+                                <button onClick={() => { if(confirm('Remove assignment?')) deleteAssignMutation.mutate(a.id); }} className="text-red-600 hover:underline text-sm font-bold">Delete</button>
                             </td></tr>))}</tbody>
                     </table>
                 </div>
@@ -138,7 +134,13 @@ const ClassModal: React.FC<any> = ({ isOpen, onClose, onSave, data, teachers }) 
     const [name, setName] = useState(data?.name || '');
     const [classCode, setClassCode] = useState(data?.classCode || '');
     const [formTeacherId, setFormTeacherId] = useState(data?.formTeacherId || '');
-    return <Modal isOpen={isOpen} onClose={onClose} title={data ? "Edit Class" : "Add Class"}><form onSubmit={e => {e.preventDefault(); onSave({name, classCode, formTeacherId: formTeacherId || null})}} className="space-y-4">
+    
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        onSave({ name, classCode, formTeacherId: formTeacherId || null });
+    };
+
+    return <Modal isOpen={isOpen} onClose={onClose} title={data ? "Edit Class" : "Add Class"}><form onSubmit={handleSubmit} className="space-y-4">
         <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Class Name" className="w-full p-2 border rounded" required />
         <input type="text" value={classCode} onChange={e => setClassCode(e.target.value)} placeholder="Class Code (e.g., 001)" className="w-full p-2 border rounded" required />
         <select value={formTeacherId} onChange={e => setFormTeacherId(e.target.value)} className="w-full p-2 border rounded"><option value="">Select Form Teacher</option>{teachers.map((t:Staff) => <option key={t.userId} value={t.userId}>{t.name}</option>)}</select>
@@ -148,7 +150,12 @@ const ClassModal: React.FC<any> = ({ isOpen, onClose, onSave, data, teachers }) 
 
 const SubjectModal: React.FC<any> = ({ isOpen, onClose, onSave, data }) => {
     const [name, setName] = useState(data?.name || '');
-    return <Modal isOpen={isOpen} onClose={onClose} title={data ? "Edit Subject" : "Add Subject"}><form onSubmit={e => {e.preventDefault(); onSave({name})}} className="space-y-4"><input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Subject Name" className="w-full p-2 border rounded" required /><div className="flex justify-end"><button type="submit" className="px-4 py-2 bg-primary-600 text-white rounded">Save</button></div></form></Modal>
+    const [code, setCode] = useState(data?.code || '');
+    return <Modal isOpen={isOpen} onClose={onClose} title={data ? "Edit Subject" : "Add Subject"}><form onSubmit={e => {e.preventDefault(); onSave({name, code})}} className="space-y-4">
+        <input type="text" value={code} onChange={e => setCode(e.target.value)} placeholder="Subject Code (e.g., 901)" className="w-full p-2 border rounded" required />
+        <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Subject Name" className="w-full p-2 border rounded" required />
+        <div className="flex justify-end"><button type="submit" className="px-4 py-2 bg-primary-600 text-white rounded">Save</button></div>
+    </form></Modal>
 }
 
 const AssignmentModal: React.FC<any> = ({ isOpen, onClose, onSave, data, classes, subjects, teachers }) => {

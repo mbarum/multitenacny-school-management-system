@@ -54,6 +54,16 @@ export interface SchoolClass {
 }
 export type NewSchoolClass = Omit<SchoolClass, 'id'>;
 
+export interface Exam {
+    id: string;
+    name: string;
+    date: string; // YYYY-MM-DD
+    classId: string;
+    type: ExamType;
+    schoolClass?: SchoolClass;
+}
+export type NewExam = Omit<Exam, 'id'>;
+
 export enum PaymentMethod {
     MPesa = 'MPesa',
     Cash = 'Cash',
@@ -177,6 +187,7 @@ export interface Payroll {
 export interface Subject {
     id: string;
     name: string;
+    code: string; // Kenyan Subject Code e.g. 901
 }
 export type NewSubject = Omit<Subject, 'id'>;
 
@@ -213,20 +224,27 @@ export enum ExamType {
 }
 
 export enum CbetScore {
-  EE = 'Exceeding Expectations (EE)',
-  ME = 'Meeting Expectations (ME)',
-  AE = 'Approaching Expectations (AE)',
-  BE = 'Below Expectations (BE)'
+  EE1 = 'EE1',
+  EE2 = 'EE2',
+  ME1 = 'ME1',
+  ME2 = 'ME2',
+  AE1 = 'AE1',
+  AE2 = 'AE2',
+  BE1 = 'BE1',
+  BE2 = 'BE2'
 }
 
-export interface Exam {
-    id: string;
-    name: string;
-    date: string; // YYYY-MM-DD
-    classId: string;
-    type: ExamType;
-}
-export type NewExam = Omit<Exam, 'id'>;
+// CBC Points and Description Mapping for Kenya
+export const CBC_LEVEL_MAP: Record<CbetScore, { points: number, description: string }> = {
+    [CbetScore.EE1]: { points: 8, description: 'Exceeding Expectation' },
+    [CbetScore.EE2]: { points: 7, description: 'Exceeding Expectation' },
+    [CbetScore.ME1]: { points: 6, description: 'Meeting Expectation' },
+    [CbetScore.ME2]: { points: 5, description: 'Meeting Expectation' },
+    [CbetScore.AE1]: { points: 4, description: 'Approaching Expectation' },
+    [CbetScore.AE2]: { points: 3, description: 'Approaching Expectation' },
+    [CbetScore.BE1]: { points: 2, description: 'Below Expectation' },
+    [CbetScore.BE2]: { points: 1, description: 'Below Expectation' },
+};
 
 export interface Grade {
     id: string;
@@ -286,10 +304,10 @@ export enum Currency {
     RWF = 'RWF',
     BIF = 'BIF',
     USD = 'USD',
-    ZMW = 'ZMW', // Zambian Kwacha
-    ETB = 'ETB', // Ethiopian Birr
-    SDG = 'SDG', // Sudanese Pound
-    SSP = 'SSP'  // South Sudanese Pound
+    ZMW = 'ZMW',
+    ETB = 'ETB',
+    SDG = 'SDG',
+    SSP = 'SSP'
 }
 
 export interface SchoolInfo {
@@ -407,7 +425,6 @@ export interface Notification {
     type: 'success' | 'error' | 'info';
 }
 
-// Library Types
 export interface Book {
     id: string;
     title: string;
@@ -446,7 +463,6 @@ export interface IssueBookData {
     dueDate: string;
 }
 
-// Subscription Types
 export enum SubscriptionPlan {
   FREE = 'FREE',
   BASIC = 'BASIC',
@@ -466,14 +482,10 @@ export interface PlatformPricing {
     basicAnnualPrice: number;
     premiumMonthlyPrice: number;
     premiumAnnualPrice: number;
-    
-    // M-Pesa Integration (Super Admin receiving payments)
     mpesaPaybill?: string;
     mpesaConsumerKey?: string;
     mpesaConsumerSecret?: string;
     mpesaPasskey?: string;
-
-    // Stripe Integration
     stripePublishableKey?: string;
     stripeSecretKey?: string;
     stripeWebhookSecret?: string;

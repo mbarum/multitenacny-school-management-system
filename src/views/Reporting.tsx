@@ -1,7 +1,5 @@
-
 import React, { useState, useMemo, useEffect } from 'react';
 import { generateFinancialSummary } from '../services/geminiService';
-import { AttendanceStatus, AttendanceRecord } from '../types';
 import { useData } from '../contexts/DataContext';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import * as api from '../services/api';
@@ -38,7 +36,6 @@ const ReportWrapper: React.FC<{ title: string; onBack: () => void; children: Rea
 );
 
 const FinancialSummary: React.FC<{ onBack: () => void }> = ({ onBack }) => {
-    // The backend now handles data fetching for AI summary
     const [summary, setSummary] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
@@ -55,6 +52,31 @@ const FinancialSummary: React.FC<{ onBack: () => void }> = ({ onBack }) => {
         } finally {
             setIsLoading(false);
         }
+    };
+
+    const renderFormattedText = (text: string) => {
+        if (!text) return null;
+        return text.split('\n').map((line, index) => {
+            // Basic formatting parsing
+            const isBullet = line.trim().startsWith('- ');
+            const displayLine = isBullet ? line.trim().substring(2) : line;
+            
+            // Handle bolding **text**
+            const parts = displayLine.split(/\*\*(.*?)\*\*/g);
+            
+            if (line.trim() === '') return <div key={index} className="h-2"></div>;
+
+            return (
+                <div key={index} className={`mb-1 ${isBullet ? 'pl-4 flex items-start' : ''}`}>
+                    {isBullet && <span className="mr-2">•</span>}
+                    <span>
+                        {parts.map((part, i) => 
+                            i % 2 === 1 ? <strong key={i}>{part}</strong> : part
+                        )}
+                    </span>
+                </div>
+            );
+        });
     };
 
     return (
@@ -76,7 +98,9 @@ const FinancialSummary: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                 {summary && (
                     <div className="mt-6 p-4 bg-slate-50 border border-slate-200 rounded-lg">
                         <h4 className="text-lg font-semibold text-slate-800 mb-2">Generated Summary:</h4>
-                        <div className="text-slate-700 whitespace-pre-wrap leading-relaxed prose max-w-none" dangerouslySetInnerHTML={{ __html: summary.replace(/\n/g, '<br/>').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') }} />
+                        <div className="text-slate-700 leading-relaxed">
+                             {renderFormattedText(summary)}
+                        </div>
                     </div>
                 )}
             </div>
@@ -139,10 +163,20 @@ const DefaultersReport: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 }
 
 const ClassListReport: React.FC<{ onBack: () => void }> = ({ onBack }) => {
-    const { classes } = useData();
-    const [selectedClassId, setSelectedClassId] = useState<string>(classes[0]?.id || '');
+    const [selectedClassId, setSelectedClassId] = useState<string>('');
     const [students, setStudents] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
+    
+    // Initial fetch of classes if not in context yet
+    const [classList, setClassList] = useState<any[]>([]);
+
+    useEffect(() => {
+        api.getClasses().then((res: any) => {
+             const list = Array.isArray(res) ? res : res.data;
+             setClassList(list);
+             if(list.length > 0 && !selectedClassId) setSelectedClassId(list[0].id);
+        });
+    }, []);
 
     useEffect(() => {
         if(selectedClassId) {
@@ -160,10 +194,10 @@ const ClassListReport: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                 <div className="flex items-center space-x-4 mb-4 no-print">
                     <label htmlFor="class-select" className="font-medium text-slate-700">Select Class:</label>
                     <select id="class-select" value={selectedClassId} onChange={e => setSelectedClassId(e.target.value)} className="border-slate-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500">
-                        {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                        {classList.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
                     </select>
                 </div>
-                 <h3 className="text-xl font-semibold mb-2 print:block hidden text-center">{classes.find(c=>c.id === selectedClassId)?.name}</h3>
+                 <h3 className="text-xl font-semibold mb-2 print:block hidden text-center">{classList.find((c: any)=>c.id === selectedClassId)?.name}</h3>
                  {loading ? <Skeleton className="h-40 w-full" /> : (
                 <table className="w-full text-left table-auto">
                     <thead>
@@ -190,12 +224,20 @@ const ClassListReport: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 }
 
 const AttendanceReport: React.FC<{ onBack: () => void }> = ({ onBack }) => {
-    const { classes } = useData();
-    const [classId, setClassId] = useState(classes[0]?.id || '');
+    const [classList, setClassList] = useState<any[]>([]);
+    const [classId, setClassId] = useState('');
     const [startDate, setStartDate] = useState('');
     const [endDate, setEndDate] = useState('');
     const [records, setRecords] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
+
+    useEffect(() => {
+         api.getClasses().then((res: any) => {
+             const list = Array.isArray(res) ? res : res.data;
+             setClassList(list);
+             if(list.length > 0 && !classId) setClassId(list[0].id);
+        });
+    }, []);
 
     useEffect(() => {
         setLoading(true);
@@ -217,7 +259,7 @@ const AttendanceReport: React.FC<{ onBack: () => void }> = ({ onBack }) => {
         <ReportWrapper title="Attendance Issues Report" onBack={onBack}>
             <div className="bg-white p-6 rounded-xl shadow-lg">
                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4 no-print">
-                    <select value={classId} onChange={e => setClassId(e.target.value)} className="border-slate-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500"><option value="">Select Class</option>{classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
+                    <select value={classId} onChange={e => setClassId(e.target.value)} className="border-slate-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500"><option value="">Select Class</option>{classList.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
                     <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="border-slate-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500"/>
                     <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="border-slate-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500"/>
                 </div>
@@ -250,7 +292,6 @@ const AttendanceReport: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 }
 
 const CashFlowProjection: React.FC<{ onBack: () => void }> = ({ onBack }) => {
-    // This requires aggregate data. We'll simplify by fetching recent expenses and income.
     const [projectionData, setProjectionData] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -258,7 +299,7 @@ const CashFlowProjection: React.FC<{ onBack: () => void }> = ({ onBack }) => {
         const loadData = async () => {
             try {
                 const stats = await api.getDashboardStats();
-                // Reuse stats.monthlyData if available, or fetch explicit projection endpoint
+                // Reuse stats.monthlyData if available
                 setProjectionData(stats.monthlyData || []);
             } catch(e) { console.error(e) }
             finally { setLoading(false); }

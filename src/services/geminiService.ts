@@ -6,7 +6,7 @@ import type { Expense, Transaction } from '../types';
  * The backend now fetches the data directly from the database.
  * @returns A promise that resolves with the AI-generated summary string.
  */
-export const generateFinancialSummary = async (payments?: Transaction[], expenses?: Expense[]): Promise<string> => {
+export const generateFinancialSummary = async (): Promise<string> => {
   try {
     const response = await fetch('/api/ai/financial-summary', {
       method: 'POST',

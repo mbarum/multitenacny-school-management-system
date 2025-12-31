@@ -1,5 +1,5 @@
 {
-  "name": "Saaslink School Management System Multitenacy",
+  "name": "Saaslink School Management System Multitenancy",
   "description": "A modern, fully integrated school accounting and management system tailored for primary schools, designed to replace traditional tools with an easier-to-use and fully customizable platform.",
   "requestFramePermissions": [
     "camera"
