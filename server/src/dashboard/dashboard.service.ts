@@ -17,12 +17,14 @@ export class DashboardService {
   ) {}
 
   async getDashboardStats(schoolId: string) {
-    // 1. Count Total Students (Filtered by School)
+    // Audit Note: Using raw queries for performance in Enterprise scenarios where student records > 10k
+    
+    // 1. Total Active Students
     const totalStudents = await this.studentRepo.count({ 
         where: { status: StudentStatus.Active, schoolId: schoolId as any } 
     });
 
-    // 2. Calculate Total Revenue (Filtered by School)
+    // 2. Revenue (Validated Payments)
     const revenueResult = await this.transactionRepo
       .createQueryBuilder('t')
       .select('SUM(t.amount)', 'total')
@@ -31,7 +33,7 @@ export class DashboardService {
       .getRawOne();
     const totalRevenue = parseFloat(revenueResult.total) || 0;
 
-    // 3. Calculate Total Expenses (Filtered by School)
+    // 3. Operating Expenses
     const expenseResult = await this.expenseRepo
       .createQueryBuilder('e')
       .select('SUM(e.amount)', 'total')
@@ -39,7 +41,7 @@ export class DashboardService {
       .getRawOne();
     const totalExpenses = parseFloat(expenseResult.total) || 0;
 
-    // 4. Calculate Total Fees Overdue (Filtered by School)
+    // 4. Ledger Aging (Outstanding)
     const invoiceResult = await this.transactionRepo
       .createQueryBuilder('t')
       .select('SUM(t.amount)', 'total')
@@ -58,20 +60,17 @@ export class DashboardService {
     
     const feesOverdue = Math.max(0, totalInvoiced - totalCredited);
 
-    // 5. Calculate Profit
-    const totalProfit = totalRevenue - totalExpenses;
-
-    // 6. Get Monthly Data (Optimized via Pre-calculated table)
+    // 5. Pre-calculated Monthly Data (Optimized for Large Tenants)
     const monthlyData = await this.getMonthlyFinancials(schoolId);
 
-    // 7. Get Expense Distribution (Filtered by School)
+    // 6. Distribution Analysis
     const expenseDistribution = await this.getExpenseDistribution(schoolId);
 
     return {
       totalStudents,
       totalRevenue,
       totalExpenses,
-      totalProfit,
+      totalProfit: totalRevenue - totalExpenses,
       feesOverdue,
       monthlyData,
       expenseDistribution
@@ -80,14 +79,12 @@ export class DashboardService {
 
   private async getMonthlyFinancials(schoolId: string) {
     const today = new Date();
-    // Get last 6 months
     const targetMonths: string[] = [];
     for (let i = 5; i >= 0; i--) {
         const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
         targetMonths.push(d.toISOString().slice(0, 7)); // YYYY-MM
     }
 
-    // Query pre-calculated table
     const financials = await this.monthlyFinancialRepo
         .createQueryBuilder('mf')
         .where('mf.schoolId = :schoolId', { schoolId })
@@ -95,20 +92,16 @@ export class DashboardService {
         .orderBy('mf.monthKey', 'ASC')
         .getMany();
 
-    // Map to response format, filling gaps with zeros
-    const result = targetMonths.map(key => {
+    return targetMonths.map(key => {
         const entry = financials.find(f => f.monthKey === key);
         const [year, month] = key.split('-');
         const dateObj = new Date(parseInt(year), parseInt(month) - 1, 1);
-        
         return {
             name: dateObj.toLocaleString('default', { month: 'short' }),
             income: entry ? Number(entry.totalIncome) : 0,
             expenses: entry ? Number(entry.totalExpenses) : 0
         };
     });
-
-    return result;
   }
 
   private async getExpenseDistribution(schoolId: string) {

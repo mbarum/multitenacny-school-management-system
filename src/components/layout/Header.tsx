@@ -13,7 +13,7 @@ const Header: React.FC = () => {
     const menuRef = useRef<HTMLDivElement>(null);
     const notificationsRef = useRef<HTMLDivElement>(null);
 
-    if (!currentUser) return null;
+    if (!currentUser || !currentUser.name) return null;
     
     const recentAnnouncementsCount = announcements.filter(a => {
         const announcementDate = new Date(a.date);
@@ -52,7 +52,6 @@ const Header: React.FC = () => {
             <header className="bg-white border-b border-slate-200 sticky top-0 z-30">
                 <div className="px-4 sm:px-6">
                     <div className="flex justify-between items-center h-16 -mb-px">
-                        {/* Hamburger menu for mobile */}
                         <div className="lg:hidden">
                             <button onClick={() => setIsMobileSidebarOpen(true)} className="text-slate-500 hover:text-slate-600 p-2 -ml-2">
                                 <span className="sr-only">Open sidebar</span>
@@ -61,13 +60,13 @@ const Header: React.FC = () => {
                                 </svg>
                             </button>
                         </div>
-                        {/* Welcome message - hidden on mobile to give space */}
                         <div className="hidden sm:block">
-                            <h1 className="text-xl sm:text-2xl font-bold text-primary-800 truncate">Welcome, {currentUser.name.split(' ')[0]}!</h1>
+                            <h1 className="text-xl sm:text-2xl font-bold text-primary-800 truncate">
+                                Welcome, {currentUser.name?.split(' ')[0] || 'User'}!
+                            </h1>
                         </div>
 
                         <div className="flex items-center space-x-2 sm:space-x-4">
-                            {/* Notification Bell */}
                             <div className="relative" ref={notificationsRef}>
                                 <button 
                                     onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
@@ -76,7 +75,7 @@ const Header: React.FC = () => {
                                     <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
                                 </button>
                                 {recentAnnouncementsCount > 0 && (
-                                    <span className="absolute top-0 right-0 block h-5 w-5 transform -translate-y-1/2 translate-x-1/2 rounded-full ring-2 ring-white bg-red-500 text-white text-xs flex items-center justify-center">
+                                    <span className="absolute top-0 right-0 block h-5 w-5 transform -translate-y-1/2 translate-x-1/2 rounded-full ring-2 ring-white bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
                                         {recentAnnouncementsCount}
                                     </span>
                                 )}
@@ -109,10 +108,9 @@ const Header: React.FC = () => {
                                 )}
                             </div>
                             
-                            {/* User Avatar and Dropdown */}
                             <div className="relative" ref={menuRef}>
                                 <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="flex text-sm rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500">
-                                    <img className="h-9 w-9 sm:h-10 sm:w-10 rounded-full object-cover" src={currentUser.avatarUrl || 'https://i.pravatar.cc/150'} alt="User avatar" />
+                                    <img className="h-9 w-9 sm:h-10 sm:w-10 rounded-full object-cover border border-slate-200" src={currentUser.avatarUrl || 'https://i.pravatar.cc/150'} alt="User avatar" />
                                 </button>
                                 {isMenuOpen && (
                                     <div className="origin-top-right absolute right-0 mt-2 w-56 rounded-md shadow-lg py-1 bg-white ring-1 ring-black ring-opacity-5 focus:outline-none">

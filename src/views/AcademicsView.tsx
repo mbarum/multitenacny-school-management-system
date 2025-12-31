@@ -16,9 +16,10 @@ const AcademicsView: React.FC = () => {
     const [modalType, setModalType] = useState('');
     const [editingData, setEditingData] = useState<any>(null);
 
-    const { data: classes = [] } = useQuery({ queryKey: ['classes'], queryFn: () => api.getClasses().then(res => Array.isArray(res) ? res : res.data) });
-    const { data: subjects = [] } = useQuery({ queryKey: ['subjects'], queryFn: () => api.getSubjects().then(res => Array.isArray(res) ? res : res.data) });
-    const { data: assignments = [] } = useQuery({ queryKey: ['assignments'], queryFn: () => api.findAllAssignments().then(res => Array.isArray(res) ? res : res.data) });
+    // Fix: Added (res: any) type hints to resolve "never" inference issues on data property access.
+    const { data: classes = [] } = useQuery({ queryKey: ['classes'], queryFn: () => api.getClasses().then((res: any) => Array.isArray(res) ? res : res.data) });
+    const { data: subjects = [] } = useQuery({ queryKey: ['subjects'], queryFn: () => api.getSubjects().then((res: any) => Array.isArray(res) ? res : res.data) });
+    const { data: assignments = [] } = useQuery({ queryKey: ['assignments'], queryFn: () => api.findAllAssignments().then((res: any) => Array.isArray(res) ? res : res.data) });
     const { data: staff = [] } = useQuery({ queryKey: ['staff'], queryFn: () => api.getStaff() });
 
     const createClassMutation = useMutation({ mutationFn: api.createClass, onSuccess: () => { queryClient.invalidateQueries({queryKey:['classes']}); setIsModalOpen(false); addNotification('Class created', 'success'); } });

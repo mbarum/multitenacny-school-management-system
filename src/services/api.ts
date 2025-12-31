@@ -4,7 +4,9 @@ import type {
     Exam, Grade, AttendanceRecord, SchoolEvent, SchoolInfo, GradingRule, FeeItem, 
     DarajaSettings, NewStudent, NewStaff, NewTransaction, NewExpense, 
     NewUser, NewGradingRule, NewFeeItem, PlatformPricing, Announcement, NewAnnouncement,
-    CommunicationLog, NewCommunicationLog, Book, NewBook, LibraryTransaction
+    CommunicationLog, NewCommunicationLog, Book, NewBook, LibraryTransaction,
+    // Fix: Added missing imports to resolve "Cannot find name" errors.
+    NewPayrollItem, TimetableEntry
 } from '../types';
 
 const apiFetch = async (endpoint: string, options: RequestInit = {}) => {
@@ -71,6 +73,12 @@ export const createTransaction = (data: NewTransaction): Promise<Transaction> =>
 export const updateTransaction = (id: string, data: Partial<Transaction>): Promise<Transaction> => apiFetch(`/transactions/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
 export const deleteTransaction = (id: string): Promise<void> => apiFetch(`/transactions/${id}`, { method: 'DELETE' });
 export const createMultipleTransactions = (data: NewTransaction[]): Promise<Transaction[]> => apiFetch('/transactions/batch', { method: 'POST', body: JSON.stringify(data) });
+
+// Fix: Added missing getExpenses method to resolve property existence errors.
+export const getExpenses = (params: any = {}): Promise<any> => {
+    const query = new URLSearchParams(params);
+    return apiFetch(`/expenses?${query.toString()}`);
+};
 
 // --- CRUD ---
 export const createStudent = (data: NewStudent): Promise<Student> => apiFetch('/students', { method: 'POST', body: JSON.stringify(data) });

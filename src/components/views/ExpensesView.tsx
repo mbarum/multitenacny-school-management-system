@@ -34,13 +34,14 @@ const ExpensesView: React.FC = () => {
     // --- Queries ---
     const { data: expensesData, isLoading } = useQuery({
         queryKey: ['expenses', page, startDate, endDate, selectedCategory],
+        // Fix: getExpenses is now exported in src/services/api.ts. Added (res: any) for safety.
         queryFn: () => api.getExpenses({
             page,
             limit: 10,
             startDate: startDate || undefined,
             endDate: endDate || undefined,
             category: selectedCategory || undefined
-        }),
+        }).then((res: any) => res),
         placeholderData: (prev) => prev
     });
 

@@ -15,12 +15,14 @@ const TeacherExaminationsView: React.FC = () => {
     
     // Queries
     const { data: exams = [] } = useQuery({ queryKey: ['exams'], queryFn: () => api.findAllExams() });
-    const { data: assignments = [] } = useQuery({ queryKey: ['assignments'], queryFn: () => api.findAllAssignments().then(res => Array.isArray(res) ? res : res.data) });
-    const { data: subjects = [] } = useQuery({ queryKey: ['subjects'], queryFn: () => api.getSubjects().then(res => Array.isArray(res) ? res : res.data) });
+    // Fix: Added (res: any) to resolve type inference error on res.data.
+    const { data: assignments = [] } = useQuery({ queryKey: ['assignments'], queryFn: () => api.findAllAssignments().then((res: any) => Array.isArray(res) ? res : res.data) });
+    const { data: subjects = [] } = useQuery({ queryKey: ['subjects'], queryFn: () => api.getSubjects().then((res: any) => Array.isArray(res) ? res : res.data) });
     const { data: studentsInClass = [] } = useQuery({
         queryKey: ['my-class-students', assignedClass?.id],
+        // Fix: Added (res: any) to resolve type inference error on res.data.
         queryFn: () => assignedClass 
-            ? api.getStudents({ classId: assignedClass.id, status: 'Active', pagination: 'false' }).then(res => Array.isArray(res) ? res : res.data)
+            ? api.getStudents({ classId: assignedClass.id, status: 'Active', pagination: 'false' }).then((res: any) => Array.isArray(res) ? res : res.data)
             : Promise.resolve([]),
         enabled: !!assignedClass
     });
@@ -153,7 +155,7 @@ const TeacherExaminationsView: React.FC = () => {
                     <div className="animate-fade-in-up">
                         <div className="flex justify-between items-center mb-6">
                             <h3 className="text-xl font-bold text-slate-800 flex items-center">
-                                <svg className="w-5 h-5 mr-2 text-primary-500" fill="currentColor" viewBox="0 0 20 20"><path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"/><path fillRule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clipRule="evenodd"/></svg>
+                                <svg className="w-5 h-5 mr-2 text-primary-500" fill="currentColor" viewBox="0 0 20 20"><path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"/><path fillRule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 002h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clipRule="evenodd"/></svg>
                                 Assessment Rubric
                             </h3>
                             <button onClick={() => refetchGrades()} className="text-sm text-primary-600 hover:bg-primary-50 px-3 py-1.5 rounded-lg font-bold flex items-center transition-colors">
