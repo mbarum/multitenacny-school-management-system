@@ -1,8 +1,9 @@
-
 import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Modal from '../components/common/Modal';
 import WebcamCaptureModal from '../components/common/WebcamCaptureModal';
+/* Added missing Spinner import to resolve line 408 error */
+import Spinner from '../components/common/Spinner';
 import type { Student, NewStudent, NewCommunicationLog, NewTransaction, SchoolClass, CommunicationLog } from '../types';
 import { CommunicationType, StudentStatus, TransactionType } from '../types';
 import StudentBillingModal from '../components/common/StudentBillingModal';
@@ -46,7 +47,7 @@ const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ isOpen, onClo
         }
     }, [isOpen, student]);
 
-    const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
     };
@@ -55,12 +56,12 @@ const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ isOpen, onClo
         e.preventDefault();
         if (!student) return;
         try {
-            const { id, admissionNumber, balance, class: clsName, ...updates } = formData as any;
+            const { id, admissionNumber, balance, class: className, ...updates } = formData as any;
             await api.updateStudent(student.id, updates);
-            addNotification('Profile synchronized successfully', 'success');
+            addNotification('Registry synchronized successfully', 'success');
             onClose();
         } catch (error) {
-            addNotification('Sync failed.', 'error');
+            addNotification('Sync failed. Please check your network.', 'error');
         }
     };
 
@@ -86,49 +87,99 @@ const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ isOpen, onClo
     if (!isOpen || !student) return null;
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title={`Student Dossier: ${student.name}`} size="2xl">
-            <div className="flex border-b border-slate-100 mb-6">
-                <button onClick={() => setActiveTab('details')} className={`px-6 py-3 font-black text-xs uppercase tracking-widest transition-all ${activeTab === 'details' ? 'text-primary-600 border-b-2 border-primary-600' : 'text-slate-400'}`}>Information</button>
-                <button onClick={() => setActiveTab('communication')} className={`px-6 py-3 font-black text-xs uppercase tracking-widest transition-all ${activeTab === 'communication' ? 'text-primary-600 border-b-2 border-primary-600' : 'text-slate-400'}`}>Logbook</button>
+        <Modal isOpen={isOpen} onClose={onClose} title={`Dossier: ${student.name}`} size="2xl">
+            <div className="flex border-b border-slate-100 mb-6 overflow-x-auto scrollbar-hide">
+                <button onClick={() => setActiveTab('details')} className={`px-6 py-3 font-black text-[10px] uppercase tracking-[0.2em] transition-all whitespace-nowrap ${activeTab === 'details' ? 'text-primary-600 border-b-4 border-primary-600' : 'text-slate-400 hover:text-slate-600'}`}>General Info</button>
+                <button onClick={() => setActiveTab('communication')} className={`px-6 py-3 font-black text-[10px] uppercase tracking-[0.2em] transition-all whitespace-nowrap ${activeTab === 'communication' ? 'text-primary-600 border-b-4 border-primary-600' : 'text-slate-400 hover:text-slate-600'}`}>Contact History</button>
             </div>
+
             {activeTab === 'details' && (
-                <form onSubmit={handleSaveChanges} className="space-y-6">
-                    <div className="flex items-center space-x-6 bg-slate-50 p-6 rounded-3xl border border-slate-100">
-                        <img src={formData.profileImage || DEFAULT_AVATAR} className="h-24 w-24 rounded-2xl object-cover border-4 border-white shadow-lg" />
-                        <div>
-                            <h4 className="text-xl font-black text-slate-800">{student.name}</h4>
-                            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">{student.admissionNumber}</p>
-                            <button type="button" onClick={onViewIdCard} className="mt-3 px-4 py-1.5 bg-white border border-slate-200 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-slate-100 transition-all">Generate ID</button>
+                <form onSubmit={handleSaveChanges} className="space-y-8 pb-4">
+                    <div className="flex items-center space-x-6 bg-slate-50 p-6 rounded-[2rem] border border-slate-100 relative overflow-hidden group">
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-primary-600/5 rounded-full -translate-y-1/2 translate-x-1/2"></div>
+                        <img src={formData.profileImage || DEFAULT_AVATAR} className="h-24 w-24 rounded-3xl object-cover border-4 border-white shadow-xl relative z-10" />
+                        <div className="relative z-10 flex-1">
+                            <h4 className="text-2xl font-black text-slate-800 leading-tight uppercase tracking-tight">{student.name}</h4>
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Adm: {student.admissionNumber}</p>
+                            <button type="button" onClick={onViewIdCard} className="mt-4 px-4 py-2 bg-white border border-slate-200 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-900 hover:text-white hover:border-slate-900 transition-all shadow-sm">View Official ID</button>
                         </div>
                     </div>
-                    <div className="grid grid-cols-2 gap-6">
-                        <div className="space-y-1">
-                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Legal Name</label>
-                            <input name="name" value={formData.name || ''} onChange={handleFormChange} className="w-full p-3 border border-slate-200 rounded-xl font-bold" />
-                        </div>
-                        <div className="space-y-1">
-                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Status</label>
-                            <select name="status" value={formData.status} onChange={handleFormChange} className="w-full p-3 border border-slate-200 rounded-xl font-bold bg-white">
-                                {Object.values(StudentStatus).map(s => <option key={s} value={s}>{s}</option>)}
-                            </select>
+
+                    <div className="space-y-6">
+                        <h5 className="text-[11px] font-black text-primary-600 uppercase tracking-[0.3em] border-l-4 border-primary-500 pl-3">Student Details</h5>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="space-y-1">
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Full Name</label>
+                                <input name="name" value={formData.name || ''} onChange={handleFormChange} className="w-full p-3.5 border-2 border-slate-100 rounded-2xl font-bold text-slate-700 outline-none focus:border-primary-500 transition-all" />
+                            </div>
+                            <div className="space-y-1">
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Account Status</label>
+                                <select name="status" value={formData.status} onChange={handleFormChange} className="w-full p-3.5 border-2 border-slate-100 rounded-2xl font-bold text-slate-700 outline-none focus:border-primary-500 transition-all bg-white">
+                                    {Object.values(StudentStatus).map(s => <option key={s} value={s}>{s}</option>)}
+                                </select>
+                            </div>
+                            <div className="space-y-1">
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Date of Birth</label>
+                                <input type="date" name="dateOfBirth" value={formData.dateOfBirth || ''} onChange={handleFormChange} className="w-full p-3.5 border-2 border-slate-100 rounded-2xl font-bold text-slate-700 outline-none focus:border-primary-500 transition-all" />
+                            </div>
+                            <div className="space-y-1">
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Current Grade Level</label>
+                                <input value={student.class} readOnly disabled className="w-full p-3.5 border-2 border-slate-100 rounded-2xl font-bold text-slate-400 bg-slate-50 cursor-not-allowed" />
+                            </div>
                         </div>
                     </div>
-                    <div className="flex justify-end pt-6 border-t"><button type="submit" className="px-10 py-3 bg-primary-600 text-white rounded-xl font-black text-xs uppercase tracking-widest shadow-lg">Update Records</button></div>
+
+                    <div className="space-y-6 pt-6 border-t border-slate-100">
+                        <h5 className="text-[11px] font-black text-amber-600 uppercase tracking-[0.3em] border-l-4 border-amber-500 pl-3">Parental / Guardian Profile</h5>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="space-y-1">
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Guardian Name</label>
+                                <input name="guardianName" value={formData.guardianName || ''} onChange={handleFormChange} className="w-full p-3.5 border-2 border-slate-100 rounded-2xl font-bold text-slate-700 outline-none focus:border-primary-500 transition-all" placeholder="Legal guardian name" />
+                            </div>
+                            <div className="space-y-1">
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Communication Email</label>
+                                <input type="email" name="guardianEmail" value={formData.guardianEmail || ''} onChange={handleFormChange} className="w-full p-3.5 border-2 border-slate-100 rounded-2xl font-bold text-slate-700 outline-none focus:border-primary-500 transition-all" placeholder="email@address.com" />
+                            </div>
+                            <div className="space-y-1">
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Primary Phone</label>
+                                <input name="guardianContact" value={formData.guardianContact || ''} onChange={handleFormChange} className="w-full p-3.5 border-2 border-slate-100 rounded-2xl font-bold text-slate-700 outline-none focus:border-primary-500 transition-all" placeholder="07XX XXX XXX" />
+                            </div>
+                            <div className="space-y-1">
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Emergency SOS Contact</label>
+                                <input name="emergencyContact" value={formData.emergencyContact || ''} onChange={handleFormChange} className="w-full p-3.5 border-2 border-slate-100 rounded-2xl font-bold text-slate-700 outline-none focus:border-primary-500 transition-all" placeholder="Alternative contact number" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="flex justify-end pt-8 border-t border-slate-100">
+                        <button type="submit" className="px-12 py-4 bg-slate-900 text-white rounded-2xl font-black uppercase text-xs tracking-widest shadow-2xl hover:bg-black transition-all active:scale-95">
+                            Commit Registry Changes
+                        </button>
+                    </div>
                 </form>
             )}
+
             {activeTab === 'communication' && (
-                <div className="space-y-4 h-96 flex flex-col">
-                    <div className="flex-grow overflow-y-auto space-y-4">
-                        {loadingLogs ? <Skeleton className="h-20 w-full" /> : 
-                            (studentLogs || []).map(log => (
-                                <div key={log.id} className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                                    <div className="flex justify-between mb-2"><span className="text-[10px] font-black text-primary-600 uppercase">{log.type}</span><span className="text-[10px] font-bold text-slate-400">{new Date(log.date).toLocaleDateString()}</span></div>
-                                    <p className="text-sm text-slate-700 font-medium">{log.message}</p>
+                <div className="space-y-6 h-[600px] flex flex-col">
+                    <div className="flex-grow overflow-y-auto space-y-4 pr-2 custom-scrollbar">
+                        {loadingLogs ? (
+                             Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-24 w-full rounded-2xl" />)
+                        ) : (studentLogs || []).length === 0 ? (
+                             <div className="text-center py-20 text-slate-300 font-black uppercase tracking-widest italic">No contact logs recorded.</div>
+                        ) : (
+                            studentLogs.map(log => (
+                                <div key={log.id} className="p-5 bg-slate-50 rounded-2xl border border-slate-100 relative group transition-all hover:border-primary-200">
+                                    <div className="flex justify-between items-center mb-3">
+                                        <span className={`px-2 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest ${log.type === CommunicationType.PortalMessage ? 'bg-primary-100 text-primary-700' : 'bg-blue-100 text-blue-700'}`}>
+                                            {log.type}
+                                        </span>
+                                        <span className="text-[10px] font-bold text-slate-400">{new Date(log.date).toLocaleString()}</span>
+                                    </div>
+                                    <p className="text-sm text-slate-700 font-medium leading-relaxed">{log.message}</p>
                                 </div>
                             ))
-                        }
+                        )}
                     </div>
-                    <form onSubmit={handleSendMessage} className="pt-4 border-t"><textarea value={message} onChange={e=>setMessage(e.target.value)} placeholder="Type a message..." className="w-full p-2 border rounded-xl text-sm h-20 mb-2"/><button type="submit" className="px-6 py-2 bg-primary-600 text-white rounded-xl text-xs font-black uppercase">Send</button></form>
                 </div>
             )}
         </Modal>
@@ -151,12 +202,36 @@ const StudentsView: React.FC = () => {
     const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
     const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
 
-    // --- Queries ---
     const { data: classesData = [] } = useQuery({
         queryKey: ['classes'],
         queryFn: () => api.getClasses().then(res => Array.isArray(res) ? res : res.data || [])
     });
     const classes = Array.isArray(classesData) ? classesData : [];
+
+    const initialStudentState: NewStudent = {
+        name: '',
+        classId: '',
+        class: '',
+        profileImage: DEFAULT_AVATAR,
+        guardianName: '',
+        guardianContact: '',
+        guardianAddress: '',
+        guardianEmail: '',
+        emergencyContact: '',
+        dateOfBirth: ''
+    };
+    const [newStudent, setNewStudent] = useState<NewStudent>(initialStudentState);
+
+    // Auto-select first class if none selected
+    useEffect(() => {
+        if (isAddModalOpen && classes.length > 0 && !newStudent.classId) {
+            setNewStudent(prev => ({
+                ...prev,
+                classId: classes[0].id,
+                class: classes[0].name
+            }));
+        }
+    }, [isAddModalOpen, classes, newStudent.classId]);
 
     const { data: studentsData, isLoading } = useQuery({
         queryKey: ['students', page, searchTerm, selectedClass, statusFilter],
@@ -181,6 +256,41 @@ const StudentsView: React.FC = () => {
         return studentsData.last_page || 1;
     }, [studentsData]);
 
+    const addStudentMutation = useMutation({
+        mutationFn: api.createStudent,
+        onSuccess: async (student) => {
+            addNotification('Student enrolled successfully!', 'success');
+            
+            /* Fetching fee structure to generate initial invoices for mandatory items */
+            const feeStructure = await queryClient.fetchQuery({
+                queryKey: ['fee-structure'],
+                queryFn: api.getFeeStructure
+            }) as any[];
+
+            const initialTransactions: NewTransaction[] = (feeStructure || [])
+                .filter((item: any) => !item.isOptional && item.classSpecificFees.some((fee: any) => fee.classId === student.classId))
+                .map((item: any) => {
+                    const classFee = item.classSpecificFees.find((fee: any) => fee.classId === student.classId);
+                    return {
+                        studentId: student.id,
+                        type: TransactionType.Invoice,
+                        date: new Date().toISOString().split('T')[0],
+                        description: item.name,
+                        amount: classFee!.amount,
+                    };
+                });
+            
+            if(initialTransactions.length > 0) {
+                await api.createMultipleTransactions(initialTransactions);
+                addNotification(`Initial invoices created for ${student.name}.`, 'info');
+            }
+
+            queryClient.invalidateQueries({ queryKey: ['students'] });
+            setIsAddModalOpen(false);
+            setNewStudent(initialStudentState);
+        }
+    });
+
     const deleteStudentMutation = useMutation({
         mutationFn: api.deleteStudent,
         onSuccess: () => {
@@ -189,9 +299,24 @@ const StudentsView: React.FC = () => {
         }
     });
 
-    const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.checked) setSelectedStudentIds(students.map((s: Student) => s.id));
-        else setSelectedStudentIds([]);
+    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+        const { name, value } = e.target;
+        if (name === 'classId') {
+            const selected = classes.find((c: any) => c.id === value);
+            setNewStudent(prev => ({ ...prev, classId: value, class: selected ? selected.name : '' }));
+        } else {
+            setNewStudent(prev => ({ ...prev, [name]: value }));
+        }
+    };
+
+    const handleAddStudent = (e: React.FormEvent) => {
+        e.preventDefault();
+        // Validation
+        if (!newStudent.name || !newStudent.classId || !newStudent.guardianName || !newStudent.guardianContact) {
+            addNotification('Please complete all required fields.', 'error');
+            return;
+        }
+        addStudentMutation.mutate(newStudent);
     };
 
     return (
@@ -222,9 +347,8 @@ const StudentsView: React.FC = () => {
 
             <div className="bg-white rounded-[2.5rem] shadow-2xl border border-slate-100 overflow-hidden">
                 <table className="w-full text-left">
-                    <thead className="bg-slate-900 text-white">
-                        <tr>
-                            <th className="px-6 py-5 w-12 text-center"><input type="checkbox" onChange={handleSelectAll} checked={students.length > 0 && selectedStudentIds.length === students.length} className="h-5 w-5 rounded-lg border-slate-700 bg-slate-800 text-primary-500" /></th>
+                    <thead>
+                        <tr className="bg-slate-900 text-white">
                             <th className="px-6 py-5 font-black uppercase tracking-widest text-[10px]">Identity</th>
                             <th className="px-6 py-5 font-black uppercase tracking-widest text-[10px]">Index</th>
                             <th className="px-6 py-5 font-black uppercase tracking-widest text-[10px]">Grade</th>
@@ -234,16 +358,15 @@ const StudentsView: React.FC = () => {
                     </thead>
                     <tbody className="divide-y divide-slate-100">
                         {isLoading ? (
-                            Array.from({ length: 5 }).map((_, i) => (<tr key={i}><td colSpan={6} className="px-6 py-5"><Skeleton className="h-6 w-full" /></td></tr>))
+                            Array.from({ length: 5 }).map((_, i) => (<tr key={i}><td colSpan={5} className="px-6 py-5"><Skeleton className="h-6 w-full" /></td></tr>))
                         ) : students.length === 0 ? (
-                            <tr><td colSpan={6} className="text-center py-20 text-slate-400 font-black uppercase tracking-widest italic">No matching results.</td></tr>
+                            <tr><td colSpan={5} className="text-center py-20 text-slate-400 font-black uppercase tracking-widest italic">No matching results.</td></tr>
                         ) : (
                             students.map((student: Student) => (
                                 <tr key={student.id} className="hover:bg-slate-50 transition-colors group">
-                                    <td className="px-6 py-4 text-center"><input type="checkbox" checked={selectedStudentIds.includes(student.id)} onChange={e => setSelectedStudentIds(prev => e.target.checked ? [...prev, student.id] : prev.filter(id => id !== student.id))} className="h-5 w-5 rounded-lg text-primary-600" /></td>
                                     <td className="px-6 py-4">
                                         <div className="flex items-center space-x-4">
-                                            <img src={student.profileImage || DEFAULT_AVATAR} className="h-12 w-12 rounded-2xl object-cover border-2 border-white shadow-md" />
+                                            <img src={student.profileImage || DEFAULT_AVATAR} onError={(e) => { e.currentTarget.src = DEFAULT_AVATAR; }} alt={student.name} className="h-12 w-12 rounded-2xl object-cover border-2 border-white shadow-md" />
                                             <div><div className="font-black text-slate-800 text-lg">{student.name}</div><div className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{student.guardianName}</div></div>
                                         </div>
                                     </td>
@@ -251,9 +374,9 @@ const StudentsView: React.FC = () => {
                                     <td className="px-6 py-4 font-bold text-slate-600">{student.class}</td>
                                     <td className={`px-6 py-4 text-right font-black text-lg ${student.balance && student.balance > 0 ? 'text-red-600' : 'text-green-600'}`}>KES {(student.balance || 0).toLocaleString()}</td>
                                     <td className="px-6 py-4 text-center space-x-3">
-                                        <button onClick={() => { setSelectedStudent(student); setIsBillingModalOpen(true); }} className="p-2 text-slate-400 hover:text-green-600 transition-colors"><svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" /></svg></button>
-                                        <button onClick={() => { setSelectedStudent(student); setIsProfileModalOpen(true); }} className="p-2 text-slate-400 hover:text-primary-600 transition-colors"><svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg></button>
-                                        <button onClick={() => { if(confirm(`Delete ${student.name}?`)) deleteStudentMutation.mutate(student.id); }} className="p-2 text-slate-400 hover:text-red-600 transition-colors"><svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>
+                                        <button onClick={() => { setSelectedStudent(student); setIsBillingModalOpen(true); }} className="p-2 text-slate-400 hover:text-green-600 transition-colors" title="Ledger & Billing"><svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" /></svg></button>
+                                        <button onClick={() => { setSelectedStudent(student); setIsProfileModalOpen(true); }} className="p-2 text-slate-400 hover:text-primary-600 transition-colors" title="Full Dossier"><svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg></button>
+                                        <button onClick={() => { if(confirm(`Delete ${student.name}?`)) deleteStudentMutation.mutate(student.id); }} className="p-2 text-slate-400 hover:text-red-600 transition-colors" title="Purge Record"><svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>
                                     </td>
                                 </tr>
                             ))
@@ -262,6 +385,53 @@ const StudentsView: React.FC = () => {
                 </table>
             </div>
             <Pagination currentPage={page} totalPages={totalPages} onPageChange={setPage} />
+
+            <Modal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} title="New Student Enrollment" size="2xl">
+                <form onSubmit={handleAddStudent} className="space-y-6 p-2">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-1">
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Full Name</label>
+                            <input name="name" value={newStudent.name} onChange={handleInputChange} className="w-full p-4 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-primary-500 outline-none font-bold" required placeholder="Legal full name"/>
+                        </div>
+                        <div className="space-y-1">
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Allocated Grade</label>
+                            <select name="classId" value={newStudent.classId} onChange={handleInputChange} className="w-full p-4 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-primary-500 outline-none font-bold bg-white" required>
+                                {classes.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                            </select>
+                        </div>
+                        <div className="space-y-1">
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Date of Birth</label>
+                            <input type="date" name="dateOfBirth" value={newStudent.dateOfBirth} onChange={handleInputChange} className="w-full p-4 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-primary-500 outline-none font-bold" required/>
+                        </div>
+                        <div className="space-y-1">
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Guardian Name</label>
+                            <input name="guardianName" value={newStudent.guardianName} onChange={handleInputChange} className="w-full p-4 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-primary-500 outline-none font-bold" required placeholder="Parent or legal guardian"/>
+                        </div>
+                        <div className="space-y-1">
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Guardian Phone</label>
+                            <input name="guardianContact" value={newStudent.guardianContact} onChange={handleInputChange} className="w-full p-4 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-primary-500 outline-none font-bold" required placeholder="07XX XXX XXX"/>
+                        </div>
+                        <div className="space-y-1">
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Guardian Email</label>
+                            <input type="email" name="guardianEmail" value={newStudent.guardianEmail} onChange={handleInputChange} className="w-full p-4 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-primary-500 outline-none font-bold" required placeholder="email@example.com"/>
+                        </div>
+                        <div className="space-y-1">
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Emergency Contact</label>
+                            <input name="emergencyContact" value={newStudent.emergencyContact} onChange={handleInputChange} className="w-full p-4 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-primary-500 outline-none font-bold" required placeholder="Alternative phone number"/>
+                        </div>
+                        <div className="space-y-1">
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Residential Address</label>
+                            <input name="guardianAddress" value={newStudent.guardianAddress} onChange={handleInputChange} className="w-full p-4 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-primary-500 outline-none font-bold" required placeholder="Physical home address"/>
+                        </div>
+                    </div>
+                    <div className="flex justify-end pt-6 border-t gap-3">
+                         <button type="button" onClick={() => setIsAddModalOpen(false)} className="px-6 py-4 font-black text-[10px] uppercase text-slate-400 hover:text-slate-600">Cancel</button>
+                         <button type="submit" disabled={addStudentMutation.isPending} className="px-12 py-4 bg-primary-600 text-white rounded-2xl font-black uppercase text-xs tracking-widest shadow-2xl shadow-primary-500/40 hover:-translate-y-1 transition-all active:scale-95 flex items-center gap-3">
+                            {addStudentMutation.isPending ? <Spinner /> : 'Complete Enrollment'}
+                        </button>
+                    </div>
+                </form>
+            </Modal>
 
             <StudentProfileModal isOpen={isProfileModalOpen} onClose={() => setIsProfileModalOpen(false)} student={selectedStudent} onViewIdCard={() => { if(selectedStudent) openIdCardModal(selectedStudent, 'student'); setIsProfileModalOpen(false); }} />
             <StudentBillingModal isOpen={isBillingModalOpen} onClose={() => setIsBillingModalOpen(false)} student={selectedStudent} />

@@ -224,3 +224,6 @@ export const updateSchoolSubscription = (schoolId: string, payload: any): Promis
 export const getSubscriptionPayments = (): Promise<any[]> => apiFetch('/super-admin/payments');
 
 export const registerSchool = (data: any): Promise<any> => apiFetch('/auth/register-school', { method: 'POST', body: JSON.stringify(data) });
+
+/* FIX: Added missing createPaymentIntent export to resolve RegisterSchool.tsx error */
+export const createPaymentIntent = (data: { plan: string, billingCycle: string, email: string }): Promise<{ clientSecret: string, amount: number }> => apiFetch('/auth/create-payment-intent', { method: 'POST', body: JSON.stringify(data) });

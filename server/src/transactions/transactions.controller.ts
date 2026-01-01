@@ -1,5 +1,5 @@
 
-import { Controller, Get, Post, Body, Query, Request, Patch, Param, Delete, Res, Ip, ForbiddenException, Logger } from '@nestjs/common';
+import { Controller, Post, Body, Request, Ip, ForbiddenException, Logger, Get, Query, Patch, Param, Delete, Res } from '@nestjs/common';
 import { TransactionsService } from './transactions.service';
 import { Transaction } from '../entities/transaction.entity';
 import { GetTransactionsDto } from './dto/get-transactions.dto';
@@ -8,7 +8,7 @@ import { Role } from '../entities/user.entity';
 import { Public } from '../auth/public.decorator';
 import { ConfigService } from '@nestjs/config';
 
-@Controller('transactions')
+@Controller()
 export class TransactionsController {
   private readonly logger = new Logger(TransactionsController.name);
   
@@ -17,66 +17,49 @@ export class TransactionsController {
       private readonly configService: ConfigService
   ) {}
 
-  @Roles(Role.Admin, Role.Accountant)
-  @Post()
-  create(@Request() req: any, @Body() createTransactionDto: Omit<Transaction, 'id'>) {
-    return this.transactionsService.create(createTransactionDto, req.user.schoolId);
-  }
-  
-  @Roles(Role.Admin, Role.Accountant)
-  @Post('batch')
-  createBatch(@Request() req: any, @Body() createTransactionDtos: Omit<Transaction, 'id'>[]) {
-    return this.transactionsService.createBatch(createTransactionDtos, req.user.schoolId);
+  @Roles(Role.Admin, Role.Accountant, Role.Parent)
+  @Post('mpesa/stk-push')
+  async initiateStk(@Request() req: any, @Body() body: { amount: number, phone: string, accountReference: string }) {
+      // Use schoolId from user if present, otherwise handle based on reference
+      const schoolId = req.user.schoolId;
+      return this.transactionsService.initiateStkPush(body.amount, body.phone, body.accountReference, schoolId);
   }
 
-  @Get()
+  @Public()
+  @Post('mpesa/callback')
+  async handleMpesaCallback(@Body() payload: any, @Ip() ip: string) {
+      this.logger.log(`M-Pesa Callback from IP: ${ip}`);
+      return this.transactionsService.handleMpesaCallback(payload);
+  }
+
+  @Public()
+  @Post('stripe/webhook')
+  async handleStripeWebhook(@Request() req: any, @Res() res: any) {
+      const sig = req.headers['stripe-signature'];
+      try {
+          await this.transactionsService.handleStripeWebhook(req.body, sig);
+          return res.status(200).send({ received: true });
+      } catch (err) {
+          this.logger.error(`Stripe Webhook Error: ${err.message}`);
+          return res.status(400).send(`Webhook Error: ${err.message}`);
+      }
+  }
+
+  // --- Standard CRUD ---
+  @Get('transactions')
   findAll(@Request() req: any, @Query() query: GetTransactionsDto) {
     return this.transactionsService.findAll(query, req.user.schoolId);
   }
 
-  @Get('export')
   @Roles(Role.Admin, Role.Accountant)
-  async export(@Request() req: any, @Res() res: any) {
-    const csv = await this.transactionsService.exportTransactions(req.user.schoolId);
-    res.setHeader('Content-Type', 'text/csv');
-    res.setHeader('Content-Disposition', 'attachment; filename="transactions.csv"');
-    res.send(csv);
+  @Post('transactions')
+  create(@Request() req: any, @Body() dto: any) {
+    return this.transactionsService.create(dto, req.user.schoolId);
   }
 
   @Roles(Role.Admin, Role.Accountant)
-  @Patch(':id')
-  update(@Request() req: any, @Param('id') id: string, @Body() updateTransactionDto: Partial<Transaction>) {
-    return this.transactionsService.update(id, updateTransactionDto, req.user.schoolId);
-  }
-
-  @Roles(Role.Admin)
-  @Delete(':id')
-  remove(@Request() req: any, @Param('id') id: string) {
-    return this.transactionsService.remove(id, req.user.schoolId);
-  }
-
-  // Public endpoint for Safaricom
-  @Public()
-  @Post('mpesa/callback')
-  async handleMpesaCallback(@Body() payload: any, @Ip() ip: string) {
-      // Dynamic IP Allowlist
-      const configIps = this.configService.get<string>('MPESA_ALLOWED_IPS');
-      
-      const allowedIps = configIps 
-        ? configIps.split(',').map(i => i.trim()) 
-        : [
-          '196.201.214.200', '196.201.214.206', '196.201.213.114', 
-          '196.201.214.208', '196.201.213.44', '196.201.212.127', 
-          '196.201.212.138', '196.201.212.129', '196.201.212.136', 
-          '196.201.212.74', '196.201.212.69', 
-          '::1', '127.0.0.1'
-        ];
-
-      if (process.env.NODE_ENV === 'production' && !allowedIps.includes(ip)) {
-           this.logger.warn(`Blocked unauthorized M-Pesa callback attempt from IP: ${ip}`);
-           throw new ForbiddenException('Forbidden');
-      }
-
-      return this.transactionsService.handleMpesaCallback(payload);
+  @Post('transactions/batch')
+  createBatch(@Request() req: any, @Body() dtos: any[]) {
+    return this.transactionsService.createBatch(dtos, req.user.schoolId);
   }
 }

@@ -407,6 +407,9 @@ export interface PlatformPricing {
     basicAnnualPrice: number;
     premiumMonthlyPrice: number;
     premiumAnnualPrice: number;
+    // FIX: Added missing property to resolve RegisterSchool.tsx error
+    stripePublishableKey?: string;
+    mpesaPaybill?: string;
 }
 
 export enum Currency {
