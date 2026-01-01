@@ -2,8 +2,8 @@
 // These types are used throughout the application for data consistency.
 
 export enum Role {
-  SuperAdmin = 'SuperAdmin',
-  Admin = 'Admin',
+  SuperAdmin = 'SuperAdmin', 
+  Admin = 'Admin', 
   Accountant = 'Accountant',
   Teacher = 'Teacher',
   Receptionist = 'Receptionist',
@@ -106,7 +106,6 @@ export interface Expense {
   date: string; // YYYY-MM-DD
   attachmentUrl?: string;
 }
-// Add missing NewExpense type
 export type NewExpense = Omit<Expense, 'id'>;
 
 export interface Staff {
@@ -125,7 +124,6 @@ export interface Staff {
     nssfNumber: string;
     shaNumber: string;
 }
-// Add missing NewStaff type
 export type NewStaff = Omit<Staff, 'id' | 'userId' | 'photoUrl'> & { password?: string };
 
 export enum PayrollItemType {
@@ -156,10 +154,8 @@ export interface PayrollItem {
     value: number;
     isRecurring: boolean;
 }
-// Add missing NewPayrollItem type
 export type NewPayrollItem = Omit<PayrollItem, 'id'>;
 
-// Add missing PayrollEntry type
 export interface PayrollEntry {
     name: string;
     amount: number;
@@ -181,10 +177,9 @@ export interface Payroll {
 export interface Subject {
     id: string;
     name: string;
-    code: string;
+    code: string; // Alphanumeric code
 }
 
-// Add missing ClassSubjectAssignment type
 export interface ClassSubjectAssignment {
     id: string;
     classId: string;
@@ -192,7 +187,6 @@ export interface ClassSubjectAssignment {
     teacherId: string;
 }
 
-// Add missing DayOfWeek enum
 export enum DayOfWeek {
     Monday = 'Monday',
     Tuesday = 'Tuesday',
@@ -201,7 +195,6 @@ export enum DayOfWeek {
     Friday = 'Friday',
 }
 
-// Add missing TimetableEntry interface
 export interface TimetableEntry {
     id: string;
     classId: string;
@@ -212,7 +205,6 @@ export interface TimetableEntry {
     endTime: string; // "HH:MM"
 }
 
-// Add missing ExamType enum
 export enum ExamType {
     Traditional = 'Traditional',
     CBC = 'CBC'
@@ -221,17 +213,22 @@ export enum ExamType {
 export interface Exam {
     id: string;
     name: string;
-    date: string; 
+    date: string; // YYYY-MM-DD
     classId: string;
     type: ExamType;
 }
 
-// Add missing CbetScore enum
+export type NewExam = Omit<Exam, 'id'>;
+
 export enum CbetScore {
-  EE = 'EE',
-  ME = 'ME',
-  AE = 'AE',
-  BE = 'BE'
+  EE1 = 'EE1',
+  EE2 = 'EE2',
+  ME1 = 'ME1',
+  ME2 = 'ME2',
+  AE1 = 'AE1',
+  AE2 = 'AE2',
+  BE1 = 'BE1',
+  BE2 = 'BE2'
 }
 
 export interface Grade {
@@ -239,12 +236,11 @@ export interface Grade {
     studentId: string;
     examId: string;
     subjectId: string;
-    score: number | null;
+    score: number | null; // Numeric marks
     cbetScore?: CbetScore | null;
     comments?: string;
 }
 
-// Add missing AttendanceStatus enum
 export enum AttendanceStatus {
     Present = 'Present',
     Absent = 'Absent',
@@ -252,7 +248,6 @@ export enum AttendanceStatus {
     Excused = 'Excused'
 }
 
-// Add missing AttendanceRecord interface
 export interface AttendanceRecord {
     id: string;
     studentId: string;
@@ -262,7 +257,6 @@ export interface AttendanceRecord {
     remarks?: string;
 }
 
-// Add missing EventCategory enum
 export enum EventCategory {
     Holiday = 'Holiday',
     Academic = 'Academic',
@@ -271,7 +265,6 @@ export enum EventCategory {
     General = 'General'
 }
 
-// Add missing SchoolEvent interface
 export interface SchoolEvent {
     id: string;
     title: string;
@@ -303,7 +296,6 @@ export interface SchoolInfo {
     };
 }
 
-// Add School alias for SchoolInfo
 export interface School extends SchoolInfo {
     slug: string;
     createdAt: string;
@@ -311,11 +303,10 @@ export interface School extends SchoolInfo {
 
 export interface GradingRule {
     id: string;
-    grade: string;
+    grade: string; // A, B, C, D, E
     minScore: number;
     maxScore: number;
 }
-// Add missing NewGradingRule type
 export type NewGradingRule = Omit<GradingRule, 'id'>;
 
 export interface ClassFee {
@@ -333,7 +324,6 @@ export interface FeeItem {
 }
 export type NewFeeItem = Omit<FeeItem, 'id'>;
 
-// Add missing Announcement and related types
 export interface Announcement {
     id: string;
     title: string;
@@ -344,14 +334,21 @@ export interface Announcement {
 }
 export type NewAnnouncement = Omit<Announcement, 'id'>;
 
-// Add missing CommunicationType enum
+/* FIX: Added missing ReportShareLog interface */
+export interface ReportShareLog {
+    id: string;
+    studentId: string;
+    examId: string;
+    sharedDate: string; // ISO String
+    sharedBy: string; // User's name
+}
+
 export enum CommunicationType {
     SMS = 'SMS',
     Email = 'Email',
     PortalMessage = 'PortalMessage'
 }
 
-// Add missing CommunicationLog interface
 export interface CommunicationLog {
     id: string;
     studentId: string;
@@ -361,6 +358,21 @@ export interface CommunicationLog {
     sentBy: string; // User's name
 }
 export type NewCommunicationLog = Omit<CommunicationLog, 'id'>;
+
+/* FIX: Added missing MpesaC2BTransaction interface */
+export interface MpesaC2BTransaction {
+    id: string;
+    transactionType: 'Pay Bill';
+    transID: string;
+    transTime: string;
+    transAmount: string;
+    businessShortCode: string;
+    billRefNumber: string; // Student Admission Number
+    msisdn: string;
+    firstName: string;
+    lastName: string;
+    isProcessed: boolean;
+}
 
 export interface DarajaSettings {
     consumerKey: string;
@@ -397,7 +409,6 @@ export interface PlatformPricing {
     premiumAnnualPrice: number;
 }
 
-// Add missing Currency enum
 export enum Currency {
     KES = 'KES',
     USD = 'USD',
@@ -411,7 +422,6 @@ export enum Currency {
     SSP = 'SSP'
 }
 
-// Add Library related types
 export interface Book {
     id: string;
     title: string;
@@ -446,8 +456,12 @@ export interface LibraryTransaction {
 }
 
 export const CBC_LEVEL_MAP: Record<string, { points: number, description: string }> = {
-    'EE': { points: 4, description: 'Exceeding Expectation' },
-    'ME': { points: 3, description: 'Meeting Expectation' },
-    'AE': { points: 2, description: 'Approaching Expectation' },
-    'BE': { points: 1, description: 'Below Expectation' },
+    'EE1': { points: 8, description: 'Exceeding Expectation (High)' },
+    'EE2': { points: 7, description: 'Exceeding Expectation (Low)' },
+    'ME1': { points: 6, description: 'Meeting Expectation (High)' },
+    'ME2': { points: 5, description: 'Meeting Expectation (Low)' },
+    'AE1': { points: 4, description: 'Approaching Expectation (High)' },
+    'AE2': { points: 3, description: 'Approaching Expectation (Low)' },
+    'BE1': { points: 2, description: 'Below Expectation (High)' },
+    'BE2': { points: 1, description: 'Below Expectation (Low)' },
 };

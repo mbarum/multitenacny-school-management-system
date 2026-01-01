@@ -16,6 +16,9 @@ export class Subject extends BaseEntity {
 
   @Column()
   name!: string;
+
+  @Column({ length: 10, default: 'SUB' })
+  code!: string;
   
   @OneToMany(() => ClassSubjectAssignment, (assignment) => assignment.subject)
   assignments!: ClassSubjectAssignment[];

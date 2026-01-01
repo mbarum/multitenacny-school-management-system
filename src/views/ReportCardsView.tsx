@@ -208,7 +208,7 @@ const ReportCardModal: React.FC<ReportCardModalProps> = ({ isOpen, onClose, stud
                                         <td className="p-6 text-center font-black text-slate-900 border-r border-slate-100 text-2xl">
                                             {schoolInfo.gradingSystem === GradingSystem.CBC ? (levelInfo?.points || '-') : getTraditionalGrade(g.score)}
                                         </td>
-                                        <td className="p-6 font-bold text-slate-500 uppercase text-[10px] leading-relaxed max-w-[200px]">
+                                        <td className="p-6 font-bold text-slate-50 uppercase text-[10px] leading-relaxed max-w-[200px]">
                                             {schoolInfo.gradingSystem === GradingSystem.CBC ? (levelInfo?.description || '-') : (g.comments || '-')}
                                         </td>
                                     </tr>

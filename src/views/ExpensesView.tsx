@@ -44,6 +44,8 @@ const ExpensesView: React.FC = () => {
         placeholderData: (prev) => prev
     });
 
+    // CRITICAL FIX: The backend returns { data: [...], last_page: x }. 
+    // We must look inside the .data property.
     const expenses = expensesData?.data || [];
     const totalPages = expensesData?.last_page || 1;
 
@@ -56,7 +58,7 @@ const ExpensesView: React.FC = () => {
             addNotification("Expense added successfully.", "success");
             setIsModalOpen(false);
         },
-        onError: () => addNotification("Failed to add expense.", "error")
+        onError: (err: any) => addNotification(err.message || "Failed to add expense.", "error")
     });
 
     const updateMutation = useMutation({
@@ -159,10 +161,6 @@ const ExpensesView: React.FC = () => {
         }
     }
     
-    const handlePrint = () => {
-        window.print();
-    }
-    
     const isPdf = (url?: string) => url && url.toLowerCase().endsWith('.pdf');
 
     return (
@@ -178,87 +176,86 @@ const ExpensesView: React.FC = () => {
                 `}
             </style>
             
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4 no-print">
-                <h2 className="text-3xl font-bold text-slate-800">Expense Tracking</h2>
-                <div className="flex gap-2">
-                    <button onClick={handlePrint} className="px-4 py-2 bg-slate-500 text-white font-semibold rounded-lg shadow-md hover:bg-slate-600">Print / PDF</button>
-                    <button onClick={handleExportCSV} className="px-4 py-2 bg-green-600 text-white font-semibold rounded-lg shadow-md hover:bg-green-700">Export CSV</button>
-                    <button onClick={openAddModal} className="px-4 py-2 bg-primary-600 text-white font-semibold rounded-lg shadow-md hover:bg-primary-700">Add New Expense</button>
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-4 no-print">
+                <div>
+                    <h2 className="text-3xl font-black text-slate-800 tracking-tight uppercase">Expenditure Log</h2>
+                    <p className="text-slate-500 font-medium">Track and categorize institutional spending.</p>
+                </div>
+                <div className="flex gap-3">
+                    <button onClick={handleExportCSV} className="px-5 py-2.5 bg-white text-slate-700 border border-slate-200 rounded-xl shadow-sm hover:bg-slate-50 font-black text-xs uppercase tracking-widest flex items-center">
+                        <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                        Export CSV
+                    </button>
+                    <button onClick={openAddModal} className="px-6 py-3 bg-primary-600 text-white font-black text-xs uppercase tracking-widest rounded-2xl shadow-xl shadow-primary-500/30 hover:bg-primary-700 transition-all">
+                        Record Expense
+                    </button>
                 </div>
             </div>
 
             {/* Filters */}
-            <div className="mb-4 bg-white p-4 rounded-xl shadow-lg flex flex-col sm:flex-row items-center gap-4 no-print">
-                <div className="flex items-center space-x-2 w-full sm:w-auto">
-                    <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="p-2 border border-slate-300 rounded-lg w-full" placeholder="Start Date"/>
-                    <span className="text-slate-500">to</span>
-                    <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="p-2 border border-slate-300 rounded-lg w-full" placeholder="End Date"/>
+            <div className="mb-8 bg-white p-6 rounded-[2rem] shadow-xl border border-slate-100 flex flex-col lg:flex-row items-center gap-6 no-print">
+                <div className="flex items-center space-x-3 w-full lg:w-auto">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Date Range</label>
+                    <div className="flex items-center space-x-2">
+                        <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="p-3 border-2 border-slate-100 rounded-2xl outline-none font-bold text-sm bg-slate-50"/>
+                        <span className="text-slate-300">to</span>
+                        <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="p-3 border-2 border-slate-100 rounded-2xl outline-none font-bold text-sm bg-slate-50"/>
+                    </div>
                 </div>
-                 <div className="flex-grow">
-                    <select value={selectedCategory} onChange={e => setSelectedCategory(e.target.value)} className="w-full p-2 border border-slate-300 rounded-lg">
-                        <option value="">All Categories</option>
+                 <div className="flex-grow w-full">
+                    <select value={selectedCategory} onChange={e => setSelectedCategory(e.target.value)} className="w-full p-3 border-2 border-slate-100 rounded-2xl outline-none focus:border-primary-500 font-bold text-slate-700 bg-slate-50 text-sm">
+                        <option value="">All Expense Categories</option>
                         {Object.values(ExpenseCategory).map(cat => <option key={cat} value={cat}>{cat}</option>)}
                     </select>
                 </div>
             </div>
 
-            <div className="bg-white rounded-xl shadow-lg overflow-x-auto printable-area">
-                 {/* Print Header */}
-                 <div className="hidden print:block text-center mb-4">
-                     <h3 className="text-2xl font-bold">Expenses Report</h3>
-                     <p>Generated on {new Date().toLocaleDateString()}</p>
-                     {(startDate || endDate) && <p>Period: {startDate || 'Start'} to {endDate || 'End'}</p>}
-                 </div>
-
-                 <table className="w-full text-left table-auto">
+            <div className="bg-white rounded-[2rem] shadow-2xl overflow-hidden border border-slate-100 printable-area">
+                 <table className="w-full text-left">
                     <thead>
-                        <tr className="bg-slate-50 border-b border-slate-200">
-                            <th className="px-4 py-3 font-semibold text-slate-600">Date</th>
-                            <th className="px-4 py-3 font-semibold text-slate-600">Category</th>
-                            <th className="px-4 py-3 font-semibold text-slate-600">Description</th>
-                            <th className="px-4 py-3 font-semibold text-slate-600 text-right">Amount</th>
-                            <th className="px-4 py-3 font-semibold text-slate-600 no-print">Receipt</th>
-                            <th className="px-4 py-3 font-semibold text-slate-600 no-print">Actions</th>
+                        <tr className="bg-slate-900 text-white">
+                            <th className="px-8 py-5 font-black uppercase tracking-widest text-[10px]">Date</th>
+                            <th className="px-8 py-5 font-black uppercase tracking-widest text-[10px]">Category</th>
+                            <th className="px-8 py-5 font-black uppercase tracking-widest text-[10px]">Description</th>
+                            <th className="px-8 py-5 font-black uppercase tracking-widest text-[10px] text-right">Amount</th>
+                            <th className="px-8 py-5 font-black uppercase tracking-widest text-[10px] no-print">Receipt</th>
+                            <th className="px-8 py-5 font-black uppercase tracking-widest text-[10px] text-center no-print">Actions</th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody className="divide-y divide-slate-100">
                         {isLoading ? (
                              Array.from({ length: 5 }).map((_, i) => (
-                                <tr key={i} className="border-b border-slate-100">
-                                    <td className="px-4 py-4"><Skeleton className="h-4 w-24"/></td>
-                                    <td className="px-4 py-4"><Skeleton className="h-4 w-32"/></td>
-                                    <td className="px-4 py-4"><Skeleton className="h-4 w-48"/></td>
-                                    <td className="px-4 py-4"><Skeleton className="h-4 w-24"/></td>
-                                    <td className="px-4 py-4"><Skeleton className="h-4 w-10"/></td>
-                                    <td className="px-4 py-4"><Skeleton className="h-4 w-20"/></td>
-                                </tr>
+                                <tr key={i}><td colSpan={6} className="px-8 py-5"><Skeleton className="h-6 w-full"/></td></tr>
                             ))
                         ) : expenses.length === 0 ? (
-                            <tr><td colSpan={6} className="text-center py-8 text-slate-500">No expenses recorded.</td></tr>
+                            <tr><td colSpan={6} className="text-center py-20 text-slate-400 font-black uppercase tracking-widest italic">No expenses matching your criteria.</td></tr>
                         ) : (
                             expenses.map((exp: any) => (
-                                <tr key={exp.id} className="border-b border-slate-100 hover:bg-slate-50">
-                                    <td className="px-4 py-3 text-slate-500">{new Date(exp.date).toLocaleDateString()}</td>
-                                    <td className="px-4 py-3 text-slate-600">{exp.category}</td>
-                                    <td className="px-4 py-3 text-slate-800">{exp.description}</td>
-                                    <td className="px-4 py-3 text-right font-semibold text-slate-800">{formatCurrency(exp.amount)}</td>
-                                    <td className="px-4 py-3 no-print">
+                                <tr key={exp.id} className="hover:bg-slate-50 transition-colors group">
+                                    <td className="px-8 py-5">
+                                        <div className="font-bold text-slate-800">{new Date(exp.date).toLocaleDateString()}</div>
+                                    </td>
+                                    <td className="px-8 py-5">
+                                        <span className="px-2 py-1 bg-slate-100 text-slate-600 rounded-lg text-[10px] font-black uppercase tracking-widest">
+                                            {exp.category}
+                                        </span>
+                                    </td>
+                                    <td className="px-8 py-5 text-slate-600 font-medium">{exp.description}</td>
+                                    <td className="px-8 py-5 text-right font-black text-lg text-slate-900">{formatCurrency(exp.amount)}</td>
+                                    <td className="px-8 py-5 no-print">
                                         {exp.attachmentUrl && (
-                                            <a href={exp.attachmentUrl} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline text-xs flex items-center">
+                                            <a href={exp.attachmentUrl} target="_blank" rel="noreferrer" className="inline-flex p-1 border border-slate-200 rounded-lg hover:bg-slate-100 transition-colors shadow-sm">
                                                 {isPdf(exp.attachmentUrl) ? (
-                                                    <>
-                                                        <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
-                                                        PDF
-                                                    </>
+                                                    <svg className="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
                                                 ) : (
-                                                    <img src={exp.attachmentUrl} alt="Receipt" className="h-8 w-8 object-cover rounded border hover:scale-150 transition-transform" />
+                                                    <img src={exp.attachmentUrl} alt="Receipt" className="h-6 w-6 object-cover rounded-md" />
                                                 )}
                                             </a>
                                         )}
                                     </td>
-                                    <td className="px-4 py-3 space-x-2 no-print">
-                                        <button onClick={() => openEditModal(exp)} className="text-blue-600 hover:underline">Edit</button>
-                                        <button onClick={() => handleDelete(exp.id)} className="text-red-600 hover:underline">Delete</button>
+                                    <td className="px-8 py-5 space-x-3 no-print text-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <button onClick={() => openEditModal(exp)} className="text-blue-600 font-black text-[10px] uppercase hover:underline">Revise</button>
+                                        <button onClick={() => handleDelete(exp.id)} className="text-red-600 font-black text-[10px] uppercase hover:underline">Remove</button>
                                     </td>
                                 </tr>
                             ))
@@ -270,39 +267,56 @@ const ExpensesView: React.FC = () => {
                  <Pagination currentPage={page} totalPages={totalPages} onPageChange={setPage} />
              </div>
 
-             <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingExpense ? "Edit Expense" : "Add New Expense"}>
-                <form onSubmit={handleSave} className="space-y-4">
-                    <input type="date" value={formData.date} onChange={e => setFormData(ex => ({...ex, date: e.target.value}))} required className="w-full p-2 border border-slate-300 rounded-lg"/>
-                    <select value={formData.category} onChange={e => setFormData(ex => ({...ex, category: e.target.value as ExpenseCategory}))} className="w-full p-2 border border-slate-300 rounded-lg">
-                         {Object.values(ExpenseCategory).map(cat => <option key={cat} value={cat}>{cat}</option>)}
-                    </select>
-                    <input type="text" placeholder="Description" value={formData.description} onChange={e => setFormData(ex => ({...ex, description: e.target.value}))} required className="w-full p-2 border border-slate-300 rounded-lg"/>
-                    <input type="number" placeholder="Amount" value={formData.amount || ''} onChange={e => setFormData(ex => ({...ex, amount: parseFloat(e.target.value)}))} required className="w-full p-2 border border-slate-300 rounded-lg"/>
+             <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingExpense ? "Modify Expenditure" : "New Expenditure Entry"} size="lg">
+                <form onSubmit={handleSave} className="space-y-6">
+                    <div className="grid grid-cols-2 gap-6">
+                        <div className="space-y-1">
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Category</label>
+                            <select value={formData.category} onChange={e => setFormData(ex => ({...ex, category: e.target.value as ExpenseCategory}))} className="w-full p-3.5 border border-slate-200 rounded-xl bg-slate-50 font-bold focus:ring-2 focus:ring-primary-500 outline-none">
+                                {Object.values(ExpenseCategory).map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                            </select>
+                        </div>
+                        <div className="space-y-1">
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Date of Purchase</label>
+                            <input type="date" value={formData.date} onChange={e => setFormData(ex => ({...ex, date: e.target.value}))} required className="w-full p-3.5 border border-slate-200 rounded-xl bg-slate-50 font-bold focus:ring-2 focus:ring-primary-500 outline-none"/>
+                        </div>
+                    </div>
                     
-                    <div className="border-t pt-4">
-                        <label className="block text-sm font-medium text-slate-700 mb-2">Receipt / Invoice</label>
-                        <div className="flex items-center space-x-3">
+                    <div className="space-y-1">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Description</label>
+                        <input type="text" placeholder="What was purchased?" value={formData.description} onChange={e => setFormData(ex => ({...ex, description: e.target.value}))} required className="w-full p-3.5 border border-slate-200 rounded-xl bg-slate-50 font-bold focus:ring-2 focus:ring-primary-500 outline-none"/>
+                    </div>
+
+                    <div className="space-y-1">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Amount Disbursed (KES)</label>
+                        <input type="number" step="0.01" placeholder="0.00" value={formData.amount || ''} onChange={e => setFormData(ex => ({...ex, amount: parseFloat(e.target.value)}))} required className="w-full p-3.5 border border-slate-200 rounded-xl bg-slate-50 font-bold focus:ring-2 focus:ring-primary-500 outline-none text-lg"/>
+                    </div>
+                    
+                    <div className="border-t border-slate-100 pt-6">
+                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Supporting Evidence (Receipt/Invoice)</label>
+                        <div className="flex items-center gap-4">
                              {formData.attachmentUrl && (
-                                isPdf(formData.attachmentUrl) ? (
-                                     <div className="h-16 w-16 flex items-center justify-center bg-slate-100 rounded border text-slate-500 text-xs">PDF</div>
-                                ) : (
-                                    <img src={formData.attachmentUrl} alt="Receipt Preview" className="h-16 w-16 object-cover rounded border" />
-                                )
+                                <div className="relative h-20 w-20 rounded-2xl border-4 border-slate-100 overflow-hidden shadow-sm">
+                                    {isPdf(formData.attachmentUrl) ? (
+                                         <div className="h-full w-full flex items-center justify-center bg-red-50 text-red-500 font-black text-[10px]">PDF</div>
+                                    ) : (
+                                        <img src={formData.attachmentUrl} alt="Preview" className="h-full w-full object-cover" />
+                                    )}
+                                </div>
                              )}
-                            <input 
-                                type="file" 
-                                accept="image/*,application/pdf"
-                                ref={fileInputRef}
-                                onChange={handleFileChange}
-                                className="hidden"
-                            />
-                            <button type="button" onClick={() => fileInputRef.current?.click()} className="px-3 py-1.5 bg-slate-200 text-slate-700 text-sm font-semibold rounded hover:bg-slate-300">Upload File</button>
-                            <span className="text-slate-400">or</span>
-                            <button type="button" onClick={() => setIsCaptureModalOpen(true)} className="px-3 py-1.5 bg-slate-200 text-slate-700 text-sm font-semibold rounded hover:bg-slate-300">Capture</button>
+                            <input type="file" accept="image/*,application/pdf" ref={fileInputRef} onChange={handleFileChange} className="hidden"/>
+                            <button type="button" onClick={() => fileInputRef.current?.click()} className="px-5 py-3 bg-slate-100 text-slate-600 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-200 transition-all">Upload File</button>
+                            <span className="text-slate-300 font-black text-xs">OR</span>
+                            <button type="button" onClick={() => setIsCaptureModalOpen(true)} className="px-5 py-3 bg-slate-100 text-slate-600 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-200 transition-all">Capture Receipt</button>
                         </div>
                     </div>
 
-                    <div className="flex justify-end mt-4"><button type="submit" className="px-6 py-2 bg-primary-600 text-white font-semibold rounded-lg shadow-md hover:bg-primary-700">Save Expense</button></div>
+                    <div className="flex justify-end pt-6 border-t gap-4">
+                        <button type="button" onClick={() => setIsModalOpen(false)} className="px-8 py-4 text-slate-400 font-black text-xs uppercase tracking-widest hover:text-slate-600 transition-colors">Discard</button>
+                        <button type="submit" disabled={createMutation.isPending || updateMutation.isPending} className="px-12 py-4 bg-primary-600 text-white rounded-2xl font-black uppercase text-xs tracking-widest shadow-2xl shadow-primary-500/30 hover:-translate-y-1 transition-all active:scale-95">
+                            {editingExpense ? 'Save Changes' : 'Commit to Ledger'}
+                        </button>
+                    </div>
                 </form>
             </Modal>
             <WebcamCaptureModal 

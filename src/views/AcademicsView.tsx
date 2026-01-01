@@ -16,7 +16,6 @@ const AcademicsView: React.FC = () => {
     const [modalType, setModalType] = useState('');
     const [editingData, setEditingData] = useState<any>(null);
 
-    // Fix: Added (res: any) type hints to resolve "never" inference issues on data property access.
     const { data: classes = [] } = useQuery({ queryKey: ['classes'], queryFn: () => api.getClasses().then((res: any) => Array.isArray(res) ? res : res.data) });
     const { data: subjects = [] } = useQuery({ queryKey: ['subjects'], queryFn: () => api.getSubjects().then((res: any) => Array.isArray(res) ? res : res.data) });
     const { data: assignments = [] } = useQuery({ queryKey: ['assignments'], queryFn: () => api.findAllAssignments().then((res: any) => Array.isArray(res) ? res : res.data) });

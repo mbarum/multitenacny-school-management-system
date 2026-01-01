@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Modal from '../components/common/Modal';
 import Spinner from '../components/common/Spinner';
 import type { SchoolInfo, User, FeeItem, SchoolClass, DarajaSettings, ClassFee, NewUser, NewFeeItem, GradingRule } from '../types';
-import { GradingSystem, CbetScore, Role, Currency, CBC_LEVEL_MAP } from '../types';
+import { GradingSystem, Role, Currency, CBC_LEVEL_MAP } from '../types';
 import { useData } from '../contexts/DataContext';
 import * as api from '../services/api';
 
@@ -58,11 +58,11 @@ const FeeItemModal: React.FC<{
              <form onSubmit={handleSubmit} className="space-y-6">
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                      <div className="space-y-1">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Fee Name</label>
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Fee Name</label>
                         <input value={name} onChange={e=>setName(e.target.value)} placeholder="e.g. Tuition Fee" className="w-full p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none font-bold" required/>
                      </div>
                      <div className="space-y-1">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Billing Frequency</label>
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Billing Frequency</label>
                         <select value={frequency} onChange={e=>setFrequency(e.target.value)} className="w-full p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none font-bold bg-white">
                             <option value="Termly">Termly</option>
                             <option value="Annually">Annually</option>
@@ -71,7 +71,7 @@ const FeeItemModal: React.FC<{
                      </div>
                  </div>
                  <div className="space-y-1">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Accounting Category</label>
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Accounting Category</label>
                     <input list="cats" value={category} onChange={e=>setCategory(e.target.value)} placeholder="e.g. Academic Fees" className="w-full p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none font-bold" required/>
                     <datalist id="cats">{feeCategories.map(c=><option key={c} value={c}/>)}</datalist>
                  </div>
@@ -413,7 +413,7 @@ const SettingsView: React.FC = () => {
                         <div className="flex justify-between items-start mb-8">
                              <div>
                                 <h3 className="text-2xl font-black text-slate-800 uppercase tracking-tight">Academic Framework</h3>
-                                <p className="text-slate-400 font-bold text-sm mt-1">Switch between traditional grade letters or Kenyan CBC rubrics.</p>
+                                <p className="text-slate-400 font-bold text-sm mt-1">Configure your institutional grading rubric (Standard A-E).</p>
                              </div>
                              <select 
                                 value={localSchoolInfo.gradingSystem} 
@@ -424,7 +424,7 @@ const SettingsView: React.FC = () => {
                                 }} 
                                 className="p-3 border-2 border-slate-100 rounded-xl focus:border-primary-500 outline-none font-black text-xs uppercase tracking-widest bg-slate-50"
                             >
-                                <option value={GradingSystem.Traditional}>Standard (Marks)</option>
+                                <option value={GradingSystem.Traditional}>Standard (A-E)</option>
                                 <option value={GradingSystem.CBC}>Kenyan CBC</option>
                             </select>
                         </div>
@@ -432,27 +432,27 @@ const SettingsView: React.FC = () => {
                         {localSchoolInfo.gradingSystem === GradingSystem.Traditional && (
                             <div className="space-y-6">
                                 <div className="grid grid-cols-5 gap-4 px-4 font-black text-[10px] text-slate-400 uppercase tracking-widest">
-                                    <div className="col-span-1">Symbol</div>
-                                    <div className="col-span-1 text-center">Min %</div>
-                                    <div className="col-span-1 text-center">Max %</div>
-                                    <div className="col-span-2 text-right">Actions</div>
+                                    <div className="col-span-1">Letter Grade</div>
+                                    <div className="col-span-1 text-center">Minimum Marks</div>
+                                    <div className="col-span-1 text-center">Maximum Marks</div>
+                                    <div className="col-span-2 text-right">Operations</div>
                                 </div>
                                 <div className="space-y-3">
                                     {localGradingScale.sort((a,b) => b.minScore - a.minScore).map(rule => (
-                                        <div key={rule.id} className="grid grid-cols-5 gap-4 bg-slate-50 p-4 rounded-2xl items-center border border-slate-100">
-                                            <input value={rule.grade} onChange={e=>handleGradingChange(rule.id, 'grade', e.target.value)} className="p-2 border border-slate-200 rounded-lg font-black text-center text-primary-600 focus:ring-2 focus:ring-primary-500 outline-none"/>
-                                            <input type="number" value={rule.minScore} onChange={e=>handleGradingChange(rule.id, 'minScore', parseInt(e.target.value) || 0)} className="p-2 border border-slate-200 rounded-lg text-center font-bold"/>
-                                            <input type="number" value={rule.maxScore} onChange={e=>handleGradingChange(rule.id, 'maxScore', parseInt(e.target.value) || 0)} className="p-2 border border-slate-200 rounded-lg text-center font-bold"/>
+                                        <div key={rule.id} className="grid grid-cols-5 gap-4 bg-slate-50 p-4 rounded-2xl items-center border border-slate-100 hover:border-primary-200 transition-all">
+                                            <input value={rule.grade} onChange={e=>handleGradingChange(rule.id, 'grade', e.target.value)} className="p-2 border border-slate-200 rounded-lg font-black text-center text-primary-600 focus:ring-2 focus:ring-primary-500 outline-none" placeholder="e.g. A"/>
+                                            <input type="number" value={rule.minScore} onChange={e=>handleGradingChange(rule.id, 'minScore', parseInt(e.target.value) || 0)} className="p-2 border border-slate-200 rounded-lg text-center font-bold" placeholder="0"/>
+                                            <input type="number" value={rule.maxScore} onChange={e=>handleGradingChange(rule.id, 'maxScore', parseInt(e.target.value) || 0)} className="p-2 border border-slate-200 rounded-lg text-center font-bold" placeholder="100"/>
                                             <div className="col-span-2 flex justify-end gap-3">
-                                                <button onClick={()=>deleteGradingMutation.mutate(rule.id)} className="text-red-500 hover:bg-red-50 p-2 rounded-lg"><svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>
+                                                <button onClick={()=>deleteGradingMutation.mutate(rule.id)} className="text-red-500 hover:bg-red-50 p-2 rounded-lg transition-colors"><svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>
                                             </div>
                                         </div>
                                     ))}
                                 </div>
                                 <div className="flex justify-between items-center pt-6 border-t border-slate-100">
-                                    <button onClick={()=>gradingMutation.mutate({grade: 'New', minScore: 0, maxScore: 0})} className="px-6 py-3 bg-slate-100 text-slate-700 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-slate-200 transition-all">+ Add Rule</button>
+                                    <button onClick={()=>gradingMutation.mutate({grade: 'New', minScore: 0, maxScore: 0})} className="px-6 py-3 bg-slate-100 text-slate-700 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-slate-200 transition-all">+ Add Range</button>
                                     <button onClick={saveGrading} disabled={gradingMutation.isPending} className="px-10 py-4 bg-primary-600 text-white rounded-2xl font-black uppercase text-xs tracking-widest shadow-2xl shadow-primary-500/30 hover:-translate-y-1 transition-all flex items-center gap-3">
-                                        {gradingMutation.isPending ? <Spinner /> : 'Sync Grading Scale'}
+                                        {gradingMutation.isPending ? <Spinner /> : 'Synchronize Rubric'}
                                     </button>
                                 </div>
                             </div>
@@ -460,19 +460,19 @@ const SettingsView: React.FC = () => {
 
                         {localSchoolInfo.gradingSystem === GradingSystem.CBC && (
                             <div className="bg-slate-50 p-8 rounded-[2rem] border-2 border-dashed border-slate-200">
-                                 <h4 className="text-xl font-black text-slate-800 mb-6">Kenyan CBC Rubrics (EE-BE)</h4>
+                                 <h4 className="text-xl font-black text-slate-800 mb-6 uppercase tracking-tight">Standard CBC Assessment Levels</h4>
                                  <div className="grid grid-cols-1 gap-4">
                                      {Object.entries(CBC_LEVEL_MAP).map(([key, info]: [string, any]) => (
-                                         <div key={key} className="flex items-center gap-6 bg-white p-5 rounded-2xl shadow-sm">
-                                             <div className="w-16 h-16 bg-primary-600 text-white rounded-2xl flex items-center justify-center text-2xl font-black">{key}</div>
+                                         <div key={key} className="flex items-center gap-6 bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
+                                             <div className="w-16 h-16 bg-primary-600 text-white rounded-2xl flex items-center justify-center text-2xl font-black shadow-lg shadow-primary-500/20">{key}</div>
                                              <div>
                                                  <p className="font-black text-slate-900 text-lg uppercase tracking-tight">{info.description}</p>
-                                                 <p className="text-sm font-bold text-slate-400">Scale Points: {info.points}</p>
+                                                 <p className="text-sm font-bold text-slate-400">Standard Points Mapping: {info.points}</p>
                                              </div>
                                          </div>
                                      ))}
                                  </div>
-                                 <p className="mt-8 text-xs font-bold text-slate-400 text-center italic">The CBC framework is locked to national standards and cannot be customized.</p>
+                                 <p className="mt-8 text-xs font-bold text-slate-400 text-center italic">The Competency Based framework is globally standardized within the platform.</p>
                             </div>
                         )}
                     </div>

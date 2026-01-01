@@ -1,7 +1,7 @@
 
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, Between } from 'typeorm';
 import { Student, StudentStatus } from '../entities/student.entity';
 import { Transaction, TransactionType } from '../entities/transaction.entity';
 import { Expense } from '../entities/expense.entity';
@@ -17,14 +17,12 @@ export class DashboardService {
   ) {}
 
   async getDashboardStats(schoolId: string) {
-    // Audit Note: Using raw queries for performance in Enterprise scenarios where student records > 10k
-    
-    // 1. Total Active Students
+    // 1. Total Active Students (Indexed)
     const totalStudents = await this.studentRepo.count({ 
         where: { status: StudentStatus.Active, schoolId: schoolId as any } 
     });
 
-    // 2. Revenue (Validated Payments)
+    // 2. Aggregate Revenue (Indexed Payment sums)
     const revenueResult = await this.transactionRepo
       .createQueryBuilder('t')
       .select('SUM(t.amount)', 'total')
@@ -33,7 +31,7 @@ export class DashboardService {
       .getRawOne();
     const totalRevenue = parseFloat(revenueResult.total) || 0;
 
-    // 3. Operating Expenses
+    // 3. Aggregate Expenses (Indexed)
     const expenseResult = await this.expenseRepo
       .createQueryBuilder('e')
       .select('SUM(e.amount)', 'total')
@@ -41,26 +39,16 @@ export class DashboardService {
       .getRawOne();
     const totalExpenses = parseFloat(expenseResult.total) || 0;
 
-    // 4. Ledger Aging (Outstanding)
-    const invoiceResult = await this.transactionRepo
+    // 4. Calculate Ledger Overdue (Aged Balances)
+    // Professional approach: Total Debits - Total Credits
+    const agingResult = await this.transactionRepo
       .createQueryBuilder('t')
-      .select('SUM(t.amount)', 'total')
-      .where('t.type IN (:...types)', { types: [TransactionType.Invoice, TransactionType.ManualDebit] })
-      .andWhere('t.schoolId = :schoolId', { schoolId })
+      .select("SUM(CASE WHEN t.type IN ('Invoice', 'ManualDebit') THEN t.amount ELSE -t.amount END)", 'balance')
+      .where('t.schoolId = :schoolId', { schoolId })
       .getRawOne();
-    const totalInvoiced = parseFloat(invoiceResult.total) || 0;
-    
-    const creditResult = await this.transactionRepo
-      .createQueryBuilder('t')
-      .select('SUM(t.amount)', 'total')
-      .where('t.type IN (:...types)', { types: [TransactionType.Payment, TransactionType.ManualCredit] })
-      .andWhere('t.schoolId = :schoolId', { schoolId })
-      .getRawOne();
-    const totalCredited = parseFloat(creditResult.total) || 0;
-    
-    const feesOverdue = Math.max(0, totalInvoiced - totalCredited);
+    const feesOverdue = Math.max(0, parseFloat(agingResult.balance) || 0);
 
-    // 5. Pre-calculated Monthly Data (Optimized for Large Tenants)
+    // 5. Monthly Trend (Using Summary Table for Speed)
     const monthlyData = await this.getMonthlyFinancials(schoolId);
 
     // 6. Distribution Analysis
@@ -97,7 +85,7 @@ export class DashboardService {
         const [year, month] = key.split('-');
         const dateObj = new Date(parseInt(year), parseInt(month) - 1, 1);
         return {
-            name: dateObj.toLocaleString('default', { month: 'short' }),
+            name: dateObj.toLocaleString('en-US', { month: 'short' }),
             income: entry ? Number(entry.totalIncome) : 0,
             expenses: entry ? Number(entry.totalExpenses) : 0
         };

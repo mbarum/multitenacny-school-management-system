@@ -13,7 +13,6 @@ import {
 
 console.log('Starting seeder...');
 
-// Safety Check
 if (process.env.NODE_ENV === 'production') {
     console.error('❌  CRITICAL: Seeding is not allowed in PRODUCTION environment to prevent data loss.');
     (process as any).exit(1);
@@ -30,10 +29,10 @@ const dataSourceOptions: DataSourceOptions = {
         User, Staff, SchoolClass, Student, Subject, ClassSubjectAssignment, MpesaC2BTransaction, 
         Announcement, AttendanceRecord, ClassFee, CommunicationLog, Exam, Expense, FeeItem, Grade, 
         GradingRule, Payroll, PayrollEntry, PayrollItem, ReportShareLog, SchoolEvent, TimetableEntry, 
-        Transaction, SchoolSetting, DarajaSetting, School, Subscription, Book, LibraryTransaction, PlatformSetting
+        Transaction, SchoolSetting, DarajaSetting, Book, LibraryTransaction, School, Subscription, PlatformSetting
     ],
-    synchronize: true, // Use synchronize to update schema without dropping
-    dropSchema: false, // Ensure we don't drop the schema
+    synchronize: true,
+    dropSchema: false,
     logging: ['error'],
 };
 
@@ -58,11 +57,10 @@ const runSeed = async () => {
         const classRepo = AppDataSource.getRepository(SchoolClass);
         const studentRepo = AppDataSource.getRepository(Student);
         const subjectRepo = AppDataSource.getRepository(Subject);
-        const assignmentRepo = AppDataSource.getRepository(ClassSubjectAssignment);
+        const gradingRepo = AppDataSource.getRepository(GradingRule);
         const darajaRepo = AppDataSource.getRepository(DarajaSetting);
         const platformRepo = AppDataSource.getRepository(PlatformSetting);
 
-        // 0. Initialize Platform Pricing
         let platformSettings = await platformRepo.findOne({ where: {} });
         if (!platformSettings) {
             platformSettings = platformRepo.create({
@@ -74,10 +72,9 @@ const runSeed = async () => {
             await platformRepo.save(platformSettings);
         }
 
-        // 1. Create a Default School
         let school = await schoolRepo.findOne({ where: { slug: 'springfield-elementary' } });
         if (!school) {
-            school = schoolRepo.create({
+            const newSchool = schoolRepo.create({
                 name: "Springfield Elementary",
                 slug: "springfield-elementary",
                 address: "123 Main St, Springfield",
@@ -87,19 +84,38 @@ const runSeed = async () => {
                 gradingSystem: GradingSystem.Traditional,
                 schoolCode: 'SPE',
             });
-            school = await schoolRepo.save(school);
+            school = await schoolRepo.save(newSchool);
 
             const sub = subRepo.create({
-                school,
+                school: school,
                 plan: SubscriptionPlan.PREMIUM,
                 status: SubscriptionStatus.ACTIVE,
                 startDate: new Date(),
                 endDate: new Date(new Date().setFullYear(new Date().getFullYear() + 1))
             });
             await subRepo.save(sub);
+            
+            // Seed Default Traditional Grading Rubric (A-E)
+            const rulesData = [
+                { grade: 'A', minScore: 80, maxScore: 100 },
+                { grade: 'B', minScore: 70, maxScore: 79 },
+                { grade: 'C', minScore: 50, maxScore: 69 },
+                { grade: 'D', minScore: 40, maxScore: 49 },
+                { grade: 'E', minScore: 0, maxScore: 39 },
+            ];
+
+            for (const r of rulesData) {
+                const rule = gradingRepo.create({
+                    ...r,
+                    school: school
+                });
+                await gradingRepo.save(rule);
+            }
         }
 
-        // 2. Upsert Users
+        // Re-verify school is not null for the following operations
+        if (!school) throw new Error("School could not be found or created.");
+
         const usersToCreate = [
             { name: 'Platform Owner', email: 'super@saaslink.com', role: Role.SuperAdmin, school: null },
             { name: 'Admin User', email: 'admin@saaslink.com', role: Role.Admin, school: school },
@@ -119,25 +135,24 @@ const runSeed = async () => {
                     email: userData.email,
                     password: hashedPassword,
                     role: userData.role,
-                    school: userData.school || undefined,
+                    school: userData.school ? { id: userData.school.id } as any : undefined,
                     status: 'Active',
                     avatarUrl: `https://i.pravatar.cc/150?u=${userData.email}`
                 });
             } else {
                 user.role = userData.role;
-                user.school = userData.school || null as any;
+                user.school = userData.school ? { id: userData.school.id } as any : null;
                 if (!user.password) user.password = hashedPassword;
             }
             const savedUser = await userRepo.save(user);
             createdUsers.push(savedUser);
         }
 
-        // 3. Create Staff
         const teacherUsers = createdUsers.filter(u => u.role === Role.Teacher);
         for (const teacher of teacherUsers) {
             const existing = await staffRepo.findOne({ where: { userId: teacher.id } });
             if (!existing) {
-                const staff = staffRepo.create({
+                const staffMember = staffRepo.create({
                     user: teacher,
                     userId: teacher.id,
                     name: teacher.name,
@@ -152,11 +167,10 @@ const runSeed = async () => {
                     shaNumber: '300' + Math.floor(Math.random()*100000),
                     school: school
                 });
-                await staffRepo.save(staff);
+                await staffRepo.save(staffMember);
             }
         }
 
-        // 4. Create Classes
         const classNames = ['Grade 1', 'Grade 2', 'Grade 3', 'Grade 4'];
         const createdClasses: SchoolClass[] = [];
         
@@ -175,7 +189,6 @@ const runSeed = async () => {
             createdClasses.push(cls);
         }
 
-        // 5. Create Students
         if ((await studentRepo.count({ where: { school: { id: school.id } } })) === 0) {
             const studentsToCreate = [
                 { name: 'Liam Smith', schoolClass: createdClasses[0], guardianName: 'Charlie Parent', guardianEmail: 'parent1@saaslink.com' },
@@ -202,17 +215,20 @@ const runSeed = async () => {
             }
         }
 
-        // 6. Create Subjects
-        const subjects = ['Mathematics', 'English', 'Science'];
-        for (const name of subjects) {
-            let subj = await subjectRepo.findOne({ where: { name, school: { id: school.id } } });
+        const subjectsData = [
+            { name: 'Mathematics', code: 'MAT101' },
+            { name: 'English Language', code: 'ENG202' },
+            { name: 'Integrated Science', code: 'SCI303' },
+            { name: 'Social Studies', code: 'SOS404' }
+        ];
+        for (const subjData of subjectsData) {
+            let subj = await subjectRepo.findOne({ where: { name: subjData.name, school: { id: school.id } } });
             if (!subj) {
-                subj = subjectRepo.create({ name, school });
+                subj = subjectRepo.create({ ...subjData, school });
                 await subjectRepo.save(subj);
             }
         }
 
-        // 7. Settings (Daraja)
         let daraja = await darajaRepo.findOne({ where: { school: { id: school.id } } });
         if (!daraja) {
             daraja = darajaRepo.create({

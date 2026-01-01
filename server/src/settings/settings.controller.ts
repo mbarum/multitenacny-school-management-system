@@ -72,7 +72,7 @@ export class SettingsController {
     return this.settingsService.updateSchoolInfo(req.user.schoolId, schoolInfo);
   }
 
-  @Roles(Role.Admin)
+  @Roles(Role.Admin, Role.Accountant, Role.Parent)
   @Get('daraja')
   getDarajaSettings(@Request() req: any) {
     return this.settingsService.getDarajaSettings(req.user.schoolId);
