@@ -45,7 +45,6 @@ interface IDataContext {
     deleteStudent: (id: string) => Promise<void>;
     updateMultipleStudents: (updates: any[]) => Promise<any>;
     addTransaction: (data: NewTransaction) => Promise<Transaction>;
-    // Fix: Updated return types to match implementation and resolve assignability errors.
     addMultipleTransactions: (data: NewTransaction[]) => Promise<Transaction[]>;
     addExpense: (data: NewExpense) => Promise<Expense>;
     addStaff: (data: NewStaff) => Promise<Staff>;
@@ -71,7 +70,6 @@ interface IDataContext {
     deleteFeeItem: (id: string) => Promise<void>;
     addAnnouncement: (data: NewAnnouncement) => Promise<Announcement>;
     addCommunicationLog: (data: NewCommunicationLog) => Promise<CommunicationLog>;
-    // Fix: Updated return type to match implementation and resolve assignability errors.
     addBulkCommunicationLogs: (data: NewCommunicationLog[]) => Promise<CommunicationLog[]>;
     updateClasses: (data: SchoolClass[]) => Promise<void>;
     updateSubjects: (data: any[]) => Promise<void>;
@@ -143,39 +141,43 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
             console.error("Logout failed:", error);
         } finally {
             setCurrentUser(null);
+            setSchoolInfo(null);
             queryClient.clear();
             navigate('/login');
         }
     }, [navigate, queryClient]);
 
+    const loadSchoolSpecificData = async (user: User) => {
+        try {
+            // Force a fresh fetch of school data
+            const [info, daraja] = await Promise.all([
+                api.getSchoolInfo(),
+                api.getDarajaSettings()
+            ]);
+            setSchoolInfo(info);
+            setDarajaSettings(daraja);
+
+            if (user.role === Role.Teacher) {
+                    const clsRes = await api.getClasses().then((res: any) => Array.isArray(res) ? res : res.data);
+                    const myClass = clsRes.find((c: any) => c.formTeacherId === user.id);
+                    setAssignedClass(myClass || null);
+            } else if (user.role === Role.Parent) {
+                    const childrenRes = await api.getStudents({ search: user.email, pagination: 'false' });
+                    setParentChildren(Array.isArray(childrenRes) ? childrenRes : childrenRes.data || []);
+            }
+        } catch (e) {
+            console.error("Critical: Failed to load tenant data", e);
+        }
+    };
+
     useEffect(() => {
         const checkSession = async () => {
             try {
                 const user = await api.getAuthenticatedUser();
-                
-                // CRITICAL: Strict validation to avoid empty objects from faulty catch/responses
                 if (user && user.id && user.name) {
                     setCurrentUser(user);
-                    
-                    try {
-                        const [info, daraja] = await Promise.all([
-                            api.getSchoolInfo(),
-                            api.getDarajaSettings()
-                        ]);
-                        setSchoolInfo(info);
-                        setDarajaSettings(daraja);
-                    } catch (e) { console.error("Settings load failed", e); }
-
-                    if (user.role === Role.Teacher) {
-                         const clsRes = await api.getClasses().then((res: any) => Array.isArray(res) ? res : res.data);
-                         const myClass = clsRes.find((c: any) => c.formTeacherId === user.id);
-                         setAssignedClass(myClass || null);
-                    } else if (user.role === Role.Parent) {
-                         const childrenRes = await api.getStudents({ search: user.email, pagination: 'false' });
-                         setParentChildren(Array.isArray(childrenRes) ? childrenRes : childrenRes.data || []);
-                    }
+                    await loadSchoolSpecificData(user);
                 } else {
-                    // Not valid user, try public info
                     const publicInfo = await api.getPublicSchoolInfo();
                     setSchoolInfo(publicInfo);
                 }
@@ -189,12 +191,16 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
             }
         };
         checkSession();
-    }, [handleLogout]);
+    }, []);
 
-    const handleLogin = useCallback((user: User) => {
+    const handleLogin = useCallback(async (user: User) => {
         if (user && user.id) {
             setCurrentUser(user);
-            api.getSchoolInfo().then(setSchoolInfo).catch(console.error);
+            // Block UI while we switch tenants
+            setIsLoading(true);
+            await loadSchoolSpecificData(user);
+            setIsLoading(false);
+
             if (user.role === Role.SuperAdmin) navigate('/super-admin');
             else if (user.role === Role.Teacher) navigate('/teacher');
             else if (user.role === Role.Parent) navigate('/parent');

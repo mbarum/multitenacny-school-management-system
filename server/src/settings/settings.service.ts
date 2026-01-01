@@ -23,134 +23,70 @@ export class SettingsService {
   ) {}
 
   async getPublicSchoolInfo(): Promise<School> {
-    const school = await this.schoolRepository.findOne({ 
-        where: {}, 
-        order: { createdAt: 'ASC' } 
-    });
-    
-    if (!school) {
-        return { 
-            name: 'Saaslink School System', 
-            logoUrl: '', 
-            address: '', 
-            phone: '', 
-            email: '', 
-            id: '', 
-            slug: '', 
-            schoolCode: 'SIS', 
-            gradingSystem: 'Traditional',
-            currency: 'KES'
-        } as unknown as School;
-    }
-    
+    // SECURITY: Never return the "first" school. 
+    // In a real prod environment, this would filter by request hostname or slug.
+    // For this version, we return a blank object if no context is present.
     return {
-        name: school.name,
-        logoUrl: school.logoUrl,
-        address: school.address,
-        phone: school.phone,
-        email: school.email,
-        schoolCode: school.schoolCode,
-        gradingSystem: school.gradingSystem,
-        currency: school.currency
-    } as School;
+        name: 'Saaslink School Portal',
+        logoUrl: 'https://i.imgur.com/S5o7W44.png',
+        address: 'Service Cloud',
+        phone: '+254...',
+        email: 'support@saaslink.com',
+        schoolCode: 'SIS',
+        gradingSystem: 'Traditional',
+        currency: 'KES'
+    } as unknown as School;
   }
 
-  // Fetch live rates, caching them for 1 hour to be polite to the API provider
   async getExchangeRates(base: string = 'KES'): Promise<Record<string, number>> {
       const now = Date.now();
       const ONE_HOUR = 3600 * 1000;
-
       if (this.ratesCache && (now - this.ratesCache.timestamp < ONE_HOUR)) {
           return this.ratesCache.rates;
       }
-
       try {
-          // Using open.er-api.com for reliable, key-free exchange rates
           const response = await fetch(`https://open.er-api.com/v6/latest/${base}`);
           const data = await response.json();
-          
           if (data && data.rates) {
               this.ratesCache = { timestamp: now, rates: data.rates };
               return data.rates;
           }
           throw new Error("Invalid API response");
       } catch (error) {
-          this.logger.error("Failed to fetch exchange rates, using fallback", error);
-          // Fallback static rates if API fails (Relative to KES)
-          return { 
-              KES: 1, 
-              USD: 0.0077, 
-              UGX: 28.5, 
-              TZS: 19.8, 
-              RWF: 9.8, 
-              BIF: 22.0,
-              ZMW: 0.20,
-              ETB: 0.95,
-              SDG: 4.60,
-              SSP: 10.50
-          };
+          return { KES: 1, USD: 0.0077, UGX: 28.5, TZS: 19.8, RWF: 9.8, BIF: 22.0 };
       }
   }
   
   async getPlatformPricing(): Promise<PlatformSetting> {
       const setting = await this.platformSettingRepository.findOne({ where: {} });
-      if (!setting) {
-          return { 
-              id: 'default', 
-              basicMonthlyPrice: 3000, 
-              basicAnnualPrice: 30000, 
-              premiumMonthlyPrice: 5000, 
-              premiumAnnualPrice: 50000 
-          } as unknown as PlatformSetting;
-      }
-      return setting;
+      return setting || ({ basicMonthlyPrice: 3000 } as PlatformSetting);
   }
 
   async getSchoolInfo(schoolId: string): Promise<any> {
     const school = await this.schoolRepository.findOne({ where: { id: schoolId } });
-    if (!school) {
-        throw new NotFoundException('School settings not accessible.');
-    }
+    if (!school) throw new NotFoundException('School settings not accessible.');
     return school;
   }
 
   async updateSchoolInfo(schoolId: string, data: UpdateSchoolInfoDto): Promise<School> {
     const school = await this.schoolRepository.findOne({ where: { id: schoolId } });
-    if (!school) {
-       throw new NotFoundException('School not found');
-    }
+    if (!school) throw new NotFoundException('School not found');
     const updatedSchool = this.schoolRepository.merge(school, data);
     return this.schoolRepository.save(updatedSchool);
   }
   
   async getDarajaSettings(schoolId: string): Promise<DarajaSetting> {
     const setting = await this.darajaSettingRepository.findOne({ where: { schoolId: schoolId as any } });
-    if (!setting) {
-        return { 
-            id: 'default', 
-            consumerKey: '', 
-            consumerSecret: '', 
-            shortCode: '', 
-            passkey: '', 
-            paybillNumber: '', 
-            schoolId 
-        } as unknown as DarajaSetting;
-    }
-    return setting;
+    return setting || ({ consumerKey: '', schoolId } as DarajaSetting);
   }
 
   async updateDarajaSettings(schoolId: string, data: UpdateDarajaSettingsDto): Promise<DarajaSetting> {
     let setting = await this.darajaSettingRepository.findOne({ where: { schoolId: schoolId as any } });
-    
     if (!setting) {
-        setting = this.darajaSettingRepository.create({
-            school: { id: schoolId } as any,
-            ...data
-        });
+        setting = this.darajaSettingRepository.create({ school: { id: schoolId } as any, ...data });
     } else {
         this.darajaSettingRepository.merge(setting, data);
     }
-    
     return this.darajaSettingRepository.save(setting);
   }
 }

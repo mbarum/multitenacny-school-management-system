@@ -8,8 +8,6 @@ import { GradingSystem, CbetScore, Role, Currency, CBC_LEVEL_MAP } from '../type
 import { useData } from '../contexts/DataContext';
 import * as api from '../services/api';
 
-// --- Sub-components for better organization ---
-
 const FeeItemModal: React.FC<{
     isOpen: boolean;
     onClose: () => void;
@@ -247,6 +245,24 @@ const SettingsView: React.FC = () => {
     // --- Early Return (CRITICAL: MUST BE BELOW ALL HOOK CALLS) ---
     if (!localSchoolInfo) return null;
 
+    const handleSaveSchoolInfo = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (localSchoolInfo) {
+            // SECURITY: Strip non-whitelisted fields before sending to prevent 400 Bad Request
+            const cleanInfo = {
+                name: localSchoolInfo.name,
+                schoolCode: localSchoolInfo.schoolCode,
+                address: localSchoolInfo.address,
+                phone: localSchoolInfo.phone,
+                email: localSchoolInfo.email,
+                logoUrl: localSchoolInfo.logoUrl,
+                gradingSystem: localSchoolInfo.gradingSystem,
+                currency: localSchoolInfo.currency
+            };
+            infoMutation.mutate(cleanInfo as any);
+        }
+    };
+
     return (
         <div className="p-6 md:p-8">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-4">
@@ -282,7 +298,7 @@ const SettingsView: React.FC = () => {
             <div className="animate-fade-in">
             {activeTab === 'info' && (
                  <div className="bg-white p-10 rounded-[2.5rem] shadow-xl border border-slate-100">
-                    <form onSubmit={(e) => { e.preventDefault(); infoMutation.mutate(localSchoolInfo); }} className="space-y-10">
+                    <form onSubmit={handleSaveSchoolInfo} className="space-y-10">
                         <div className="flex flex-col md:flex-row items-center space-y-6 md:space-y-0 md:space-x-10">
                             <div className="relative group cursor-pointer" onClick={() => logoInputRef.current?.click()}>
                                 <img src={localSchoolInfo.logoUrl} alt="Logo" className="h-40 w-40 rounded-[2.5rem] object-cover border-8 border-slate-50 shadow-inner group-hover:opacity-80 transition-all" />
@@ -565,7 +581,6 @@ const SettingsView: React.FC = () => {
             )}
             </div>
 
-            {/* Modals are kept globally within view */}
             <UserModal 
                 isOpen={isUserModalOpen} 
                 onClose={() => setIsUserModalOpen(false)} 

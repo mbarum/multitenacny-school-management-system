@@ -267,7 +267,9 @@ export class StudentsService {
         imported++;
       } catch (err) {
         failed++;
-        errors.push({ row: index + 1, name: record.name || 'Unknown', error: err.message });
+        // FIX: Safely access error message for TypeScript Unknown type
+        const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred during student import';
+        errors.push({ row: index + 1, name: record.name || 'Unknown', error: errorMessage });
       }
     }
     return { imported, failed, errors };

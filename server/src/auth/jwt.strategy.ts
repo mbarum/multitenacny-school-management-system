@@ -20,7 +20,6 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     }
 
     super({
-      // Extract from Cookie OR Bearer (for backward compat if needed, though cookie preferred)
       jwtFromRequest: ExtractJwt.fromExtractors([
         (request: Request) => {
             return request?.cookies?.jwt;
@@ -33,7 +32,6 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(payload: any) {
-    // Always fetch the latest user record from the database to check for role changes or bans
     const user = await this.usersService.findById(payload.sub);
     
     if (!user) {
@@ -44,10 +42,10 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
         throw new UnauthorizedException('User account is disabled');
     }
 
-    // Return the role from the DB, not the token.
+    // Return 'id' instead of 'userId' to match entity structure
     return { 
-        userId: payload.sub, 
-        email: payload.email, 
+        id: user.id, 
+        email: user.email, 
         role: user.role, 
         schoolId: user.schoolId 
     };

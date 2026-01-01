@@ -27,6 +27,7 @@ import { RolesGuard } from './auth/roles.guard';
 import { JwtAuthGuard } from './auth/jwt-auth.guard';
 import { SubscriptionGuard } from './auth/subscription.guard';
 import { AuditInterceptor } from './common/interceptors/audit.interceptor';
+import { TenancyInterceptor } from './tenancy/tenancy.interceptor';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { CacheModule } from '@nestjs/cache-manager';
 import { ScheduleModule } from '@nestjs/schedule';
@@ -67,7 +68,7 @@ import { TenancyModule } from './tenancy/tenancy.module';
       exclude: ['/api/(.*)'],
     }),
     ScheduleModule.forRoot(),
-    TenancyModule, // New Module
+    TenancyModule,
     AuthModule, 
     UsersModule, 
     StudentsModule, 
@@ -96,6 +97,10 @@ import { TenancyModule } from './tenancy/tenancy.module';
     {
       provide: APP_GUARD,
       useClass: JwtAuthGuard, 
+    },
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: TenancyInterceptor, // Added global interceptor
     },
     {
       provide: APP_GUARD,
