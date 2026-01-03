@@ -131,7 +131,7 @@ export class TransactionsService {
 
       try {
           event = stripe.webhooks.constructEvent(payload, signature, platformSettings.stripeWebhookSecret);
-      } catch (err) {
+      } catch (err: any) {
           throw new BadRequestException(`Webhook Error: ${err.message}`);
       }
 
@@ -192,7 +192,7 @@ export class TransactionsService {
   }
 
   async createBatch(dtos: any[], schoolId: string) {
-      const results = [];
+      const results: any[] = [];
       for (const dto of dtos) {
           results.push(await this.create(dto, schoolId));
       }

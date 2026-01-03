@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useEffect } from 'react';
 import { AttendanceStatus, ExamType, Grade, AttendanceRecord, Subject, Transaction } from '../../types';
 import { useData } from '../../contexts/DataContext';
@@ -11,7 +10,8 @@ const ParentChildDetails: React.FC = () => {
     const [activeTab, setActiveTab] = useState('academics');
     
     // We fetch subjects and exams globally or per view. Let's use useQuery for caching.
-    const { data: subjects = [] } = useQuery({ queryKey: ['subjects'], queryFn: () => api.getSubjects().then(res => Array.isArray(res) ? res : res.data) });
+    // Fix: Explicitly type res as any to resolve "never" inference
+    const { data: subjects = [] } = useQuery({ queryKey: ['subjects'], queryFn: () => api.getSubjects().then((res: any) => Array.isArray(res) ? res : res.data) });
     const { data: exams = [] } = useQuery({ queryKey: ['exams'], queryFn: () => api.findAllExams() });
 
     // Local state for child specific data
@@ -44,7 +44,6 @@ const ParentChildDetails: React.FC = () => {
                 .finally(() => setLoadingFinance(false));
         }
     }, [selectedChild]);
-
 
     if (!selectedChild) {
         return (

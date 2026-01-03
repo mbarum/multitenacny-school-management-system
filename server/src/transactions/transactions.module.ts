@@ -9,6 +9,8 @@ import { MpesaC2BTransaction } from '../entities/mpesa-c2b.entity';
 import { Subscription } from '../entities/subscription.entity';
 import { SubscriptionPayment } from '../entities/subscription-payment.entity';
 import { School } from '../entities/school.entity';
+import { DarajaSetting } from '../entities/daraja-setting.entity';
+import { PlatformSetting } from '../entities/platform-setting.entity';
 import { EventsModule } from '../events/events.module';
 
 @Module({
@@ -19,7 +21,9 @@ import { EventsModule } from '../events/events.module';
       MpesaC2BTransaction, 
       Subscription, 
       SubscriptionPayment, 
-      School
+      School,
+      DarajaSetting,
+      PlatformSetting
     ]),
     EventsModule
   ],

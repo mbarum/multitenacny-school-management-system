@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { Exam, Grade, SchoolClass, Student, Subject } from '../../types';
@@ -97,7 +96,7 @@ const EnterGradesView: React.FC<any> = ({selectedExamId, setSelectedExamId, sele
                                         placeholder="Score"
                                         value={gradeEntries.get(student.id)?.score ?? ''} 
                                         onChange={e => handleGradeChange(student.id, { score: e.target.value ? parseFloat(e.target.value) : null })} 
-                                        className="w-20 p-1 border rounded"
+                                        className="w-24 p-1 border rounded"
                                     />
                                 ) : (
                                     <select 
@@ -140,8 +139,10 @@ const ExaminationsView: React.FC = () => {
     
     // Queries
     const { data: exams = [] } = useQuery({ queryKey: ['exams'], queryFn: () => api.findAllExams() });
-    const { data: classes = [] } = useQuery({ queryKey: ['classes'], queryFn: () => api.getClasses().then(res => Array.isArray(res) ? res : res.data) });
-    const { data: subjects = [] } = useQuery({ queryKey: ['subjects'], queryFn: () => api.getSubjects().then(res => Array.isArray(res) ? res : res.data) });
+    // Fix: Explicitly type res as any to resolve "never" inference
+    const { data: classes = [] } = useQuery({ queryKey: ['classes'], queryFn: () => api.getClasses().then((res: any) => Array.isArray(res) ? res : res.data) });
+    // Fix: Explicitly type res as any to resolve "never" inference
+    const { data: subjects = [] } = useQuery({ queryKey: ['subjects'], queryFn: () => api.getSubjects().then((res: any) => Array.isArray(res) ? res : res.data) });
 
     const [activeTab, setActiveTab] = useState('manage');
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -155,11 +156,13 @@ const ExaminationsView: React.FC = () => {
     const selectedExam = useMemo(() => exams.find((e: any) => e.id === selectedExamId), [exams, selectedExamId]);
 
     // Mutations
+    // Renamed batchUpdateExams to updateExams in api.ts
     const updateExamsMutation = useMutation({
         mutationFn: (data: Exam[]) => api.updateExams(data),
         onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['exams'] }); setIsModalOpen(false); addNotification("Exam saved.", "success"); }
     });
     
+    // Renamed batchUpdateGrades to updateGrades in api.ts
     const updateGradesMutation = useMutation({
         mutationFn: (data: Grade[]) => api.updateGrades(data),
         onSuccess: () => { addNotification("Grades saved.", "success"); }

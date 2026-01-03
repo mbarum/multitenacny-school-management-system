@@ -12,8 +12,9 @@ const TimetableView: React.FC = () => {
     const queryClient = useQueryClient();
     
     // Queries
-    const { data: classes = [] } = useQuery({ queryKey: ['classes'], queryFn: () => api.getClasses().then(res => Array.isArray(res) ? res : res.data) });
-    const { data: subjects = [] } = useQuery({ queryKey: ['subjects'], queryFn: () => api.getSubjects().then(res => Array.isArray(res) ? res : res.data) });
+    // Fix: Added explicit (res: any) type to then callbacks to resolve type inference issues.
+    const { data: classes = [] } = useQuery({ queryKey: ['classes'], queryFn: () => api.getClasses().then((res: any) => Array.isArray(res) ? res : res.data) });
+    const { data: subjects = [] } = useQuery({ queryKey: ['subjects'], queryFn: () => api.getSubjects().then((res: any) => Array.isArray(res) ? res : res.data) });
     const { data: staff = [] } = useQuery({ queryKey: ['staff'], queryFn: () => api.getStaff() });
     const { data: timetableEntries = [] } = useQuery({ queryKey: ['timetable'], queryFn: () => api.findAllTimetableEntries() });
     const { data: assignments = [] } = useQuery({ queryKey: ['assignments'], queryFn: () => api.findAllAssignments() });

@@ -1,12 +1,10 @@
-
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, LessThan } from 'typeorm';
+/* Added Between to typeorm imports */
+import { Repository, LessThan, Between } from 'typeorm';
 import { Subscription, SubscriptionStatus } from '../entities/subscription.entity';
-import { Student } from '../entities/student.entity';
-import { Transaction, TransactionType } from '../entities/transaction.entity';
-import { User, Role } from '../entities/user.entity';
+import { User } from '../entities/user.entity';
 import { CommunicationsService } from '../communications/communications.service';
 
 @Injectable()
@@ -16,16 +14,15 @@ export class TasksService {
   constructor(
     @InjectRepository(Subscription) private subRepo: Repository<Subscription>,
     @InjectRepository(User) private userRepo: Repository<User>,
-    @InjectRepository(Transaction) private transactionRepo: Repository<Transaction>,
     private communicationsService: CommunicationsService,
   ) {}
 
   @Cron(CronExpression.EVERY_DAY_AT_1AM)
   async checkSubscriptionExpiry() {
-    this.logger.log('Auditing subscription statuses...');
+    this.logger.log('Executing daily subscription audit...');
     const now = new Date();
     
-    // 1. Find ACTIVE subscriptions that have passed their end date
+    // 1. Lock accounts that expired yesterday
     const expiredSubs = await this.subRepo.find({
         where: { 
             status: SubscriptionStatus.ACTIVE,
@@ -35,18 +32,18 @@ export class TasksService {
     });
 
     for (const sub of expiredSubs) {
-        // Mark as PAST_DUE to trigger system lockout
         sub.status = SubscriptionStatus.PAST_DUE;
         await this.subRepo.save(sub);
+        this.logger.warn(`LOCKOUT: School ${sub.school.name} restricted due to non-payment.`);
         
-        this.logger.warn(`Lockout triggered for school: ${sub.school.name} due to expiry.`);
-        
-        // Notify school admin
         if (sub.school.email) {
             await this.communicationsService.sendEmail(
                 sub.school.email,
-                'Subscription Expired - Saaslink',
-                `Your school management system access for ${sub.school.name} has been locked due to an expired subscription. Please log in to reactivate.`
+                'Urgent: Your Saaslink Account is Locked',
+                `<h1>Service Interruption</h1>
+                 <p>The subscription for ${sub.school.name} expired on ${sub.endDate.toLocaleDateString()}.</p>
+                 <p>Access to your management portal is restricted until a payment is made.</p>
+                 <p><a href="${process.env.FRONTEND_URL}/login">Login to Renew</a></p>`
             );
         }
     }
@@ -54,25 +51,38 @@ export class TasksService {
 
   @Cron(CronExpression.EVERY_DAY_AT_9AM)
   async sendExpiryWarnings() {
-      const threeDaysFromNow = new Date();
-      threeDaysFromNow.setDate(threeDaysFromNow.getDate() + 3);
+      this.logger.log('Broadcasting subscription renewal warnings...');
       
-      const nearingExpiry = await this.subRepo.find({
-          where: {
-              status: SubscriptionStatus.ACTIVE,
-              endDate: LessThan(threeDaysFromNow)
-          },
-          relations: ['school']
-      });
+      const sendWarning = async (days: number, subject: string) => {
+          const targetDate = new Date();
+          targetDate.setDate(targetDate.getDate() + days);
+          
+          // Find subscriptions ending on EXACTLY this day (range 24h)
+          const startTime = new Date(targetDate.setHours(0,0,0,0));
+          const endTime = new Date(targetDate.setHours(23,59,59,999));
 
-      for (const sub of nearingExpiry) {
-          if (sub.school.email) {
-              await this.communicationsService.sendEmail(
-                  sub.school.email,
-                  'Action Required: Subscription Expiring Soon',
-                  `Your subscription for ${sub.school.name} expires on ${sub.endDate.toLocaleDateString()}. Renew now to avoid system lockout.`
-              );
+          const nearing = await this.subRepo.find({
+              where: {
+                  status: SubscriptionStatus.ACTIVE,
+                  endDate: Between(startTime, endTime)
+              },
+              relations: ['school']
+          });
+
+          for (const sub of nearing) {
+              if (sub.school.email) {
+                  await this.communicationsService.sendEmail(
+                      sub.school.email,
+                      subject,
+                      `<h1>Renewal Notice</h1>
+                       <p>Your subscription for ${sub.school.name} expires in ${days} day(s) on ${sub.endDate.toLocaleDateString()}.</p>
+                       <p>To ensure uninterrupted service for your staff and parents, please renew your license today.</p>`
+                  );
+              }
           }
-      }
+      };
+
+      await sendWarning(7, 'Renewal Notice: 7 Days Remaining - Saaslink');
+      await sendWarning(1, 'Urgent Renewal Notice: 24 Hours Remaining - Saaslink');
   }
 }

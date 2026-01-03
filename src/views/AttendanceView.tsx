@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AttendanceStatus, AttendanceRecord } from '../types';
 import { useData } from '../contexts/DataContext';
 import * as api from '../services/api';
@@ -9,7 +9,8 @@ import { useQuery } from '@tanstack/react-query';
 
 const AttendanceView: React.FC = () => {
     // We only need classes from context to populate the filter dropdown
-    const { data: classes = [] } = useQuery({ queryKey: ['classes'], queryFn: () => api.getClasses().then(res => Array.isArray(res) ? res : res.data) });
+    // Fix: Added explicit (res: any) type to then callback to resolve type inference issues.
+    const { data: classes = [] } = useQuery({ queryKey: ['classes'], queryFn: () => api.getClasses().then((res: any) => Array.isArray(res) ? res : res.data) });
     
     const [selectedClassId, setSelectedClassId] = useState<string>('all');
     const [startDate, setStartDate] = useState('');

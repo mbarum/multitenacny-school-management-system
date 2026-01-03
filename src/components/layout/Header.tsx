@@ -1,11 +1,13 @@
 
-import React, { useState, useEffect, useRef } from 'react';
-import { Role } from '../../types';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { Role, SubscriptionStatus } from '../../types';
 import { useData } from '../../contexts/DataContext';
 import UserProfileModal from '../common/UserProfileModal';
+import { useQuery } from '@tanstack/react-query';
+import * as api from '../../services/api';
 
 const Header: React.FC = () => {
-    const { currentUser, announcements, handleLogout, setActiveView, setIsMobileSidebarOpen } = useData();
+    const { currentUser, handleLogout, setActiveView, setIsMobileSidebarOpen } = useData();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
     const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
@@ -13,22 +15,36 @@ const Header: React.FC = () => {
     const menuRef = useRef<HTMLDivElement>(null);
     const notificationsRef = useRef<HTMLDivElement>(null);
 
-    // Don't render header if not logged in
+    // Queries for Announcements and pending schools (for SuperAdmin)
+    const { data: announcements = [] } = useQuery({ 
+        queryKey: ['announcements'], 
+        queryFn: api.findAllAnnouncements,
+        enabled: !!currentUser
+    });
+
+    const { data: schools = [] } = useQuery({ 
+        queryKey: ['super-schools'], 
+        queryFn: api.getAllSchools,
+        enabled: currentUser?.role === Role.SuperAdmin 
+    });
+
     if (!currentUser) return null;
     
-    // Safety check for name
     const displayName = currentUser.name || 'Account';
     
-    const recentAnnouncementsCount = (announcements || []).filter(a => {
+    const recentAnnouncementsCount = announcements.filter((a: any) => {
         const announcementDate = new Date(a.date);
         const sevenDaysAgo = new Date();
         sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
         return announcementDate > sevenDaysAgo;
     }).length;
     
-    const recentAnnouncements = [...(announcements || [])]
-        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-        .slice(0, 5);
+    const pendingApprovalCount = useMemo(() => {
+        return schools.filter((s: any) => 
+            s.subscription?.status === SubscriptionStatus.PENDING_APPROVAL || 
+            s.subscription?.status === SubscriptionStatus.PENDING_PAYMENT
+        ).length;
+    }, [schools]);
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -43,16 +59,27 @@ const Header: React.FC = () => {
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, [menuRef, notificationsRef]);
 
-    const handleViewAll = () => {
-        let view = 'communication'; 
-        if (currentUser.role === Role.Teacher) view = 'teacher_communication';
-        if (currentUser.role === Role.Parent) view = 'parent_announcements';
-        setActiveView(view);
-        setIsNotificationsOpen(false);
-    }
-
     return (
         <>
+            {/* Global Warning Banner for SuperAdmin */}
+            {currentUser.role === Role.SuperAdmin && pendingApprovalCount > 0 && (
+                <div className="bg-slate-900 text-white px-4 py-2 flex items-center justify-center gap-4 animate-fade-in-down relative z-[100]">
+                    <span className="relative flex h-2 w-2">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+                    </span>
+                    <p className="text-[10px] font-black uppercase tracking-[0.2em]">
+                        System Notice: {pendingApprovalCount} new applications are awaiting manual financial verification.
+                    </p>
+                    <button 
+                        onClick={() => setActiveView('super_admin_dashboard')} 
+                        className="text-[10px] font-black uppercase tracking-widest text-primary-400 hover:text-white transition-colors underline underline-offset-4"
+                    >
+                        Process Queue
+                    </button>
+                </div>
+            )}
+
             <header className="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
                 <div className="px-4 sm:px-6">
                     <div className="flex justify-between items-center h-16 -mb-px">
@@ -78,37 +105,10 @@ const Header: React.FC = () => {
                                 >
                                     <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
                                 </button>
-                                {recentAnnouncementsCount > 0 && (
+                                {(recentAnnouncementsCount > 0) && (
                                     <span className="absolute top-1 right-1 block h-5 w-5 transform -translate-y-1/2 translate-x-1/2 rounded-full ring-2 ring-white bg-red-600 text-white text-[10px] font-black flex items-center justify-center animate-pulse">
                                         {recentAnnouncementsCount}
                                     </span>
-                                )}
-                                {isNotificationsOpen && (
-                                    <div className="origin-top-right absolute right-0 mt-3 w-80 max-w-sm rounded-2xl shadow-2xl bg-white ring-1 ring-black ring-opacity-5 focus:outline-none overflow-hidden animate-fade-in-down">
-                                        <div className="px-5 py-4 bg-slate-50 border-b border-slate-200">
-                                            <h3 className="font-black text-slate-800 text-xs uppercase tracking-widest">Notice Board</h3>
-                                        </div>
-                                        <ul className="divide-y divide-slate-100 max-h-80 overflow-y-auto">
-                                            {recentAnnouncements.length > 0 ? recentAnnouncements.map(ann => (
-                                                <li key={ann.id}>
-                                                    <a href="#" onClick={(e) => { e.preventDefault(); handleViewAll(); }} className="block px-5 py-4 hover:bg-slate-50 transition-colors">
-                                                        <p className="font-bold text-slate-800 text-sm truncate">{ann.title}</p>
-                                                        <p className="text-xs text-slate-500 mt-1 truncate">{ann.content}</p>
-                                                        <p className="text-[10px] font-black text-primary-600 uppercase mt-2 tracking-widest">{new Date(ann.date).toLocaleDateString()}</p>
-                                                    </a>
-                                                </li>
-                                            )) : (
-                                                <li className="px-5 py-10 text-center text-sm text-slate-400 font-bold italic">
-                                                    No recent notices.
-                                                </li>
-                                            )}
-                                        </ul>
-                                        <div className="bg-slate-50 p-3">
-                                            <a href="#" onClick={(e) => {e.preventDefault(); handleViewAll();}} className="block text-center py-2 px-4 text-[10px] font-black uppercase tracking-[0.2em] text-primary-600 hover:text-primary-700 transition-colors">
-                                                View Archive
-                                            </a>
-                                        </div>
-                                    </div>
                                 )}
                             </div>
                             

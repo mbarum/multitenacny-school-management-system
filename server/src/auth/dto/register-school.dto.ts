@@ -33,4 +33,12 @@ export class RegisterSchoolDto {
   @IsString()
   @IsOptional()
   currency?: string = 'KES';
+
+  @IsString()
+  @IsOptional()
+  paymentMethod?: string;
+
+  @IsString()
+  @IsOptional()
+  invoiceNumber?: string;
 }

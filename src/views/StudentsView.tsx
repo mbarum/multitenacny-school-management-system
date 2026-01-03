@@ -1,8 +1,8 @@
+
 import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Modal from '../components/common/Modal';
 import WebcamCaptureModal from '../components/common/WebcamCaptureModal';
-/* Added missing Spinner import to resolve line 408 error */
 import Spinner from '../components/common/Spinner';
 import type { Student, NewStudent, NewCommunicationLog, NewTransaction, SchoolClass, CommunicationLog } from '../types';
 import { CommunicationType, StudentStatus, TransactionType } from '../types';
@@ -200,11 +200,11 @@ const StudentsView: React.FC = () => {
     const [isBillingModalOpen, setIsBillingModalOpen] = useState(false);
     const [isPromotionModalOpen, setIsPromotionModalOpen] = useState(false);
     const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
-    const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
 
+    // Fix: Added explicit (res: any) type to then callback to resolve type inference issues.
     const { data: classesData = [] } = useQuery({
         queryKey: ['classes'],
-        queryFn: () => api.getClasses().then(res => Array.isArray(res) ? res : res.data || [])
+        queryFn: () => api.getClasses().then((res: any) => Array.isArray(res) ? res : res.data || [])
     });
     const classes = Array.isArray(classesData) ? classesData : [];
 
@@ -222,7 +222,6 @@ const StudentsView: React.FC = () => {
     };
     const [newStudent, setNewStudent] = useState<NewStudent>(initialStudentState);
 
-    // Auto-select first class if none selected
     useEffect(() => {
         if (isAddModalOpen && classes.length > 0 && !newStudent.classId) {
             setNewStudent(prev => ({
@@ -231,7 +230,7 @@ const StudentsView: React.FC = () => {
                 class: classes[0].name
             }));
         }
-    }, [isAddModalOpen, classes, newStudent.classId]);
+    }, [isAddModalOpen, classes]);
 
     const { data: studentsData, isLoading } = useQuery({
         queryKey: ['students', page, searchTerm, selectedClass, statusFilter],
@@ -261,33 +260,35 @@ const StudentsView: React.FC = () => {
         onSuccess: async (student) => {
             addNotification('Student enrolled successfully!', 'success');
             
-            /* Fetching fee structure to generate initial invoices for mandatory items */
-            const feeStructure = await queryClient.fetchQuery({
-                queryKey: ['fee-structure'],
-                queryFn: api.getFeeStructure
-            }) as any[];
-
-            const initialTransactions: NewTransaction[] = (feeStructure || [])
-                .filter((item: any) => !item.isOptional && item.classSpecificFees.some((fee: any) => fee.classId === student.classId))
-                .map((item: any) => {
-                    const classFee = item.classSpecificFees.find((fee: any) => fee.classId === student.classId);
-                    return {
-                        studentId: student.id,
-                        type: TransactionType.Invoice,
-                        date: new Date().toISOString().split('T')[0],
-                        description: item.name,
-                        amount: classFee!.amount,
-                    };
-                });
-            
-            if(initialTransactions.length > 0) {
-                await api.createMultipleTransactions(initialTransactions);
-                addNotification(`Initial invoices created for ${student.name}.`, 'info');
+            try {
+                const feeStructure = await api.getFeeStructure();
+                const initialTransactions: NewTransaction[] = (feeStructure || [])
+                    .filter((item: any) => !item.isOptional && item.classSpecificFees.some((fee: any) => fee.classId === student.classId))
+                    .map((item: any) => {
+                        const classFee = item.classSpecificFees.find((fee: any) => fee.classId === student.classId);
+                        return {
+                            studentId: student.id,
+                            type: TransactionType.Invoice,
+                            date: new Date().toISOString().split('T')[0],
+                            description: item.name,
+                            amount: classFee!.amount,
+                        };
+                    });
+                
+                if(initialTransactions.length > 0) {
+                    await api.createMultipleTransactions(initialTransactions);
+                    addNotification(`Invoices created for ${student.name}.`, 'info');
+                }
+            } catch (err) {
+                console.warn("Failed to generate bulk billing for student", err);
             }
 
             queryClient.invalidateQueries({ queryKey: ['students'] });
             setIsAddModalOpen(false);
             setNewStudent(initialStudentState);
+        },
+        onError: (error: any) => {
+            addNotification(error.message || 'Enrollment failed. Please check inputs.', 'error');
         }
     });
 
@@ -311,7 +312,6 @@ const StudentsView: React.FC = () => {
 
     const handleAddStudent = (e: React.FormEvent) => {
         e.preventDefault();
-        // Validation
         if (!newStudent.name || !newStudent.classId || !newStudent.guardianName || !newStudent.guardianContact) {
             addNotification('Please complete all required fields.', 'error');
             return;
@@ -396,6 +396,7 @@ const StudentsView: React.FC = () => {
                         <div className="space-y-1">
                             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Allocated Grade</label>
                             <select name="classId" value={newStudent.classId} onChange={handleInputChange} className="w-full p-4 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-primary-500 outline-none font-bold bg-white" required>
+                                <option value="">Select Class...</option>
                                 {classes.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
                             </select>
                         </div>

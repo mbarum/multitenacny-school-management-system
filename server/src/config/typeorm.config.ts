@@ -5,7 +5,8 @@ import {
     User, Staff, SchoolClass, Student, Subject, ClassSubjectAssignment, MpesaC2BTransaction, 
     Announcement, AttendanceRecord, ClassFee, CommunicationLog, Exam, Expense, FeeItem, Grade, 
     GradingRule, Payroll, PayrollEntry, PayrollItem, ReportShareLog, SchoolEvent, TimetableEntry, 
-    Transaction, SchoolSetting, DarajaSetting, Book, LibraryTransaction, School, Subscription, PlatformSetting
+    Transaction, SchoolSetting, DarajaSetting, Book, LibraryTransaction, School, Subscription, PlatformSetting,
+    SubscriptionPayment, MonthlyFinancial
 } from '../entities/all-entities';
 
 export const typeOrmAsyncConfig: TypeOrmModuleAsyncOptions = {
@@ -25,13 +26,20 @@ export const typeOrmAsyncConfig: TypeOrmModuleAsyncOptions = {
         User, Staff, SchoolClass, Student, Subject, ClassSubjectAssignment, MpesaC2BTransaction, 
         Announcement, AttendanceRecord, ClassFee, CommunicationLog, Exam, Expense, FeeItem, Grade, 
         GradingRule, Payroll, PayrollEntry, PayrollItem, ReportShareLog, SchoolEvent, TimetableEntry, 
-        Transaction, SchoolSetting, DarajaSetting, Book, LibraryTransaction, School, Subscription, PlatformSetting
+        Transaction, SchoolSetting, DarajaSetting, Book, LibraryTransaction, School, Subscription, PlatformSetting,
+        SubscriptionPayment, MonthlyFinancial
       ],
-      // CRITICAL: synchronize must be FALSE in production to avoid dropping data.
-      // Use migrations for schema updates in production.
       synchronize: !isProduction, 
-      logging: !isProduction ? ['error', 'warn'] : ['error'],
+      logging: ['error', 'warn'],
       autoLoadEntities: true,
+      // Optimized for XAMPP/Local MySQL stability
+      extra: {
+        connectionLimit: 10,
+        waitForConnections: true,
+        queueLimit: 0,
+        idleTimeout: 60000,
+        connectTimeout: 20000,
+      },
     };
   },
 };

@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { AttendanceStatus, ExamType, Grade, AttendanceRecord, Subject, Transaction } from '../../types';
 import { useData } from '../../contexts/DataContext';
 import * as api from '../../services/api';
@@ -11,7 +11,8 @@ const ParentChildDetails: React.FC = () => {
     const [activeTab, setActiveTab] = useState('academics');
     
     // Global data queries
-    const { data: subjects = [] } = useQuery({ queryKey: ['subjects'], queryFn: () => api.getSubjects().then(res => Array.isArray(res) ? res : res.data) });
+    // Fix: Added explicit (res: any) type to then callback to resolve type inference issues.
+    const { data: subjects = [] } = useQuery({ queryKey: ['subjects'], queryFn: () => api.getSubjects().then((res: any) => Array.isArray(res) ? res : res.data) });
     const { data: exams = [] } = useQuery({ queryKey: ['exams'], queryFn: () => api.findAllExams() });
 
     // Child specific queries

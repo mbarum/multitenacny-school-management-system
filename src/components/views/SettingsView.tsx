@@ -85,8 +85,8 @@ const SettingsView: React.FC = () => {
     const { data: users = [] } = useQuery({ queryKey: ['users'], queryFn: () => api.getUsers(), enabled: activeTab === 'users' });
     const { data: feeStructure = [] } = useQuery({ queryKey: ['fee-structure'], queryFn: () => api.getFeeStructure(), enabled: activeTab === 'fee_structure' });
     const { data: gradingScale = [] } = useQuery({ queryKey: ['grading-scale'], queryFn: () => api.getGradingScale(), enabled: activeTab === 'grading' });
-    const { data: classes = [] } = useQuery({ queryKey: ['classes'], queryFn: () => api.getClasses().then(res => Array.isArray(res) ? res : res.data) });
-    // FIX: Removed 'current' argument.
+    // Fix: Added explicit (res: any) type to then callback to resolve type inference issues.
+    const { data: classes = [] } = useQuery({ queryKey: ['classes'], queryFn: () => api.getClasses().then((res: any) => Array.isArray(res) ? res : res.data) });
     const { data: fetchedDarajaSettings } = useQuery({ queryKey: ['daraja'], queryFn: () => api.getDarajaSettings(), enabled: activeTab === 'mpesa' });
 
     // Local State for Edit
@@ -149,7 +149,6 @@ const SettingsView: React.FC = () => {
                         <div className="flex items-center space-x-6">
                             <img src={localSchoolInfo.logoUrl} alt="School Logo" className="h-24 w-24 rounded-full object-cover border-4 border-slate-200" />
                             <button type="button" onClick={() => logoInputRef.current?.click()} className="px-4 py-2 bg-slate-200 rounded">Change Logo</button>
-                            {/* FIX: Ensure logo upload correctly handles the File object */}
                             <input type="file" ref={logoInputRef} onChange={e => {
                                 if (e.target.files?.[0]) {
                                     const formData = new FormData();

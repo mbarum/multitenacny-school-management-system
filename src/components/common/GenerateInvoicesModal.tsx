@@ -17,7 +17,8 @@ const GenerateInvoicesModal: React.FC<{ isOpen: boolean; onClose: () => void }> 
     const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().split('T')[0]);
 
     const { data: feeStructure = [] } = useQuery({ queryKey: ['fee-structure'], queryFn: api.getFeeStructure });
-    const { data: classes = [] } = useQuery({ queryKey: ['classes'], queryFn: () => api.getClasses().then(res => Array.isArray(res) ? res : res.data) });
+    // Fix: Added explicit (res: any) type to then callback to resolve type inference issues.
+    const { data: classes = [] } = useQuery({ queryKey: ['classes'], queryFn: () => api.getClasses().then((res: any) => Array.isArray(res) ? res : res.data) });
     const { data: students = [] } = useQuery({ queryKey: ['students-all-list'], queryFn: () => api.getStudents({ limit: 2000, pagination: 'false', status: 'Active' }) });
 
     const createBatchMutation = useMutation({

@@ -39,7 +39,7 @@ export class TransactionsController {
       try {
           await this.transactionsService.handleStripeWebhook(req.body, sig);
           return res.status(200).send({ received: true });
-      } catch (err) {
+      } catch (err: any) {
           this.logger.error(`Stripe Webhook Error: ${err.message}`);
           return res.status(400).send(`Webhook Error: ${err.message}`);
       }

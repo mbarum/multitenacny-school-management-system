@@ -18,13 +18,13 @@ export class AuthController {
     // Set HttpOnly Cookie
     response.cookie('jwt', token, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production', // Use secure in prod
-        sameSite: 'strict', // CSRF protection
-        maxAge: 24 * 60 * 60 * 1000 // 1 day
+        secure: process.env.NODE_ENV === 'production', 
+        sameSite: 'strict',
+        maxAge: 24 * 60 * 60 * 1000 
     });
 
-    // Send user data back (without token in body)
-    return response.send({ user });
+    // Send user and token data back
+    return response.send({ user, token });
   }
 
   @Public()
@@ -39,7 +39,7 @@ export class AuthController {
   async registerSchool(@Body() registerDto: RegisterSchoolDto, @Res() response: Response) {
      const { user, token, school } = await this.authService.registerSchool(registerDto);
      
-     // Set HttpOnly Cookie on registration too
+     // Set HttpOnly Cookie
      response.cookie('jwt', token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
@@ -47,7 +47,8 @@ export class AuthController {
         maxAge: 24 * 60 * 60 * 1000 
     });
 
-    return response.send({ user, school });
+    // Return token in body to satisfy frontend handleLogin(user, token)
+    return response.send({ user, token, school });
   }
 
   @Public()
@@ -62,7 +63,6 @@ export class AuthController {
     return this.authService.requestPasswordReset(email);
   }
 
-  // JwtAuthGuard is global, so this is protected by default
   @Get('me')
   getProfile(@Request() req: any) {
     return req.user;

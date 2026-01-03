@@ -1,7 +1,6 @@
-
-import { Injectable, NotFoundException, Logger } from '@nestjs/common';
+import { Injectable, NotFoundException, Logger, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, MoreThanOrEqual } from 'typeorm';
+import { Repository } from 'typeorm';
 import { CreateStudentDto } from './dto/create-student.dto';
 import { UpdateStudentDto } from './dto/update-student.dto';
 import { GetStudentsDto } from './dto/get-students.dto';
@@ -41,45 +40,52 @@ export class StudentsService {
 
     const schoolClass = await this.classesRepository.findOne({ where: { id: classId, schoolId: schoolId as any } });
     if (!schoolClass) {
-        throw new NotFoundException(`Class not found or does not belong to this school.`);
+        throw new NotFoundException(`Selected class is invalid or does not exist.`);
     }
 
     const year = new Date().getFullYear();
-    const lastStudent = await this.studentsRepository.findOne({
-      where: { schoolId: schoolId as any },
-      order: { createdAt: 'DESC' }
-    });
+    
+    // Find the highest admission sequence for the current year
+    const lastStudent = await this.studentsRepository.createQueryBuilder('student')
+        .where('student.schoolId = :schoolId', { schoolId })
+        .andWhere('student.admissionNumber LIKE :pattern', { pattern: `ADM-${year}-%` })
+        .orderBy('student.admissionNumber', 'DESC')
+        .getOne();
 
     let nextSequence = 1;
     if (lastStudent && lastStudent.admissionNumber) {
         const parts = lastStudent.admissionNumber.split('-');
-        if (parts.length >= 3) {
-            const lastSeq = parseInt(parts[2]);
-            if (!isNaN(lastSeq)) nextSequence = lastSeq + 1;
+        const lastSeq = parseInt(parts[parts.length - 1]);
+        if (!isNaN(lastSeq)) {
+            nextSequence = lastSeq + 1;
         }
     }
+
     const admissionNumber = `ADM-${year}-${String(nextSequence).padStart(4, '0')}`;
 
-    const student = this.studentsRepository.create({
-        ...studentData,
-        admissionNumber,
-        status: StudentStatus.Active,
-        schoolClass: schoolClass,
-        profileImage: studentData.profileImage || 'https://i.imgur.com/S5o7W44.png',
-        school: { id: schoolId } as any
-    });
+    try {
+        const student = this.studentsRepository.create({
+            ...studentData,
+            admissionNumber,
+            status: StudentStatus.Active,
+            schoolClass: schoolClass,
+            profileImage: studentData.profileImage || 'https://i.imgur.com/S5o7W44.png',
+            school: { id: schoolId } as any
+        });
 
-    const savedStudent = await this.studentsRepository.save(student);
-    return this.mapStudentToDto(savedStudent);
+        const savedStudent = await this.studentsRepository.save(student);
+        return this.mapStudentToDto(savedStudent);
+    } catch (error: any) {
+        this.logger.error(`Database error creating student: ${error.message}`);
+        throw new BadRequestException('Failed to create student. Please ensure details are unique.');
+    }
   }
 
   async findAll(query: GetStudentsDto, schoolId: string): Promise<any> {
-    const { page = 1, limit = 10, search, classId, status, pagination, mode } = query;
+    const { page = 1, limit = 15, search, classId, status, pagination, mode } = query;
     
     const qb = this.studentsRepository.createQueryBuilder('student');
     qb.leftJoinAndSelect('student.schoolClass', 'schoolClass');
-    
-    // CRITICAL: Scope search to school
     qb.where('student.schoolId = :schoolId', { schoolId });
 
     if (search && search.trim() !== '') {
@@ -90,7 +96,6 @@ export class StudentsService {
       qb.andWhere('schoolClass.id = :classId', { classId });
     }
 
-    // Normalization: Only filter by status if it's a known StudentStatus value
     if (status && status !== 'all' && Object.values(StudentStatus).includes(status as StudentStatus)) {
         qb.andWhere('student.status = :status', { status });
     }
@@ -127,31 +132,24 @@ export class StudentsService {
   private async enrichWithBalances(students: Student[], schoolId: string): Promise<any[]> {
       if (!students || students.length === 0) return [];
       
-      try {
-          const ids = students.map(s => s.id);
-          
-          // Using a precise QueryBuilder approach for cross-tenant safety in balance calculation
-          const balances = await this.transactionsRepository
-            .createQueryBuilder('t')
-            .select('t.studentId', 'studentId')
-            .addSelect('SUM(CASE WHEN t.type IN (:...debits) THEN t.amount ELSE -t.amount END)', 'balance')
-            .where('t.studentId IN (:...ids)', { ids })
-            .andWhere('t.schoolId = :schoolId', { schoolId })
-            .setParameters({ debits: [TransactionType.Invoice, TransactionType.ManualDebit] })
-            .groupBy('t.studentId')
-            .getRawMany();
+      const ids = students.map(s => s.id);
+      const balances = await this.transactionsRepository
+        .createQueryBuilder('t')
+        .select('t.studentId', 'studentId')
+        .addSelect('SUM(CASE WHEN t.type IN (:...debits) THEN t.amount ELSE -t.amount END)', 'balance')
+        .where('t.studentId IN (:...ids)', { ids })
+        .andWhere('t.schoolId = :schoolId', { schoolId })
+        .setParameters({ debits: [TransactionType.Invoice, TransactionType.ManualDebit] })
+        .groupBy('t.studentId')
+        .getRawMany();
 
-          const balanceMap = new Map<string, number>();
-          balances.forEach(b => balanceMap.set(b.studentId, parseFloat(b.balance) || 0));
+      const balanceMap = new Map<string, number>();
+      balances.forEach(b => balanceMap.set(b.studentId, parseFloat(b.balance) || 0));
 
-          return students.map(student => {
-              student.balance = balanceMap.get(student.id) || 0;
-              return this.mapStudentToDto(student);
-          });
-      } catch (error) {
-          this.logger.error(`Balance calculation drift detected for school ${schoolId}`, error);
-          return students.map(s => { s.balance = 0; return this.mapStudentToDto(s); });
-      }
+      return students.map(student => {
+          student.balance = balanceMap.get(student.id) || 0;
+          return this.mapStudentToDto(student);
+      });
   }
 
   async findOne(id: string, schoolId: string): Promise<any> {
@@ -159,7 +157,7 @@ export class StudentsService {
       where: { id, schoolId: schoolId as any },
       relations: ['schoolClass'] 
     });
-    if (!student) throw new NotFoundException(`Student record not found in your institution.`);
+    if (!student) throw new NotFoundException(`Student record not found.`);
     return this.mapStudentToDto(student);
   }
 
@@ -177,7 +175,7 @@ export class StudentsService {
 
     if (updateStudentDto.classId) {
         const schoolClass = await this.classesRepository.findOne({ where: { id: updateStudentDto.classId, schoolId: schoolId as any } });
-        if (!schoolClass) throw new NotFoundException(`Class allocation target not found.`);
+        if (!schoolClass) throw new NotFoundException(`Target class not found.`);
         student!.schoolClass = schoolClass;
     }
     
@@ -192,8 +190,8 @@ export class StudentsService {
       try {
           const student = await this.update(updateDto.id, updateDto, schoolId);
           updatedStudents.push(student);
-      } catch (error) {
-          this.logger.error(`Registry update failed for student node ${updateDto.id}`, error);
+      } catch (error: any) {
+          this.logger.error(`Batch update failed for student ${updateDto.id}: ${error.message}`);
       }
     }
     return updatedStudents;
@@ -201,7 +199,7 @@ export class StudentsService {
 
   async remove(id: string, schoolId: string): Promise<void> {
     const result = await this.studentsRepository.delete({ id, schoolId: schoolId as any });
-    if (result.affected === 0) throw new NotFoundException(`Access denied or record missing.`);
+    if (result.affected === 0) throw new NotFoundException(`Record not found.`);
   }
 
   async exportStudents(schoolId: string): Promise<string> {
@@ -226,50 +224,33 @@ export class StudentsService {
     let imported = 0;
     let failed = 0;
     const errors: any[] = [];
-    const classes = await this.classesRepository.find({ where: { schoolId: schoolId as any } });
-    const classMap = new Map(classes.map(c => [c.name.toLowerCase(), c]));
-    const count = await this.studentsRepository.count({ where: { schoolId: schoolId as any } });
-    const year = new Date().getFullYear();
-
+    // Fix: Explicitly type 'classes' and 'classMap' to resolve "Property 'id' does not exist on type 'unknown'" when accessing targetClass.id.
+    const classes: SchoolClass[] = await this.classesRepository.find({ where: { schoolId: schoolId as any } });
+    const classMap = new Map<string, SchoolClass>(classes.map(c => [c.name.toLowerCase(), c]));
+    
     for (const [index, record] of records.entries()) {
       try {
-        const normalize = (obj: any) => {
-            const normalized: any = {};
-            Object.keys(obj).forEach(key => {
-                normalized[key.toLowerCase().replace(/[\s_]+/g, '')] = obj[key];
-            });
-            return normalized;
-        };
-        const nRecord = normalize(record);
-        const name = nRecord['name'] || nRecord['studentname'];
-        const guardianName = nRecord['guardianname'] || nRecord['guardian'];
-        const className = nRecord['class'] || nRecord['classname'] || nRecord['grade']; 
+        const name = record['name'] || record['Name'];
+        const guardianName = record['guardianName'] || record['guardian'] || record['Guardian'];
+        const className = record['class'] || record['Class'];
         
-        if (!name || !guardianName || !className) throw new Error(`Incomplete row data.`);
+        if (!name || !guardianName || !className) throw new Error(`Missing required fields.`);
         const targetClass = classMap.get(String(className).toLowerCase());
-        if (!targetClass) throw new Error(`Target grade "${className}" not found in current setup.`);
+        if (!targetClass) throw new Error(`Class "${className}" not found.`);
 
-        const guardianContact = nRecord['guardiancontact'] || nRecord['phone'] || '';
-        const admissionNumber = `ADM-${year}-${String(count + imported + 1).padStart(4, '0')}`;
-
-        const student = this.studentsRepository.create({
-            name, guardianName, guardianContact,
-            guardianAddress: nRecord['guardianaddress'] || '',
-            guardianEmail: nRecord['guardianemail'] || '',
-            emergencyContact: nRecord['emergencycontact'] || '',
-            dateOfBirth: nRecord['dateofbirth'] || new Date().toISOString().split('T')[0],
-            admissionNumber,
-            status: StudentStatus.Active,
-            schoolClass: targetClass,
-            school: { id: schoolId } as any
-        });
-        await this.studentsRepository.save(student);
+        await this.create({
+            name, guardianName, 
+            classId: targetClass.id,
+            guardianContact: record['guardianContact'] || record['phone'] || '',
+            guardianAddress: record['guardianAddress'] || '',
+            guardianEmail: record['guardianEmail'] || '',
+            emergencyContact: record['emergencyContact'] || '',
+            dateOfBirth: record['dateOfBirth'] || new Date().toISOString().split('T')[0],
+        }, schoolId);
         imported++;
-      } catch (err) {
+      } catch (err: any) {
         failed++;
-        // FIX: Safely access error message for TypeScript Unknown type
-        const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred during student import';
-        errors.push({ row: index + 1, name: record.name || 'Unknown', error: errorMessage });
+        errors.push({ row: index + 1, name: record.name || 'Unknown', error: err.message });
       }
     }
     return { imported, failed, errors };

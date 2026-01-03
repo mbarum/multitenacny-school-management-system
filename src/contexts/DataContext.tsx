@@ -76,14 +76,14 @@ interface IDataContext {
     addBulkCommunicationLogs: (data: NewCommunicationLog[]) => Promise<CommunicationLog[]>;
     
     // Batch update actions
-    updateClasses: (data: SchoolClass[]) => Promise<void>;
-    updateSubjects: (data: any[]) => Promise<void>;
-    updateAssignments: (data: any[]) => Promise<void>;
-    updateTimetable: (data: any[]) => Promise<void>;
-    updateExams: (data: any[]) => Promise<void>;
-    updateGrades: (data: any[]) => Promise<void>;
-    updateAttendance: (data: any[]) => Promise<void>;
-    updateEvents: (data: any[]) => Promise<void>;
+    updateClasses: (data: SchoolClass[]) => Promise<any>;
+    updateSubjects: (data: any[]) => Promise<any>;
+    updateAssignments: (data: any[]) => Promise<any>;
+    updateTimetable: (data: any[]) => Promise<any>;
+    updateExams: (data: any[]) => Promise<any>;
+    updateGrades: (data: any[]) => Promise<any>;
+    updateAttendance: (data: any[]) => Promise<any>;
+    updateEvents: (data: any[]) => Promise<any>;
 }
 
 const DataContext = createContext<IDataContext | undefined>(undefined);
@@ -126,18 +126,15 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const loadCoreSettings = async (user: User) => {
         try {
-            // Fetch school info (required for all)
             const info = await api.getSchoolInfo();
             setSchoolInfo(info);
 
-            // Conditional fetch for daraja (sensitive settings)
-            // Teachers do not have permission for this and do not need it
             if (user.role === Role.Admin || user.role === Role.Accountant || user.role === Role.Parent) {
                 try {
                     const daraja = await api.getDarajaSettings();
                     setDarajaSettings(daraja);
                 } catch (e) {
-                    console.warn("Could not load payment settings for this user role.");
+                    console.warn("M-Pesa settings access restricted.");
                 }
             }
 
@@ -158,16 +155,17 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     useEffect(() => {
         const checkSession = async () => {
             try {
-                const user = await api.getAuthenticatedUser();
+                // Wrap in try-catch to prevent app crash on initial 401 (e.g. pending wire accounts)
+                const user = await api.getAuthenticatedUser().catch(() => null);
                 if (user && user.id) {
                     setCurrentUser(user);
                     await loadCoreSettings(user);
                 } else {
-                    const publicInfo = await api.getPublicSchoolInfo();
+                    const publicInfo = await api.getPublicSchoolInfo().catch(() => null);
                     setSchoolInfo(publicInfo);
                 }
             } catch (error) {
-                 try { const publicInfo = await api.getPublicSchoolInfo(); setSchoolInfo(publicInfo); } catch(e) {}
+                 console.error("Session check failed", error);
             } finally {
                 setIsLoading(false);
             }

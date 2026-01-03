@@ -334,7 +334,6 @@ export interface Announcement {
 }
 export type NewAnnouncement = Omit<Announcement, 'id'>;
 
-/* FIX: Added missing ReportShareLog interface */
 export interface ReportShareLog {
     id: string;
     studentId: string;
@@ -359,7 +358,6 @@ export interface CommunicationLog {
 }
 export type NewCommunicationLog = Omit<CommunicationLog, 'id'>;
 
-/* FIX: Added missing MpesaC2BTransaction interface */
 export interface MpesaC2BTransaction {
     id: string;
     transactionType: 'Pay Bill';
@@ -398,7 +396,9 @@ export enum SubscriptionStatus {
   ACTIVE = 'ACTIVE',
   PAST_DUE = 'PAST_DUE',
   CANCELLED = 'CANCELLED',
-  TRIAL = 'TRIAL'
+  TRIAL = 'TRIAL',
+  PENDING_APPROVAL = 'PENDING_APPROVAL',
+  PENDING_PAYMENT = 'PENDING_PAYMENT'
 }
 
 export interface PlatformPricing {
@@ -407,9 +407,13 @@ export interface PlatformPricing {
     basicAnnualPrice: number;
     premiumMonthlyPrice: number;
     premiumAnnualPrice: number;
-    // FIX: Added missing property to resolve RegisterSchool.tsx error
     stripePublishableKey?: string;
     mpesaPaybill?: string;
+    stripeSecretKey?: string;
+    stripeWebhookSecret?: string;
+    mpesaPasskey?: string;
+    mpesaConsumerKey?: string;
+    mpesaConsumerSecret?: string;
 }
 
 export enum Currency {

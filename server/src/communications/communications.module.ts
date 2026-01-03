@@ -16,6 +16,6 @@ import { BullModule } from '@nestjs/bullmq';
   ],
   controllers: [CommunicationsController],
   providers: [CommunicationsService],
-  exports: [CommunicationsService] 
+  exports: [CommunicationsService], // Critical for AuthModule to access it
 })
 export class CommunicationsModule {}

@@ -14,11 +14,12 @@ const CommunicationView: React.FC = () => {
     
     // Queries
     const { data: announcements = [] } = useQuery({ queryKey: ['announcements'], queryFn: () => api.findAllAnnouncements() });
-    const { data: classes = [] } = useQuery({ queryKey: ['classes'], queryFn: () => api.getClasses().then(res => Array.isArray(res) ? res : res.data) });
+    // Fix: Added explicit (res: any) type to then callback to resolve type inference issues.
+    const { data: classes = [] } = useQuery({ queryKey: ['classes'], queryFn: () => api.getClasses().then((res: any) => Array.isArray(res) ? res : res.data) });
     // Note: Fetching students on demand might be better, but for email list filtering by class, we might need basic student info
     const { data: students = [] } = useQuery({ 
         queryKey: ['students-list'], 
-        queryFn: () => api.getStudents({ mode: 'minimal', limit: 2000 }).then(res => Array.isArray(res) ? res : res.data) 
+        queryFn: () => api.getStudents({ mode: 'minimal', limit: 2000 }).then((res: any) => Array.isArray(res) ? res : res.data) 
     });
 
     // State for announcements

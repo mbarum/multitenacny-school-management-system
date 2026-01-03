@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import Modal from './Modal';
@@ -26,7 +25,8 @@ const PromotionModal: React.FC<PromotionModalProps> = ({ isOpen, onClose }) => {
     const [classes, setClasses] = useState<any[]>([]);
 
     useEffect(() => {
-        api.getClasses().then(res => setClasses(Array.isArray(res) ? res : res?.data || []));
+        // Fix: Explicitly type res as any to resolve "never" inference
+        api.getClasses().then((res: any) => setClasses(Array.isArray(res) ? res : res?.data || []));
     }, [isOpen]);
 
     useEffect(() => {

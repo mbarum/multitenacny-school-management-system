@@ -1,4 +1,3 @@
-
 import { Entity, Column, OneToOne, JoinColumn } from 'typeorm';
 import { School } from './school.entity';
 import { BaseEntity } from './base.entity';
@@ -13,7 +12,9 @@ export enum SubscriptionStatus {
   ACTIVE = 'ACTIVE',
   PAST_DUE = 'PAST_DUE',
   CANCELLED = 'CANCELLED',
-  TRIAL = 'TRIAL'
+  TRIAL = 'TRIAL',
+  PENDING_APPROVAL = 'PENDING_APPROVAL',
+  PENDING_PAYMENT = 'PENDING_PAYMENT'
 }
 
 @Entity('subscriptions')
@@ -28,7 +29,9 @@ export class Subscription extends BaseEntity {
   @Column({ type: 'enum', enum: SubscriptionStatus, default: SubscriptionStatus.TRIAL })
   status!: SubscriptionStatus;
 
-  // Changed from 'timestamp' to 'datetime' to resolve "Invalid default value" errors in MySQL
+  @Column({ nullable: true })
+  invoiceNumber!: string;
+
   @Column({ type: 'datetime', default: () => 'CURRENT_TIMESTAMP' })
   startDate!: Date;
 
