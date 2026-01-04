@@ -18,6 +18,23 @@ export class SuperAdminService {
     private entityManager: EntityManager,
   ) {}
 
+  async initiatePayment(schoolId: string, data: { amount: number, method: string, plan: SubscriptionPlan, transactionCode: string }) {
+      const school = await this.schoolRepo.findOne({ where: { id: schoolId } });
+      if (!school) throw new NotFoundException("School not found");
+
+      const payment = this.paymentRepo.create({
+          school,
+          amount: data.amount,
+          paymentMethod: data.method,
+          targetPlan: data.plan,
+          transactionCode: data.transactionCode,
+          paymentDate: new Date().toISOString(),
+          status: SubscriptionPaymentStatus.PENDING
+      });
+
+      return this.paymentRepo.save(payment);
+  }
+
   async recordManualPayment(schoolId: string, data: { amount: number, transactionCode: string, date: string, method: string, plan?: SubscriptionPlan }) {
       this.logger.log(`[Billing] Validating transfer for School ${schoolId}. Ref: ${data.transactionCode}`);
       
@@ -41,7 +58,7 @@ export class SuperAdminService {
               transactionCode: data.transactionCode,
               paymentDate: data.date,
               paymentMethod: data.method,
-              targetPlan: data.plan || subscription.plan // Default to current plan if not specified
+              targetPlan: data.plan || (subscription ? subscription.plan : SubscriptionPlan.BASIC)
           });
           payment.status = SubscriptionPaymentStatus.CONFIRMED;
           await manager.save(payment);
@@ -58,15 +75,13 @@ export class SuperAdminService {
 
               await manager.update(Subscription, subscription.id, {
                   status: SubscriptionStatus.ACTIVE,
-                  plan: payment.targetPlan, // ATOMIC UPGRADE: Apply the plan associated with the payment
+                  plan: payment.targetPlan, 
                   endDate: newEndDate,
                   updatedAt: new Date()
               });
 
               payment.status = SubscriptionPaymentStatus.APPLIED;
               await manager.save(payment);
-
-              this.logger.log(`[Billing] School ${school.name} upgraded/renewed as ${payment.targetPlan} until ${newEndDate.toDateString()}`);
           }
 
           const admin = school.users.find(u => u.role === 'Admin');
@@ -74,7 +89,7 @@ export class SuperAdminService {
               await this.communicationsService.sendEmail(
                   admin.email,
                   'License Upgrade Successful',
-                  `<h1>License Active</h1><p>Your institutional portal has been upgraded to <strong>${payment.targetPlan}</strong>. All associated modules are now active.</p>`
+                  `<h1>License Active</h1><p>Your institutional portal has been upgraded to <strong>${payment.targetPlan}</strong>.</p>`
               );
           }
 
@@ -87,7 +102,7 @@ export class SuperAdminService {
   async getSystemHealth() { return { status: 'ok' }; }
   async updatePricing(s: any) { return s; }
   async updateSubscription(id: string, d: any) { return d; }
-  async getSubscriptionPayments() { return this.paymentRepo.find({ relations: ['school'] }); }
+  async getSubscriptionPayments() { return this.paymentRepo.find({ relations: ['school'], order: { createdAt: 'DESC' } }); }
   async updateSchoolEmail(id: string, e: string) { return e; }
   async updateSchoolPhone(id: string, p: string) { return p; }
 }

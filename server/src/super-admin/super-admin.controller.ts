@@ -1,5 +1,4 @@
-
-import { Controller, Get, Body, Patch, Param, Post, Put } from '@nestjs/common';
+import { Controller, Get, Body, Patch, Param, Post, Put, Request } from '@nestjs/common';
 import { SuperAdminService } from './super-admin.service';
 import { Roles } from '../auth/roles.decorator';
 import { Role } from '../entities/user.entity';
@@ -53,6 +52,12 @@ export class SuperAdminController {
   @Roles(Role.SuperAdmin)
   recordManualPayment(@Body() body: { schoolId: string, amount: number, transactionCode: string, date: string, method: string }) {
       return this.superAdminService.recordManualPayment(body.schoolId, body);
+  }
+
+  @Post('payments/initiate')
+  @Roles(Role.Admin, Role.Accountant)
+  initiatePayment(@Request() req: any, @Body() data: any) {
+      return this.superAdminService.initiatePayment(req.user.schoolId, data);
   }
 
   @Patch('schools/:id/email')
