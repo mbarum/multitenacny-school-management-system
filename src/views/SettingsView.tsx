@@ -1,9 +1,8 @@
-
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-// Fix: Added missing useNavigate import from react-router-dom
 import { useNavigate } from 'react-router-dom';
 import Modal from '../components/common/Modal';
+import UpgradeModal from '../components/common/UpgradeModal';
 import type { SchoolInfo, User, FeeItem, SchoolClass, DarajaSettings, ClassFee, NewUser, NewFeeItem, GradingRule } from '../types';
 import { GradingSystem, Role, Currency, CBC_LEVEL_MAP, SubscriptionPlan, SubscriptionStatus } from '../types';
 import { useData } from '../contexts/DataContext';
@@ -81,17 +80,16 @@ const SettingsView: React.FC = () => {
     const { schoolInfo, updateSchoolInfo, addNotification, uploadLogo, currentUser, formatCurrency } = useData();
     const queryClient = useQueryClient();
     const logoInputRef = useRef<HTMLInputElement>(null);
-    // Fix: Correctly call useNavigate hook and use it directly instead of wrapping in useRef
     const navigate = useNavigate();
     
     const [activeTab, setActiveTab] = useState('info');
     const [localSchoolInfo, setLocalSchoolInfo] = useState<SchoolInfo | null>(null);
+    const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
 
     // Queries
     const { data: users = [] } = useQuery({ queryKey: ['users'], queryFn: () => api.getUsers(), enabled: activeTab === 'users' });
     const { data: feeStructure = [] } = useQuery({ queryKey: ['fee-structure'], queryFn: () => api.getFeeStructure(), enabled: activeTab === 'fee_structure' });
     const { data: gradingScale = [] } = useQuery({ queryKey: ['grading-scale'], queryFn: () => api.getGradingScale(), enabled: activeTab === 'grading' });
-    // Fix: Added explicit (res: any) type to then callback to resolve type inference issues.
     const { data: classes = [] } = useQuery({ queryKey: ['classes'], queryFn: () => api.getClasses().then((res: any) => Array.isArray(res) ? res : res.data) });
     const { data: fetchedDarajaSettings } = useQuery({ queryKey: ['daraja'], queryFn: () => api.getDarajaSettings(), enabled: activeTab === 'mpesa' });
 
@@ -143,7 +141,7 @@ const SettingsView: React.FC = () => {
             <h2 className="text-3xl font-bold text-slate-800 mb-6">Settings</h2>
             <div className="border-b border-slate-200 mb-6 overflow-x-auto">
                 <nav className="-mb-px flex space-x-8">
-                    {['info', 'users', 'fee_structure', 'grading', 'mpesa'].map(tab => (
+                    {['info', 'billing', 'users', 'fee_structure', 'grading', 'mpesa'].map(tab => (
                         <button key={tab} onClick={() => setActiveTab(tab)} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm capitalize ${activeTab === tab ? 'border-primary-500 text-primary-600' : 'border-transparent text-slate-500'}`}>{tab.replace('_', ' ')}</button>
                     ))}
                 </nav>
@@ -205,37 +203,54 @@ const SettingsView: React.FC = () => {
 
             {activeTab === 'billing' && (
                 <div className="space-y-8">
-                    <div className="bg-slate-900 p-10 rounded-[2.5rem] text-white flex justify-between items-center overflow-hidden relative">
-                         <div className="relative z-10">
-                            <span className="px-3 py-1 bg-primary-600 text-white rounded-full font-black text-[10px] uppercase tracking-widest mb-4 inline-block">Active Subscription</span>
-                            <h3 className="text-4xl font-black uppercase">{schoolInfo.subscription?.plan} Tier</h3>
-                            <p className="text-slate-400 font-bold mt-2">Valid until {new Date(schoolInfo.subscription?.endDate || '').toLocaleDateString()}</p>
+                    {schoolInfo.subscription ? (
+                        <div className="bg-slate-900 p-10 rounded-[2.5rem] text-white flex justify-between items-center overflow-hidden relative">
+                            <div className="relative z-10">
+                                <span className="px-3 py-1 bg-primary-600 text-white rounded-full font-black text-[10px] uppercase tracking-widest mb-4 inline-block">Active Subscription</span>
+                                <h3 className="text-4xl font-black uppercase">{schoolInfo.subscription.plan} Tier</h3>
+                                <p className="text-slate-400 font-bold mt-2">
+                                    Valid until {new Date(schoolInfo.subscription.endDate).toLocaleDateString()}
+                                </p>
+                            </div>
+                            <button 
+                                onClick={() => setIsUpgradeModalOpen(true)} 
+                                className="relative z-10 px-8 py-4 bg-white text-slate-900 rounded-2xl font-black uppercase text-xs tracking-widest hover:bg-slate-100 transition-all shadow-xl"
+                            >
+                                {schoolInfo.subscription.plan === 'PREMIUM' ? 'Renew License' : 'Upgrade to Premium'}
+                            </button>
+                            <div className="absolute top-0 right-0 w-64 h-64 bg-primary-600/20 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/2"></div>
                         </div>
-                        {/* Fix: Use local navigate function directly without .current */}
-                        <button 
-                            onClick={() => navigate('/register', { state: { plan: schoolInfo.subscription?.plan === 'BASIC' ? 'PREMIUM' : 'BASIC' } })} 
-                            className="relative z-10 px-8 py-4 bg-white text-slate-900 rounded-2xl font-black uppercase text-xs tracking-widest hover:bg-slate-100 transition-all shadow-xl"
-                        >
-                            Upgrade License
-                        </button>
-                        <div className="absolute top-0 right-0 w-64 h-64 bg-primary-600/20 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/2"></div>
-                    </div>
+                    ) : (
+                        <div className="bg-slate-900 p-10 rounded-[2.5rem] text-white text-center">
+                            <h3 className="text-2xl font-black uppercase mb-4">No Subscription Found</h3>
+                            <button 
+                                onClick={() => navigate('/register')} 
+                                className="px-8 py-4 bg-primary-600 text-white rounded-2xl font-black uppercase text-xs tracking-widest hover:bg-primary-700 transition-all shadow-xl"
+                            >
+                                Get Started
+                            </button>
+                        </div>
+                    )}
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                         <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-xl">
-                            <h4 className="text-lg font-black text-slate-800 uppercase tracking-widest mb-6">Payment History</h4>
-                            <p className="text-slate-400 font-bold italic">Standard license transactions will appear here.</p>
+                            <h4 className="text-lg font-black text-slate-800 uppercase tracking-widest mb-6">Licensing FAQ</h4>
+                            <div className="space-y-4 text-sm font-bold text-slate-500">
+                                <p>• Upgrades are processed instantly upon payment confirmation.</p>
+                                <p>• The Enterprise plan unlocks the AI Financial Analyst module.</p>
+                                <p>• Automated billing cycle is every 30 days or 365 days.</p>
+                            </div>
                         </div>
                         <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-xl">
-                             <h4 className="text-lg font-black text-slate-800 uppercase tracking-widest mb-6">Next Billing Cycle</h4>
+                             <h4 className="text-lg font-black text-slate-800 uppercase tracking-widest mb-6">Service Status</h4>
                              <div className="flex items-center gap-4">
-                                <div className="w-16 h-16 bg-slate-50 rounded-2xl flex flex-col items-center justify-center text-slate-400">
-                                    <span className="text-[10px] font-black uppercase">Day</span>
-                                    <span className="text-2xl font-black text-slate-900">{new Date(schoolInfo.subscription?.endDate || '').getDate()}</span>
+                                <div className="w-16 h-16 bg-primary-50 rounded-2xl flex flex-col items-center justify-center text-primary-600">
+                                    <span className="text-[10px] font-black uppercase">Tier</span>
+                                    <span className="text-2xl font-black">{schoolInfo.subscription?.plan[0]}</span>
                                 </div>
                                 <div>
-                                    <p className="font-black text-slate-800 uppercase">Automatic Renewal</p>
-                                    <p className="text-xs text-slate-400 font-bold">Standard automated debit via Stripe or Safaricom.</p>
+                                    <p className="font-black text-slate-800 uppercase">Operational License</p>
+                                    <p className="text-xs text-slate-400 font-bold">Your portal is currently in good standing.</p>
                                 </div>
                              </div>
                         </div>
@@ -317,6 +332,7 @@ const SettingsView: React.FC = () => {
 
             <FeeItemModal isOpen={isFeeModalOpen} onClose={() => setIsFeeModalOpen(false)} onSave={(d) => feeMutation.mutate(d)} item={editingFeeItem} classes={classes} feeCategories={feeCategories}/>
             <UserModal isOpen={isUserModalOpen} onClose={() => setIsUserModalOpen(false)} onSave={(d: any) => userMutation.mutate(d)} user={editingUser} />
+            <UpgradeModal isOpen={isUpgradeModalOpen} onClose={() => setIsUpgradeModalOpen(false)} />
         </div>
     );
 };

@@ -54,4 +54,16 @@ export class SuperAdminController {
   recordManualPayment(@Body() body: { schoolId: string, amount: number, transactionCode: string, date: string, method: string }) {
       return this.superAdminService.recordManualPayment(body.schoolId, body);
   }
+
+  @Patch('schools/:id/email')
+  @Roles(Role.SuperAdmin)
+  updateEmail(@Param('id') id: string, @Body('email') email: string) {
+      return this.superAdminService.updateSchoolEmail(id, email);
+  }
+
+  @Patch('schools/:id/phone')
+  @Roles(Role.SuperAdmin)
+  updatePhone(@Param('id') id: string, @Body('phone') phone: string) {
+      return this.superAdminService.updateSchoolPhone(id, phone);
+  }
 }

@@ -32,7 +32,6 @@ export const typeOrmAsyncConfig: TypeOrmModuleAsyncOptions = {
       synchronize: !isProduction, 
       logging: ['error', 'warn'],
       autoLoadEntities: true,
-      // Optimized for XAMPP/Local MySQL stability
       extra: {
         connectionLimit: 10,
         waitForConnections: true,

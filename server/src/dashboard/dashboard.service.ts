@@ -1,7 +1,7 @@
 
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Between } from 'typeorm';
+import { Repository } from 'typeorm';
 import { Student, StudentStatus } from '../entities/student.entity';
 import { Transaction, TransactionType } from '../entities/transaction.entity';
 import { Expense } from '../entities/expense.entity';
@@ -40,7 +40,6 @@ export class DashboardService {
     const totalExpenses = parseFloat(expenseResult.total) || 0;
 
     // 4. Calculate Ledger Overdue (Aged Balances)
-    // Professional approach: Total Debits - Total Credits
     const agingResult = await this.transactionRepo
       .createQueryBuilder('t')
       .select("SUM(CASE WHEN t.type IN ('Invoice', 'ManualDebit') THEN t.amount ELSE -t.amount END)", 'balance')

@@ -12,7 +12,11 @@ export class TenancyInterceptor implements NestInterceptor {
     if (schoolId) {
       return new Observable(observer => {
         tenancyContext.run(schoolId, () => {
-          next.handle().subscribe(observer);
+          next.handle().subscribe({
+            next: (val) => observer.next(val),
+            error: (err) => observer.error(err),
+            complete: () => observer.complete(),
+          });
         });
       });
     }

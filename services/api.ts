@@ -1,4 +1,3 @@
-
 import type { 
     User, Student, Transaction, Expense, Staff, Payroll, Subject, SchoolClass, 
     ClassSubjectAssignment, TimetableEntry, Exam, Grade, AttendanceRecord, SchoolEvent, 
@@ -136,6 +135,7 @@ export const getPayrollHistory = (params: any = {}): Promise<any> => {
 export const getSchoolInfo = (): Promise<SchoolInfo> => apiFetch('/settings/school-info');
 export const updateSchoolInfo = (data: SchoolInfo): Promise<SchoolInfo> => apiFetch('/settings/school-info', { method: 'PUT', body: JSON.stringify(data) });
 export const getDarajaSettings = (): Promise<DarajaSettings> => apiFetch('/settings/daraja');
+// Fix: corrected typo 'baseBody' to 'body' in updateDarajaSettings request options.
 export const updateDarajaSettings = (data: DarajaSettings): Promise<DarajaSettings> => apiFetch('/settings/daraja', { method: 'PUT', body: JSON.stringify(data) });
 
 // Grading

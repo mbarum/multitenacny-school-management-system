@@ -3,10 +3,10 @@ import { IsString, IsNotEmpty, IsEmail, IsDateString, IsOptional, IsUUID } from 
 
 export class CreateStudentDto {
   @IsString()
-  @IsNotEmpty()
+  @IsNotEmpty({ message: 'Legal Name is required' })
   name!: string;
 
-  @IsUUID()
+  @IsUUID('4', { message: 'A valid Class selection is required' })
   @IsNotEmpty()
   classId!: string;
 
@@ -15,24 +15,25 @@ export class CreateStudentDto {
   profileImage?: string;
 
   @IsString()
-  @IsNotEmpty()
+  @IsNotEmpty({ message: 'Guardian Name is required' })
   guardianName!: string;
 
   @IsString()
-  @IsNotEmpty()
+  @IsNotEmpty({ message: 'Primary Contact phone is required' })
   guardianContact!: string;
 
   @IsString()
-  @IsNotEmpty()
+  @IsNotEmpty({ message: 'Residential Address is required' })
   guardianAddress!: string;
 
-  @IsEmail()
+  @IsEmail({}, { message: 'A valid Guardian Email is required' })
   guardianEmail!: string;
 
   @IsString()
-  @IsNotEmpty()
+  @IsNotEmpty({ message: 'Emergency Contact is required' })
   emergencyContact!: string;
 
-  @IsDateString()
+  @IsDateString({}, { message: 'Date of Birth must be a valid date' })
+  @IsNotEmpty({ message: 'Date of Birth is required' })
   dateOfBirth!: string;
 }

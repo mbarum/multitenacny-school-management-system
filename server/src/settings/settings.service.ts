@@ -23,9 +23,6 @@ export class SettingsService {
   ) {}
 
   async getPublicSchoolInfo(): Promise<School> {
-    // SECURITY: Never return the "first" school. 
-    // In a real prod environment, this would filter by request hostname or slug.
-    // For this version, we return a blank object if no context is present.
     return {
         name: 'Saaslink School Portal',
         logoUrl: 'https://i.imgur.com/S5o7W44.png',
@@ -63,7 +60,10 @@ export class SettingsService {
   }
 
   async getSchoolInfo(schoolId: string): Promise<any> {
-    const school = await this.schoolRepository.findOne({ where: { id: schoolId } });
+    const school = await this.schoolRepository.findOne({ 
+      where: { id: schoolId },
+      relations: ['subscription'] // Load the subscription details
+    });
     if (!school) throw new NotFoundException('School settings not accessible.');
     return school;
   }

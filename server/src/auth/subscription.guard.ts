@@ -1,9 +1,9 @@
-
 import { Injectable, CanActivate, ExecutionContext, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { School } from '../entities/school.entity';
-import { SubscriptionStatus } from '../entities/subscription.entity';
+import { SubscriptionStatus, SubscriptionPlan } from '../entities/subscription.entity';
+import { Role } from '../entities/user.entity';
 
 @Injectable()
 export class SubscriptionGuard implements CanActivate {
@@ -14,51 +14,48 @@ export class SubscriptionGuard implements CanActivate {
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const req = context.switchToHttp().getRequest();
-    const method = req.method;
-    const url = req.url;
+    const { method, url, user } = req;
 
-    // 1. Allow all users to access public routes and auth routes (login/logout/me)
-    if (url.includes('/auth/') || url.includes('/settings/public')) {
-        return true;
-    }
+    if (user?.role === Role.SuperAdmin) return true;
+    if (url.includes('/auth/') || url.includes('/settings/public')) return true;
+    if (!user?.schoolId) return true;
 
-    // 2. Allow Read-Only access (GET) to the system so users can see the lockout screen/info
-    if (method === 'GET' || method === 'HEAD' || method === 'OPTIONS') {
-        return true;
-    }
-
-    // 3. Skip if no user (e.g., anonymous) - let JwtGuard handle it
-    if (!req.user || !req.user.schoolId) {
-        return true; 
-    }
-
-    // 4. Check School Subscription Status
     const school = await this.schoolRepo.findOne({ 
-        where: { id: req.user.schoolId },
+        where: { id: user.schoolId },
         relations: ['subscription']
     });
 
-    // If no school found or no sub, allow (might be super admin or new account)
-    if (!school || !school.subscription) {
-        return true;
-    }
-
+    if (!school || !school.subscription) return true;
     const sub = school.subscription;
     const now = new Date();
+    const isExpiredDate = new Date(sub.endDate) < now;
 
-    // 5. ENFORCE LOCKOUT
-    // If status is specifically CANCELLED or PAST_DUE
-    if (sub.status === SubscriptionStatus.CANCELLED) {
-        throw new ForbiddenException('Your subscription has been cancelled. Please contact billing to reactivate.');
+    // 1. HARD BLOCK: Expired or Disabled
+    const isBlockedStatus = [
+        SubscriptionStatus.CANCELLED, 
+        SubscriptionStatus.SUSPENDED, 
+        SubscriptionStatus.INACTIVE,
+        SubscriptionStatus.EXPIRED,
+        SubscriptionStatus.PAST_DUE
+    ].includes(sub.status);
+
+    if (isBlockedStatus || isExpiredDate) {
+        const isRecoveryRoute = url.includes('/mpesa/stk-push') || url.includes('/create-payment-intent');
+        if (isRecoveryRoute) return true;
+        throw new ForbiddenException('Institutional access suspended. Active license required.');
     }
 
-    // If the current date is past the end date and we aren't in a specifically exempt status
-    if (new Date(sub.endDate) < now && sub.status !== SubscriptionStatus.ACTIVE) {
-         // Special exception: allow the payment-related endpoints even if locked
-         if (url.includes('/mpesa/stk-push') || url.includes('/auth/create-payment-intent')) {
-             return true;
-         }
-         throw new ForbiddenException('Subscription expired. Access to data entry is locked until payment is settled.');
+    // 2. FEATURE BLOCK: Plan-based constraints
+    // Premium Modules: AI, Reporting (Advanced), Library
+    const isPremiumRoute = url.includes('/ai/') || url.includes('/library/') || url.includes('/reporting');
+    
+    if (isPremiumRoute && sub.plan !== SubscriptionPlan.PREMIUM) {
+        throw new ForbiddenException('This module requires a PREMIUM license. Please upgrade your subscription in Settings.');
+    }
+
+    // 3. TRIAL Matrix
+    if (sub.status === SubscriptionStatus.TRIAL && method === 'DELETE') {
+        throw new ForbiddenException('Trial accounts cannot purge data.');
     }
 
     return true;

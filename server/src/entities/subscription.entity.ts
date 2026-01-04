@@ -9,10 +9,13 @@ export enum SubscriptionPlan {
 }
 
 export enum SubscriptionStatus {
-  ACTIVE = 'ACTIVE',
-  PAST_DUE = 'PAST_DUE',
-  CANCELLED = 'CANCELLED',
+  INACTIVE = 'INACTIVE',
   TRIAL = 'TRIAL',
+  ACTIVE = 'ACTIVE',
+  EXPIRED = 'EXPIRED',
+  PAST_DUE = 'PAST_DUE',
+  SUSPENDED = 'SUSPENDED',
+  CANCELLED = 'CANCELLED',
   PENDING_APPROVAL = 'PENDING_APPROVAL',
   PENDING_PAYMENT = 'PENDING_PAYMENT'
 }
@@ -37,4 +40,7 @@ export class Subscription extends BaseEntity {
 
   @Column({ type: 'datetime', default: () => 'CURRENT_TIMESTAMP' })
   endDate!: Date;
+
+  @Column({ default: 'MONTHLY' })
+  billingCycle!: 'MONTHLY' | 'ANNUALLY';
 }

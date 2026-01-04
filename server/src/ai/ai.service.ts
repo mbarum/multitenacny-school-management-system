@@ -1,4 +1,3 @@
-
 import { Injectable, InternalServerErrorException, Logger, BadRequestException } from '@nestjs/common';
 import { GoogleGenAI } from '@google/genai';
 import { ConfigService } from '@nestjs/config';
@@ -16,9 +15,9 @@ export class AiService {
     @InjectRepository(Transaction) private transactionRepo: Repository<Transaction>,
     @InjectRepository(Expense) private expenseRepo: Repository<Expense>,
   ) {
-    const apiKey = this.configService.get<string>('API_KEY');
-    if (apiKey) {
-      this.ai = new GoogleGenAI({ apiKey });
+    // Fix: Obtained API key exclusively from process.env.API_KEY directly as per guidelines.
+    if (process.env.API_KEY) {
+      this.ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     } else {
       this.logger.warn("API_KEY environment variable is not set. AI features (Financial Summary) will be disabled.");
     }
@@ -53,6 +52,7 @@ export class AiService {
         .createQueryBuilder('e')
         .select('SUM(e.amount)', 'total')
         .where('e.schoolId = :schoolId', { schoolId })
+        .andWhere('e.date LIKE :monthPattern', { monthPattern: `${new Date().toISOString().slice(0, 7)}%` })
         .getRawOne();
       const totalExpenses = parseFloat(expenseResult.total) || 0;
       
@@ -87,8 +87,9 @@ export class AiService {
         The response should be well-formatted using markdown with bold headings for each section.
       `;
       
+      // Fix: Used 'gemini-3-flash-preview' for basic text summarization tasks as per guidelines.
       const response = await this.ai.models.generateContent({
-          model: 'gemini-2.5-flash',
+          model: 'gemini-3-flash-preview',
           contents: prompt,
       });
 
