@@ -1,7 +1,6 @@
-
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource, LessThan, Like } from 'typeorm';
+import { Repository, DataSource } from 'typeorm';
 import { Book } from '../entities/book.entity';
 import { LibraryTransaction, LibraryStatus } from '../entities/library-transaction.entity';
 import { Student } from '../entities/student.entity';
@@ -33,27 +32,19 @@ export class LibraryService {
     qb.orderBy('book.title', 'ASC');
 
     if (pagination === 'false') {
-        return qb.getMany();
+        const books = await qb.getMany();
+        return { data: books, total: books.length };
     }
 
-    const skip = (page - 1) * limit;
-    qb.skip(skip).take(limit);
-
-    const [data, total] = await qb.getManyAndCount();
-    return {
-        data,
-        total,
-        page,
-        limit,
-        last_page: Math.ceil(total / limit)
-    };
+    const [data, total] = await qb.skip((page - 1) * limit).take(limit).getManyAndCount();
+    return { data, total, page, limit, last_page: Math.ceil(total / limit) };
   }
 
   async createBook(dto: CreateBookDto, schoolId: string) {
     const book = this.bookRepo.create({
       ...dto,
       availableQuantity: dto.totalQuantity,
-      school: { id: schoolId } as any
+      schoolId
     });
     return this.bookRepo.save(book);
   }
@@ -61,138 +52,102 @@ export class LibraryService {
   async updateBook(id: string, updates: Partial<Book>, schoolId: string) {
     const book = await this.bookRepo.findOne({ where: { id, schoolId: schoolId as any } });
     if (!book) throw new NotFoundException('Book not found');
-    Object.assign(book, updates);
-    // Recalculate available if total changed (simplified logic)
-    if (updates.totalQuantity) {
-        const borrowed = book.totalQuantity - book.availableQuantity;
-        book.availableQuantity = updates.totalQuantity - borrowed;
+    
+    if (updates.totalQuantity !== undefined) {
+        const currentlyBorrowed = book.totalQuantity - book.availableQuantity;
+        if (updates.totalQuantity < currentlyBorrowed) {
+            throw new BadRequestException(`Cannot reduce total quantity below currently borrowed count (${currentlyBorrowed})`);
+        }
+        book.availableQuantity = updates.totalQuantity - currentlyBorrowed;
     }
+    
+    Object.assign(book, updates);
     return this.bookRepo.save(book);
   }
 
   async deleteBook(id: string, schoolId: string) {
-    const result = await this.bookRepo.delete({ id, schoolId: schoolId as any });
-    if (result.affected === 0) throw new NotFoundException('Book not found');
+    const book = await this.bookRepo.findOne({ where: { id, schoolId: schoolId as any } });
+    if (!book) throw new NotFoundException();
+    
+    if (book.availableQuantity < book.totalQuantity) {
+        throw new BadRequestException('Cannot delete book while copies are still borrowed.');
+    }
+    await this.bookRepo.delete(id);
   }
 
   async issueBook(dto: IssueBookDto, schoolId: string) {
     return this.dataSource.transaction(async manager => {
       const book = await manager.findOne(Book, { where: { id: dto.bookId, schoolId: schoolId as any } });
-      if (!book) throw new NotFoundException('Book not found');
-      if (book.availableQuantity < 1) throw new BadRequestException('Book is not available');
+      if (!book || book.availableQuantity < 1) throw new BadRequestException('Book unavailable');
 
       const student = await manager.findOne(Student, { where: { id: dto.studentId, schoolId: schoolId as any } });
       if (!student) throw new NotFoundException('Student not found');
 
-      // Create transaction
       const transaction = manager.create(LibraryTransaction, {
-        school: { id: schoolId } as any,
-        book,
-        student,
-        borrowerName: student.name,
+        schoolId, bookId: book.id, studentId: student.id,
+        bookTitle: book.title, borrowerName: student.name,
         borrowDate: new Date().toISOString().split('T')[0],
-        dueDate: dto.dueDate,
-        status: LibraryStatus.BORROWED
+        dueDate: dto.dueDate, status: LibraryStatus.BORROWED
       });
-      await manager.save(transaction);
-
-      // Decrement quantity
+      
       book.availableQuantity -= 1;
       await manager.save(book);
-
-      return transaction;
+      return manager.save(transaction);
     });
   }
 
   async returnBook(transactionId: string, schoolId: string) {
     return this.dataSource.transaction(async manager => {
-      const transaction = await manager.findOne(LibraryTransaction, { 
-        where: { id: transactionId, schoolId: schoolId as any },
-        relations: ['book']
-      });
-      
-      if (!transaction) throw new NotFoundException('Transaction not found');
-      if (transaction.status === LibraryStatus.RETURNED) throw new BadRequestException('Book already returned');
-      if (transaction.status === LibraryStatus.LOST) throw new BadRequestException('Book marked as lost. Cannot return normally.');
+      const transaction = await manager.findOne(LibraryTransaction, { where: { id: transactionId, schoolId: schoolId as any } });
+      if (!transaction || transaction.status !== LibraryStatus.BORROWED) throw new BadRequestException('Invalid return request');
 
       transaction.status = LibraryStatus.RETURNED;
       transaction.returnDate = new Date().toISOString().split('T')[0];
-      await manager.save(transaction);
-
-      // Increment quantity
-      const book = transaction.book;
-      book.availableQuantity += 1;
-      await manager.save(book);
-
-      return transaction;
+      
+      const book = await manager.findOne(Book, { where: { id: transaction.bookId } });
+      if (book) {
+          book.availableQuantity += 1;
+          await manager.save(book);
+      }
+      return manager.save(transaction);
     });
   }
 
   async markLost(transactionId: string, schoolId: string) {
     return this.dataSource.transaction(async manager => {
-      const transaction = await manager.findOne(LibraryTransaction, { 
-        where: { id: transactionId, schoolId: schoolId as any },
-        relations: ['book', 'student']
-      });
-      
-      if (!transaction) throw new NotFoundException('Transaction not found');
-      if (transaction.status === LibraryStatus.RETURNED) throw new BadRequestException('Book already returned');
-      if (transaction.status === LibraryStatus.LOST) throw new BadRequestException('Book already marked as lost');
+      const transaction = await manager.findOne(LibraryTransaction, { where: { id: transactionId, schoolId: schoolId as any } });
+      if (!transaction || transaction.status !== LibraryStatus.BORROWED) throw new BadRequestException('Invalid lost book request');
 
-      // 1. Update Library Status
       transaction.status = LibraryStatus.LOST;
-      transaction.remarks = 'Book reported lost. Fine imposed.';
-      await manager.save(transaction);
-
-      // 2. Update Book Inventory (Reduce Total Count permanently as it is gone)
-      const book = transaction.book;
-      book.totalQuantity = Math.max(0, book.totalQuantity - 1);
-      // availableQuantity stays same because it wasn't returned
-      await manager.save(book);
-
-      // 3. Create Fine (Invoice) if price exists
-      if (book.price && book.price > 0 && transaction.student) {
-          const fine = manager.create(Transaction, {
-              school: { id: schoolId } as any,
-              student: transaction.student,
-              type: TransactionType.Invoice, // Invoice
-              amount: book.price,
-              date: new Date().toISOString().split('T')[0],
-              description: `Lost Book Fine: ${book.title}`,
-          });
-          await manager.save(fine);
+      transaction.remarks = 'Lost by student. Fine applied.';
+      
+      const book = await manager.findOne(Book, { where: { id: transaction.bookId } });
+      if (book) {
+          book.totalQuantity -= 1; // Permanently removed from inventory
+          await manager.save(book);
+          
+          if (book.price > 0) {
+              await manager.save(Transaction, manager.create(Transaction, {
+                  schoolId, studentId: transaction.studentId!,
+                  type: TransactionType.Invoice, amount: book.price,
+                  date: new Date().toISOString().split('T')[0],
+                  description: `Library Fine: Lost Book - ${book.title}`
+              }));
+          }
       }
-
-      return transaction;
+      return manager.save(transaction);
     });
   }
 
   async getTransactions(query: GetLibraryTransactionsDto, schoolId: string) {
-    const { page = 1, limit = 10, status, studentId, pagination } = query;
-    const qb = this.transactionRepo.createQueryBuilder('trans');
-    qb.leftJoinAndSelect('trans.book', 'book');
-    qb.leftJoinAndSelect('trans.student', 'student');
-    qb.where('trans.schoolId = :schoolId', { schoolId });
+    const { page = 1, limit = 10, status, studentId } = query;
+    const qb = this.transactionRepo.createQueryBuilder('t')
+        .where('t.schoolId = :schoolId', { schoolId });
 
-    if (status) qb.andWhere('trans.status = :status', { status });
-    if (studentId) qb.andWhere('trans.studentId = :studentId', { studentId });
+    if (status) qb.andWhere('t.status = :status', { status });
+    if (studentId) qb.andWhere('t.studentId = :studentId', { studentId });
 
-    qb.orderBy('trans.borrowDate', 'DESC');
-
-    if (pagination === 'false') {
-        return qb.getMany();
-    }
-
-    const skip = (page - 1) * limit;
-    qb.skip(skip).take(limit);
-
-    const [data, total] = await qb.getManyAndCount();
-    return {
-        data,
-        total,
-        page,
-        limit,
-        last_page: Math.ceil(total / limit)
-    };
+    const [data, total] = await qb.orderBy('t.borrowDate', 'DESC').skip((page - 1) * limit).take(limit).getManyAndCount();
+    return { data, total, page, limit, last_page: Math.ceil(total / limit) };
   }
 }

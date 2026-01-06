@@ -419,3 +419,63 @@ export interface PlatformPricing {
     premiumMonthlyPrice: number;
     premiumAnnualPrice: number;
 }
+
+// Added missing Book types for Library module.
+export interface Book {
+    id: string;
+    title: string;
+    author: string;
+    isbn?: string;
+    category: string;
+    totalQuantity: number;
+    availableQuantity: number;
+    shelfLocation?: string;
+    price?: number;
+}
+export type NewBook = Omit<Book, 'id' | 'availableQuantity'>;
+
+export enum LibraryStatus {
+    BORROWED = 'Borrowed',
+    RETURNED = 'Returned',
+    OVERDUE = 'Overdue',
+    LOST = 'Lost'
+}
+
+export interface LibraryTransaction {
+    id: string;
+    bookId: string;
+    bookTitle: string;
+    studentId: string | null;
+    borrowerName: string;
+    borrowDate: string;
+    dueDate: string;
+    returnDate: string | null;
+    status: LibraryStatus;
+    remarks?: string;
+}
+
+// Added missing CBC_LEVEL_MAP for academics logic.
+export const CBC_LEVEL_MAP: Record<string, { points: number, description: string }> = {
+    'EE1': { points: 8, description: 'Exceeding Expectation (High)' },
+    'EE2': { points: 7, description: 'Exceeding Expectation (Low)' },
+    'ME1': { points: 6, description: 'Meeting Expectation (High)' },
+    'ME2': { points: 5, description: 'Meeting Expectation (Low)' },
+    'AE1': { points: 4, description: 'Approaching Expectation (High)' },
+    'AE2': { points: 3, description: 'Approaching Expectation (Low)' },
+    'BE1': { points: 2, description: 'Below Expectation (High)' },
+    'BE2': { points: 1, description: 'Below Expectation (Low)' },
+};
+
+// Added missing Currency enum.
+export enum Currency {
+    KES = 'KES',
+    USD = 'USD',
+    UGX = 'UGX',
+    TZS = 'TZS',
+    RWF = 'RWF',
+    BIF = 'BIF',
+    ZMW = 'ZMW',
+    ETB = 'ETB',
+    SDG = 'SDG',
+    SSP = 'SSP'
+}

@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { jsPDF } from 'jspdf';
 import * as api from '../../services/api';
@@ -15,7 +14,7 @@ const stripePromise = api.getPlatformPricing().then(p => loadStripe(p.stripePubl
 const CheckoutForm: React.FC<{ 
     formData: any, 
     price: number, 
-    onSuccess: (user: any, token: string) => void,
+    onSuccess: (user: any) => void,
     onError: (msg: string) => void 
 }> = ({ formData, price, onSuccess, onError }) => {
     const stripe = useStripe();
@@ -47,7 +46,7 @@ const CheckoutForm: React.FC<{
                     paymentMethod: 'CARD', 
                     paymentIntentId: result.paymentIntent.id 
                 });
-                onSuccess(response.user, response.token);
+                onSuccess(response.user);
             }
         } catch (err: any) {
             onError(err.message || 'Error during checkout');
@@ -80,15 +79,13 @@ const RegisterSchool: React.FC = () => {
         billingCycle: navState?.billing || 'MONTHLY',
         currency: 'KES'
     });
-    
-    const [stableRef, setStableRef] = useState('');
-    useEffect(() => {
-        if (formData.schoolName && !stableRef) {
-            const prefix = formData.schoolName.substring(0,3).toUpperCase();
-            const rand = Math.floor(1000 + Math.random() * 9000);
-            setStableRef(`INV-${prefix}-${rand}`);
-        }
-    }, [formData.schoolName]);
+
+    // Create a stable invoice reference for the session
+    const stableRef = useMemo(() => {
+        const prefix = 'INV';
+        const rand = Math.floor(100000 + Math.random() * 900000);
+        return `${prefix}-${rand}`;
+    }, []);
 
     const [agreedToTerms, setAgreedToTerms] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
@@ -130,7 +127,6 @@ const RegisterSchool: React.FC = () => {
 
         setError('');
         setIsLoading(true);
-        console.log(`[Register] Initiating ${method} registration for ${formData.schoolName}`);
 
         try {
             const payload = { 
@@ -141,12 +137,10 @@ const RegisterSchool: React.FC = () => {
             };
 
             const response = await api.registerSchool(payload);
-            console.log("[Register] Server response:", response);
             
             if (response.status === 'PENDING') {
-                // Correctly transition to Success screen for Wire Transfers
                 setPaymentStatus('manual_success');
-                addNotification("Order submitted. Please complete your bank transfer.", "info");
+                addNotification("Registration submitted. Verification required.", "info");
             } else if (method === 'MPESA') {
                 setPaymentStatus('processing');
                 await initiateSTKPush(cost.total, formData.phone, 'SUB_' + response.user.id.substring(0, 8));
@@ -157,11 +151,9 @@ const RegisterSchool: React.FC = () => {
                 setTimeout(() => handleLogin(response.user), 2000);
             }
         } catch (err: any) {
-            console.error("[Register] Error:", err);
             setError(err.message || 'The server encountered an error. Please try again.');
             setPaymentStatus('idle');
         } finally {
-            // CRITICAL: Ensure loading spinner stops regardless of outcome
             setIsLoading(false);
         }
     };
@@ -174,68 +166,90 @@ const RegisterSchool: React.FC = () => {
         const doc = new jsPDF();
         const primaryColor = [52, 105, 85]; 
         
+        // Design Sidebar
         doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
         doc.rect(0, 0, 10, 297, 'F');
+
+        // Main Header
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(28);
         doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-        doc.text('SAASLINK', 20, 25);
+        doc.text('SAASLINK CLOUD', 20, 30);
         
-        doc.setFillColor(240, 240, 240);
-        doc.rect(20, 45, 170, 15, 'F');
+        doc.setFillColor(245, 245, 245);
+        doc.rect(20, 50, 170, 20, 'F');
         doc.setFontSize(16);
-        doc.setTextColor(0);
-        doc.text('PROFORMA INVOICE', 25, 55);
+        doc.setTextColor(50);
+        doc.text('UPGRADE PROFORMA INVOICE', 25, 63);
+        doc.setFontSize(11);
+        doc.text(`NO: ${stableRef}`, 185, 63, { align: 'right' });
+
+        // Bill to
         doc.setFontSize(10);
-        doc.text(`NO: ${stableRef}`, 185, 55, { align: 'right' });
-
-        doc.setFontSize(9);
         doc.setTextColor(150);
-        doc.text('BILL TO:', 20, 75);
-        doc.setFontSize(12);
+        doc.text('PREPARED FOR:', 20, 85);
+        doc.setFontSize(14);
         doc.setTextColor(0);
-        doc.text(formData.schoolName.toUpperCase(), 20, 82);
+        doc.text(formData.schoolName.toUpperCase(), 20, 95);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(10);
+        doc.text(`Administrator: ${formData.adminName}`, 20, 102);
+        doc.text(`Email: ${formData.adminEmail}`, 20, 107);
 
+        // Financials Table
         doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-        doc.rect(20, 110, 170, 10, 'F');
+        doc.rect(20, 120, 170, 10, 'F');
         doc.setTextColor(255);
-        doc.text('DESCRIPTION', 25, 116.5);
-        doc.text('AMOUNT (KES)', 185, 116.5, { align: 'right' });
+        doc.setFont('helvetica', 'bold');
+        doc.text('DESCRIPTION', 25, 126.5);
+        doc.text('TOTAL (KES)', 185, 126.5, { align: 'right' });
 
         doc.setTextColor(0);
         doc.setFont('helvetica', 'normal');
-        doc.text(`${formData.plan} Plan - ${formData.billingCycle}`, 25, 130);
-        doc.text(cost.subtotal.toLocaleString(), 185, 130, { align: 'right' });
-        doc.text('VAT (16%)', 130, 140);
-        doc.text(cost.vat.toLocaleString(), 185, 140, { align: 'right' });
+        doc.text(`${formData.plan} License - ${formData.billingCycle} Subscription`, 25, 140);
+        doc.text(cost.subtotal.toLocaleString(), 185, 140, { align: 'right' });
+        doc.text('Statutory VAT (16%)', 25, 150);
+        doc.text(cost.vat.toLocaleString(), 185, 150, { align: 'right' });
         
-        doc.line(120, 145, 190, 145);
+        doc.setDrawColor(200);
+        doc.line(120, 155, 190, 155);
         doc.setFont('helvetica', 'bold');
-        doc.text(`TOTAL: KES ${cost.total.toLocaleString()}`, 185, 155, { align: 'right' });
+        doc.setFontSize(14);
+        doc.text(`NET TOTAL: KES ${cost.total.toLocaleString()}`, 185, 168, { align: 'right' });
 
+        // Bank Details Section
         doc.setDrawColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-        doc.roundedRect(20, 170, 170, 75, 3, 3, 'D');
-        doc.text('BANK TRANSFER INSTRUCTIONS', 25, 180);
+        doc.roundedRect(20, 185, 170, 75, 5, 5, 'D');
+        doc.setFontSize(12);
+        doc.text('WIRE TRANSFER INSTRUCTIONS', 25, 198);
         
-        const details = [
-            ['Beneficiary:', 'SAASLINK TECHNOLOGIES LTD'],
-            ['Bank:', 'I&M Bank Ltd.'],
-            ['Account:', '05206707336350'],
-            ['Branch:', 'Nairobi, Kenya'],
-            ['Reference:', stableRef]
-        ];
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(10);
+        const yStart = 210;
+        const line = 8;
+        doc.text('Beneficiary Name:', 25, yStart);
+        doc.text('SAASLINK TECHNOLOGIES LIMITED', 70, yStart);
+        
+        doc.text('Bank Name:', 25, yStart + line);
+        doc.text('NCBA Bank Kenya PLC', 70, yStart + line);
 
-        let yPos = 190;
-        details.forEach(([label, value]) => {
-            doc.text(label, 25, yPos);
-            doc.setFont('helvetica', 'normal');
-            doc.text(value, 65, yPos);
-            doc.setFont('helvetica', 'bold');
-            yPos += 8;
-        });
+        doc.text('Account Number:', 25, yStart + line * 2);
+        doc.text('8809220019', 70, yStart + line * 2);
 
-        doc.save(`${stableRef}.pdf`);
-        addNotification("Invoice downloaded.", "success");
+        doc.text('Branch Name:', 25, yStart + line * 3);
+        doc.text('Nairobi - Upperhill Branch', 70, yStart + line * 3);
+
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+        doc.text('MANDATORY REFERENCE:', 25, yStart + line * 5);
+        doc.text(stableRef, 80, yStart + line * 5);
+
+        doc.setFontSize(8);
+        doc.setTextColor(150);
+        doc.text('* Use the reference exactly as shown. Activation occurs instantly upon verification.', 25, 275);
+
+        doc.save(`Saaslink_Proforma_${stableRef}.pdf`);
+        addNotification("Proforma invoice generated.", "success");
     };
 
     return (
@@ -260,7 +274,7 @@ const RegisterSchool: React.FC = () => {
                         </div>
                     </div>
                     <div className="pt-10 border-t border-slate-800">
-                        <p className="text-slate-400 font-black uppercase text-[10px] tracking-widest">Total Due</p>
+                        <p className="text-slate-400 font-black uppercase text-[10px] tracking-widest">Total Commitment</p>
                         <p className="text-4xl font-black mt-1 text-primary-500">{cost.total === 0 ? 'FREE' : formatCurrency(cost.total)}</p>
                     </div>
                 </div>
@@ -272,14 +286,15 @@ const RegisterSchool: React.FC = () => {
                             <div className="w-20 h-20 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-8">
                                 <svg className="w-10 h-10 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                             </div>
-                            <h3 className="text-3xl font-black">Application Received</h3>
-                            <p className="mt-4 text-slate-600 font-bold">Your account is pending verification (Ref: {stableRef})</p>
-                            <p className="text-sm text-slate-600 mt-4 leading-relaxed">
-                                Our billing department will verify your wire transfer. This typically takes 12-24 hours.
-                                You will receive an email notification as soon as your portal is ready.
+                            <h3 className="text-3xl font-black">Order Transmitted</h3>
+                            <p className="mt-4 text-slate-600 font-bold uppercase tracking-widest text-xs">Reference: {stableRef}</p>
+                            <p className="text-sm text-slate-500 mt-6 leading-relaxed max-w-sm mx-auto">
+                                We have received your institutional application. Please complete the bank transfer using the proforma details.
+                                Once funds are verified by our billing department, your portal will be activated and login credentials dispatched.
                             </p>
                             <div className="mt-10 flex flex-col gap-3">
-                                <button onClick={() => navigate('/login')} className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black uppercase text-xs tracking-widest">Return to Sign In</button>
+                                <button onClick={downloadInvoice} className="w-full py-4 bg-slate-100 text-slate-700 rounded-2xl font-black uppercase text-xs tracking-widest border-2 border-slate-200 hover:bg-slate-200">Re-download Proforma</button>
+                                <button onClick={() => navigate('/login')} className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl">Return to Login</button>
                             </div>
                         </div>
                     ) : paymentStatus === 'success' ? (
@@ -288,18 +303,18 @@ const RegisterSchool: React.FC = () => {
                         <div className="space-y-10">
                             <div className="space-y-4">
                                 <h3 className="text-xl font-black text-slate-800 border-b pb-2 uppercase tracking-wide">Institutional Profile</h3>
-                                <input value={formData.schoolName} onChange={e=>setFormData({...formData, schoolName:e.target.value})} placeholder="School Name" className="w-full p-4 border-2 border-slate-100 rounded-2xl font-bold outline-none bg-slate-50/50 focus:border-primary-500 transition-all"/>
+                                <input value={formData.schoolName} onChange={e=>setFormData({...formData, schoolName:e.target.value})} placeholder="Legal School Name" className="w-full p-4 border-2 border-slate-100 rounded-2xl font-bold outline-none bg-slate-50/50 focus:border-primary-500 transition-all"/>
                                 <div className="grid grid-cols-2 gap-4">
-                                    <input value={formData.adminName} onChange={e=>setFormData({...formData, adminName:e.target.value})} placeholder="Administrator Name" className="p-4 border-2 border-slate-100 rounded-2xl font-bold outline-none bg-slate-50/50 focus:border-primary-500 transition-all"/>
+                                    <input value={formData.adminName} onChange={e=>setFormData({...formData, adminName:e.target.value})} placeholder="Principal Name" className="p-4 border-2 border-slate-100 rounded-2xl font-bold outline-none bg-slate-50/50 focus:border-primary-500 transition-all"/>
                                     <input value={formData.phone} onChange={e=>setFormData({...formData, phone:e.target.value})} placeholder="Phone (e.g. 07XX...)" className="p-4 border-2 border-slate-100 rounded-2xl font-bold outline-none bg-slate-50/50 focus:border-primary-500 transition-all"/>
                                 </div>
-                                <input value={formData.adminEmail} onChange={e=>setFormData({...formData, adminEmail:e.target.value})} placeholder="System Email" className="w-full p-4 border-2 border-slate-100 rounded-2xl font-bold outline-none bg-slate-50/50 focus:border-primary-500 transition-all"/>
-                                <input type="password" value={formData.password} onChange={e=>setFormData({...formData, password:e.target.value})} placeholder="Master Password" className="w-full p-4 border-2 border-slate-100 rounded-2xl font-bold outline-none bg-slate-50/50 focus:border-primary-500 transition-all"/>
+                                <input value={formData.adminEmail} onChange={e=>setFormData({...formData, adminEmail:e.target.value})} placeholder="Official System Email" className="w-full p-4 border-2 border-slate-100 rounded-2xl font-bold outline-none bg-slate-50/50 focus:border-primary-500 transition-all"/>
+                                <input type="password" value={formData.password} onChange={e=>setFormData({...formData, password:e.target.value})} placeholder="Master Admin Password" className="w-full p-4 border-2 border-slate-100 rounded-2xl font-bold outline-none bg-slate-50/50 focus:border-primary-500 transition-all"/>
                             </div>
 
                             {formData.plan !== SubscriptionPlan.FREE && (
                                 <div className="bg-slate-50 p-8 rounded-[2.5rem] border border-slate-100 shadow-inner">
-                                    <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-8 text-center">Settlement Method</h4>
+                                    <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-8 text-center">Settlement Gateway</h4>
                                     <div className="flex gap-4 mb-10">
                                         <button onClick={() => setPaymentMethod('MPESA')} className={`flex-1 p-4 rounded-2xl border-4 transition-all flex flex-col items-center gap-2 ${paymentMethod === 'MPESA' ? 'border-primary-500 bg-white' : 'border-white opacity-50'}`}>
                                             <img src="https://i.imgur.com/G5YvJ2F.png" className="h-5" alt="mpesa" /><span className="text-[10px] font-black uppercase">Instant</span>
@@ -308,7 +323,7 @@ const RegisterSchool: React.FC = () => {
                                             <svg className="w-6 h-6 text-indigo-600" fill="currentColor" viewBox="0 0 24 24"><path d="M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/></svg><span className="text-[10px] font-black uppercase">Card</span>
                                         </button>
                                         <button onClick={() => setPaymentMethod('WIRE')} className={`flex-1 p-4 rounded-2xl border-4 transition-all flex flex-col items-center gap-2 ${paymentMethod === 'WIRE' ? 'border-slate-800 bg-white' : 'border-white opacity-50'}`}>
-                                            <svg className="w-6 h-6 text-slate-800" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z" /></svg><span className="text-[10px] font-black uppercase">Bank</span>
+                                            <svg className="w-6 h-6 text-slate-800" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z" /></svg><span className="text-[10px] font-black uppercase">Bank Wire</span>
                                         </button>
                                     </div>
 
@@ -320,7 +335,7 @@ const RegisterSchool: React.FC = () => {
 
                                     {paymentMethod === 'MPESA' && (
                                         <button onClick={() => handleRegistration('MPESA')} disabled={isLoading} className="w-full py-5 bg-green-600 text-white rounded-2xl font-black text-xl hover:bg-green-700 transition-all shadow-xl shadow-green-500/20">
-                                            {isLoading ? <Spinner /> : 'Pay via M-Pesa STK'}
+                                            {isLoading ? <Spinner /> : 'Initiate M-Pesa STK'}
                                         </button>
                                     )}
 
@@ -331,16 +346,12 @@ const RegisterSchool: React.FC = () => {
                                                     <div><p className="text-[10px] font-black text-slate-400 uppercase">License Quote</p><p className="text-xl font-black text-slate-800 uppercase">{formData.plan}</p></div>
                                                     <p className="text-2xl font-black text-primary-600">{formatCurrency(cost.total)}</p>
                                                 </div>
-                                                <div className="space-y-4 mb-6">
-                                                    <div className="flex justify-between text-xs font-bold"><span className="text-slate-400">Account:</span> <span className="text-slate-800">05206707336350</span></div>
-                                                    <div className="flex justify-between text-xs font-bold"><span className="text-slate-400">Reference:</span> <span className="text-primary-700 font-black">{stableRef}</span></div>
-                                                </div>
                                                 <button type="button" onClick={downloadInvoice} className="w-full py-3 bg-slate-100 text-slate-700 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-200 transition-all border border-slate-200">
-                                                    Download Instructions
+                                                    Get Proforma PDF
                                                 </button>
                                             </div>
                                             <button onClick={() => handleRegistration('WIRE')} disabled={isLoading} className="w-full py-5 bg-slate-900 text-white rounded-2xl font-black text-xl hover:bg-black transition-all">
-                                                {isLoading ? <Spinner /> : 'Confirm Order'}
+                                                {isLoading ? <Spinner /> : 'Submit Order'}
                                             </button>
                                         </div>
                                     )}
@@ -349,7 +360,7 @@ const RegisterSchool: React.FC = () => {
 
                             {formData.plan === SubscriptionPlan.FREE && (
                                 <button onClick={() => handleRegistration()} disabled={isLoading} className="w-full py-5 bg-primary-600 text-white rounded-2xl font-black text-xl hover:bg-primary-700 transition-all shadow-xl shadow-primary-500/20">
-                                    {isLoading ? <Spinner /> : 'Provision Free Instance'}
+                                    {isLoading ? <Spinner /> : 'Activate Free Instance'}
                                 </button>
                             )}
 
@@ -358,7 +369,7 @@ const RegisterSchool: React.FC = () => {
                             <label className="flex items-start gap-4 cursor-pointer group p-4 border rounded-2xl hover:bg-slate-50 transition-all">
                                 <input type="checkbox" checked={agreedToTerms} onChange={e => setAgreedToTerms(e.target.checked)} className="mt-1 h-5 w-5 text-primary-600 rounded-lg focus:ring-primary-500" />
                                 <span className="text-xs text-slate-400 font-bold leading-relaxed group-hover:text-slate-600">
-                                    I agree to the Terms of Service and data processing policies.
+                                    I confirm that the provided institutional details are accurate and agree to Saaslink's TOS.
                                 </span>
                             </label>
                         </div>

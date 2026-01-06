@@ -15,6 +15,12 @@ export class SuperAdminController {
     return this.superAdminService.findAllSchools();
   }
 
+  @Get('schools/:id')
+  @Roles(Role.SuperAdmin)
+  findSchoolDetails(@Param('id') id: string) {
+    return this.superAdminService.findSchoolDetails(id);
+  }
+
   @Get('stats')
   @Roles(Role.SuperAdmin)
   getPlatformStats() {
