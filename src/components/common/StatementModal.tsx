@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from 'react';
 import type { Student, Transaction, SchoolInfo } from '../../types';
 import Modal from './Modal';

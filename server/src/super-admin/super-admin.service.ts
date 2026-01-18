@@ -1,3 +1,4 @@
+
 import { Injectable, NotFoundException, Logger, InternalServerErrorException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, EntityManager } from 'typeorm';
@@ -152,16 +153,18 @@ export class SuperAdminService {
     return this.subRepo.save(sub);
   }
   async getSubscriptionPayments() { return this.paymentRepo.find({ relations: ['school'], order: { createdAt: 'DESC' } }); }
-  async updateSchoolEmail(id: string, e: string) { 
+  
+  async updateSchoolEmail(id: string, email: string) { 
     const school = await this.schoolRepo.findOne({ where: { id } });
-    if (!school) throw new NotFoundException();
-    school.email = e;
+    if (!school) throw new NotFoundException('School not found.');
+    school.email = email;
     return this.schoolRepo.save(school);
   }
-  async updateSchoolPhone(id: string, p: string) { 
+
+  async updateSchoolPhone(id: string, phone: string) { 
     const school = await this.schoolRepo.findOne({ where: { id } });
-    if (!school) throw new NotFoundException();
-    school.phone = p;
+    if (!school) throw new NotFoundException('School not found.');
+    school.phone = phone;
     return this.schoolRepo.save(school);
   }
 }

@@ -47,8 +47,8 @@ export interface Student {
   // Added balance property to resolve "Property 'balance' does not exist on type 'Student'" errors.
   balance?: number;
 }
-// For creating a student, we only need the classId
-export type NewStudent = Omit<Student, 'id' | 'status' | 'admissionNumber' | 'balance'>;
+// Fix: Added 'class' to Omit and then added it back as an optional property to allow flexible student creation while maintaining the denormalized field in Student.
+export type NewStudent = Omit<Student, 'id' | 'status' | 'admissionNumber' | 'balance' | 'class'> & { class?: string };
 
 export interface SchoolClass {
     id: string;

@@ -45,7 +45,8 @@ export interface Student {
   dateOfBirth: string; // YYYY-MM-DD
   balance?: number;
 }
-export type NewStudent = Omit<Student, 'id' | 'status' | 'admissionNumber' | 'balance'>;
+// Fix: Added 'class' to Omit and then added it back as an optional property to allow flexible student creation while maintaining the denormalized field in Student.
+export type NewStudent = Omit<Student, 'id' | 'status' | 'admissionNumber' | 'balance' | 'class'> & { class?: string };
 
 export interface SchoolClass {
     id: string;

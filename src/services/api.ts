@@ -58,7 +58,6 @@ const apiFetchBlob = async (endpoint: string, options: RequestInit = {}) => {
 export const login = (credentials: {email: string, password: string}): Promise<{user: User, token: string}> => apiFetch('/auth/login', { method: 'POST', body: JSON.stringify(credentials) });
 export const logout = (): Promise<void> => apiFetch('/auth/logout', { method: 'POST' });
 export const getAuthenticatedUser = (): Promise<User> => apiFetch('/auth/me');
-// Added registerSchool and createPaymentIntent for school registration process.
 export const registerSchool = (data: any): Promise<any> => apiFetch('/auth/register-school', { method: 'POST', body: JSON.stringify(data) });
 export const createPaymentIntent = (data: { plan: string, billingCycle: string, email: string }): Promise<{ clientSecret: string, amount: number }> => apiFetch('/auth/create-payment-intent', { method: 'POST', body: JSON.stringify(data) });
 
@@ -119,46 +118,38 @@ export const getDarajaSettings = (): Promise<DarajaSettings> => apiFetch('/setti
 export const updateDarajaSettings = (data: DarajaSettings): Promise<DarajaSettings> => apiFetch('/settings/daraja', { method: 'PUT', body: JSON.stringify(data) });
 export const uploadLogo = (formData: FormData): Promise<{logoUrl: string}> => apiFetch('/settings/upload-logo', { method: 'POST', body: formData });
 
-// --- Academics (Batch) ---
-export const updateClasses = (data: SchoolClass[]): Promise<SchoolClass[]> => apiFetch('/academics/classes/batch', { method: 'PUT', body: JSON.stringify(data) });
-export const updateSubjects = (data: Subject[]): Promise<Subject[]> => apiFetch('/academics/subjects/batch', { method: 'PUT', body: JSON.stringify(data) });
-export const updateAssignments = (data: ClassSubjectAssignment[]): Promise<ClassSubjectAssignment[]> => apiFetch('/academics/class-subject-assignments/batch', { method: 'PUT', body: JSON.stringify(data) });
-export const updateTimetable = (data: TimetableEntry[]): Promise<TimetableEntry[]> => apiFetch('/academics/timetable-entries/batch', { method: 'PUT', body: JSON.stringify(data) });
-export const updateExams = (data: Exam[]): Promise<Exam[]> => apiFetch('/academics/exams/batch', { method: 'PUT', body: JSON.stringify(data) });
-export const updateGrades = (data: Grade[]): Promise<Grade[]> => apiFetch('/academics/grades/batch', { method: 'PUT', body: JSON.stringify(data) });
-export const updateAttendance = (data: AttendanceRecord[]): Promise<AttendanceRecord[]> => apiFetch('/academics/attendance-records/batch', { method: 'PUT', body: JSON.stringify(data) });
-export const updateEvents = (data: SchoolEvent[]): Promise<SchoolEvent[]> => apiFetch('/academics/events/batch', { method: 'PUT', body: JSON.stringify(data) });
-
-// --- Academics (Individual) ---
+// --- Academics ---
 export const getClasses = (): Promise<any> => apiFetch('/academics/classes');
 export const createClass = (data: any): Promise<SchoolClass> => apiFetch('/academics/classes', { method: 'POST', body: JSON.stringify(data) });
 export const updateClass = (id: string, data: any): Promise<SchoolClass> => apiFetch(`/academics/classes/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
 export const deleteClass = (id: string): Promise<void> => apiFetch(`/academics/classes/${id}`, { method: 'DELETE' });
+export const updateClasses = (data: SchoolClass[]): Promise<SchoolClass[]> => apiFetch('/academics/classes/batch', { method: 'PUT', body: JSON.stringify(data) });
 
 export const getSubjects = (): Promise<any> => apiFetch('/academics/subjects');
 export const createSubject = (data: any): Promise<Subject> => apiFetch('/academics/subjects', { method: 'POST', body: JSON.stringify(data) });
 export const updateSubject = (id: string, data: any): Promise<Subject> => apiFetch(`/academics/subjects/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
 export const deleteSubject = (id: string): Promise<void> => apiFetch(`/academics/subjects/${id}`, { method: 'DELETE' });
+export const updateSubjects = (data: Subject[]): Promise<Subject[]> => apiFetch('/academics/subjects/batch', { method: 'PUT', body: JSON.stringify(data) });
 
 export const findAllAssignments = (): Promise<any> => apiFetch('/academics/class-subject-assignments');
 export const createAssignment = (data: any): Promise<ClassSubjectAssignment> => apiFetch('/academics/class-subject-assignments', { method: 'POST', body: JSON.stringify(data) });
 export const deleteAssignment = (id: string): Promise<void> => apiFetch(`/academics/class-subject-assignments/${id}`, { method: 'DELETE' });
+export const updateAssignments = (data: ClassSubjectAssignment[]): Promise<ClassSubjectAssignment[]> => apiFetch('/academics/class-subject-assignments/batch', { method: 'PUT', body: JSON.stringify(data) });
 
 export const findAllTimetableEntries = (): Promise<TimetableEntry[]> => apiFetch('/academics/timetable-entries');
+export const updateTimetable = (data: TimetableEntry[]): Promise<TimetableEntry[]> => apiFetch('/academics/timetable-entries/batch', { method: 'PUT', body: JSON.stringify(data) });
 export const findAllExams = (): Promise<Exam[]> => apiFetch('/academics/exams');
-export const createExam = (data: any): Promise<Exam> => apiFetch('/academics/exams', { method: 'POST', body: JSON.stringify(data) });
-export const updateExam = (id: string, data: any): Promise<Exam> => apiFetch(`/academics/exams/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
-export const deleteExam = (id: string): Promise<void> => apiFetch(`/academics/exams/${id}`, { method: 'DELETE' });
-
+export const updateExams = (data: Exam[]): Promise<Exam[]> => apiFetch('/academics/exams/batch', { method: 'PUT', body: JSON.stringify(data) });
 export const getGrades = (params: any = {}): Promise<Grade[]> => apiFetch(`/academics/grades?${new URLSearchParams(cleanParams(params)).toString()}`);
+export const updateGrades = (data: Grade[]): Promise<Grade[]> => apiFetch('/academics/grades/batch', { method: 'PUT', body: JSON.stringify(data) });
 export const getAttendance = (params: any = {}): Promise<any> => apiFetch(`/academics/attendance-records?${new URLSearchParams(cleanParams(params)).toString()}`);
+export const updateAttendance = (data: AttendanceRecord[]): Promise<AttendanceRecord[]> => apiFetch('/academics/attendance-records/batch', { method: 'PUT', body: JSON.stringify(data) });
 export const getEvents = (): Promise<SchoolEvent[]> => apiFetch('/academics/events');
-
+export const updateEvents = (data: SchoolEvent[]): Promise<SchoolEvent[]> => apiFetch('/academics/events/batch', { method: 'PUT', body: JSON.stringify(data) });
 export const getGradingScale = (): Promise<GradingRule[]> => apiFetch('/academics/grading-scale');
 export const createGradingRule = (data: NewGradingRule): Promise<GradingRule> => apiFetch('/academics/grading-scale', { method: 'POST', body: JSON.stringify(data) });
 export const updateGradingRule = (id: string, data: Partial<GradingRule>): Promise<GradingRule> => apiFetch(`/academics/grading-scale/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
 export const deleteGradingRule = (id: string): Promise<void> => apiFetch(`/academics/grading-scale/${id}`, { method: 'DELETE' });
-
 export const getFeeStructure = (): Promise<FeeItem[]> => apiFetch('/academics/fee-structure');
 export const createFeeItem = (data: NewFeeItem): Promise<FeeItem> => apiFetch('/academics/fee-structure', { method: 'POST', body: JSON.stringify(data) });
 export const updateFeeItem = (id: string, data: Partial<FeeItem>): Promise<FeeItem> => apiFetch(`/academics/fee-structure/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
@@ -169,7 +160,6 @@ export const findAllAnnouncements = (): Promise<Announcement[]> => apiFetch('/co
 export const createAnnouncement = (data: NewAnnouncement): Promise<Announcement> => apiFetch('/communications/announcements', { method: 'POST', body: JSON.stringify(data) });
 export const updateAnnouncement = (id: string, data: Partial<Announcement>): Promise<Announcement> => apiFetch(`/communications/announcements/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
 export const deleteAnnouncement = (id: string): Promise<void> => apiFetch(`/communications/announcements/${id}`, { method: 'DELETE' });
-
 export const getCommunicationLogs = (params: any = {}): Promise<any> => apiFetch(`/communications/communication-logs?${new URLSearchParams(cleanParams(params)).toString()}`);
 export const createCommunicationLog = (data: NewCommunicationLog): Promise<CommunicationLog> => apiFetch('/communications/communication-logs', { method: 'POST', body: JSON.stringify(data) });
 export const createBulkCommunicationLogs = (data: NewCommunicationLog[]): Promise<CommunicationLog[]> => apiFetch('/communications/communication-logs/batch', { method: 'POST', body: JSON.stringify(data) });
@@ -177,16 +167,14 @@ export const createBulkCommunicationLogs = (data: NewCommunicationLog[]): Promis
 // --- Super Admin ---
 export const getPlatformStats = () => apiFetch('/super-admin/stats');
 export const getAllSchools = () => apiFetch('/super-admin/schools');
-export const getSchoolDetailsForAdmin = (id: string) => apiFetch(`/super-admin/schools/${id}`);
 export const getSystemHealth = () => apiFetch('/super-admin/health');
 export const getPlatformPricing = (): Promise<PlatformPricing> => apiFetch('/settings/public/pricing');
 export const updatePlatformPricing = (data: Partial<PlatformPricing>) => apiFetch('/super-admin/pricing', { method: 'PUT', body: JSON.stringify(data) });
 export const updateSchoolSubscription = (schoolId: string, payload: any) => apiFetch(`/super-admin/schools/${schoolId}/subscription`, { method: 'PATCH', body: JSON.stringify(payload) });
 export const getSubscriptionPayments = () => apiFetch('/super-admin/payments');
-export const recordManualSubscriptionPayment = (data: any) => apiFetch('/super-admin/payments/manual', { method: 'POST', body: JSON.stringify(data) });
-export const initiateSubscriptionPayment = (data: { amount: number, method: string, plan: string, transactionCode: string }) => apiFetch('/super-admin/payments/initiate', { method: 'POST', body: JSON.stringify(data) });
 export const updateSchoolEmail = (id: string, email: string) => apiFetch(`/super-admin/schools/${id}/email`, { method: 'PATCH', body: JSON.stringify({ email }) });
 export const updateSchoolPhone = (id: string, phone: string) => apiFetch(`/super-admin/schools/${id}/phone`, { method: 'PATCH', body: JSON.stringify({ phone }) });
+export const initiateSubscriptionPayment = (data: { amount: number, method: string, plan: string, transactionCode: string }): Promise<any> => apiFetch('/super-admin/payments/initiate', { method: 'POST', body: JSON.stringify(data) });
 
 // --- Library ---
 export const getBooks = (params: any = {}): Promise<any> => apiFetch(`/library/books?${new URLSearchParams(cleanParams(params)).toString()}`);
@@ -198,7 +186,6 @@ export const returnBook = (id: string): Promise<any> => apiFetch(`/library/retur
 export const markBookLost = (id: string): Promise<any> => apiFetch(`/library/lost/${id}`, { method: 'POST' });
 export const getLibraryTransactions = (params: any = {}): Promise<any> => apiFetch(`/library/transactions?${new URLSearchParams(cleanParams(params)).toString()}`);
 
-// Added fetchInitialData to satisfy DataContext.tsx dependency and reduce multiple round-trips.
 export const fetchInitialData = async () => {
     const results = await Promise.all([
         getUsers(),
@@ -223,6 +210,5 @@ export const fetchInitialData = async () => {
         getSchoolInfo(),
         getDarajaSettings()
     ]);
-    // Extract 'data' property from object results to return raw arrays where expected by frontend.
     return results.map(res => (res && typeof res === 'object' && 'data' in res && !Array.isArray(res)) ? res.data : res);
 };

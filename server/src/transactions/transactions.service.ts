@@ -51,9 +51,17 @@ export class TransactionsService {
     const student = await this.studentRepo.findOne({ where: { id: dto.studentId, schoolId: schoolId as any } });
     if (!student) throw new NotFoundException('Student record not found in your school');
 
-    // Create a single entity instance
+    // FIX: Use DeepPartial<Transaction> and create as a single object explicitly.
     const transData: DeepPartial<Transaction> = {
-        ...dto,
+        type: dto.type,
+        date: dto.date,
+        description: dto.description,
+        amount: dto.amount,
+        method: dto.method,
+        transactionCode: dto.transactionCode,
+        checkNumber: dto.checkNumber,
+        checkBank: dto.checkBank,
+        checkStatus: dto.checkStatus,
         schoolId,
         student: { id: student.id }
     };
