@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
-import type { Student, Transaction, SchoolInfo, NewTransaction } from '../../types';
+import type { Student, Transaction, NewTransaction } from '../../types';
 import { TransactionType } from '../../types';
 import Modal from './Modal';
 import StatementModal from './StatementModal';
@@ -8,15 +8,8 @@ import { useData } from '../../contexts/DataContext';
 import * as api from '../../services/api';
 import Skeleton from './Skeleton';
 
-interface StudentBillingModalProps {
-    isOpen: boolean;
-    onClose: () => void;
-    student: Student | null;
-}
-
-const StudentBillingModal: React.FC<StudentBillingModalProps> = ({ isOpen, onClose, student }) => {
-    const { addTransaction, schoolInfo } = useData();
-
+const StudentBillingModal: React.FC<{ isOpen: boolean; onClose: () => void; student: Student | null; }> = ({ isOpen, onClose, student }) => {
+    const { addTransaction, schoolInfo, formatCurrency } = useData();
     const [showAdjustmentForm, setShowAdjustmentForm] = useState(false);
     const [adjustmentType, setAdjustmentType] = useState<TransactionType.ManualDebit | TransactionType.ManualCredit>(TransactionType.ManualDebit);
     const [adjustmentAmount, setAdjustmentAmount] = useState(0);
@@ -29,26 +22,22 @@ const StudentBillingModal: React.FC<StudentBillingModalProps> = ({ isOpen, onClo
     useEffect(() => {
         if (isOpen && student) {
             setLoading(true);
-            // Fix: Replaced api.getTransactions parameter with updated type that includes studentId.
             api.getTransactions({ studentId: student.id, limit: 1000 })
                 .then(res => setTransactions(res.data))
-                .catch(err => console.error(err))
+                .catch(console.error)
                 .finally(() => setLoading(false));
         }
     }, [isOpen, student]);
 
     const handleSaveAdjustment = (e: React.FormEvent) => {
         e.preventDefault();
-        if (!student || adjustmentAmount <= 0 || !adjustmentDescription.trim()) {
-            alert('Please fill all fields for the adjustment.');
-            return;
-        }
+        if (!student || adjustmentAmount <= 0) return;
 
         const newTransaction: NewTransaction = {
             studentId: student.id,
             type: adjustmentType,
             date: new Date().toISOString().split('T')[0],
-            description: adjustmentDescription,
+            description: adjustmentDescription || 'Institutional Adjustment',
             amount: adjustmentAmount,
         };
 
@@ -60,83 +49,85 @@ const StudentBillingModal: React.FC<StudentBillingModalProps> = ({ isOpen, onClo
         });
     };
 
-    const renderLedger = () => {
-        // Sort by date ascending for running balance
+    const ledgerData = useMemo(() => {
         const sorted = [...transactions].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-        let runningBalance = 0;
-        return (
-            <table className="w-full text-left table-auto text-sm">
-                <thead className="bg-slate-50 sticky top-0">
-                    <tr>
-                        <th className="p-2 font-semibold">Date</th>
-                        <th className="p-2 font-semibold">Description</th>
-                        <th className="p-2 font-semibold text-right">Debit</th>
-                        <th className="p-2 font-semibold text-right">Credit</th>
-                        <th className="p-2 font-semibold text-right">Balance</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {sorted.map(t => {
-                        const isDebit = t.type === 'Invoice' || t.type === 'ManualDebit';
-                        if (isDebit) {
-                            runningBalance += t.amount;
-                        } else {
-                            runningBalance -= t.amount;
-                        }
-
-                        return (
-                            <tr key={t.id} className="border-b">
-                                <td className="p-2">{new Date(t.date).toLocaleDateString()}</td>
-                                <td className="p-2">{t.description}</td>
-                                <td className="p-2 text-right">{isDebit ? t.amount.toLocaleString() : '-'}</td>
-                                <td className="p-2 text-right text-green-600">{!isDebit ? t.amount.toLocaleString() : '-'}</td>
-                                <td className="p-2 text-right font-semibold">{runningBalance.toLocaleString()}</td>
-                            </tr>
-                        );
-                    })}
-                </tbody>
-                 <tfoot className="bg-slate-100 font-bold sticky bottom-0">
-                    <tr>
-                        <td colSpan={4} className="p-2 text-right">Current Balance:</td>
-                        <td className="p-2 text-right text-lg">{runningBalance.toLocaleString('en-KE', { style: 'currency', currency: 'KES' })}</td>
-                    </tr>
-                </tfoot>
-            </table>
-        );
-    };
+        let running = 0;
+        return sorted.map(t => {
+            const isDebit = t.type === TransactionType.Invoice || t.type === TransactionType.ManualDebit;
+            running += isDebit ? t.amount : -t.amount;
+            return { ...t, isDebit, runningBalance: running };
+        }).reverse(); // Most recent at top
+    }, [transactions]);
 
     if (!student || !schoolInfo) return null;
 
     return (
         <>
-            <Modal isOpen={isOpen} onClose={onClose} title={`Billing for ${student.name}`} size="3xl">
-                <div className="flex flex-col h-[70vh]">
-                    <div className="flex-shrink-0 flex items-center space-x-2 mb-4 p-2 bg-slate-100 rounded-md">
-                        <button onClick={() => setShowAdjustmentForm(!showAdjustmentForm)} className="px-3 py-1.5 bg-yellow-500 text-white text-sm font-semibold rounded-md hover:bg-yellow-600">Adjust Balance</button>
-                        <button onClick={() => setIsStatementModalOpen(true)} className="px-3 py-1.5 bg-blue-500 text-white text-sm font-semibold rounded-md hover:bg-blue-600">View Statement</button>
+            <Modal isOpen={isOpen} onClose={onClose} title={`Institutional Ledger: ${student.name}`} size="3xl">
+                <div className="flex flex-col h-[75vh]">
+                    <div className="flex justify-between items-center mb-6 px-2">
+                        <div className="flex gap-2">
+                            <button onClick={() => setShowAdjustmentForm(!showAdjustmentForm)} className="px-5 py-2 bg-slate-900 text-white rounded-xl font-black text-[10px] uppercase tracking-widest shadow-lg hover:bg-black transition-all">Manual Posting</button>
+                            <button onClick={() => setIsStatementModalOpen(true)} className="px-5 py-2 bg-white text-slate-700 border-2 border-slate-100 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-50 transition-all">Generate Statement</button>
+                        </div>
+                        <div className="text-right">
+                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Net Payable</p>
+                            <p className={`text-2xl font-black ${(ledgerData[0]?.runningBalance || 0) > 0 ? 'text-red-600' : 'text-green-600'}`}>{formatCurrency(ledgerData[0]?.runningBalance || 0)}</p>
+                        </div>
                     </div>
 
                     {showAdjustmentForm && (
-                        <form onSubmit={handleSaveAdjustment} className="p-4 border rounded-lg mb-4 bg-slate-50 space-y-3">
-                            <h4 className="font-semibold text-slate-700">New Manual Transaction</h4>
-                            <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-                                <select value={adjustmentType} onChange={e => setAdjustmentType(e.target.value as any)} className="p-2 border rounded-md">
-                                    <option value={TransactionType.ManualDebit}>Charge (Debit)</option>
-                                    <option value={TransactionType.ManualCredit}>Credit / Waiver</option>
-                                </select>
-                                <input type="text" placeholder="Description (e.g., Library Fine)" value={adjustmentDescription} onChange={e => setAdjustmentDescription(e.target.value)} className="p-2 border rounded-md md:col-span-2" required />
-                                <input type="number" placeholder="Amount" value={adjustmentAmount || ''} onChange={e => setAdjustmentAmount(parseFloat(e.target.value))} className="p-2 border rounded-md" required />
-                            </div>
-                            <div className="flex justify-end space-x-2">
-                                <button type="button" onClick={() => setShowAdjustmentForm(false)} className="px-3 py-1.5 bg-slate-200 text-slate-700 text-sm font-semibold rounded-md hover:bg-slate-300">Cancel</button>
-                                <button type="submit" className="px-3 py-1.5 bg-primary-600 text-white text-sm font-semibold rounded-md hover:bg-primary-700">Save Adjustment</button>
-                            </div>
-                        </form>
+                        <div className="mb-6 p-6 bg-slate-50 rounded-3xl border-2 border-slate-100 animate-fade-in-up">
+                            <form onSubmit={handleSaveAdjustment} className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div className="space-y-1">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase">Entry Class</label>
+                                    <select value={adjustmentType} onChange={e => setAdjustmentType(e.target.value as any)} className="w-full p-3 border-2 border-white rounded-xl font-bold bg-white outline-none">
+                                        <option value={TransactionType.ManualDebit}>Charge (Debit)</option>
+                                        <option value={TransactionType.ManualCredit}>Credit (Waiver)</option>
+                                    </select>
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase">Amount</label>
+                                    <input type="number" value={adjustmentAmount || ''} onChange={e => setAdjustmentAmount(parseFloat(e.target.value))} className="w-full p-3 border-2 border-white rounded-xl font-bold bg-white outline-none" required />
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase">Description</label>
+                                    <div className="flex gap-2">
+                                        <input type="text" value={adjustmentDescription} onChange={e => setAdjustmentDescription(e.target.value)} className="flex-1 p-3 border-2 border-white rounded-xl font-bold bg-white outline-none" required />
+                                        <button type="submit" className="p-3 bg-primary-600 text-white rounded-xl shadow-lg hover:bg-primary-700 transition-all"><svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7"/></svg></button>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
                     )}
 
-                    <div className="flex-grow overflow-y-auto border rounded-lg">
-                        {loading ? <div className="p-4 space-y-2"><Skeleton className="h-8 w-full"/><Skeleton className="h-8 w-full"/><Skeleton className="h-8 w-full"/></div> : 
-                        transactions.length > 0 ? renderLedger() : <p className="text-center p-8 text-slate-500">No transactions found for this student.</p>}
+                    <div className="flex-grow overflow-hidden border-2 border-slate-100 rounded-[2rem] bg-white shadow-inner">
+                        <div className="h-full overflow-y-auto custom-scrollbar">
+                            {loading ? <div className="p-10"><Skeleton className="h-40 w-full rounded-2xl"/></div> : (
+                                <table className="w-full text-left">
+                                    <thead className="bg-slate-900 text-white sticky top-0 z-10">
+                                        <tr>
+                                            <th className="px-6 py-4 font-black uppercase tracking-widest text-[9px]">Date</th>
+                                            <th className="px-6 py-4 font-black uppercase tracking-widest text-[9px]">Description</th>
+                                            <th className="px-6 py-4 font-black uppercase tracking-widest text-[9px] text-right">Debit</th>
+                                            <th className="px-6 py-4 font-black uppercase tracking-widest text-[9px] text-right">Credit</th>
+                                            <th className="px-6 py-4 font-black uppercase tracking-widest text-[9px] text-right bg-slate-800">Balance</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-50">
+                                        {ledgerData.map(t => (
+                                            <tr key={t.id} className="hover:bg-slate-50 transition-colors">
+                                                <td className="px-6 py-4 font-bold text-slate-400 text-[10px]">{new Date(t.date).toLocaleDateString()}</td>
+                                                <td className="px-6 py-4 font-black text-slate-700 uppercase text-xs">{t.description}</td>
+                                                <td className="px-6 py-4 text-right font-black text-slate-400">{t.isDebit ? t.amount.toLocaleString() : '-'}</td>
+                                                <td className="px-6 py-4 text-right font-black text-primary-600">{!t.isDebit ? t.amount.toLocaleString() : '-'}</td>
+                                                <td className="px-6 py-4 text-right font-black text-slate-900 bg-slate-50/50">{t.runningBalance.toLocaleString()}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            )}
+                        </div>
                     </div>
                 </div>
             </Modal>
