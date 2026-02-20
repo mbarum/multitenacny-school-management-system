@@ -8,6 +8,8 @@ import Login from './components/auth/Login';
 import LandingPage from './components/landing/LandingPage';
 import RegisterSchool from './components/auth/RegisterSchool';
 import SubscriptionLocked from './components/auth/SubscriptionLocked';
+import PrivacyPolicy from './views/PrivacyPolicy';
+import TermsOfService from './views/TermsOfService';
 import { useData } from './contexts/DataContext';
 import { Notification, SubscriptionStatus } from './types';
 
@@ -82,7 +84,7 @@ const App: React.FC = () => {
         return <div className="h-screen w-screen flex justify-center items-center"><Spinner /></div>;
     }
 
-    // 1. UNAUTHENTICATED ROUTING
+    // 1. UNAUTHENTICATED ROUTING (White-listed public pages)
     if (!currentUser) {
         return (
             <div className="min-h-screen bg-slate-50">
@@ -90,6 +92,8 @@ const App: React.FC = () => {
                 <Routes>
                     <Route path="/login" element={<Login />} />
                     <Route path="/register" element={<Suspense fallback={<Spinner />}><RegisterSchool /></Suspense>} />
+                    <Route path="/privacy" element={<PrivacyPolicy />} />
+                    <Route path="/terms" element={<TermsOfService />} />
                     <Route path="/" element={<LandingPage onNavigate={(path) => window.location.href = path} />} />
                     <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>
@@ -97,7 +101,7 @@ const App: React.FC = () => {
         );
     }
 
-    // 2. SUBSCRIPTION LOCKOUT CHECK (Except for SuperAdmin)
+    // 2. SUBSCRIPTION LOCKOUT CHECK (Strictly blocks all dashboard access)
     const isSubscriptionExpired = schoolInfo?.subscription && 
         new Date(schoolInfo.subscription.endDate) < new Date() && 
         schoolInfo.subscription.status !== SubscriptionStatus.ACTIVE;
@@ -121,11 +125,8 @@ const App: React.FC = () => {
                 <main className="flex-1 overflow-y-auto overflow-x-hidden">
                     <Suspense fallback={<div className="h-full w-full flex items-center justify-center"><Spinner /></div>}>
                         <Routes>
-                            {/* Super Admin */}
-                            <Route path="/super-admin" element={<SuperAdminDashboard />} />
-
-                            {/* Main Admin / Accountant Routes */}
                             <Route path="/" element={<Dashboard />} />
+                            <Route path="/super-admin" element={<SuperAdminDashboard />} />
                             <Route path="/students" element={<StudentsView />} />
                             <Route path="/fees" element={<FeeManagementView />} />
                             <Route path="/expenses" element={<ExpensesView />} />
@@ -140,21 +141,17 @@ const App: React.FC = () => {
                             <Route path="/reporting" element={<Reporting />} />
                             <Route path="/library" element={<LibraryView />} />
                             <Route path="/settings" element={<SettingsView />} />
-
-                            {/* Teacher Routes */}
                             <Route path="/teacher" element={<TeacherDashboard />} />
                             <Route path="/teacher-my-class" element={<MyClassView />} />
                             <Route path="/teacher-attendance" element={<TeacherAttendanceView />} />
                             <Route path="/teacher-examinations" element={<TeacherExaminationsView />} />
                             <Route path="/teacher-communication" element={<TeacherCommunicationView />} />
-                            
-                            {/* Parent Routes */}
                             <Route path="/parent" element={<ParentDashboard />} />
                             <Route path="/parent-child-details" element={<ParentChildDetails />} />
                             <Route path="/parent-finances" element={<ParentFinances />} />
                             <Route path="/parent-announcements" element={<ParentAnnouncementsView />} />
-
-                            {/* Fallback */}
+                            <Route path="/privacy" element={<PrivacyPolicy />} />
+                            <Route path="/terms" element={<TermsOfService />} />
                             <Route path="*" element={<Navigate to="/" replace />} />
                         </Routes>
                     </Suspense>

@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
 import Pricing from './Pricing';
 import { SubscriptionPlan } from '../../types';
+import { Link } from 'react-router-dom';
 
 interface LandingPageProps {
     onNavigate: (path: string, state?: any) => void;
@@ -29,7 +30,7 @@ const CookieBanner: React.FC = () => {
     return (
         <div className="fixed bottom-0 left-0 right-0 bg-slate-900 text-white p-4 z-50 shadow-inner flex flex-col sm:flex-row justify-between items-center gap-4 border-t border-slate-700">
             <div className="text-sm text-slate-300 max-w-3xl">
-                We use cookies to enhance your experience, analyze site traffic, and serve personalized content. By clicking "Accept", you consent to our use of cookies in accordance with our <a href="#" className="underline text-primary-400 hover:text-primary-300">Cookie Policy</a>.
+                We use cookies to enhance your experience, analyze site traffic, and serve personalized content. By clicking "Accept", you consent to our use of cookies in accordance with our <Link to="/privacy" className="underline text-primary-400 hover:text-primary-300">Cookie Policy</Link>.
             </div>
             <div className="flex gap-3">
                 <button onClick={() => setVisible(false)} className="px-4 py-2 text-sm text-slate-300 hover:text-white transition-colors">Decline</button>
@@ -171,7 +172,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate }) => {
                         {/* Logo */}
                         <div className="flex items-center cursor-pointer group" onClick={() => window.scrollTo(0,0)}>
                             <div className="bg-gradient-to-tr from-primary-700 to-primary-500 rounded-xl p-2 shadow-lg shadow-primary-500/20 group-hover:scale-105 transition-transform duration-300">
-                                <svg className="h-6 w-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                <svg className="h-6 w-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
                                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
                                 </svg>
                             </div>
@@ -262,7 +263,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate }) => {
                         We automate M-Pesa payments, academic reports, and accounting so you can focus on education.
                     </p>
                     
-                    <div className="flex flex-col sm:flex-row justify-center gap-4 mb-16">
+                    <div className="flex flex-col sm:flex-row justify-center gap-4 mb-16 relative z-20">
                         <button 
                             onClick={() => handleSelectPlan(SubscriptionPlan.BASIC, 'MONTHLY')}
                             className="px-8 py-4 bg-primary-600 text-white rounded-xl text-lg font-bold shadow-xl shadow-primary-600/30 hover:bg-primary-700 hover:-translate-y-1 transition-all flex items-center justify-center gap-2"
@@ -275,69 +276,106 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate }) => {
                         </button>
                     </div>
 
-                    {/* CSS Browser Mockup */}
-                    <div className="relative max-w-5xl mx-auto mt-10 animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
-                        <div className="bg-slate-900 rounded-t-2xl h-8 flex items-center px-4 space-x-2">
-                            <div className="w-3 h-3 rounded-full bg-red-500"></div>
-                            <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
-                            <div className="w-3 h-3 rounded-full bg-green-500"></div>
-                        </div>
-                        <div className="bg-white border-x border-b border-slate-200 rounded-b-2xl shadow-2xl p-2 sm:p-4">
-                            {/* Mock UI Structure */}
-                            <div className="grid grid-cols-12 gap-4 h-64 sm:h-96 bg-slate-50 rounded-xl p-4 overflow-hidden border border-slate-100">
-                                {/* Sidebar Mock */}
-                                <div className="hidden sm:block col-span-2 bg-white rounded-lg shadow-sm border border-slate-100 h-full p-3 space-y-3">
-                                    <div className="h-8 w-8 bg-primary-100 rounded-lg mb-6"></div>
-                                    <div className="h-3 w-3/4 bg-slate-100 rounded"></div>
-                                    <div className="h-3 w-full bg-slate-100 rounded"></div>
-                                    <div className="h-3 w-5/6 bg-slate-100 rounded"></div>
-                                    <div className="h-3 w-4/5 bg-primary-50 rounded"></div>
+                    {/* Sophisticated UI Showcase */}
+                    <div className="relative max-w-5xl mx-auto mt-20 group animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
+                        {/* Browser Main Window */}
+                        <div className="relative z-10 bg-white rounded-3xl shadow-[0_32px_64px_-12px_rgba(0,0,0,0.15)] border border-slate-200 overflow-hidden transform group-hover:-translate-y-2 transition-transform duration-700 ease-out">
+                            <div className="bg-slate-900 h-10 flex items-center px-4 space-x-2">
+                                <div className="w-2.5 h-2.5 rounded-full bg-[#FF5F56]"></div>
+                                <div className="w-2.5 h-2.5 rounded-full bg-[#FFBD2E]"></div>
+                                <div className="w-2.5 h-2.5 rounded-full bg-[#27C93F]"></div>
+                                <div className="flex-1 flex justify-center">
+                                    <div className="bg-slate-800 rounded-md px-10 py-1 text-[10px] text-slate-400 font-medium">saaslink.cloud/dashboard</div>
                                 </div>
-                                {/* Main Content Mock */}
-                                <div className="col-span-12 sm:col-span-10 flex flex-col gap-4">
-                                    {/* Header Mock */}
-                                    <div className="flex justify-between items-center">
-                                        <div className="h-6 w-1/3 bg-white rounded shadow-sm border border-slate-100"></div>
-                                        <div className="flex gap-2">
-                                            <div className="h-8 w-8 rounded-full bg-white shadow-sm border border-slate-100"></div>
-                                            <div className="h-8 w-24 rounded bg-primary-600 shadow-md"></div>
+                            </div>
+                            
+                            <div className="flex h-[450px] sm:h-[600px]">
+                                {/* Sidebar Mockup */}
+                                <div className="hidden lg:flex w-20 sm:w-64 bg-slate-50 border-r border-slate-100 flex-col py-6 px-4 space-y-6">
+                                    <div className="flex items-center space-x-3 px-2 mb-4">
+                                        <div className="w-8 h-8 bg-primary-600 rounded-lg shrink-0"></div>
+                                        <div className="h-3 w-24 bg-slate-200 rounded"></div>
+                                    </div>
+                                    {[1,2,3,4,5].map(i => (
+                                        <div key={i} className="flex items-center space-x-3 px-2">
+                                            <div className="w-5 h-5 bg-slate-200 rounded shrink-0"></div>
+                                            <div className="h-2 w-32 bg-slate-100 rounded"></div>
+                                        </div>
+                                    ))}
+                                </div>
+                                
+                                {/* Content Area Mockup */}
+                                <div className="flex-1 p-6 sm:p-10 overflow-hidden bg-white">
+                                    <div className="flex justify-between items-center mb-10">
+                                        <div className="h-6 w-48 bg-slate-100 rounded-lg"></div>
+                                        <div className="flex items-center space-x-4">
+                                            <div className="w-8 h-8 rounded-full bg-slate-100"></div>
+                                            <div className="w-24 h-8 rounded-xl bg-primary-600"></div>
                                         </div>
                                     </div>
-                                    {/* Stats Mock */}
-                                    <div className="grid grid-cols-3 gap-4">
-                                        <div className="h-24 bg-white rounded-lg shadow-sm border border-slate-100 p-3 flex flex-col justify-between">
-                                            <div className="h-8 w-8 bg-green-100 rounded-full"></div>
-                                            <div className="h-4 w-1/2 bg-slate-100 rounded"></div>
-                                        </div>
-                                        <div className="h-24 bg-white rounded-lg shadow-sm border border-slate-100 p-3 flex flex-col justify-between">
-                                            <div className="h-8 w-8 bg-blue-100 rounded-full"></div>
-                                            <div className="h-4 w-1/2 bg-slate-100 rounded"></div>
-                                        </div>
-                                        <div className="h-24 bg-white rounded-lg shadow-sm border border-slate-100 p-3 flex flex-col justify-between">
-                                            <div className="h-8 w-8 bg-orange-100 rounded-full"></div>
-                                            <div className="h-4 w-1/2 bg-slate-100 rounded"></div>
-                                        </div>
-                                    </div>
-                                    {/* Table Mock */}
-                                    <div className="flex-1 bg-white rounded-lg shadow-sm border border-slate-100 p-4 space-y-3">
-                                        <div className="flex justify-between mb-4">
-                                            <div className="h-4 w-1/4 bg-slate-100 rounded"></div>
-                                            <div className="h-4 w-16 bg-slate-100 rounded"></div>
-                                        </div>
-                                        {[1,2,3,4].map(i => (
-                                            <div key={i} className="flex justify-between items-center py-2 border-b border-slate-50 last:border-0">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="h-8 w-8 rounded-full bg-slate-100"></div>
-                                                    <div className="space-y-1">
-                                                        <div className="h-2 w-24 bg-slate-100 rounded"></div>
-                                                        <div className="h-2 w-16 bg-slate-50 rounded"></div>
-                                                    </div>
-                                                </div>
-                                                <div className="h-2 w-12 bg-green-100 rounded"></div>
+                                    
+                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-10">
+                                        {[
+                                            { color: 'bg-green-100', text: 'Revenue' },
+                                            { color: 'bg-blue-100', text: 'Students' },
+                                            { color: 'bg-orange-100', text: 'Fees Due' }
+                                        ].map((card, i) => (
+                                            <div key={i} className="p-6 bg-white border border-slate-100 rounded-2xl shadow-sm">
+                                                <div className={`w-10 h-10 ${card.color} rounded-xl mb-4`}></div>
+                                                <div className="h-2 w-16 bg-slate-100 rounded mb-2"></div>
+                                                <div className="h-4 w-24 bg-slate-200 rounded"></div>
                                             </div>
                                         ))}
                                     </div>
+                                    
+                                    <div className="bg-slate-50 rounded-2xl p-6 border border-slate-100 h-full">
+                                        <div className="flex justify-between mb-6">
+                                            <div className="h-3 w-32 bg-slate-200 rounded"></div>
+                                            <div className="h-3 w-16 bg-slate-200 rounded"></div>
+                                        </div>
+                                        <div className="space-y-4">
+                                            {[1,2,3,4].map(i => (
+                                                <div key={i} className="flex items-center justify-between py-3 border-b border-white">
+                                                    <div className="flex items-center space-x-4">
+                                                        <div className="w-10 h-10 rounded-full bg-white border border-slate-100"></div>
+                                                        <div className="space-y-2">
+                                                            <div className="h-2 w-32 bg-slate-200 rounded"></div>
+                                                            <div className="h-1.5 w-20 bg-slate-100 rounded"></div>
+                                                        </div>
+                                                    </div>
+                                                    <div className="h-5 w-20 bg-green-100 rounded-lg"></div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
                                 </div>
+                            </div>
+                        </div>
+
+                        {/* Floating Action Cards */}
+                        {/* 1. M-Pesa Confirmation Bubble */}
+                        <div className="absolute -top-10 -right-4 sm:-right-10 z-20 animate-fade-in-up" style={{ animationDelay: '0.8s' }}>
+                            <div className="bg-white p-4 rounded-2xl shadow-2xl border border-slate-100 flex items-center gap-4">
+                                <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center text-white">
+                                    <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+                                </div>
+                                <div>
+                                    <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">M-Pesa Reconciliation</p>
+                                    <p className="text-sm font-black text-slate-800">Payment Verified: KES 14,500</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* 2. AI Insight Bubble */}
+                        <div className="absolute -bottom-6 -left-4 sm:-left-12 z-20 animate-fade-in-up" style={{ animationDelay: '1.2s' }}>
+                            <div className="bg-slate-900 p-5 rounded-2xl shadow-2xl border border-slate-700 max-w-xs text-left">
+                                <div className="flex items-center gap-2 mb-3">
+                                    <div className="w-2 h-2 bg-primary-500 rounded-full animate-pulse"></div>
+                                    <span className="text-[9px] font-black text-primary-400 uppercase tracking-[0.2em]">Gemini AI Assistant</span>
+                                </div>
+                                <p className="text-xs text-slate-300 font-medium leading-relaxed">
+                                    "I've detected a 12% increase in fee collection efficiency this term compared to last year."
+                                </p>
                             </div>
                         </div>
                     </div>
@@ -550,8 +588,8 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate }) => {
                         <ul className="space-y-2 text-sm text-slate-600">
                             <li><a href="#features" className="hover:text-primary-600">Features</a></li>
                             <li><a href="#pricing" className="hover:text-primary-600">Pricing</a></li>
-                            <li><a href="/login" className="hover:text-primary-600">Admin Login</a></li>
-                            <li><a href="/register" className="hover:text-primary-600">Register School</a></li>
+                            <li><Link to="/login" className="hover:text-primary-600">Admin Login</Link></li>
+                            <li><Link to="/register" className="hover:text-primary-600">Register School</Link></li>
                         </ul>
                     </div>
                     <div>
@@ -566,8 +604,8 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate }) => {
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 border-t border-slate-100 flex flex-col md:flex-row justify-between items-center text-sm text-slate-500">
                     <p>&copy; {new Date().getFullYear()} Saaslink Technologies. All rights reserved.</p>
                     <div className="flex space-x-6 mt-4 md:mt-0">
-                        <a href="#" className="hover:text-slate-900">Privacy Policy</a>
-                        <a href="#" className="hover:text-slate-900">Terms of Service</a>
+                        <Link to="/privacy" className="hover:text-slate-900">Privacy Policy</Link>
+                        <Link to="/terms" className="hover:text-slate-900">Terms of Service</Link>
                     </div>
                 </div>
             </footer>

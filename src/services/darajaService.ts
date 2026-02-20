@@ -1,5 +1,3 @@
-
-
 export interface StkPushSuccessResponse {
     MerchantRequestID: string;
     CheckoutRequestID: string;
@@ -8,6 +6,9 @@ export interface StkPushSuccessResponse {
     CustomerMessage: string;
 }
 
+/**
+ * Formats Kenyan phone numbers to the required 254XXXXXXXXX format.
+ */
 export const formatPhoneNumber = (phone: string): string | null => {
     if (!phone) return null;
     const cleaned = phone.replace(/\D/g, '');
@@ -18,45 +19,50 @@ export const formatPhoneNumber = (phone: string): string | null => {
 };
 
 /**
- * Initiates an M-Pesa STK Push by calling the application's backend.
- * @param amount The amount to be paid.
- * @param phoneNumber The recipient's phone number.
- * @param accountReference A reference for the transaction, e.g., student admission number.
- * @returns A promise that resolves with the initial response from the backend.
+ * Initiates an M-Pesa STK Push via the backend.
+ * 
+ * @param amount Total KES amount
+ * @param phoneNumber Payer's phone number
+ * @param accountReference The account identifier (e.g., Admission Number)
+ * @param type 'SUBSCRIPTION' for platform revenue or 'FEES' for school revenue
  */
 export const initiateSTKPush = async (
     amount: number, 
     phoneNumber: string, 
-    accountReference: string
+    accountReference: string,
+    type: 'SUBSCRIPTION' | 'FEES' = 'FEES'
 ): Promise<StkPushSuccessResponse> => {
     const formattedPhone = formatPhoneNumber(phoneNumber);
     if (!formattedPhone) {
-        throw new Error(`Invalid phone number format: ${phoneNumber}. It must be a valid Safaricom number.`);
+        throw new Error(`Invalid Safaricom number: ${phoneNumber}. Please use 07XXXXXXXX format.`);
     }
+    
     if (amount < 1) {
-        throw new Error("Amount must be at least KES 1.");
+        throw new Error("Transaction amount must be at least KES 1.");
     }
 
-    // The frontend should NEVER have API keys. It calls its own backend, which securely holds the keys.
-    const response = await fetch('/api/mpesa/stk-push', {
+    // Determine the correct endpoint based on payment context
+    const endpoint = type === 'SUBSCRIPTION' ? '/api/super-admin/payments/stk-push' : '/api/mpesa/stk-push';
+
+    const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            // Auth token would be sent automatically if using a shared fetch wrapper
+            'Authorization': `Bearer ${localStorage.getItem('authToken')}`
         },
         body: JSON.stringify({
-            amount,
+            amount: Math.round(amount),
             phone: formattedPhone,
-            accountReference,
+            accountReference: accountReference.substring(0, 12), // Safaricom limit
+            description: type === 'SUBSCRIPTION' ? 'Saaslink License' : 'School Fee Payment'
         }),
     });
 
     const responseData = await response.json();
 
     if (!response.ok) {
-        throw new Error(responseData.message || 'Failed to initiate STK Push.');
+        throw new Error(responseData.message || 'The M-Pesa gateway rejected the request. Please check your credentials.');
     }
 
-    // The backend's response after successfully calling Daraja
     return responseData;
 };

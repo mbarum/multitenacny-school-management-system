@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
@@ -99,7 +98,10 @@ const Dashboard: React.FC = () => {
                                     <CartesianGrid strokeDasharray="3 3" vertical={false} />
                                     <XAxis dataKey="name" tick={{ fill: '#64748b' }} />
                                     <YAxis tick={{ fill: '#64748b' }} tickFormatter={(value) => new Intl.NumberFormat('en-US', { notation: 'compact', compactDisplay: 'short' }).format(value)} />
-                                    <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '0.75rem' }} formatter={(value: number) => formatCurrency(value)} />
+                                    <Tooltip 
+                                        contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '0.75rem' }} 
+                                        formatter={(value: any) => formatCurrency(Number(value || 0))} 
+                                    />
                                     <Legend />
                                     <Bar dataKey="income" fill="#346955" name="Income (KES)" radius={[4, 4, 0, 0]} />
                                     <Bar dataKey="expenses" fill="#475569" name="Expenses (KES)" radius={[4, 4, 0, 0]}/>
@@ -123,13 +125,14 @@ const Dashboard: React.FC = () => {
                                         outerRadius={80} 
                                         fill="#8884d8" 
                                         label={({ cx, cy, midAngle, innerRadius, outerRadius, percent }: any) => {
+                                            if (percent === undefined || midAngle === undefined) return null;
                                             const RADIAN = Math.PI / 180;
                                             const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
                                             const x = cx + radius * Math.cos(-midAngle * RADIAN);
                                             const y = cy + radius * Math.sin(-midAngle * RADIAN);
-                                            return (percent || 0) > 0.05 ? (
+                                            return percent > 0.05 ? (
                                                 <text x={x} y={y} fill="white" textAnchor="middle" dominantBaseline="central" className="text-[10px] font-bold">
-                                                    {`${((percent || 0) * 100).toFixed(0)}%`}
+                                                    {`${(percent * 100).toFixed(0)}%`}
                                                 </text>
                                             ) : null;
                                         }}
@@ -138,7 +141,7 @@ const Dashboard: React.FC = () => {
                                             <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                                         ))}
                                     </Pie>
-                                    <Tooltip formatter={(value: number) => formatCurrency(value)}/>
+                                    <Tooltip formatter={(value: any) => formatCurrency(Number(value || 0))}/>
                                     <Legend wrapperStyle={{ paddingTop: '10px' }} />
                                 </PieChart>
                             </ResponsiveContainer>

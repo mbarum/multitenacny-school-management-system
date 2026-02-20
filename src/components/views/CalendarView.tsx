@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { SchoolEvent } from '../../types';
@@ -6,6 +5,12 @@ import { EventCategory } from '../../types';
 import Modal from '../common/Modal';
 import { useData } from '../../contexts/DataContext';
 import * as api from '../../services/api';
+
+interface CalendarDay {
+    key: string | number;
+    date: Date | null;
+    events: SchoolEvent[];
+}
 
 const CalendarView: React.FC = () => {
     const { addNotification } = useData();
@@ -15,13 +20,11 @@ const CalendarView: React.FC = () => {
     const [selectedEvent, setSelectedEvent] = useState<SchoolEvent | null>(null);
     const [modalDate, setModalDate] = useState<Date | null>(null);
 
-    // Queries
     const { data: events = [] } = useQuery({
         queryKey: ['events'],
         queryFn: () => api.getEvents(),
     });
 
-    // Mutations
     const updateEventsMutation = useMutation({
         mutationFn: (events: SchoolEvent[]) => api.updateEvents(events),
         onSuccess: () => {
@@ -37,17 +40,23 @@ const CalendarView: React.FC = () => {
     const daysInMonth = endOfMonth.getDate();
 
     const calendarDays = useMemo(() => {
-        const days = [];
+        const days: CalendarDay[] = [];
         for (let i = 0; i < startDay; i++) {
             days.push({ key: `empty-${i}`, date: null, events: [] });
         }
         for (let i = 1; i <= daysInMonth; i++) {
             const date = new Date(currentDate.getFullYear(), currentDate.getMonth(), i);
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            const dateString = `${year}-${month}-${day}`;
+
             const dayEvents = events.filter((e: SchoolEvent) => {
-                const startDate = new Date(e.startDate);
-                const endDate = e.endDate ? new Date(e.endDate) : startDate;
-                return date >= startDate && date <= endDate;
+                const start = e.startDate;
+                const end = e.endDate || start;
+                return dateString >= start && dateString <= end;
             });
+
             days.push({ key: i, date, events: dayEvents });
         }
         return days;
@@ -117,10 +126,17 @@ const CalendarView: React.FC = () => {
 };
 
 const EventModal: React.FC<any> = ({ isOpen, onClose, onSave, onDelete, event, date }) => {
+    const toLocalISODate = (d: Date) => {
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    };
+
     const [formData, setFormData] = useState({
         title: event?.title || '',
         description: event?.description || '',
-        startDate: event?.startDate || date?.toISOString().split('T')[0] || '',
+        startDate: event?.startDate || (date ? toLocalISODate(date) : ''),
         endDate: event?.endDate || '',
         category: event?.category || EventCategory.General,
     });

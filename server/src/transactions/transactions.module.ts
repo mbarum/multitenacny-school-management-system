@@ -12,6 +12,7 @@ import { School } from '../entities/school.entity';
 import { DarajaSetting } from '../entities/daraja-setting.entity';
 import { PlatformSetting } from '../entities/platform-setting.entity';
 import { EventsModule } from '../events/events.module';
+import { CommunicationsModule } from '../communications/communications.module';
 
 @Module({
   imports: [
@@ -25,9 +26,11 @@ import { EventsModule } from '../events/events.module';
       DarajaSetting,
       PlatformSetting
     ]),
-    EventsModule
+    EventsModule,
+    CommunicationsModule
   ],
   controllers: [TransactionsController],
-  providers: [TransactionsService]
+  providers: [TransactionsService],
+  exports: [TransactionsService]
 })
 export class TransactionsModule {}

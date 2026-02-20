@@ -9,6 +9,7 @@ import { User } from '../entities/user.entity';
 import { PlatformSetting } from '../entities/platform-setting.entity';
 import { SubscriptionPayment } from '../entities/subscription-payment.entity';
 import { CommunicationsModule } from '../communications/communications.module';
+import { TransactionsModule } from '../transactions/transactions.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { CommunicationsModule } from '../communications/communications.module';
       SubscriptionPayment
     ]),
     CommunicationsModule, // Resolved: CommunicationsService is now available in this context
+    TransactionsModule,
   ],
   controllers: [SuperAdminController],
   providers: [SuperAdminService],

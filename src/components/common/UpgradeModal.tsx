@@ -110,7 +110,7 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ isOpen, onClose }) => {
             if (paymentMethod === 'MPESA') {
                 addNotification("Requesting STK Push...", "info");
                 const ref = `UPG_PREM_${schoolInfo.id.substring(0, 8)}`;
-                await initiateSTKPush(totalWithVat, schoolInfo.phone || '', ref);
+                await initiateSTKPush(totalWithVat, schoolInfo.phone || '', ref, 'SUBSCRIPTION');
                 addNotification("Payment request dispatched. Portal will unlock instantly.", "success");
                 onClose();
             } else {

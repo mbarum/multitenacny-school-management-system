@@ -60,6 +60,12 @@ export class SuperAdminController {
       return this.superAdminService.recordManualPayment(body.schoolId, body);
   }
 
+  @Post('payments/stk-push')
+  @Roles(Role.Admin, Role.Accountant)
+  initiateStkPush(@Request() req: any, @Body() body: { amount: number, phone: string, accountReference: string }) {
+      return this.superAdminService.initiateStkPush(req.user.schoolId, body);
+  }
+
   @Post('payments/initiate')
   @Roles(Role.Admin, Role.Accountant)
   initiatePayment(@Request() req: any, @Body() data: any) {

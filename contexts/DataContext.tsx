@@ -1,4 +1,4 @@
-import React, { createContext, useState, useEffect, useContext, useCallback } from 'react';
+import React, { createContext, useState, useEffect, useContext, useCallback, useMemo } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import * as api from '../services/api';
@@ -6,11 +6,12 @@ import { Role, Currency } from '../types';
 import { EXCHANGE_RATES } from '../utils/currency';
 import type { 
     User, Student, Staff, SchoolInfo, Notification, DarajaSettings, 
-    SchoolClass, Announcement, Payroll, PayrollItem, FeeItem, GradingRule,
+    SchoolClass, Subject, Announcement, Payroll, PayrollItem, FeeItem, GradingRule,
     CommunicationLog, AttendanceRecord, TimetableEntry, ClassSubjectAssignment,
-    Exam, Grade, SchoolEvent, Transaction, Expense,
+    Exam, Grade, Transaction, Expense,
     NewStudent, NewStaff, NewTransaction, NewExpense, NewPayrollItem,
-    NewAnnouncement, NewCommunicationLog, NewUser, NewGradingRule, NewFeeItem, MpesaC2BTransaction
+    NewAnnouncement, NewCommunicationLog, NewUser, NewGradingRule, NewFeeItem,
+    Book, NewBook
 } from '../types';
 import type { NavItem } from '../constants';
 import { NAVIGATION_ITEMS, TEACHER_NAVIGATION_ITEMS, PARENT_NAVIGATION_ITEMS, SUPER_ADMIN_NAVIGATION_ITEMS } from '../constants';
@@ -27,7 +28,8 @@ interface IDataContext {
     setIsMobileSidebarOpen: React.Dispatch<React.SetStateAction<boolean>>;
     notifications: Notification[];
     addNotification: (message: string, type?: 'success' | 'error' | 'info') => void;
-    handleLogin: (user: User) => void;
+    // Fix: Updated handleLogin signature to accept token
+    handleLogin: (user: User, token?: string) => void;
     handleLogout: () => void;
     getNavigationItems: () => NavItem[];
     openIdCardModal: (person: Student | Staff, type: 'student' | 'staff') => void;
@@ -41,6 +43,29 @@ interface IDataContext {
     setSelectedChild: (child: Student | null) => void;
     assignedClass: SchoolClass | null;
     
+    // Data collections used by views
+    students: Student[];
+    classes: SchoolClass[];
+    subjects: Subject[];
+    classSubjectAssignments: ClassSubjectAssignment[];
+    exams: Exam[];
+    staff: Staff[];
+    grades: Grade[];
+    attendanceRecords: AttendanceRecord[];
+    timetableEntries: TimetableEntry[];
+    payrollItems: PayrollItem[];
+    payrollHistory: Payroll[];
+    transactions: Transaction[];
+    expenses: Expense[];
+    announcements: Announcement[];
+    communicationLogs: CommunicationLog[];
+
+    // Fix: Added missing properties to interface
+    users: User[];
+    gradingScale: GradingRule[];
+    feeStructure: FeeItem[];
+    studentFinancials: Record<string, { balance: number, lastPaymentDate?: string }>;
+
     // API Wrappers
     addStudent: (data: NewStudent) => Promise<Student>;
     updateStudent: (id: string, data: Partial<Student>) => Promise<any>;
@@ -74,6 +99,14 @@ interface IDataContext {
     addCommunicationLog: (data: NewCommunicationLog) => Promise<CommunicationLog>;
     addBulkCommunicationLogs: (data: NewCommunicationLog[]) => Promise<CommunicationLog[]>;
     
+    // Library
+    addBook: (data: NewBook) => Promise<any>;
+    updateBook: (id: string, data: Partial<Book>) => Promise<any>;
+    deleteBook: (id: string) => Promise<void>;
+    issueBook: (data: any) => Promise<any>;
+    returnBook: (id: string) => Promise<any>;
+    markBookLost: (id: string) => Promise<any>;
+
     // Batch update actions
     updateClasses: (data: SchoolClass[]) => Promise<any>;
     updateSubjects: (data: any[]) => Promise<any>;
@@ -83,8 +116,6 @@ interface IDataContext {
     updateGrades: (data: any[]) => Promise<any>;
     updateAttendance: (data: any[]) => Promise<any>;
     updateEvents: (data: any[]) => Promise<any>;
-    /* Fix: Corrected type from MpesaC2BTransactions[] to MpesaC2BTransaction[]. */
-    mpesaC2BTransactions: MpesaC2BTransaction[];
 }
 
 const DataContext = createContext<IDataContext | undefined>(undefined);
@@ -109,6 +140,49 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [selectedChild, setSelectedChild] = useState<Student | null>(null);
     const [assignedClass, setAssignedClass] = useState<SchoolClass | null>(null);
 
+    // Initial state for data collections
+    const [users, setUsers] = useState<User[]>([]);
+    const [students, setStudents] = useState<Student[]>([]);
+    const [classes, setClasses] = useState<SchoolClass[]>([]);
+    const [subjects, setSubjects] = useState<Subject[]>([]);
+    const [classSubjectAssignments, setClassSubjectAssignments] = useState<ClassSubjectAssignment[]>([]);
+    const [timetableEntries, setTimetableEntries] = useState<TimetableEntry[]>([]);
+    const [exams, setExams] = useState<Exam[]>([]);
+    const [staff, setStaff] = useState<Staff[]>([]);
+    const [grades, setGrades] = useState<Grade[]>([]);
+    const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
+    const [payrollItems, setPayrollItems] = useState<PayrollItem[]>([]);
+    const [payrollHistory, setPayrollHistory] = useState<Payroll[]>([]);
+    const [transactions, setTransactions] = useState<Transaction[]>([]);
+    const [expenses, setExpenses] = useState<Expense[]>([]);
+    const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+    const [communicationLogs, setCommunicationLogs] = useState<CommunicationLog[]>([]);
+    const [gradingScale, setGradingScale] = useState<GradingRule[]>([]);
+    const [feeStructure, setFeeStructure] = useState<FeeItem[]>([]);
+
+    // Fix: Added derived studentFinancials
+    const studentFinancials = useMemo(() => {
+        const financials: Record<string, { balance: number, lastPaymentDate?: string }> = {};
+        students.forEach(s => {
+            const studentTrans = transactions.filter(t => t.studentId === s.id);
+            let balance = 0;
+            let lastPaymentDate = undefined;
+            studentTrans.forEach(t => {
+                if (t.type === 'Invoice' || t.type === 'ManualDebit') balance += t.amount;
+                else {
+                    balance -= t.amount;
+                    if (t.type === 'Payment') {
+                        if (!lastPaymentDate || new Date(t.date) > new Date(lastPaymentDate)) {
+                            lastPaymentDate = t.date;
+                        }
+                    }
+                }
+            });
+            financials[s.id] = { balance, lastPaymentDate };
+        });
+        return financials;
+    }, [students, transactions]);
+
     const addNotification = useCallback((message: string, type: 'success' | 'error' | 'info' = 'info') => {
         const id = Date.now();
         setNotifications(prev => [...prev, { id, message, type }]);
@@ -127,26 +201,35 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const loadCoreSettings = async (user: User) => {
         try {
-            const info = await api.getSchoolInfo();
-            setSchoolInfo(info);
-
-            if (user.role === Role.Admin || user.role === Role.Accountant || user.role === Role.Parent) {
-                try {
-                    const daraja = await api.getDarajaSettings();
-                    setDarajaSettings(daraja);
-                } catch (e) {
-                    console.warn("M-Pesa settings access restricted.");
-                }
-            }
+            const data = await api.fetchInitialData();
+            // Data mapping based on fetchInitialData implementation
+            setUsers(data[0]);
+            setStudents(data[1]);
+            setTransactions(data[2]);
+            setExpenses(data[3]);
+            setStaff(data[4]);
+            setPayrollHistory(data[5]);
+            setSubjects(data[6]);
+            setClasses(data[7]);
+            setClassSubjectAssignments(data[8]);
+            setTimetableEntries(data[9]);
+            setExams(data[10]);
+            setGrades(data[11]);
+            setAttendanceRecords(data[12]);
+            setGradingScale(data[14]);
+            setFeeStructure(data[15]);
+            setPayrollItems(data[16]);
+            setCommunicationLogs(data[17]);
+            setAnnouncements(data[18]);
+            setSchoolInfo(data[19]);
+            setDarajaSettings(data[20]);
 
             if (user.role === Role.Teacher) {
-                const clsRes = await api.getClasses().then((res: any) => Array.isArray(res) ? res : res.data);
-                const myClass = (clsRes || []).find((c: any) => c.formTeacherId === user.id);
+                const myClass = (data[7] || []).find((c: any) => c.formTeacherId === user.id);
                 setAssignedClass(myClass || null);
             } else if (user.role === Role.Parent) {
-                const childrenRes = await api.getStudents({ search: user.email, pagination: 'false' });
-                const list = Array.isArray(childrenRes) ? childrenRes : childrenRes.data || [];
-                setParentChildren(list);
+                const children = (data[1] || []).filter((s: Student) => s.guardianEmail === user.email);
+                setParentChildren(children);
             }
         } catch (e) {
             console.error("Context Error: Failed to load institution settings", e);
@@ -156,7 +239,6 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     useEffect(() => {
         const checkSession = async () => {
             try {
-                // Wrap in try-catch to prevent app crash on initial 401 (e.g. pending wire accounts)
                 const user = await api.getAuthenticatedUser().catch(() => null);
                 if (user && user.id) {
                     setCurrentUser(user);
@@ -174,8 +256,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         checkSession();
     }, []);
 
-    const handleLogin = useCallback(async (user: User) => {
+    const handleLogin = useCallback(async (user: User, token?: string) => {
         if (user && user.id) {
+            if (token) localStorage.setItem('authToken', token);
             setCurrentUser(user);
             setIsLoading(true);
             await loadCoreSettings(user);
@@ -214,15 +297,15 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return NAVIGATION_ITEMS;
     }, [currentUser]);
 
-    /* Fix: Corrected type from MpesaC2BTransactions[] to MpesaC2BTransaction[]. */
-    const [mpesaC2BTransactions, setMpesaC2BTransactions] = useState<MpesaC2BTransaction[]>([]);
-
     const value: IDataContext = {
         isLoading, schoolInfo, currentUser, darajaSettings, isSidebarCollapsed, isMobileSidebarOpen, 
         setIsSidebarCollapsed, setIsMobileSidebarOpen, notifications, addNotification, handleLogin, 
         handleLogout, getNavigationItems, openIdCardModal, formatCurrency, convertCurrency,
         refreshSchoolInfo: async () => { setSchoolInfo(await api.getSchoolInfo()); },
         activeView, setActiveView, parentChildren, selectedChild, setSelectedChild, assignedClass,
+        students, classes, subjects, classSubjectAssignments, exams, staff, grades, attendanceRecords, 
+        timetableEntries, payrollItems, payrollHistory, transactions, expenses, announcements, communicationLogs,
+        users, gradingScale, feeStructure, studentFinancials,
         addStudent: api.createStudent,
         updateStudent: api.updateStudent,
         deleteStudent: api.deleteStudent,
@@ -254,6 +337,12 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         addAnnouncement: api.createAnnouncement,
         addCommunicationLog: api.createCommunicationLog,
         addBulkCommunicationLogs: api.createBulkCommunicationLogs,
+        addBook: api.addBook,
+        updateBook: api.updateBook,
+        deleteBook: api.deleteBook,
+        issueBook: api.issueBook,
+        returnBook: api.returnBook,
+        markBookLost: api.markBookLost,
         updateClasses: (d) => api.updateClasses(d),
         updateSubjects: (d) => api.updateSubjects(d),
         updateAssignments: (d) => api.updateAssignments(d),
@@ -261,8 +350,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         updateExams: (d) => api.updateExams(d),
         updateGrades: (d) => api.updateGrades(d),
         updateAttendance: (d) => api.updateAttendance(d),
-        updateEvents: (d) => api.updateEvents(d),
-        mpesaC2BTransactions
+        updateEvents: (d) => api.updateEvents(d)
     };
 
     return (

@@ -1,4 +1,3 @@
-
 // These types are derived from the backend's TypeORM entities.
 // Keeping them in sync is crucial for frontend type safety.
 
@@ -418,6 +417,8 @@ export interface PlatformPricing {
     basicAnnualPrice: number;
     premiumMonthlyPrice: number;
     premiumAnnualPrice: number;
+    // Fix: Added stripePublishableKey to resolve "Property 'stripePublishableKey' does not exist on type 'PlatformPricing'" error in RegisterSchool.tsx.
+    stripePublishableKey?: string;
 }
 
 // Added missing Book types for Library module.

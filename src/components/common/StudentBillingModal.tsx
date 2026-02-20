@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useEffect } from 'react';
 import type { Student, Transaction, NewTransaction } from '../../types';
 import { TransactionType } from '../../types';

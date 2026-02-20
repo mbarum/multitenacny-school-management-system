@@ -1,4 +1,3 @@
-
 import React from 'react';
 import Modal from './Modal';
 import { Transaction, TransactionType } from '../../types';
@@ -50,7 +49,7 @@ const ReceiptModal: React.FC<{ isOpen: boolean; onClose: () => void; transaction
 
                 {/* Identification Lattice */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-10 mb-16">
-                    <div className="bg-slate-50 p-8 rounded-[2.5rem] border-2 border-slate-100 relative overflow-hidden group">
+                    <div className="bg-slate-50 p-8 rounded-[2rem] border-2 border-slate-100 relative overflow-hidden group">
                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mb-4">Scholar Identity</p>
                         <p className="text-3xl font-black text-slate-900 uppercase leading-tight mb-2">{transaction.studentName}</p>
                         <p className="text-sm font-black text-primary-600 font-mono">INDEX: {transaction.studentId.substring(0, 13).toUpperCase()}</p>

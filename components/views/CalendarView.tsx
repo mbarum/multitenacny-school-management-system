@@ -1,17 +1,38 @@
-
-
 import React, { useState, useMemo } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { SchoolEvent } from '../../types';
 import { EventCategory } from '../../types';
 import Modal from '../common/Modal';
 import { useData } from '../../contexts/DataContext';
+import * as api from '../../services/api';
+
+interface CalendarDay {
+    key: string | number;
+    date: Date | null;
+    events: SchoolEvent[];
+}
 
 const CalendarView: React.FC = () => {
-    const { events, updateEvents } = useData();
+    const { addNotification } = useData();
+    const queryClient = useQueryClient();
     const [currentDate, setCurrentDate] = useState(new Date());
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedEvent, setSelectedEvent] = useState<SchoolEvent | null>(null);
     const [modalDate, setModalDate] = useState<Date | null>(null);
+
+    const { data: events = [] } = useQuery({
+        queryKey: ['events'],
+        queryFn: () => api.getEvents(),
+    });
+
+    const updateEventsMutation = useMutation({
+        mutationFn: (events: SchoolEvent[]) => api.updateEvents(events),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['events'] });
+            setIsModalOpen(false);
+            addNotification('Calendar updated', 'success');
+        }
+    });
 
     const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
     const endOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
@@ -19,17 +40,23 @@ const CalendarView: React.FC = () => {
     const daysInMonth = endOfMonth.getDate();
 
     const calendarDays = useMemo(() => {
-        const days = [];
+        const days: CalendarDay[] = [];
         for (let i = 0; i < startDay; i++) {
             days.push({ key: `empty-${i}`, date: null, events: [] });
         }
         for (let i = 1; i <= daysInMonth; i++) {
             const date = new Date(currentDate.getFullYear(), currentDate.getMonth(), i);
-            const dayEvents = events.filter(e => {
-                const startDate = new Date(e.startDate);
-                const endDate = e.endDate ? new Date(e.endDate) : startDate;
-                return date >= startDate && date <= endDate;
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            const dateString = `${year}-${month}-${day}`;
+
+            const dayEvents = events.filter((e: SchoolEvent) => {
+                const start = e.startDate;
+                const end = e.endDate || start;
+                return dateString >= start && dateString <= end;
             });
+
             days.push({ key: i, date, events: dayEvents });
         }
         return days;
@@ -48,18 +75,17 @@ const CalendarView: React.FC = () => {
     const handleSaveEvent = (formData: Omit<SchoolEvent, 'id'>) => {
         let updatedEvents;
         if (selectedEvent) {
-            updatedEvents = events.map(e => e.id === selectedEvent.id ? { ...selectedEvent, ...formData } : e);
+            updatedEvents = events.map((e: SchoolEvent) => e.id === selectedEvent.id ? { ...selectedEvent, ...formData } : e);
         } else {
             updatedEvents = [...events, { ...formData, id: `evt-${Date.now()}` }];
         }
-        updateEvents(updatedEvents);
-        setIsModalOpen(false);
+        updateEventsMutation.mutate(updatedEvents);
     };
 
     const handleDeleteEvent = () => {
         if (selectedEvent && window.confirm("Are you sure you want to delete this event?")) {
-            updateEvents(events.filter(e => e.id !== selectedEvent.id));
-            setIsModalOpen(false);
+            const remaining = events.filter((e: SchoolEvent) => e.id !== selectedEvent.id);
+            updateEventsMutation.mutate(remaining);
         }
     }
 
@@ -75,19 +101,19 @@ const CalendarView: React.FC = () => {
         <div className="p-6 md:p-8">
             <div className="flex justify-between items-center mb-6">
                 <div className="flex items-center space-x-4">
-                    <button onClick={() => changeMonth(-1)}>&larr;</button>
+                    <button onClick={() => changeMonth(-1)} className="p-2 hover:bg-slate-200 rounded">&larr;</button>
                     <h2 className="text-3xl font-bold text-slate-800">{currentDate.toLocaleString('default', { month: 'long', year: 'numeric' })}</h2>
-                    <button onClick={() => changeMonth(1)}>&rarr;</button>
+                    <button onClick={() => changeMonth(1)} className="p-2 hover:bg-slate-200 rounded">&rarr;</button>
                 </div>
-                <button onClick={() => openModal(null, new Date())} className="px-4 py-2 bg-primary-600 text-white rounded-lg">Add Event</button>
+                <button onClick={() => openModal(null, new Date())} className="px-4 py-2 bg-primary-600 text-white rounded-lg shadow hover:bg-primary-700">Add Event</button>
             </div>
-            <div className="grid grid-cols-7 gap-px bg-slate-200 border border-slate-200">
-                {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => <div key={day} className="text-center font-bold bg-white py-2">{day}</div>)}
-                {calendarDays.map(day => (
-                    <div key={day.key} className="bg-white p-2 h-32 overflow-y-auto" onClick={() => day.date && openModal(null, day.date)}>
-                        {day.date && <div className="font-bold">{day.date.getDate()}</div>}
-                        {day.events.map(event => (
-                            <div key={event.id} onClick={(e) => { e.stopPropagation(); openModal(event, null); }} className={`text-xs p-1 rounded mt-1 cursor-pointer ${categoryColors[event.category]}`}>
+            <div className="grid grid-cols-7 gap-px bg-slate-200 border border-slate-200 rounded-lg overflow-hidden">
+                {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => <div key={day} className="text-center font-bold bg-white py-3">{day}</div>)}
+                {calendarDays.map((day, idx) => (
+                    <div key={idx} className={`bg-white p-2 h-32 overflow-y-auto ${day.date ? 'hover:bg-slate-50 cursor-pointer' : ''}`} onClick={() => day.date && openModal(null, day.date)}>
+                        {day.date && <div className="font-bold mb-1">{day.date.getDate()}</div>}
+                        {day.events.map((event: SchoolEvent) => (
+                            <div key={event.id} onClick={(e) => { e.stopPropagation(); openModal(event, null); }} className={`text-xs p-1 rounded mt-1 cursor-pointer truncate ${categoryColors[event.category]}`}>
                                 {event.title}
                             </div>
                         ))}
@@ -100,10 +126,17 @@ const CalendarView: React.FC = () => {
 };
 
 const EventModal: React.FC<any> = ({ isOpen, onClose, onSave, onDelete, event, date }) => {
+    const toLocalISODate = (d: Date) => {
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    };
+
     const [formData, setFormData] = useState({
         title: event?.title || '',
         description: event?.description || '',
-        startDate: event?.startDate || date.toISOString().split('T')[0],
+        startDate: event?.startDate || (date ? toLocalISODate(date) : ''),
         endDate: event?.endDate || '',
         category: event?.category || EventCategory.General,
     });
@@ -118,7 +151,7 @@ const EventModal: React.FC<any> = ({ isOpen, onClose, onSave, onDelete, event, d
                 <input name="title" value={formData.title} onChange={handleChange} placeholder="Event Title" className="w-full p-2 border rounded" required />
                 <textarea name="description" value={formData.description} onChange={handleChange} placeholder="Description" className="w-full p-2 border rounded" />
                 <div className="grid grid-cols-2 gap-4">
-                    <input type="date" name="startDate" value={formData.startDate} onChange={handleChange} className="w-full p-2 border rounded" />
+                    <input type="date" name="startDate" value={formData.startDate} onChange={handleChange} className="w-full p-2 border rounded" required />
                     <input type="date" name="endDate" value={formData.endDate} onChange={handleChange} className="w-full p-2 border rounded" />
                 </div>
                 <select name="category" value={formData.category} onChange={handleChange} className="w-full p-2 border rounded">

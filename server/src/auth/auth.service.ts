@@ -87,15 +87,16 @@ export class AuthService {
 
             // 2. Determine Subscription Status & Dates
             const isManual = (paymentMethod === 'WIRE' && baseDto.plan !== SubscriptionPlan.FREE);
-            const status = isManual ? SubscriptionStatus.PENDING_APPROVAL : SubscriptionStatus.ACTIVE;
+            const isMpesa = (paymentMethod === 'MPESA' && baseDto.plan !== SubscriptionPlan.FREE);
+            const status = isManual ? SubscriptionStatus.PENDING_APPROVAL : (isMpesa ? SubscriptionStatus.PENDING_PAYMENT : SubscriptionStatus.ACTIVE);
 
             const startDate = new Date();
             const endDate = new Date();
             
             if (baseDto.plan === SubscriptionPlan.FREE) {
                 endDate.setFullYear(endDate.getFullYear() + 10);
-            } else if (isManual) {
-                // Grant a 7-day grace period for bank verification so they aren't locked out of 'me' endpoint
+            } else if (isManual || isMpesa) {
+                // Grant a 7-day grace period for bank/mpesa verification so they aren't locked out of 'me' endpoint
                 endDate.setDate(endDate.getDate() + 7);
             } else {
                 endDate.setDate(endDate.getDate() + (baseDto.billingCycle === 'ANNUALLY' ? 365 : 30));
@@ -132,8 +133,8 @@ export class AuthService {
             // 5. Notifications (Async)
             this.communicationsService.sendEmail(
                 savedUser.email, 
-                isManual ? 'Application Received - Verification Pending' : 'Account Active - Welcome to Saaslink', 
-                `<h1>Welcome ${savedUser.name}!</h1><p>Your portal for ${savedSchool.name} is ${isManual ? 'awaiting wire verification.' : 'now live.'}</p>`
+                (isManual || isMpesa) ? 'Application Received - Verification Pending' : 'Account Active - Welcome to Saaslink', 
+                `<h1>Welcome ${savedUser.name}!</h1><p>Your portal for ${savedSchool.name} is ${(isManual || isMpesa) ? 'awaiting payment verification.' : 'now live.'}</p>`
             ).catch(e => this.logger.error(`Notification failed: ${e.message}`));
 
             const payload = { email: savedUser.email, sub: savedUser.id, role: savedUser.role, schoolId: savedSchool.id };

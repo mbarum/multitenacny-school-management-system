@@ -14,7 +14,7 @@ const stripePromise = api.getPlatformPricing().then(p => loadStripe(p.stripePubl
 const CheckoutForm: React.FC<{ 
     formData: any, 
     price: number, 
-    onSuccess: (user: any) => void,
+    onSuccess: (user: any, token: string) => void,
     onError: (msg: string) => void 
 }> = ({ formData, price, onSuccess, onError }) => {
     const stripe = useStripe();
@@ -46,7 +46,7 @@ const CheckoutForm: React.FC<{
                     paymentMethod: 'CARD', 
                     paymentIntentId: result.paymentIntent.id 
                 });
-                onSuccess(response.user);
+                onSuccess(response.user, response.token);
             }
         } catch (err: any) {
             onError(err.message || 'Error during checkout');
@@ -80,7 +80,6 @@ const RegisterSchool: React.FC = () => {
         currency: 'KES'
     });
 
-    // Create a stable invoice reference for the session
     const stableRef = useMemo(() => {
         const prefix = 'INV';
         const rand = Math.floor(100000 + Math.random() * 900000);
@@ -143,12 +142,12 @@ const RegisterSchool: React.FC = () => {
                 addNotification("Registration submitted. Verification required.", "info");
             } else if (method === 'MPESA') {
                 setPaymentStatus('processing');
-                await initiateSTKPush(cost.total, formData.phone, 'SUB_' + response.user.id.substring(0, 8), 'SUBSCRIPTION');
+                await initiateSTKPush(cost.total, formData.phone, 'SUB_' + response.user.id.substring(0, 8));
                 setPaymentStatus('success');
-                setTimeout(() => handleLogin(response.user), 3000);
+                setTimeout(() => handleLogin(response.user, response.token), 3000);
             } else {
                 setPaymentStatus('success');
-                setTimeout(() => handleLogin(response.user), 2000);
+                setTimeout(() => handleLogin(response.user, response.token), 2000);
             }
         } catch (err: any) {
             setError(err.message || 'The server encountered an error. Please try again.');
@@ -166,11 +165,8 @@ const RegisterSchool: React.FC = () => {
         const doc = new jsPDF();
         const primaryColor = [52, 105, 85]; 
         
-        // Design Sidebar
         doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
         doc.rect(0, 0, 10, 297, 'F');
-
-        // Main Header
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(28);
         doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
@@ -184,7 +180,6 @@ const RegisterSchool: React.FC = () => {
         doc.setFontSize(11);
         doc.text(`NO: ${stableRef}`, 185, 63, { align: 'right' });
 
-        // Bill to
         doc.setFontSize(10);
         doc.setTextColor(150);
         doc.text('PREPARED FOR:', 20, 85);
@@ -196,7 +191,6 @@ const RegisterSchool: React.FC = () => {
         doc.text(`Administrator: ${formData.adminName}`, 20, 102);
         doc.text(`Email: ${formData.adminEmail}`, 20, 107);
 
-        // Financials Table
         doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
         doc.rect(20, 120, 170, 10, 'F');
         doc.setTextColor(255);
@@ -217,7 +211,6 @@ const RegisterSchool: React.FC = () => {
         doc.setFontSize(14);
         doc.text(`NET TOTAL: KES ${cost.total.toLocaleString()}`, 185, 168, { align: 'right' });
 
-        // Bank Details Section
         doc.setDrawColor(primaryColor[0], primaryColor[1], primaryColor[2]);
         doc.roundedRect(20, 185, 170, 75, 5, 5, 'D');
         doc.setFontSize(12);
@@ -255,12 +248,11 @@ const RegisterSchool: React.FC = () => {
     return (
         <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
             <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-6xl overflow-hidden flex flex-col md:flex-row">
-                {/* Left Panel */}
                 <div className="md:w-5/12 bg-slate-900 p-10 text-white flex flex-col justify-between relative overflow-hidden">
                     <div className="relative z-10">
                         <div className="flex items-center mb-10">
                             <div className="bg-primary-600 p-2 rounded-xl">
-                                <svg className="h-6 w-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+                                <svg className="h-6 w-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3}><path d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
                             </div>
                             <span className="ml-3 text-2xl font-black uppercase">SAASLINK</span>
                         </div>
@@ -279,7 +271,6 @@ const RegisterSchool: React.FC = () => {
                     </div>
                 </div>
 
-                {/* Right Panel */}
                 <div className="md:w-7/12 p-10 md:p-14 bg-white overflow-y-auto max-h-[90vh]">
                     {paymentStatus === 'manual_success' ? (
                         <div className="text-center py-20 animate-fade-in-up">
@@ -329,7 +320,7 @@ const RegisterSchool: React.FC = () => {
 
                                     {paymentMethod === 'CARD' && (
                                         <Elements stripe={stripePromise}>
-                                            <CheckoutForm formData={formData} price={cost.total} onSuccess={(u) => handleLogin(u)} onError={(msg) => { setError(msg); setIsLoading(false); }} />
+                                            <CheckoutForm formData={formData} price={cost.total} onSuccess={(u, t) => handleLogin(u, t)} onError={(msg) => { setError(msg); setIsLoading(false); }} />
                                         </Elements>
                                     )}
 

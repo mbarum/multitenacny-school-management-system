@@ -1,11 +1,10 @@
-
 import React, { useState, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import Modal from '../components/common/Modal';
-import Skeleton from '../components/common/Skeleton';
-import Spinner from '../components/common/Spinner';
+import Modal from '../common/Modal';
+import Skeleton from '../common/Skeleton';
+import Spinner from '../common/Spinner';
 import type { Staff, Payroll, PayrollItem, NewStaff, PayrollEntry } from '../../types';
-import { Role } from '../../types';
+import { Role, PayrollItemType, CalculationType } from '../../types';
 import { useData } from '../../contexts/DataContext';
 import * as api from '../../services/api';
 
@@ -21,14 +20,13 @@ const StaffAndPayrollView: React.FC = () => {
     
     const photoInputRef = useRef<HTMLInputElement>(null);
 
-    // Queries
     const { data: staffList = [], isLoading: rosterLoading } = useQuery({ queryKey: ['staff'], queryFn: api.getStaff });
+    const { data: payrollItems = [] } = useQuery({ queryKey: ['payroll-items'], queryFn: api.getPayrollItems });
     const { data: history = [], isLoading: historyLoading } = useQuery({ 
         queryKey: ['payroll-history'], 
         queryFn: () => api.getPayrollHistory({ limit: 50 }).then(res => res.data) 
     });
 
-    // Mutations
     const staffMutation = useMutation({
         mutationFn: (data: NewStaff) => editingStaff ? api.updateStaff(editingStaff.id, data) : api.createStaff(data),
         onSuccess: () => {
@@ -60,20 +58,26 @@ const StaffAndPayrollView: React.FC = () => {
 
     const handleSaveStaff = (e: React.FormEvent) => {
         e.preventDefault();
-        // Backend expects specific DTO, filter out TypeORM internals
         const { id, userId, schoolId, ...payload } = staffFormData;
         staffMutation.mutate(payload);
+    };
+
+    const calculatePAYE = (taxablePay: number) => {
+        const annualPay = taxablePay * 12;
+        let tax = 0;
+        if (annualPay <= 288000) tax = annualPay * 0.1;
+        else if (annualPay <= 388000) tax = 28800 + (annualPay - 288000) * 0.25;
+        else tax = 28800 + 25000 + (annualPay - 388000) * 0.30;
+        return Math.max(0, (tax / 12) - 2400);
     };
 
     const generateDraft = () => {
         const month = new Date().toLocaleString('en-US', { month: 'long', year: 'numeric' });
         const draft = staffList.map((s: Staff) => {
-            // Enterprise standard: Deductions should ideally be validated by backend hooks
-            // But we create the DTO here for Accountant review
             const basic = Number(s.salary);
             const earnings: PayrollEntry[] = [{ name: 'Basic Salary', amount: basic }];
             const deductions: PayrollEntry[] = [
-                { name: 'PAYE', amount: basic * 0.1 }, // Example simplified
+                { name: 'PAYE', amount: calculatePAYE(basic) },
                 { name: 'NSSF', amount: 200 }
             ];
             const gross = basic;

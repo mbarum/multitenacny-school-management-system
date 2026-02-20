@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
@@ -32,11 +31,10 @@ const Dashboard: React.FC = () => {
     const { formatCurrency } = useData();
     const navigate = useNavigate();
 
-    // Replaced useEffect with useQuery for better caching and automatic refetching on window focus/mount
     const { data: stats, isLoading } = useQuery({
         queryKey: ['dashboard-stats'],
         queryFn: api.getDashboardStats,
-        staleTime: 60 * 1000, // Data fresh for 1 minute
+        staleTime: 60 * 1000, 
     });
 
     const COLORS = ['#346955', '#475569', '#BB9C5F', '#3b82f6', '#8b5cf6', '#f43f5e'];
@@ -99,7 +97,10 @@ const Dashboard: React.FC = () => {
                                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
                                 <XAxis dataKey="name" tick={{ fill: '#64748b' }} />
                                 <YAxis tick={{ fill: '#64748b' }} tickFormatter={(value) => new Intl.NumberFormat('en-US', { notation: 'compact', compactDisplay: 'short' }).format(value)} />
-                                <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '0.75rem' }} formatter={(value: number) => formatCurrency(value)} />
+                                <Tooltip 
+                                    contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '0.75rem' }} 
+                                    formatter={(value: any) => formatCurrency(Number(value || 0))} 
+                                />
                                 <Legend />
                                 <Bar dataKey="income" fill="#346955" name="Income" radius={[4, 4, 0, 0]} />
                                 <Bar dataKey="expenses" fill="#475569" name="Expenses" radius={[4, 4, 0, 0]}/>
@@ -120,10 +121,12 @@ const Dashboard: React.FC = () => {
                                     cy="50%" 
                                     outerRadius={100} 
                                     fill="#8884d8" 
-                                    label={({ cx, cy, midAngle, innerRadius, outerRadius, percent }) => {
+                                    label={({ cx, cy, midAngle, innerRadius, outerRadius, percent }: any) => {
+                                        if (midAngle === undefined || percent === undefined) return null;
+                                        const RADIAN = Math.PI / 180;
                                         const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
-                                        const x = cx + radius * Math.cos(-midAngle * (Math.PI / 180));
-                                        const y = cy + radius * Math.sin(-midAngle * (Math.PI / 180));
+                                        const x = cx + radius * Math.cos(-midAngle * RADIAN);
+                                        const y = cy + radius * Math.sin(-midAngle * RADIAN);
                                         return percent > 0.05 ? (
                                             <text x={x} y={y} fill="white" textAnchor="middle" dominantBaseline="central" className="text-xs font-bold">
                                                 {`${(percent * 100).toFixed(0)}%`}
@@ -135,7 +138,7 @@ const Dashboard: React.FC = () => {
                                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                                     ))}
                                 </Pie>
-                                 <Tooltip formatter={(value: number) => formatCurrency(value)}/>
+                                 <Tooltip formatter={(value: any) => formatCurrency(Number(value || 0))}/>
                                 <Legend />
                             </PieChart>
                         </ResponsiveContainer>

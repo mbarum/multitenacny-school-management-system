@@ -1,10 +1,9 @@
-
 import React, { useState } from 'react';
 import type { SchoolClass, Subject, ClassSubjectAssignment, Staff } from '../../types';
 import { Role } from '../../types';
 import Modal from '../common/Modal';
 import { useData } from '../../contexts/DataContext';
-import * as api from '../services/api';
+import * as api from '../../services/api';
 
 const AcademicsView: React.FC = () => {
     const { classes, updateClasses, subjects, updateSubjects, classSubjectAssignments, updateAssignments, staff, addNotification } = useData();
@@ -28,7 +27,6 @@ const AcademicsView: React.FC = () => {
         if (!window.confirm("Delete this class? This will fail if students are assigned.")) return;
         try {
             await api.deleteClass(id);
-            // Refresh logic: filter out locally
             updateClasses(classes.filter(c => c.id !== id));
             addNotification("Class deleted.", "success");
         } catch (e: any) {
@@ -173,7 +171,7 @@ const ClassModal: React.FC<any> = ({ isOpen, onClose, onSave, data, teachers }) 
         onSave({
             name, 
             classCode, 
-            formTeacherId: formTeacherId || null // Ensure empty string becomes null
+            formTeacherId: formTeacherId || null 
         });
     };
 
