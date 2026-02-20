@@ -111,7 +111,7 @@ const FinancialSummary: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 };
 
 const DefaultersReport: React.FC<{ onBack: () => void }> = ({ onBack }) => {
-    const { schoolInfo } = useData();
+    const { schoolInfo, formatCurrency } = useData();
     const [defaulters, setDefaulters] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -136,7 +136,7 @@ const DefaultersReport: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                     </div>
                     <div className="text-right">
                          <p className="text-slate-400 font-black uppercase text-[10px] tracking-widest">Total Outstanding</p>
-                         <p className="text-4xl font-black text-red-600">KES {totalDeficit.toLocaleString()}</p>
+                         <p className="text-4xl font-black text-red-600">{formatCurrency(totalDeficit)}</p>
                     </div>
                 </div>
 
@@ -157,7 +157,7 @@ const DefaultersReport: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                                     <td className="px-8 py-4 font-black text-slate-800 text-sm border-r border-slate-50">{student.name}</td>
                                     <td className="px-8 py-4 text-slate-500 border-r border-slate-50">{student.class}</td>
                                     <td className="px-8 py-4 text-slate-500 font-mono border-r border-slate-50">{student.guardianContact}</td>
-                                    <td className="px-8 py-4 font-black text-red-600 text-right text-lg">{student.balance.toLocaleString()}</td>
+                                    <td className="px-8 py-4 font-black text-red-600 text-right text-lg">{formatCurrency(student.balance)}</td>
                                 </tr>
                             ))}
                         </tbody>
@@ -360,7 +360,7 @@ const AttendanceReport: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 }
 
 const CashFlowProjection: React.FC<{ onBack: () => void }> = ({ onBack }) => {
-    const { schoolInfo } = useData();
+    const { schoolInfo, formatCurrency, convertCurrency } = useData();
     const [projectionData, setProjectionData] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -392,9 +392,19 @@ const CashFlowProjection: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                         <LineChart data={projectionData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
                             <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontWeight: 'bold', fontSize: 12 }} />
-                            <YAxis axisLine={false} tickLine={false} tickFormatter={(value) => `KES ${value/1000}k`} tick={{ fill: '#94a3b8', fontWeight: 'bold', fontSize: 12 }} />
-                            <Tooltip contentStyle={{ borderRadius: '1rem', border: 'none', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)' }} />
-                            <Legend wrapperStyle={{ paddingTop: '20px' }} />
+                            <YAxis 
+                                axisLine={false} 
+                                tickLine={false} 
+                                tickFormatter={(value) => {
+                                    const converted = convertCurrency(value, schoolInfo?.currency || 'KES');
+                                    return `${schoolInfo?.currency || 'KES'} ${Math.round(converted/1000)}k`;
+                                }} 
+                                tick={{ fill: '#94a3b8', fontWeight: 'bold', fontSize: 12 }} 
+                            />
+                            <Tooltip 
+                                contentStyle={{ borderRadius: '1rem', border: 'none', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)' }} 
+                                formatter={(value: any) => formatCurrency(Number(value || 0))}
+                            />
                             <Line type="monotone" dataKey="income" stroke="#16a34a" strokeWidth={5} dot={{ r: 6, strokeWidth: 3, fill: '#fff' }} activeDot={{ r: 8 }} name="Realized Revenue" />
                             <Line type="monotone" dataKey="expenses" stroke="#dc2626" strokeWidth={5} dot={{ r: 6, strokeWidth: 3, fill: '#fff' }} activeDot={{ r: 8 }} name="Operating Expenses" />
                         </LineChart>

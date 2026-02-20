@@ -113,6 +113,7 @@ export const savePayrollRun = (data: Payroll[]): Promise<Payroll[]> => apiFetch(
 // --- Settings ---
 export const getSchoolInfo = (): Promise<SchoolInfo> => apiFetch('/settings/school-info');
 export const getPublicSchoolInfo = (): Promise<SchoolInfo> => apiFetch('/settings/public/school-info');
+export const getExchangeRates = (): Promise<Record<string, number>> => apiFetch('/settings/public/rates');
 export const updateSchoolInfo = (data: SchoolInfo): Promise<SchoolInfo> => apiFetch('/settings/school-info', { method: 'PUT', body: JSON.stringify(data) });
 export const getDarajaSettings = (): Promise<DarajaSettings> => apiFetch('/settings/daraja');
 export const updateDarajaSettings = (data: DarajaSettings): Promise<DarajaSettings> => apiFetch('/settings/daraja', { method: 'PUT', body: JSON.stringify(data) });

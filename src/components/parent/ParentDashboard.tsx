@@ -6,7 +6,7 @@ import * as api from '../../services/api';
 import Skeleton from '../common/Skeleton';
 
 const ParentDashboard: React.FC = () => {
-    const { parentChildren, setSelectedChild, setActiveView } = useData();
+    const { parentChildren, setSelectedChild, setActiveView, formatCurrency } = useData();
     const [balances, setBalances] = useState<Record<string, number>>({});
     const [loading, setLoading] = useState(true);
     
@@ -67,7 +67,7 @@ const ParentDashboard: React.FC = () => {
                             <div className="text-right">
                                 <p className="text-sm text-slate-500">Outstanding Balance</p>
                                 <p className={`text-2xl font-bold ${balance > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                                    KES {balance.toLocaleString()}
+                                    {formatCurrency(balance)}
                                 </p>
                                 <span className="mt-2 text-primary-600 font-semibold text-sm group-hover:underline inline-block">View Details &rarr;</span>
                             </div>

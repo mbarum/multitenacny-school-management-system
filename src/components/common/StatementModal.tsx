@@ -2,6 +2,7 @@
 import React, { useState, useMemo } from 'react';
 import type { Student, Transaction, SchoolInfo } from '../../types';
 import Modal from './Modal';
+import { useData } from '../../contexts/DataContext';
 
 interface StatementModalProps {
     isOpen: boolean;
@@ -12,6 +13,7 @@ interface StatementModalProps {
 }
 
 const StatementModal: React.FC<StatementModalProps> = ({ isOpen, onClose, student, transactions, schoolInfo }) => {
+    const { formatCurrency } = useData();
     const today = new Date().toISOString().split('T')[0];
     const [startDate, setStartDate] = useState('2024-01-01');
     const [endDate, setEndDate] = useState(today);
@@ -115,15 +117,15 @@ const StatementModal: React.FC<StatementModalProps> = ({ isOpen, onClose, studen
                             <tr>
                                 <th className="p-2 font-semibold">Date</th>
                                 <th className="p-2 font-semibold">Description</th>
-                                <th className="p-2 font-semibold text-right">Charges (KES)</th>
-                                <th className="p-2 font-semibold text-right">Payments (KES)</th>
-                                <th className="p-2 font-semibold text-right">Balance (KES)</th>
+                                <th className="p-2 font-semibold text-right">Charges ({schoolInfo.currency || 'KES'})</th>
+                                <th className="p-2 font-semibold text-right">Payments ({schoolInfo.currency || 'KES'})</th>
+                                <th className="p-2 font-semibold text-right">Balance ({schoolInfo.currency || 'KES'})</th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr className="border-b font-medium">
                                 <td colSpan={4} className="p-2">Opening Balance</td>
-                                <td className="p-2 text-right">{openingBalance.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                                <td className="p-2 text-right">{formatCurrency(openingBalance)}</td>
                             </tr>
                             {statementTransactions.map((t, index) => {
                                 const isDebit = t.type === 'Invoice' || t.type === 'ManualDebit';
@@ -135,9 +137,9 @@ const StatementModal: React.FC<StatementModalProps> = ({ isOpen, onClose, studen
                                 <tr key={t.id} className="border-b">
                                     <td className="p-2">{t.date}</td>
                                     <td className="p-2">{t.description}</td>
-                                    <td className="p-2 text-right">{isDebit ? t.amount.toLocaleString(undefined, {minimumFractionDigits: 2}) : '-'}</td>
-                                    <td className="p-2 text-right text-green-600">{!isDebit ? t.amount.toLocaleString(undefined, {minimumFractionDigits: 2}) : '-'}</td>
-                                    <td className="p-2 text-right font-medium">{balanceAfter.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                                    <td className="p-2 text-right">{isDebit ? formatCurrency(t.amount) : '-'}</td>
+                                    <td className="p-2 text-right text-green-600">{!isDebit ? formatCurrency(t.amount) : '-'}</td>
+                                    <td className="p-2 text-right font-medium">{formatCurrency(balanceAfter)}</td>
                                 </tr>
                             )})}
                         </tbody>
@@ -146,9 +148,9 @@ const StatementModal: React.FC<StatementModalProps> = ({ isOpen, onClose, studen
                     {/* Summary Footer */}
                     <div className="mt-4 pt-4 border-t-2 grid grid-cols-5 text-sm font-semibold">
                         <div className="col-span-2"></div>
-                        <div className="text-right p-2 bg-slate-100 rounded-l-md">{totalDebits.toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
-                        <div className="text-right p-2 bg-slate-100">{totalCredits.toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
-                        <div className="text-right p-2 bg-slate-200 rounded-r-md text-base">{closingBalance.toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
+                        <div className="text-right p-2 bg-slate-100 rounded-l-md">{formatCurrency(totalDebits)}</div>
+                        <div className="text-right p-2 bg-slate-100">{formatCurrency(totalCredits)}</div>
+                        <div className="text-right p-2 bg-slate-200 rounded-r-md text-base">{formatCurrency(closingBalance)}</div>
                     </div>
                      <div className="mt-1 grid grid-cols-5 text-sm font-bold">
                         <div className="col-span-2"></div>

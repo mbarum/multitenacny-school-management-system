@@ -9,7 +9,7 @@ import * as api from '../../services/api';
 import Skeleton from '../common/Skeleton';
 
 const ParentFinances: React.FC = () => {
-    const { parentChildren, darajaSettings, addNotification } = useData();
+    const { parentChildren, darajaSettings, addNotification, formatCurrency } = useData();
     const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
     const [selectedChildForPayment, setSelectedChildForPayment] = useState<Student | null>(null);
     const [paymentAmount, setPaymentAmount] = useState(0);
@@ -116,7 +116,7 @@ const ParentFinances: React.FC = () => {
                             </div>
                             <div className="text-right">
                                 <p className="text-sm text-slate-500">Outstanding Balance</p>
-                                <p className={`text-3xl font-bold ${financials.balance > 0 ? 'text-red-600' : 'text-green-600'}`}>KES {financials.balance.toLocaleString()}</p>
+                                <p className={`text-3xl font-bold ${financials.balance > 0 ? 'text-red-600' : 'text-green-600'}`}>{formatCurrency(financials.balance)}</p>
                                 {financials.balance > 0 && <button onClick={() => openPaymentModal(child)} className="mt-2 px-6 py-2 bg-primary-600 text-white font-semibold rounded-lg shadow-md hover:bg-primary-700">Pay Fees Now</button>}
                             </div>
                         </div>
@@ -125,7 +125,7 @@ const ParentFinances: React.FC = () => {
                             <table className="w-full text-left text-sm">
                                 <tbody>
                                     {financials.recentTransactions.map(p => (
-                                        <tr key={p.id}><td>{new Date(p.date).toLocaleDateString()}</td><td>{p.method}</td><td>{p.transactionCode}</td><td className="text-right font-medium">KES {p.amount.toLocaleString()}</td></tr>
+                                        <tr key={p.id}><td>{new Date(p.date).toLocaleDateString()}</td><td>{p.method}</td><td>{p.transactionCode}</td><td className="text-right font-medium">{formatCurrency(p.amount)}</td></tr>
                                     ))}
                                      {financials.recentTransactions.length === 0 && (
                                         <tr><td colSpan={4} className="text-center text-slate-500 py-2">No recent payments found.</td></tr>

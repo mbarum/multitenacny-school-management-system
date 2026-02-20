@@ -28,7 +28,7 @@ const StatCard: React.FC<{ title: string; value: string; icon: React.ReactElemen
 );
 
 const Dashboard: React.FC = () => {
-    const { formatCurrency } = useData();
+    const { formatCurrency, convertCurrency, schoolInfo } = useData();
     const navigate = useNavigate();
 
     const { data: stats, isLoading } = useQuery({
@@ -94,18 +94,24 @@ const Dashboard: React.FC = () => {
                     {isLoading ? <Skeleton className="w-full h-full min-h-[300px]" /> : (
                         <div className="h-[320px] w-full">
                             <ResponsiveContainer width="100%" height="100%">
-                                <BarChart data={stats?.monthlyData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
-                                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                                    <XAxis dataKey="name" tick={{ fill: '#64748b' }} />
-                                    <YAxis tick={{ fill: '#64748b' }} tickFormatter={(value) => new Intl.NumberFormat('en-US', { notation: 'compact', compactDisplay: 'short' }).format(value)} />
-                                    <Tooltip 
-                                        contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '0.75rem' }} 
-                                        formatter={(value: any) => formatCurrency(Number(value || 0))} 
-                                    />
-                                    <Legend />
-                                    <Bar dataKey="income" fill="#346955" name="Income (KES)" radius={[4, 4, 0, 0]} />
-                                    <Bar dataKey="expenses" fill="#475569" name="Expenses (KES)" radius={[4, 4, 0, 0]}/>
-                                </BarChart>
+                                    <BarChart data={stats?.monthlyData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
+                                        <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                                        <XAxis dataKey="name" tick={{ fill: '#64748b' }} />
+                                        <YAxis 
+                                            tick={{ fill: '#64748b' }} 
+                                            tickFormatter={(value) => {
+                                                const converted = convertCurrency(value, schoolInfo?.currency || 'KES');
+                                                return new Intl.NumberFormat('en-US', { notation: 'compact', compactDisplay: 'short' }).format(converted);
+                                            }} 
+                                        />
+                                        <Tooltip 
+                                            contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '0.75rem' }} 
+                                            formatter={(value: any) => formatCurrency(Number(value || 0))} 
+                                        />
+                                        <Legend />
+                                        <Bar dataKey="income" fill="#346955" name="Income" radius={[4, 4, 0, 0]} />
+                                        <Bar dataKey="expenses" fill="#475569" name="Expenses" radius={[4, 4, 0, 0]}/>
+                                    </BarChart>
                             </ResponsiveContainer>
                         </div>
                     )}

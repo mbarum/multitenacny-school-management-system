@@ -131,6 +131,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [isIdCardModalOpen, setIsIdCardModalOpen] = useState(false);
     const [idCardData, setIdCardData] = useState<{ type: 'student' | 'staff', data: Student | Staff } | null>(null);
     const [notifications, setNotifications] = useState<Notification[]>([]);
+    const [exchangeRates, setExchangeRates] = useState<Record<string, number>>(EXCHANGE_RATES);
     
     const [activeView, setActiveView] = useState('dashboard');
     const [parentChildren, setParentChildren] = useState<Student[]>([]);
@@ -233,6 +234,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     useEffect(() => {
         const checkSession = async () => {
             try {
+                const rates = await api.getExchangeRates().catch(() => EXCHANGE_RATES);
+                setExchangeRates(rates);
+
                 const user = await api.getAuthenticatedUser().catch(() => null);
                 if (user && user.id) {
                     setCurrentUser(user);
@@ -265,19 +269,20 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
     }, [navigate]);
 
+    const convertCurrency = useCallback((amountInKes: number, targetCurrency: string) => {
+        if (targetCurrency === 'KES') return amountInKes;
+        const rate = exchangeRates[targetCurrency] || EXCHANGE_RATES[targetCurrency as Currency] || 1;
+        return amountInKes * rate;
+    }, [exchangeRates]);
+
     const formatCurrency = useCallback((amount: number, currency?: string) => {
         const targetCurrency = currency || schoolInfo?.currency || 'KES';
+        const convertedAmount = convertCurrency(amount, targetCurrency);
         return new Intl.NumberFormat('en-KE', {
             style: 'currency', currency: targetCurrency,
             minimumFractionDigits: 0, maximumFractionDigits: 0,
-        }).format(amount);
-    }, [schoolInfo]);
-
-    const convertCurrency = useCallback((amountInKes: number, targetCurrency: string) => {
-        if (targetCurrency === Currency.KES) return amountInKes;
-        const rate = EXCHANGE_RATES[targetCurrency as Currency] || 1;
-        return amountInKes * rate;
-    }, []);
+        }).format(convertedAmount);
+    }, [schoolInfo, convertCurrency]);
 
     const openIdCardModal = useCallback((person: Student | Staff, type: 'student' | 'staff') => {
         setIdCardData({ type, data: person });
