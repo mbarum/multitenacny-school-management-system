@@ -113,7 +113,7 @@ export class TransactionsService {
         headers: { Authorization: `Basic ${auth}` }
       });
       return response.data.access_token;
-    } catch (error) {
+    } catch (error: any) {
       this.logger.error(`[Daraja] OAuth Error: ${error.response?.data?.errorMessage || error.message}`);
       throw new BadRequestException('Failed to authenticate with M-Pesa gateway.');
     }
@@ -175,7 +175,7 @@ export class TransactionsService {
           }
 
           return response.data;
-      } catch (error) {
+      } catch (error: any) {
           this.logger.error(`[Daraja] STK Push Error: ${error.response?.data?.errorMessage || error.message}`);
           throw new BadRequestException(error.response?.data?.errorMessage || 'M-Pesa STK Push failed.');
       }

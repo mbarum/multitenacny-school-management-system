@@ -47,7 +47,12 @@ const FeeItemModal: React.FC<{ isOpen: boolean; onClose: () => void; onSave: (it
                          <div key={c.id} className="flex items-center space-x-2 mb-2">
                              <input type="checkbox" checked={classFees[c.id] !== undefined} onChange={() => setClassFees(prev => { const n = {...prev}; if(n[c.id]!==undefined) delete n[c.id]; else n[c.id]=''; return n; })}/>
                              <span className="flex-1">{c.name}</span>
-                             {classFees[c.id] !== undefined && <input type="number" value={classFees[c.id]} onChange={e=>setClassFees(p=>({...p, [c.id]: e.target.value}))} className="w-24 p-1 border rounded" placeholder="Amount"/>}
+                             {classFees[c.id] !== undefined && (
+                                 <div className="flex items-center space-x-1">
+                                     <span className="text-[10px] font-black text-slate-400 uppercase">{useData().schoolInfo?.currency || 'KES'}</span>
+                                     <input type="number" value={classFees[c.id]} onChange={e=>setClassFees(p=>({...p, [c.id]: e.target.value}))} className="w-24 p-1 border rounded" placeholder="Amount"/>
+                                 </div>
+                             )}
                          </div>
                      ))}
                  </div>

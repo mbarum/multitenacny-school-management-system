@@ -160,7 +160,7 @@ const StaffAndPayrollView: React.FC = () => {
                             <input value={staffFormData.role} onChange={e=>setStaffFormData({...staffFormData, role: e.target.value})} className="w-full p-3 border-2 border-slate-100 rounded-xl focus:border-primary-500 outline-none font-bold" placeholder="e.g. Senior Librarian" required/>
                         </div>
                         <div className="space-y-1">
-                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Base Salary (KES)</label>
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Base Salary ({useData().schoolInfo?.currency || 'KES'})</label>
                             <input type="number" value={staffFormData.salary} onChange={e=>setStaffFormData({...staffFormData, salary: parseFloat(e.target.value) || 0})} className="w-full p-3 border-2 border-slate-100 rounded-xl focus:border-primary-500 outline-none font-bold" required/>
                         </div>
                     </div>
@@ -189,8 +189,8 @@ const StaffAndPayrollView: React.FC = () => {
                                 {payrollWorksheet.map((p, idx) => (
                                     <tr key={idx}>
                                         <td className="py-4 font-bold text-slate-800">{p.staffName}</td>
-                                        <td className="py-4 text-right font-bold text-green-700">{p.grossPay.toLocaleString()}</td>
-                                        <td className="py-4 text-right font-bold text-red-600">({p.totalDeductions.toLocaleString()})</td>
+                                        <td className="py-4 text-right font-bold text-green-700">{formatCurrency(p.grossPay)}</td>
+                                        <td className="py-4 text-right font-bold text-red-600">({formatCurrency(p.totalDeductions)})</td>
                                         <td className="py-4 text-right font-black text-slate-900">{formatCurrency(p.netPay)}</td>
                                     </tr>
                                 ))}

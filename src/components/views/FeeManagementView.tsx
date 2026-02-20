@@ -350,7 +350,7 @@ const FeeManagementView: React.FC = () => {
                     
                     <div className="grid grid-cols-2 gap-6">
                         <div className="space-y-1">
-                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Amount (KES)</label>
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Amount ({useData().schoolInfo?.currency || 'KES'})</label>
                             <input type="number" value={paymentForm.amount || ''} onChange={e => setPaymentForm(p => ({...p, amount: parseFloat(e.target.value)}))} required className="w-full p-4 border-2 border-slate-100 rounded-2xl outline-none focus:border-primary-500 font-bold bg-slate-50" placeholder="0.00" />
                         </div>
                         {paymentForm.type === TransactionType.Payment && (

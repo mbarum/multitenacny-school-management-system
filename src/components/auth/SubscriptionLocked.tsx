@@ -7,7 +7,7 @@ import * as api from '../../services/api';
 import Spinner from '../common/Spinner';
 
 const SubscriptionLocked: React.FC = () => {
-    const { schoolInfo, handleLogout, addNotification } = useData();
+    const { schoolInfo, handleLogout, addNotification, formatCurrency } = useData();
     const [isPaying, setIsPaying] = useState(false);
     const [pricing, setPricing] = useState<PlatformPricing | null>(null);
     const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlan>(SubscriptionPlan.BASIC);
@@ -93,7 +93,7 @@ const SubscriptionLocked: React.FC = () => {
                                     <p className="font-bold text-slate-800 text-lg mt-1">{p.desc}</p>
                                 </div>
                                 <div className="text-right">
-                                    <p className="text-2xl font-black text-slate-900">KES {p.price.toLocaleString()}</p>
+                                    <p className="text-2xl font-black text-slate-900">{formatCurrency(p.price)}</p>
                                     <p className="text-[10px] text-slate-400 font-bold uppercase">Per Month</p>
                                 </div>
                             </div>

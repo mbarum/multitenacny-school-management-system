@@ -7,7 +7,7 @@ import Skeleton from '../../components/common/Skeleton';
 import { useQuery } from '@tanstack/react-query';
 
 const ParentChildDetails: React.FC = () => {
-    const { selectedChild, setActiveView } = useData();
+    const { selectedChild, setActiveView, formatCurrency, schoolInfo } = useData();
     const [activeTab, setActiveTab] = useState('academics');
     
     // Global data queries
@@ -126,8 +126,8 @@ const ParentChildDetails: React.FC = () => {
                             <tr className="bg-slate-50 border-b">
                                 <th className="px-4 py-2 font-medium text-slate-600">Date</th>
                                 <th className="px-4 py-2 font-medium text-slate-600">Description</th>
-                                <th className="px-4 py-2 font-medium text-slate-600 text-right">Debit (KES)</th>
-                                <th className="px-4 py-2 font-medium text-slate-600 text-right">Credit (KES)</th>
+                                <th className="px-4 py-2 font-medium text-slate-600 text-right">Debit ({schoolInfo?.currency || 'KES'})</th>
+                                <th className="px-4 py-2 font-medium text-slate-600 text-right">Credit ({schoolInfo?.currency || 'KES'})</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -136,10 +136,10 @@ const ParentChildDetails: React.FC = () => {
                                     <td className="px-4 py-2">{new Date(t.date).toLocaleDateString()}</td>
                                     <td className="px-4 py-2">{t.description}</td>
                                     <td className="px-4 py-2 text-right">
-                                        {(t.type === 'Invoice' || t.type === 'ManualDebit') ? t.amount.toLocaleString() : '-'}
+                                        {(t.type === 'Invoice' || t.type === 'ManualDebit') ? formatCurrency(t.amount) : '-'}
                                     </td>
                                     <td className="px-4 py-2 text-right text-green-600">
-                                        {(t.type === 'Payment' || t.type === 'ManualCredit') ? t.amount.toLocaleString() : '-'}
+                                        {(t.type === 'Payment' || t.type === 'ManualCredit') ? formatCurrency(t.amount) : '-'}
                                     </td>
                                 </tr>
                             ))}

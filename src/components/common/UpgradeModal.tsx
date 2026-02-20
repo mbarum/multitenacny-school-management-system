@@ -68,7 +68,7 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ isOpen, onClose }) => {
         doc.setTextColor(255);
         doc.setFontSize(10);
         doc.text('LICENSE PLAN DESCRIPTION', 25, 116.5);
-        doc.text('NET TOTAL (KES)', 185, 116.5, { align: 'right' });
+        doc.text(`NET TOTAL (${schoolInfo.currency || 'KES'})`, 185, 116.5, { align: 'right' });
 
         doc.setTextColor(0);
         doc.setFont('helvetica', 'normal');
@@ -81,7 +81,7 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ isOpen, onClose }) => {
         doc.line(130, 145, 190, 145);
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(12);
-        doc.text(`DUE: KES ${totalWithVat.toLocaleString()}`, 185, 155, { align: 'right' });
+        doc.text(`DUE: ${formatCurrency(totalWithVat)}`, 185, 155, { align: 'right' });
 
         doc.setDrawColor(primaryColor[0], primaryColor[1], primaryColor[2]);
         doc.roundedRect(20, 175, 170, 70, 3, 3, 'D');

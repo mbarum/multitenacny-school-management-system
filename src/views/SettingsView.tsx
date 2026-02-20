@@ -83,7 +83,7 @@ const FeeItemModal: React.FC<{
                                 <span className="flex-1 text-xs font-black text-slate-700 uppercase">{c.name}</span>
                                 {classFees[c.id] !== undefined && (
                                     <div className="flex items-center bg-slate-50 rounded-lg px-2 border border-slate-200">
-                                        <span className="text-[10px] font-black text-slate-400 mr-2">KES</span>
+                                        <span className="text-[10px] font-black text-slate-400 mr-2">{useData().schoolInfo?.currency || 'KES'}</span>
                                         <input type="number" value={classFees[c.id]} onChange={e=>setClassFees(p=>({...p, [c.id]: e.target.value}))} className="w-24 p-1 bg-transparent font-black text-primary-700 outline-none text-right" placeholder="0" autoFocus/>
                                     </div>
                                 )}

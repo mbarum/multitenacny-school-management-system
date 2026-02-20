@@ -13,6 +13,7 @@ import * as api from '../services/api';
 const DEFAULT_AVATAR = 'https://i.imgur.com/S5o7W44.png';
 
 const PayrollEditModal: React.FC<{ isOpen: boolean; onClose: () => void; entry: Payroll | null; onSave: (updatedEntry: Payroll) => void; }> = ({ isOpen, onClose, entry, onSave }) => {
+    const { formatCurrency } = useData();
     const [localEntry, setLocalEntry] = useState<Payroll | null>(null);
     const [newItemName, setNewItemName] = useState('');
     const [newItemAmount, setNewItemAmount] = useState(0);
@@ -99,9 +100,9 @@ const PayrollEditModal: React.FC<{ isOpen: boolean; onClose: () => void; entry: 
                     </div>
                 </div>
                 <div className="grid grid-cols-3 gap-4 bg-slate-100 p-4 rounded font-bold text-center">
-                    <div><div className="text-xs text-slate-500">Gross Pay</div><div className="text-green-700">{localEntry.grossPay.toLocaleString()}</div></div>
-                    <div><div className="text-xs text-slate-500">Deductions</div><div className="text-red-700">{localEntry.totalDeductions.toLocaleString()}</div></div>
-                    <div><div className="text-xs text-slate-500">Net Pay</div><div className="text-slate-800">{localEntry.netPay.toLocaleString()}</div></div>
+                    <div><div className="text-xs text-slate-500">Gross Pay</div><div className="text-green-700">{formatCurrency(localEntry.grossPay)}</div></div>
+                    <div><div className="text-xs text-slate-500">Deductions</div><div className="text-red-700">{formatCurrency(localEntry.totalDeductions)}</div></div>
+                    <div><div className="text-xs text-slate-500">Net Pay</div><div className="text-slate-800">{formatCurrency(localEntry.netPay)}</div></div>
                 </div>
                 <div className="flex justify-end pt-4 border-t"><button onClick={() => onSave(localEntry)} className="px-6 py-2 bg-primary-600 text-white font-semibold rounded shadow hover:bg-primary-700">Update Entry</button></div>
             </div>
@@ -504,7 +505,7 @@ const StaffAndPayrollView: React.FC = () => {
                             className="w-full p-2 border border-slate-300 rounded-lg pr-12"
                         />
                         <span className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm text-slate-500">
-                            {itemFormData.calculationType === CalculationType.Fixed ? 'KES' : '%'}
+                            {itemFormData.calculationType === CalculationType.Fixed ? (schoolInfo.currency || 'KES') : '%'}
                         </span>
                     </div>
 
@@ -666,25 +667,25 @@ const StaffAndPayrollView: React.FC = () => {
                                     return (
                                         <tr key={p.id} className="border border-slate-400 text-right">
                                             <td className="p-1 border border-slate-400 text-left">{p.month.split(' ')[0]}</td>
-                                            <td className="p-1 border border-slate-400">{basic.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
-                                            <td className="p-1 border border-slate-400">{benefits.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
-                                            <td className="p-1 border border-slate-400 font-bold">{p.grossPay.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
-                                            <td className="p-1 border border-slate-400">{paye.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
-                                            <td className="p-1 border border-slate-400">{nssf.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
-                                            <td className="p-1 border border-slate-400">{sha.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
-                                            <td className="p-1 border border-slate-400">{levy.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                                            <td className="p-1 border border-slate-400">{formatCurrency(basic)}</td>
+                                            <td className="p-1 border border-slate-400">{formatCurrency(benefits)}</td>
+                                            <td className="p-1 border border-slate-400 font-bold">{formatCurrency(p.grossPay)}</td>
+                                            <td className="p-1 border border-slate-400">{formatCurrency(paye)}</td>
+                                            <td className="p-1 border border-slate-400">{formatCurrency(nssf)}</td>
+                                            <td className="p-1 border border-slate-400">{formatCurrency(sha)}</td>
+                                            <td className="p-1 border border-slate-400">{formatCurrency(levy)}</td>
                                         </tr>
                                     );
                                 })}
                                 <tr className="bg-slate-200 font-bold text-right">
                                     <td className="p-2 border border-slate-400 text-left">TOTALS</td>
-                                    <td className="p-2 border border-slate-400">{p9Aggregates.totals.basic.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
-                                    <td className="p-2 border border-slate-400">{(p9Aggregates.totals.gross - p9Aggregates.totals.basic).toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
-                                    <td className="p-2 border border-slate-400">{p9Aggregates.totals.gross.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
-                                    <td className="p-2 border border-slate-400">{p9Aggregates.totals.paye.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
-                                    <td className="p-2 border border-slate-400">{p9Aggregates.totals.nssf.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
-                                    <td className="p-2 border border-slate-400">{p9Aggregates.totals.sha.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
-                                    <td className="p-2 border border-slate-400">{p9Aggregates.totals.levy.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                                    <td className="p-2 border border-slate-400">{formatCurrency(p9Aggregates.totals.basic)}</td>
+                                    <td className="p-2 border border-slate-400">{formatCurrency(p9Aggregates.totals.gross - p9Aggregates.totals.basic)}</td>
+                                    <td className="p-2 border border-slate-400">{formatCurrency(p9Aggregates.totals.gross)}</td>
+                                    <td className="p-2 border border-slate-400">{formatCurrency(p9Aggregates.totals.paye)}</td>
+                                    <td className="p-2 border border-slate-400">{formatCurrency(p9Aggregates.totals.nssf)}</td>
+                                    <td className="p-2 border border-slate-400">{formatCurrency(p9Aggregates.totals.sha)}</td>
+                                    <td className="p-2 border border-slate-400">{formatCurrency(p9Aggregates.totals.levy)}</td>
                                 </tr>
                             </tbody>
                         </table>

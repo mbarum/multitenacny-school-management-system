@@ -288,7 +288,7 @@ const ExpensesView: React.FC = () => {
                     </div>
 
                     <div className="space-y-1">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Amount Disbursed (KES)</label>
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Amount Disbursed ({useData().schoolInfo?.currency || 'KES'})</label>
                         <input type="number" step="0.01" placeholder="0.00" value={formData.amount || ''} onChange={e => setFormData(ex => ({...ex, amount: parseFloat(e.target.value)}))} required className="w-full p-3.5 border border-slate-200 rounded-xl bg-slate-50 font-bold focus:ring-2 focus:ring-primary-500 outline-none text-lg"/>
                     </div>
                     

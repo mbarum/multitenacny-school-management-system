@@ -82,7 +82,7 @@ const ReceiptModal: React.FC<{ isOpen: boolean; onClose: () => void; transaction
                                     <div className="text-[10px] font-bold text-slate-400 mt-2 uppercase tracking-widest">Academic Year {new Date().getFullYear()} Cycle</div>
                                 </td>
                                 <td className="p-10 text-right">
-                                    <div className="font-black text-3xl text-slate-900 font-mono tracking-tighter">{transaction.amount.toLocaleString()}</div>
+                                    <div className="font-black text-3xl text-slate-900 font-mono tracking-tighter">{formatCurrency(transaction.amount)}</div>
                                 </td>
                             </tr>
                             <tr className="bg-slate-50/50">

@@ -17,6 +17,7 @@ const CheckoutForm: React.FC<{
     onSuccess: (user: any) => void,
     onError: (msg: string) => void 
 }> = ({ formData, price, onSuccess, onError }) => {
+    const { formatCurrency } = useData();
     const stripe = useStripe();
     const elements = useElements();
     const [isProcessing, setIsProcessing] = useState(false);
@@ -61,7 +62,7 @@ const CheckoutForm: React.FC<{
                 <CardElement options={{ style: { base: { fontSize: '16px', fontWeight: '600', color: '#1e293b' } } }} />
             </div>
             <button type="submit" disabled={!stripe || isProcessing} className="w-full py-5 bg-indigo-600 text-white rounded-2xl font-black text-xl hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-500/20">
-                {isProcessing ? <Spinner /> : `Pay with Card (KES ${price.toLocaleString()})`}
+                {isProcessing ? <Spinner /> : `Pay with Card (${formatCurrency(price)})`}
             </button>
         </form>
     );
@@ -202,7 +203,7 @@ const RegisterSchool: React.FC = () => {
         doc.setTextColor(255);
         doc.setFont('helvetica', 'bold');
         doc.text('DESCRIPTION', 25, 126.5);
-        doc.text('TOTAL (KES)', 185, 126.5, { align: 'right' });
+        doc.text(`TOTAL (${formData.currency || 'KES'})`, 185, 126.5, { align: 'right' });
 
         doc.setTextColor(0);
         doc.setFont('helvetica', 'normal');
@@ -215,7 +216,7 @@ const RegisterSchool: React.FC = () => {
         doc.line(120, 155, 190, 155);
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(14);
-        doc.text(`NET TOTAL: KES ${cost.total.toLocaleString()}`, 185, 168, { align: 'right' });
+        doc.text(`NET TOTAL: ${formatCurrency(cost.total)}`, 185, 168, { align: 'right' });
 
         // Bank Details Section
         doc.setDrawColor(primaryColor[0], primaryColor[1], primaryColor[2]);
