@@ -10,15 +10,7 @@ export class TenancyInterceptor implements NestInterceptor {
     const schoolId = request.user?.schoolId;
 
     if (schoolId) {
-      return new Observable(observer => {
-        tenancyContext.run(schoolId, () => {
-          next.handle().subscribe({
-            next: (val) => observer.next(val),
-            error: (err) => observer.error(err),
-            complete: () => observer.complete(),
-          });
-        });
-      });
+      return tenancyContext.run(schoolId, () => next.handle());
     }
 
     return next.handle();

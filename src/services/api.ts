@@ -33,7 +33,10 @@ const apiFetch = async (endpoint: string, options: RequestInit = {}) => {
     const response = await fetch(`/api${endpoint}`, { ...options, headers });
     if (!response.ok) {
         const errorData = await response.json().catch(() => ({ message: response.statusText }));
-        throw new Error(errorData.message || 'Server connection failed.');
+        const errorMessage = typeof errorData.message === 'object' 
+            ? (errorData.message.message || JSON.stringify(errorData.message)) 
+            : errorData.message;
+        throw new Error(errorMessage || 'Server connection failed.');
     }
     if (response.status === 204) return null;
     return response.json();
@@ -49,7 +52,10 @@ const apiFetchBlob = async (endpoint: string, options: RequestInit = {}) => {
     const response = await fetch(`/api${endpoint}`, { ...options, headers });
     if (!response.ok) {
         const errorData = await response.json().catch(() => ({ message: response.statusText }));
-        throw new Error(errorData.message || 'Server connection failed.');
+        const errorMessage = typeof errorData.message === 'object' 
+            ? (errorData.message.message || JSON.stringify(errorData.message)) 
+            : errorData.message;
+        throw new Error(errorMessage || 'Server connection failed.');
     }
     return response.blob();
 };

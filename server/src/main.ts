@@ -46,13 +46,16 @@ async function bootstrap() {
   app.use(urlencoded({ extended: true, limit: '50mb' }));
   
   // Ensure public/uploads directory exists
-  const uploadDir = join(resolve('.'), 'public', 'uploads');
+  // Use paths relative to the server root to ensure consistency when run from different directories
+  // Note: __dirname is available in the compiled CommonJS output
+  const serverRoot = resolve(__dirname, '..');
+  const uploadDir = join(serverRoot, 'public', 'uploads');
   if (!fs.existsSync(uploadDir)) {
     fs.mkdirSync(uploadDir, { recursive: true });
   }
 
   // Serve static assets (uploads)
-  app.use('/public', express.static(join(resolve('.'), 'public')));
+  app.use('/public', express.static(join(serverRoot, 'public')));
 
   // Enable global validation pipe
   app.useGlobalPipes(new ValidationPipe({

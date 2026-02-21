@@ -1,5 +1,6 @@
 
-import { Module } from '@nestjs/common';
+import { Module, OnModuleInit, Logger } from '@nestjs/common';
+import { DataSource } from 'typeorm';
 import { AppController } from './app.controller';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
@@ -120,4 +121,20 @@ import { TenancySubscriber } from './tenancy/tenancy.subscriber';
     TenancySubscriber
   ],
 })
-export class AppModule {}
+export class AppModule implements OnModuleInit {
+  private readonly logger = new Logger(AppModule.name);
+
+  constructor(private dataSource: DataSource) {}
+
+  async onModuleInit() {
+    try {
+      if (this.dataSource.isInitialized) {
+        this.logger.log('Database connection established successfully');
+      } else {
+        this.logger.error('Database connection failed to initialize');
+      }
+    } catch (error) {
+      this.logger.error('Error during database initialization check', error);
+    }
+  }
+}

@@ -55,17 +55,27 @@ export class SettingsService {
   }
   
   async getPlatformPricing(): Promise<PlatformSetting> {
+    try {
       const setting = await this.platformSettingRepository.findOne({ where: {} });
       return setting || ({ basicMonthlyPrice: 3000 } as PlatformSetting);
+    } catch (error) {
+      this.logger.error('Failed to fetch platform pricing', error);
+      return { basicMonthlyPrice: 3000 } as PlatformSetting;
+    }
   }
 
   async getSchoolInfo(schoolId: string): Promise<any> {
-    const school = await this.schoolRepository.findOne({ 
-      where: { id: schoolId },
-      relations: ['subscription'] // Load the subscription details
-    });
-    if (!school) throw new NotFoundException('School settings not accessible.');
-    return school;
+    try {
+      const school = await this.schoolRepository.findOne({ 
+        where: { id: schoolId },
+        relations: ['subscription'] 
+      });
+      if (!school) throw new NotFoundException('School settings not accessible.');
+      return school;
+    } catch (error) {
+      this.logger.error(`Failed to fetch school info for ${schoolId}`, error);
+      throw error;
+    }
   }
 
   async updateSchoolInfo(schoolId: string, data: UpdateSchoolInfoDto): Promise<School> {
@@ -76,8 +86,13 @@ export class SettingsService {
   }
   
   async getDarajaSettings(schoolId: string): Promise<DarajaSetting> {
-    const setting = await this.darajaSettingRepository.findOne({ where: { schoolId: schoolId as any } });
-    return setting || ({ consumerKey: '', schoolId } as DarajaSetting);
+    try {
+      const setting = await this.darajaSettingRepository.findOne({ where: { schoolId: schoolId as any } });
+      return setting || ({ consumerKey: '', schoolId } as DarajaSetting);
+    } catch (error) {
+      this.logger.error(`Failed to fetch Daraja settings for ${schoolId}`, error);
+      return { consumerKey: '', schoolId } as DarajaSetting;
+    }
   }
 
   async updateDarajaSettings(schoolId: string, data: UpdateDarajaSettingsDto): Promise<DarajaSetting> {
