@@ -15,11 +15,11 @@ export class AuthController {
     const { email, password } = loginDto;
     const { user, token } = await this.authService.login(email, password);
 
-    // Set HttpOnly Cookie
+    // Set HttpOnly Cookie for AI Studio Iframe compatibility
     response.cookie('jwt', token, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production', 
-        sameSite: 'strict',
+        secure: true, // Required for SameSite=None
+        sameSite: 'none', // Required for cross-origin iframe
         maxAge: 24 * 60 * 60 * 1000 
     });
 
@@ -39,11 +39,11 @@ export class AuthController {
   async registerSchool(@Body() registerDto: RegisterSchoolDto, @Res() response: Response) {
      const { user, token, school } = await this.authService.registerSchool(registerDto);
      
-     // Set HttpOnly Cookie
+     // Set HttpOnly Cookie for AI Studio Iframe compatibility
      response.cookie('jwt', token, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict',
+        secure: true, // Required for SameSite=None
+        sameSite: 'none', // Required for cross-origin iframe
         maxAge: 24 * 60 * 60 * 1000 
     });
 

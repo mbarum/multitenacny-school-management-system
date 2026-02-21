@@ -12,14 +12,21 @@ export class NotificationProcessor extends WorkerHost {
 
   constructor(private configService: ConfigService) {
     super();
+    const port = this.configService.get<number>('SMTP_PORT', 587);
+    const secure = port === 465; // Use SSL for 465, STARTTLS for others (like 587)
+
     this.transporter = nodemailer.createTransport({
       host: this.configService.get<string>('SMTP_HOST'),
-      port: this.configService.get<number>('SMTP_PORT', 587),
-      secure: this.configService.get<string>('SMTP_SECURE') === 'true',
+      port,
+      secure,
       auth: {
         user: this.configService.get<string>('SMTP_USER'),
         pass: this.configService.get<string>('SMTP_PASS'),
       },
+      // If port is not 465, we might need to explicitly allow STARTTLS
+      tls: {
+        rejectUnauthorized: this.configService.get<string>('SMTP_REJECT_UNAUTHORIZED') !== 'false'
+      }
     });
   }
 
