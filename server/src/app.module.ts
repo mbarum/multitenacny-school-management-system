@@ -38,6 +38,7 @@ import { School } from './entities/school.entity';
 import { AuditSubscriber } from './audit/audit.subscriber';
 import { FinancialSubscriber } from './dashboard/financial.subscriber';
 import { TenancyModule } from './tenancy/tenancy.module';
+import { TenancySubscriber } from './tenancy/tenancy.subscriber';
 
 @Module({
   imports: [
@@ -115,7 +116,8 @@ import { TenancyModule } from './tenancy/tenancy.module';
       useClass: AuditInterceptor,
     },
     AuditSubscriber,
-    FinancialSubscriber
+    FinancialSubscriber,
+    TenancySubscriber
   ],
 })
 export class AppModule {}

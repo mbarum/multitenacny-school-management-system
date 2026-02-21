@@ -31,12 +31,9 @@ export class DashboardService {
 
     try {
         // 1. Total Active Students
-        const studentResult = await this.studentRepo
-            .createQueryBuilder('s')
-            .where('s.status = :status', { status: StudentStatus.Active })
-            .andWhere('s.schoolId = :schoolId', { schoolId })
-            .getCount();
-        const totalStudents = studentResult || 0;
+        const totalStudents = await this.studentRepo.count({ 
+            where: { status: StudentStatus.Active, schoolId: schoolId as any } 
+        });
 
         // 2. Aggregate Revenue
         const revenueResult = await this.transactionRepo
@@ -70,13 +67,13 @@ export class DashboardService {
         const expenseDistribution = await this.getExpenseDistribution(schoolId);
 
         return {
-            totalStudents,
+            totalStudents: totalStudents || 0,
             totalRevenue,
             totalExpenses,
             totalProfit: totalRevenue - totalExpenses,
             feesOverdue,
-            monthlyData,
-            expenseDistribution
+            monthlyData: monthlyData || [],
+            expenseDistribution: expenseDistribution || []
         };
     } catch (error) {
         console.error(`Dashboard Stats Error for School ${schoolId}:`, error);

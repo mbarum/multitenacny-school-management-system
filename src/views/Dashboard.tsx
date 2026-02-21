@@ -107,7 +107,7 @@ const Dashboard: React.FC = () => {
                     {isLoading ? <Skeleton className="w-full h-full min-h-[300px]" /> : (
                         <div className="h-[320px] w-full">
                             <ResponsiveContainer width="100%" height="100%">
-                                    <BarChart data={stats?.monthlyData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
+                                    <BarChart data={stats?.monthlyData || []} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
                                         <CartesianGrid strokeDasharray="3 3" vertical={false} />
                                         <XAxis dataKey="name" tick={{ fill: '#64748b' }} />
                                         <YAxis 
@@ -136,7 +136,7 @@ const Dashboard: React.FC = () => {
                             <ResponsiveContainer width="100%" height="100%">
                                 <PieChart>
                                     <Pie 
-                                        data={stats?.expenseDistribution} 
+                                        data={stats?.expenseDistribution || []} 
                                         dataKey="value" 
                                         nameKey="name" 
                                         cx="50%" 
@@ -156,7 +156,7 @@ const Dashboard: React.FC = () => {
                                             ) : null;
                                         }}
                                     >
-                                        {stats?.expenseDistribution.map((entry: any, index: number) => (
+                                        {(stats?.expenseDistribution || []).map((entry: any, index: number) => (
                                             <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                                         ))}
                                     </Pie>

@@ -86,7 +86,7 @@ export class StudentsService {
   }
 
   async findAll(query: any, schoolId: string): Promise<any> {
-    const { page = 1, limit = 15, search, classId, status } = query;
+    const { page = 1, limit = 15, search, classId, status, pagination } = query;
     const qb = this.studentsRepo.createQueryBuilder('student')
       .leftJoinAndSelect('student.schoolClass', 'class')
       .where('student.schoolId = :schoolId', { schoolId });
