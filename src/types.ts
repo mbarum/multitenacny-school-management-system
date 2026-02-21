@@ -379,6 +379,7 @@ export interface DarajaSettings {
     shortCode: string;
     passkey: string;
     paybillNumber: string;
+    environment?: 'sandbox' | 'production';
 }
 
 export interface Notification {
@@ -415,6 +416,7 @@ export interface PlatformPricing {
     mpesaPasskey?: string;
     mpesaConsumerKey?: string;
     mpesaConsumerSecret?: string;
+    mpesaEnvironment?: 'sandbox' | 'production';
 }
 
 export enum Currency {

@@ -106,16 +106,20 @@ export class TransactionsService {
       if (result.affected === 0) throw new NotFoundException();
   }
 
-  private async getAccessToken(credentials: { consumerKey: string, consumerSecret: string }): Promise<string> {
+  private async getAccessToken(credentials: { consumerKey: string, consumerSecret: string }, environment: 'sandbox' | 'production'): Promise<string> {
     const auth = Buffer.from(`${credentials.consumerKey}:${credentials.consumerSecret}`).toString('base64');
+    const url = environment === 'production' 
+        ? 'https://api.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials'
+        : 'https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials';
+    
     try {
-      const response = await axios.get('https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials', {
+      const response = await axios.get(url, {
         headers: { Authorization: `Basic ${auth}` }
       });
       return response.data.access_token;
     } catch (error: any) {
-      this.logger.error(`[Daraja] OAuth Error: ${error.response?.data?.errorMessage || error.message}`);
-      throw new BadRequestException('Failed to authenticate with M-Pesa gateway.');
+      this.logger.error(`[Daraja] OAuth Error (${environment}): ${error.response?.data?.errorMessage || error.message}`);
+      throw new BadRequestException(`M-Pesa Authentication failed: ${error.response?.data?.errorMessage || error.message}`);
     }
   }
 
@@ -123,6 +127,7 @@ export class TransactionsService {
       let credentials;
       let shortCode;
       let passkey;
+      let environment: 'sandbox' | 'production' = 'sandbox';
       const callbackUrl = `${process.env.APP_URL || 'http://localhost:3000'}/api/mpesa/callback`;
 
       if (isSubscription) {
@@ -131,15 +136,17 @@ export class TransactionsService {
           credentials = { consumerKey: platform.mpesaConsumerKey, consumerSecret: platform.mpesaConsumerSecret };
           shortCode = platform.mpesaPaybill;
           passkey = platform.mpesaPasskey;
+          environment = platform.mpesaEnvironment || 'sandbox';
       } else {
           const daraja = await this.darajaRepo.findOne({ where: { schoolId: schoolId as any } });
           if (!daraja || !daraja.consumerKey) throw new BadRequestException('M-Pesa is not configured for this school.');
           credentials = { consumerKey: daraja.consumerKey, consumerSecret: daraja.consumerSecret };
           shortCode = daraja.shortCode;
           passkey = daraja.passkey;
+          environment = daraja.environment || 'sandbox';
       }
 
-      const token = await this.getAccessToken(credentials);
+      const token = await this.getAccessToken(credentials, environment);
       const timestamp = new Date().toISOString().replace(/[-:T]/g, '').split('.')[0];
       const password = Buffer.from(`${shortCode}${passkey}${timestamp}`).toString('base64');
 
@@ -157,8 +164,12 @@ export class TransactionsService {
           TransactionDesc: isSubscription ? "Saaslink License" : "School Fee Payment"
       };
 
+      const stkUrl = environment === 'production'
+          ? 'https://api.safaricom.co.ke/mpesa/stkpush/v1/processrequest'
+          : 'https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest';
+
       try {
-          const response = await axios.post('https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest', payload, {
+          const response = await axios.post(stkUrl, payload, {
               headers: { Authorization: `Bearer ${token}` }
           });
           
@@ -176,7 +187,7 @@ export class TransactionsService {
 
           return response.data;
       } catch (error: any) {
-          this.logger.error(`[Daraja] STK Push Error: ${error.response?.data?.errorMessage || error.message}`);
+          this.logger.error(`[Daraja] STK Push Error (${environment}): ${error.response?.data?.errorMessage || error.message}`);
           throw new BadRequestException(error.response?.data?.errorMessage || 'M-Pesa STK Push failed.');
       }
   }

@@ -17,51 +17,71 @@ export class DashboardService {
   ) {}
 
   async getDashboardStats(schoolId: string) {
-    // 1. Total Active Students (Indexed)
-    const totalStudents = await this.studentRepo.count({ 
-        where: { status: StudentStatus.Active, schoolId: schoolId as any } 
-    });
+    if (!schoolId) {
+        return {
+            totalStudents: 0,
+            totalRevenue: 0,
+            totalExpenses: 0,
+            totalProfit: 0,
+            feesOverdue: 0,
+            monthlyData: [],
+            expenseDistribution: []
+        };
+    }
 
-    // 2. Aggregate Revenue (Indexed Payment sums)
-    const revenueResult = await this.transactionRepo
-      .createQueryBuilder('t')
-      .select('SUM(t.amount)', 'total')
-      .where('t.type = :type', { type: TransactionType.Payment })
-      .andWhere('t.schoolId = :schoolId', { schoolId })
-      .getRawOne();
-    const totalRevenue = parseFloat(revenueResult.total) || 0;
+    try {
+        // 1. Total Active Students
+        const studentResult = await this.studentRepo
+            .createQueryBuilder('s')
+            .where('s.status = :status', { status: StudentStatus.Active })
+            .andWhere('s.schoolId = :schoolId', { schoolId })
+            .getCount();
+        const totalStudents = studentResult || 0;
 
-    // 3. Aggregate Expenses (Indexed)
-    const expenseResult = await this.expenseRepo
-      .createQueryBuilder('e')
-      .select('SUM(e.amount)', 'total')
-      .where('e.schoolId = :schoolId', { schoolId })
-      .getRawOne();
-    const totalExpenses = parseFloat(expenseResult.total) || 0;
+        // 2. Aggregate Revenue
+        const revenueResult = await this.transactionRepo
+            .createQueryBuilder('t')
+            .select('SUM(t.amount)', 'total')
+            .where('t.type = :type', { type: TransactionType.Payment })
+            .andWhere('t.schoolId = :schoolId', { schoolId })
+            .getRawOne();
+        const totalRevenue = parseFloat(revenueResult?.total) || 0;
 
-    // 4. Calculate Ledger Overdue (Aged Balances)
-    const agingResult = await this.transactionRepo
-      .createQueryBuilder('t')
-      .select("SUM(CASE WHEN t.type IN ('Invoice', 'ManualDebit') THEN t.amount ELSE -t.amount END)", 'balance')
-      .where('t.schoolId = :schoolId', { schoolId })
-      .getRawOne();
-    const feesOverdue = Math.max(0, parseFloat(agingResult.balance) || 0);
+        // 3. Aggregate Expenses
+        const expenseResult = await this.expenseRepo
+            .createQueryBuilder('e')
+            .select('SUM(e.amount)', 'total')
+            .where('e.schoolId = :schoolId', { schoolId })
+            .getRawOne();
+        const totalExpenses = parseFloat(expenseResult?.total) || 0;
 
-    // 5. Monthly Trend (Using Summary Table for Speed)
-    const monthlyData = await this.getMonthlyFinancials(schoolId);
+        // 4. Calculate Ledger Overdue
+        const agingResult = await this.transactionRepo
+            .createQueryBuilder('t')
+            .select("SUM(CASE WHEN t.type IN ('Invoice', 'ManualDebit') THEN t.amount ELSE -t.amount END)", 'balance')
+            .where('t.schoolId = :schoolId', { schoolId })
+            .getRawOne();
+        const feesOverdue = Math.max(0, parseFloat(agingResult?.balance) || 0);
 
-    // 6. Distribution Analysis
-    const expenseDistribution = await this.getExpenseDistribution(schoolId);
+        // 5. Monthly Trend
+        const monthlyData = await this.getMonthlyFinancials(schoolId);
 
-    return {
-      totalStudents,
-      totalRevenue,
-      totalExpenses,
-      totalProfit: totalRevenue - totalExpenses,
-      feesOverdue,
-      monthlyData,
-      expenseDistribution
-    };
+        // 6. Distribution Analysis
+        const expenseDistribution = await this.getExpenseDistribution(schoolId);
+
+        return {
+            totalStudents,
+            totalRevenue,
+            totalExpenses,
+            totalProfit: totalRevenue - totalExpenses,
+            feesOverdue,
+            monthlyData,
+            expenseDistribution
+        };
+    } catch (error) {
+        console.error(`Dashboard Stats Error for School ${schoolId}:`, error);
+        throw error;
+    }
   }
 
   private async getMonthlyFinancials(schoolId: string) {

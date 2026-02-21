@@ -139,17 +139,31 @@ const RegisterSchool: React.FC = () => {
 
             const response = await api.registerSchool(payload);
             
+            // Save token immediately so subsequent authenticated calls (like STK push) work
+            if (response.token) {
+                localStorage.setItem('authToken', response.token);
+            }
+
             if (response.status === 'PENDING') {
                 setPaymentStatus('manual_success');
                 addNotification("Registration submitted. Verification required.", "info");
             } else if (method === 'MPESA') {
                 setPaymentStatus('processing');
-                await initiateSTKPush(cost.total, formData.phone, 'SUB_' + response.user.id.substring(0, 8), 'SUBSCRIPTION');
-                setPaymentStatus('success');
-                setTimeout(() => handleLogin(response.user), 3000);
+                try {
+                    await initiateSTKPush(cost.total, formData.phone, 'SUB_' + response.user.id.substring(0, 8), 'SUBSCRIPTION');
+                    setPaymentStatus('success');
+                    addNotification("STK Push sent to your phone. Please enter your PIN.", "success");
+                    // Wait a bit longer for them to see the success message before redirecting
+                    setTimeout(() => handleLogin(response.user, response.token), 4000);
+                } catch (stkErr: any) {
+                    console.error("STK Push failed", stkErr);
+                    addNotification("Account created, but M-Pesa prompt failed: " + stkErr.message, "error");
+                    // Still log them in since they have a grace period
+                    setTimeout(() => handleLogin(response.user, response.token), 3000);
+                }
             } else {
                 setPaymentStatus('success');
-                setTimeout(() => handleLogin(response.user), 2000);
+                setTimeout(() => handleLogin(response.user, response.token), 2000);
             }
         } catch (err: any) {
             setError(err.message || 'The server encountered an error. Please try again.');

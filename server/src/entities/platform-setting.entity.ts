@@ -39,4 +39,7 @@ export class PlatformSetting extends BaseEntity {
 
   @Column({ default: '' })
   stripeWebhookSecret!: string;
+
+  @Column({ default: 'sandbox' })
+  mpesaEnvironment!: 'sandbox' | 'production';
 }

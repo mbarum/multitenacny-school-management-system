@@ -96,8 +96,8 @@ export class AuthService {
             if (baseDto.plan === SubscriptionPlan.FREE) {
                 endDate.setFullYear(endDate.getFullYear() + 10);
             } else if (isManual || isMpesa) {
-                // Grant a 7-day grace period for bank/mpesa verification so they aren't locked out of 'me' endpoint
-                endDate.setDate(endDate.getDate() + 7);
+                // No grace period - account is created but locked until payment is verified
+                endDate.setMinutes(endDate.getMinutes() - 1); 
             } else {
                 endDate.setDate(endDate.getDate() + (baseDto.billingCycle === 'ANNUALLY' ? 365 : 30));
             }

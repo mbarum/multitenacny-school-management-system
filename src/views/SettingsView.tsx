@@ -428,6 +428,17 @@ const SettingsView: React.FC = () => {
                         </div>
                     </div>
                     <div className="space-y-8">
+                        <div className="flex justify-between items-center bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Gateway Environment</label>
+                            <select 
+                                value={localDaraja.environment || 'sandbox'} 
+                                onChange={e=>setLocalDaraja({...localDaraja, environment: e.target.value})}
+                                className="p-2 text-xs border rounded bg-white font-black uppercase outline-none focus:ring-2 focus:ring-primary-500"
+                            >
+                                <option value="sandbox">Sandbox (Testing)</option>
+                                <option value="production">Production (Live)</option>
+                            </select>
+                        </div>
                         <div className="space-y-2">
                             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Lipa Na M-Pesa Paybill</label>
                             <input value={localDaraja.paybillNumber || ''} onChange={e=>setLocalDaraja({...localDaraja, paybillNumber: e.target.value})} className="w-full p-4 border-2 border-slate-50 bg-slate-50 rounded-2xl font-bold outline-none focus:border-primary-500 focus:bg-white transition-all" placeholder="522522" />

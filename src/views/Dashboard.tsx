@@ -31,11 +31,24 @@ const Dashboard: React.FC = () => {
     const { formatCurrency, convertCurrency, schoolInfo } = useData();
     const navigate = useNavigate();
 
-    const { data: stats, isLoading } = useQuery({
+    const { data: stats, isLoading, error } = useQuery({
         queryKey: ['dashboard-stats'],
         queryFn: api.getDashboardStats,
         staleTime: 60 * 1000, 
     });
+
+    if (error) {
+        return (
+            <div className="p-6 flex flex-col items-center justify-center h-[60vh]">
+                <div className="bg-red-50 p-6 rounded-2xl border border-red-100 text-center max-w-md">
+                    <svg className="w-12 h-12 text-red-500 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    <h3 className="text-lg font-bold text-red-800 mb-2">Failed to load dashboard data</h3>
+                    <p className="text-red-600 text-sm mb-4">{(error as any).message || 'An unexpected error occurred while fetching statistics.'}</p>
+                    <button onClick={() => window.location.reload()} className="px-4 py-2 bg-red-600 text-white rounded-lg font-bold text-sm hover:bg-red-700 transition-colors">Retry</button>
+                </div>
+            </div>
+        );
+    }
 
     const COLORS = ['#346955', '#475569', '#BB9C5F', '#3b82f6', '#8b5cf6', '#f43f5e'];
     const profit = stats?.totalProfit || 0;

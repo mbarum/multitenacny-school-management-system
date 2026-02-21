@@ -27,4 +27,7 @@ export class DarajaSetting extends BaseEntity {
 
   @Column({ default: '' })
   paybillNumber!: string;
+
+  @Column({ default: 'sandbox' })
+  environment!: 'sandbox' | 'production';
 }

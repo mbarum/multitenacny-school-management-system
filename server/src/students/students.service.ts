@@ -98,7 +98,15 @@ export class StudentsService {
       qb.andWhere('class.id = :classId', { classId });
     }
     
-    qb.orderBy('student.name', 'ASC').skip((page - 1) * limit).take(limit);
+    qb.orderBy('student.name', 'ASC');
+    
+    if (pagination === 'false') {
+        const data = await qb.getMany();
+        const enriched = await this.enrichBalances(data, schoolId);
+        return { data: enriched, total: data.length };
+    }
+
+    qb.skip((page - 1) * limit).take(limit);
     const [data, total] = await qb.getManyAndCount();
     
     // Aggregated balance retrieval

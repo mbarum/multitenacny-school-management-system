@@ -419,7 +419,18 @@ const SuperAdminDashboard: React.FC = () => {
                     </div>
 
                     <div className="p-4 bg-white border-2 border-slate-200 rounded-lg">
-                        <h4 className="font-bold text-slate-800 mb-4 text-lg">M-Pesa C2B Integration (Receive Payments)</h4>
+                        <div className="flex justify-between items-center mb-4">
+                            <h4 className="font-bold text-slate-800 text-lg">M-Pesa C2B Integration (Receive Payments)</h4>
+                            <select 
+                                name="mpesaEnvironment" 
+                                value={pricingForm.mpesaEnvironment || 'sandbox'} 
+                                onChange={(e) => setPricingForm(prev => ({ ...prev, mpesaEnvironment: e.target.value as any }))}
+                                className="p-1 text-xs border rounded bg-slate-50 font-bold uppercase"
+                            >
+                                <option value="sandbox">Sandbox</option>
+                                <option value="production">Production</option>
+                            </select>
+                        </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                              <div>
                                 <label className="block text-sm font-medium text-slate-700">Paybill Number</label>
