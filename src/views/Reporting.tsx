@@ -359,6 +359,8 @@ const AttendanceReport: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     )
 }
 
+import GeneralLedger from '../components/reporting/GeneralLedger';
+
 const CashFlowProjection: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     const { schoolInfo, formatCurrency, convertCurrency } = useData();
     const [projectionData, setProjectionData] = useState<any[]>([]);
@@ -433,6 +435,7 @@ const Reporting: React.FC = () => {
         { id: 'projection', title: 'Cashflow Trends', description: 'Visual analytical history of school finances.', icon: <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg> },
         { id: 'class_lists', title: 'Nominal Rolls', description: 'Official student lists categorized by grade.', icon: <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M15 21a6 6 0 00-9-5.197" /></svg> },
         { id: 'attendance', title: 'Incident Audit', description: 'Analysis of attendance non-compliance.', icon: <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2zM7 15l2 2 4-4" /> },
+        { id: 'ledger', title: 'General Ledger', description: 'View all financial transactions.', icon: <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" /></svg> },
     ];
     
     const renderContent = () => {
@@ -442,6 +445,7 @@ const Reporting: React.FC = () => {
             case 'class_lists': return <ClassListReport onBack={() => setActiveReport(null)} />;
             case 'attendance': return <AttendanceReport onBack={() => setActiveReport(null)} />
             case 'projection': return <CashFlowProjection onBack={() => setActiveReport(null)} />
+            case 'ledger': return <GeneralLedger onBack={() => setActiveReport(null)} />
             default:
                 return (
                     <div>

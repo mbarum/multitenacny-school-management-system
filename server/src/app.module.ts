@@ -34,6 +34,9 @@ import { CacheModule } from '@nestjs/cache-manager';
 import { ScheduleModule } from '@nestjs/schedule';
 import { BullModule } from '@nestjs/bullmq';
 import { QueuesModule } from './queues/queues.module';
+import { LedgerModule } from './ledger/ledger.module';
+import { AuditTrailModule } from './audit-trail/audit-trail.module';
+import { SchoolModule } from './school/school.module';
 import { join } from 'path';
 import { School } from './entities/school.entity';
 import { AuditSubscriber } from './audit/audit.subscriber';
@@ -89,6 +92,9 @@ import { TenancySubscriber } from './tenancy/tenancy.subscriber';
     TasksModule,
     SuperAdminModule,
     QueuesModule,
+    LedgerModule,
+    AuditTrailModule,
+    SchoolModule,
   ],
   controllers: [AppController],
   providers: [

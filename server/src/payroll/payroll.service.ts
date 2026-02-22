@@ -2,8 +2,10 @@
 import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, EntityManager } from 'typeorm';
-import { Payroll, PayrollItem, PayrollEntry, PayrollItemType, Staff, CalculationType } from '../entities/all-entities';
+import { Payroll, PayrollItem, PayrollEntry, PayrollItemType, Staff, CalculationType, School } from '../entities/all-entities';
 import { GetPayrollHistoryDto } from './dto/get-payroll-history.dto';
+import { PayrollStrategyFactory } from './payroll-strategy.factory';
+import { AuditTrailService } from '../audit-trail/audit-trail.service';
 
 @Injectable()
 export class PayrollService {
@@ -13,10 +15,25 @@ export class PayrollService {
         @InjectRepository(Payroll) private readonly payrollRepo: Repository<Payroll>,
         @InjectRepository(PayrollItem) private readonly itemRepo: Repository<PayrollItem>,
         @InjectRepository(Staff) private readonly staffRepo: Repository<Staff>,
+        @InjectRepository(School) private readonly schoolRepo: Repository<School>,
         private readonly entityManager: EntityManager,
+        private readonly strategyFactory: PayrollStrategyFactory,
+        private auditTrailService: AuditTrailService,
     ) {}
 
     // --- Tax Logic (Kept simplified for brevity) ---
+    // --- Tax Logic (Kept simplified for brevity) ---
+
+    async savePayrollRun(payrollData: any[], schoolId: string): Promise<Payroll[]> {
+        const school = await this.schoolRepo.findOne({ where: { id: schoolId } });
+        if (!school) throw new NotFoundException('School not found');
+        const strategy = this.strategyFactory.getStrategy(school.country);
+
+        return this.entityManager.transaction(async transactionalEntityManager => {
+            // ... (rest of the method)
+        });
+    }
+
     private calculatePAYE(taxablePay: number): number {
         const annualPay = taxablePay * 12;
         let tax = 0;
@@ -53,7 +70,7 @@ export class PayrollService {
                     
                     const grossPay = earnings.reduce((sum, i) => sum + Number(i.amount), 0);
                     
-                    const deductions = [
+                    const deductions = strategy.calculateDeductions(grossPay).map(d => ({ ...d, type: PayrollItemType.Deduction }));
                         { name: 'PAYE', amount: this.calculatePAYE(grossPay), type: PayrollItemType.Deduction },
                         { name: 'SHA Contribution', amount: this.calculateSHA(grossPay), type: PayrollItemType.Deduction },
                         { name: 'NSSF', amount: this.calculateNSSF(grossPay), type: PayrollItemType.Deduction },
@@ -103,7 +120,14 @@ export class PayrollService {
 
             // FIX: Reload saved payrolls with relations so frontend gets complete data immediately
             if (savedPayrollIds.length > 0) {
-                return transactionalEntityManager.find(Payroll, {
+                const payrolls = await transactionalEntityManager.find(Payroll, {
+                    where: savedPayrollIds.map(id => ({ id })),
+                    relations: ['payrollEntries', 'staff'] // Load entries for "View Payslip" to work immediately
+                });
+                for (const payroll of payrolls) {
+                    await this.auditTrailService.recordFinancialAction('PayrollRun', payroll, 'system', schoolId);
+                }
+                return payrolls;
                     where: savedPayrollIds.map(id => ({ id })),
                     relations: ['payrollEntries', 'staff'] // Load entries for "View Payslip" to work immediately
                 });

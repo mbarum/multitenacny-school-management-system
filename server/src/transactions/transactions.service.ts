@@ -10,6 +10,7 @@ import { SubscriptionPayment, SubscriptionPaymentStatus } from '../entities/subs
 import { School } from '../entities/school.entity';
 import { Subscription, SubscriptionStatus } from '../entities/subscription.entity';
 import { CommunicationsService } from '../communications/communications.service';
+import { AuditTrailService } from '../audit-trail/audit-trail.service';
 import axios from 'axios';
 
 @Injectable()
@@ -25,6 +26,7 @@ export class TransactionsService {
     @InjectRepository(School) private schoolRepo: Repository<School>,
     @InjectRepository(Subscription) private subRepo: Repository<Subscription>,
     private communicationsService: CommunicationsService,
+    private auditTrailService: AuditTrailService,
     private readonly entityManager: EntityManager,
   ) {}
 
@@ -80,7 +82,9 @@ export class TransactionsService {
     };
     
     const transaction = this.transRepo.create(transData);
-    return this.transRepo.save(transaction);
+    const savedTransaction = await this.transRepo.save(transaction);
+    await this.auditTrailService.recordFinancialAction('FeePayment', savedTransaction, 'system', schoolId);
+    return savedTransaction;
   }
 
   async createBatch(dtos: any[], schoolId: string): Promise<Transaction[]> {

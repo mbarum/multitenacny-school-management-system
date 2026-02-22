@@ -7,6 +7,14 @@ import { Staff } from './staff.entity';
 import { SchoolClass } from './school-class.entity';
 import { BaseEntity } from './base.entity';
 
+export enum Country {
+  Kenya = 'Kenya',
+  Uganda = 'Uganda',
+  Tanzania = 'Tanzania',
+  Nigeria = 'Nigeria',
+  UnitedKingdom = 'UnitedKingdom',
+}
+
 export enum GradingSystem {
     Traditional = 'Traditional',
     CBC = 'CBC'
@@ -40,6 +48,9 @@ export class School extends BaseEntity {
 
   @Column({ type: 'enum', enum: GradingSystem, default: GradingSystem.Traditional })
   gradingSystem!: GradingSystem;
+
+  @Column({ type: 'enum', enum: Country, default: Country.Kenya })
+  country!: Country;
 
   @OneToMany(() => User, (user) => user.school)
   users!: User[];

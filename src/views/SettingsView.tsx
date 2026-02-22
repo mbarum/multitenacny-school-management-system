@@ -3,10 +3,13 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Modal from '../components/common/Modal';
 import UpgradeModal from '../components/common/UpgradeModal';
 import type { SchoolInfo, User, FeeItem, SchoolClass, DarajaSettings, GradingRule } from '../types';
-import { GradingSystem, Role, Currency, SubscriptionPlan, CbetScore } from '../types';
+import { GradingSystem, Role, Currency, SubscriptionPlan, CbetScore, Country } from '../types';
 import { useData } from '../contexts/DataContext';
 import * as api from '../services/api';
 import Spinner from '../components/common/Spinner';
+import ChartOfAccounts from '../components/settings/ChartOfAccounts';
+import FinancialAuditTrail from '../components/settings/FinancialAuditTrail';
+import AdminAuditTrail from '../components/settings/AdminAuditTrail';
 
 // --- Sub-Modals ---
 
@@ -128,7 +131,7 @@ const UserModal: React.FC<{ isOpen: boolean; onClose: () => void; onSave: (u: an
 const SettingsView: React.FC = () => {
     const { schoolInfo, updateSchoolInfo, addNotification, uploadLogo, formatCurrency } = useData();
     const queryClient = useQueryClient();
-    const [activeSection, setActiveSection] = useState<'hub' | 'info' | 'users' | 'fee_structure' | 'grading' | 'mpesa'>('hub');
+    const [activeSection, setActiveSection] = useState<'hub' | 'info' | 'users' | 'fee_structure' | 'grading' | 'mpesa' | 'coa' | 'audit'>('hub');
     const logoInputRef = useRef<HTMLInputElement>(null);
     const [localSchoolInfo, setLocalSchoolInfo] = useState<SchoolInfo | null>(null);
 
@@ -274,6 +277,12 @@ const SettingsView: React.FC = () => {
                                 </select>
                             </div>
                             <div className="space-y-2">
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Country of Operation</label>
+                                <select value={localSchoolInfo.country || 'Kenya'} onChange={e=>setLocalSchoolInfo({...localSchoolInfo, country: e.target.value as any})} className="w-full p-4 border-2 border-slate-50 bg-slate-50 rounded-2xl font-bold outline-none">
+                                    {Object.values(Currency).map(c=><option key={c} value={c}>{c}</option>)}
+                                </select>
+                            </div>
+                            <div className="space-y-2">
                                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Official Email</label>
                                 <input value={localSchoolInfo.email} onChange={e=>setLocalSchoolInfo({...localSchoolInfo, email: e.target.value})} className="w-full p-4 border-2 border-slate-50 bg-slate-50 rounded-2xl font-bold outline-none focus:border-primary-500 focus:bg-white transition-all"/>
                             </div>
@@ -415,6 +424,19 @@ const SettingsView: React.FC = () => {
                             </div>
                         </div>
                     )}
+                </div>
+            )}
+
+            {activeSection === 'audit' && (
+                <div className="bg-white p-12 rounded-[3rem] shadow-2xl border border-slate-100 max-w-6xl mx-auto animate-fade-in-up space-y-8">
+                    <FinancialAuditTrail />
+                    <AdminAuditTrail />
+                </div>
+            )}
+
+            {activeSection === 'coa' && (
+                <div className="bg-white p-12 rounded-[3rem] shadow-2xl border border-slate-100 max-w-6xl mx-auto animate-fade-in-up">
+                    <ChartOfAccounts />
                 </div>
             )}
 

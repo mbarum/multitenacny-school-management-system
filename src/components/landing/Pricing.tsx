@@ -34,12 +34,12 @@ const Pricing: React.FC<PricingProps> = ({ onSelectPlan }) => {
         if (!pricing) return 0;
         let basePrice = 0;
         if (plan === SubscriptionPlan.BASIC) {
-            basePrice = billing === 'MONTHLY' ? pricing.basicMonthlyPrice : pricing.basicAnnualPrice;
+            basePrice = billing === 'MONTHLY' ? (pricing.basicMonthlyPrice || 3000) : (pricing.basicAnnualPrice || 30000);
         }
         if (plan === SubscriptionPlan.PREMIUM) {
-            basePrice = billing === 'MONTHLY' ? pricing.premiumMonthlyPrice : pricing.premiumAnnualPrice;
+            basePrice = billing === 'MONTHLY' ? (pricing.premiumMonthlyPrice || 5000) : (pricing.premiumAnnualPrice || 50000);
         }
-        return convertCurrency(basePrice, currency);
+        return basePrice;
     };
 
     const plans = [

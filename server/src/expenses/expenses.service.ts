@@ -5,16 +5,24 @@ import { Repository } from 'typeorm';
 import { Expense } from '../entities/expense.entity';
 import { GetExpensesDto } from './dto/get-expenses.dto';
 import { CsvUtil } from '../utils/csv.util';
+import { AuditTrailService } from '../audit-trail/audit-trail.service';
 
 @Injectable()
 export class ExpensesService {
   constructor(
     @InjectRepository(Expense)
     private expensesRepository: Repository<Expense>,
+    private auditTrailService: AuditTrailService,
   ) {}
 
   create(createExpenseDto: Omit<Expense, 'id'>, schoolId: string): Promise<Expense> {
     const expense = this.expensesRepository.create({
+        ...createExpenseDto,
+        school: { id: schoolId } as any
+    });
+    const savedExpense = await this.expensesRepository.save(expense);
+    await this.auditTrailService.recordFinancialAction('ExpenseRecorded', savedExpense, 'system', schoolId);
+    return savedExpense;
         ...createExpenseDto,
         school: { id: schoolId } as any
     });

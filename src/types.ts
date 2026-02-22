@@ -289,6 +289,7 @@ export interface SchoolInfo {
     logoUrl?: string;
     schoolCode: string;
     gradingSystem: GradingSystem;
+  country: Country;
     currency?: string;
     subscription?: {
         plan: SubscriptionPlan;
@@ -373,6 +374,73 @@ export interface MpesaC2BTransaction {
     isProcessed: boolean;
 }
 
+export enum AccountType {
+  Asset = 'Asset',
+  Liability = 'Liability',
+  Equity = 'Equity',
+  Revenue = 'Revenue',
+  Expense = 'Expense',
+}
+
+export enum AccountCategory {
+  CashAndBank = 'CashAndBank',
+  AccountsReceivable = 'AccountsReceivable',
+  Inventory = 'Inventory',
+  FixedAssets = 'FixedAssets',
+  AccountsPayable = 'AccountsPayable',
+  AccruedExpenses = 'AccruedExpenses',
+  UnearnedRevenue = 'UnearnedRevenue',
+  RetainedEarnings = 'RetainedEarnings',
+  TuitionFees = 'TuitionFees',
+  OtherIncome = 'OtherIncome',
+  Salaries = 'Salaries',
+  Utilities = 'Utilities',
+  Rent = 'Rent',
+}
+
+export interface Account {
+  id: string;
+  accountCode: string;
+  name: string;
+  type: AccountType;
+  category: AccountCategory;
+  isControlAccount: boolean;
+  description?: string;
+}
+
+export interface JournalEntry {
+  id: string;
+  account: Account;
+  debit: number;
+  credit: number;
+}
+
+export interface Journal {
+  id: string;
+  date: string;
+  reference: string;
+  memo: string;
+  entries: JournalEntry[];
+}
+
+export interface FinancialAuditLog {
+  id: string;
+  createdAt: string;
+  actionType: string;
+  userId: string;
+  details: any;
+  hash: string;
+}
+
+export interface AdminAuditLog {
+  id: string;
+  createdAt: string;
+  action: string;
+  userId: string;
+  ipAddress?: string;
+  userAgent?: string;
+}
+
 export interface DarajaSettings {
     consumerKey: string;
     consumerSecret: string;
@@ -417,6 +485,14 @@ export interface PlatformPricing {
     mpesaConsumerKey?: string;
     mpesaConsumerSecret?: string;
     mpesaEnvironment?: 'sandbox' | 'production';
+}
+
+export enum Country {
+  Kenya = 'Kenya',
+  Uganda = 'Uganda',
+  Tanzania = 'Tanzania',
+  Nigeria = 'Nigeria',
+  UnitedKingdom = 'UnitedKingdom',
 }
 
 export enum Currency {

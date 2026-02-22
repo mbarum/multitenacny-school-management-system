@@ -33,3 +33,5 @@ export * from './monthly-financial.entity'; // Added
 // Deprecated: SchoolSetting is replaced by School entity
 export { SchoolSetting } from './school-setting.entity'; 
 export * from './daraja-setting.entity';
+export * from '../ledger/entities';
+export * from '../audit-trail/entities';

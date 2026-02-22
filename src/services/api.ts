@@ -1,5 +1,5 @@
 
-import type { 
+import type { Account, Country, 
     User, Student, Transaction, Expense, Staff, Payroll, Subject, SchoolClass, 
     ClassSubjectAssignment, TimetableEntry, Exam, Grade, AttendanceRecord, SchoolEvent, 
     SchoolInfo, GradingRule, FeeItem, CommunicationLog, Announcement, ReportShareLog, 
@@ -194,6 +194,18 @@ export const issueBook = (data: any): Promise<any> => apiFetch('/library/issue',
 export const returnBook = (id: string): Promise<any> => apiFetch(`/library/return/${id}`, { method: 'POST' });
 export const markBookLost = (id: string): Promise<any> => apiFetch(`/library/lost/${id}`, { method: 'POST' });
 export const getLibraryTransactions = (params: any = {}): Promise<any> => apiFetch(`/library/transactions?${new URLSearchParams(cleanParams(params)).toString()}`);
+
+// Ledger APIs
+export const getAccounts = () => apiFetch('/ledger/accounts');
+export const createAccount = (data: Partial<Account>) => apiFetch('/ledger/accounts', { method: 'POST', body: JSON.stringify(data) });
+export const updateAccount = (id: string, data: Partial<Account>) => apiFetch(`/ledger/accounts/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+export const getJournals = (filters: any) => apiFetch(`/ledger/journals?startDate=${filters.startDate}&endDate=${filters.endDate}`);
+
+// Audit Trail APIs
+export const getFinancialAuditLog = () => apiFetch('/audit-trail/financial');
+export const getAdminAuditLog = () => apiFetch('/audit-trail/admin');
+export const verifyFinancialAuditTrail = () => apiFetch('/audit-trail/financial/verify');
+export const updateSchoolCountry = (country: Country) => apiFetch('/school/country', { method: 'PUT', body: JSON.stringify({ country }) });
 
 export const fetchInitialData = async () => {
     const results = await Promise.all([

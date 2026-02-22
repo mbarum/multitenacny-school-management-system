@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { PayrollService } from './payroll.service';
+import { PayrollStrategyFactory } from './payroll-strategy.factory';
 import { PayrollController } from './payroll.controller';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Payroll } from '../entities/payroll.entity';

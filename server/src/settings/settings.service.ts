@@ -55,12 +55,19 @@ export class SettingsService {
   }
   
   async getPlatformPricing(): Promise<PlatformSetting> {
+    const defaultPricing = {
+      basicMonthlyPrice: 3000,
+      basicAnnualPrice: 30000,
+      premiumMonthlyPrice: 5000,
+      premiumAnnualPrice: 50000,
+    } as PlatformSetting;
+
     try {
       const setting = await this.platformSettingRepository.findOne({ where: {} });
-      return setting || ({ basicMonthlyPrice: 3000 } as PlatformSetting);
+      return setting || defaultPricing;
     } catch (error) {
       this.logger.error('Failed to fetch platform pricing', error);
-      return { basicMonthlyPrice: 3000 } as PlatformSetting;
+      return defaultPricing;
     }
   }
 
