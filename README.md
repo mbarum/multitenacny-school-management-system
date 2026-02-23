@@ -1,40 +1,20 @@
-# Saaslink School Management System
+<div align="center">
+<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
+</div>
 
-This is a modern, fully integrated school accounting and management system. The project is a full-stack application featuring a React frontend and a NestJS backend.
+# Run and deploy your AI Studio app
 
-## Project Structure
+This contains everything you need to run your app locally.
 
--   `/` - Contains the React frontend application.
--   `/server` - Contains the NestJS backend application.
+View your app in AI Studio: https://ai.studio/apps/942de18d-8d7f-4986-b0c1-68ceae08bed9
 
-## Running the Application Locally
+## Run Locally
 
-This guide explains how to run the frontend and backend directly on your machine, connecting to a local database (e.g., from XAMPP, WAMP, or a direct MySQL installation).
+**Prerequisites:**  Node.js
 
-### Prerequisites
--   **Node.js** (v18 or newer)
--   **npm** (or another package manager)
--   **MySQL Server** running locally.
 
-### Steps:
-
-1.  **Backend Setup (Crucial for Data Persistence):**
-    -   Navigate to the `server` directory: `cd server`
-    -   Follow the **very detailed** instructions in the `server/README.md` file to connect to your database and seed it with initial data.
-    -   Start the backend server by running `npm run start:dev` inside the `server` directory.
-
-2.  **Frontend Setup:**
-    -   In a **separate terminal**, navigate to the root directory of the project (if you were in the `server` directory, go back with `cd ..`).
-    -   Install frontend dependencies: `npm install`
-    -   Start the frontend development server: `npm run dev`
-
-3.  **Access the Application:**
-    -   The terminal will show you the local address, usually `http://localhost:5173`. Open this in your browser.
-
----
-
-### Default Login Credentials
--   **Admin:** `admin@saaslink.com`
--   **Teacher:** `alice@saaslink.com`
--   **Parent:** `parent1@saaslink.com`
--   **Password (for all):** `password123`
+1. Install dependencies:
+   `npm install`
+2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
+3. Run the app:
+   `npm run dev`
