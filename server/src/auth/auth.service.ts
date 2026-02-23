@@ -195,4 +195,11 @@ export class AuthService {
 
     return { success: true, message: 'Reset link sent.' };
   }
+
+  async ssoLogin(user: User): Promise<{ access_token: string }> {
+    const payload = { email: user.email, sub: user.id, schoolId: user.school.id, role: user.role };
+    return {
+      access_token: this.jwtService.sign(payload),
+    };
+  }
 }

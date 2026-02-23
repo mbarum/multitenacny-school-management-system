@@ -37,6 +37,7 @@ import { QueuesModule } from './queues/queues.module';
 import { LedgerModule } from './ledger/ledger.module';
 import { AuditTrailModule } from './audit-trail/audit-trail.module';
 import { SchoolModule } from './school/school.module';
+import { SsoModule } from './sso/sso.module';
 import { join } from 'path';
 import { School } from './entities/school.entity';
 import { AuditSubscriber } from './audit/audit.subscriber';
@@ -95,6 +96,7 @@ import { TenancySubscriber } from './tenancy/tenancy.subscriber';
     LedgerModule,
     AuditTrailModule,
     SchoolModule,
+    SsoModule,
   ],
   controllers: [AppController],
   providers: [

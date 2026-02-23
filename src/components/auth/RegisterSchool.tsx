@@ -14,7 +14,7 @@ const stripePromise = api.getPlatformPricing().then(p => loadStripe(p.stripePubl
 const CheckoutForm: React.FC<{ 
     formData: any, 
     price: number, 
-    onSuccess: (user: any) => void,
+    onSuccess: (user: any, token?: string) => void,
     onError: (msg: string) => void 
 }> = ({ formData, price, onSuccess, onError }) => {
     const { formatCurrency } = useData();
@@ -47,7 +47,7 @@ const CheckoutForm: React.FC<{
                     paymentMethod: 'CARD', 
                     paymentIntentId: result.paymentIntent.id 
                 });
-                onSuccess(response.user);
+                onSuccess(response.user, response.token);
             }
         } catch (err: any) {
             onError(err.message || 'Error during checkout');
@@ -344,7 +344,7 @@ const RegisterSchool: React.FC = () => {
 
                                     {paymentMethod === 'CARD' && (
                                         <Elements stripe={stripePromise}>
-                                            <CheckoutForm formData={formData} price={cost.total} onSuccess={(u) => handleLogin(u)} onError={(msg) => { setError(msg); setIsLoading(false); }} />
+                                            <CheckoutForm formData={formData} price={cost.total} onSuccess={(user, token) => handleLogin(user, token)} onError={(msg) => { setError(msg); setIsLoading(false); }} />
                                         </Elements>
                                     )}
 

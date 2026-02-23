@@ -207,6 +207,11 @@ export const getAdminAuditLog = () => apiFetch('/audit-trail/admin');
 export const verifyFinancialAuditTrail = () => apiFetch('/audit-trail/financial/verify');
 export const updateSchoolCountry = (country: Country) => apiFetch('/school/country', { method: 'PUT', body: JSON.stringify({ country }) });
 
+export const getSsoConfigs = () => apiFetch('/sso');
+export const createSsoConfig = (data: any) => apiFetch('/sso', { method: 'POST', body: JSON.stringify(data) });
+export const updateSsoConfig = (id: string, data: any) => apiFetch(`/sso/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+export const deleteSsoConfig = (id: string) => apiFetch(`/sso/${id}`, { method: 'DELETE' });
+
 export const fetchInitialData = async () => {
     const results = await Promise.all([
         getUsers(),

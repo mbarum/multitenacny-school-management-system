@@ -1,7 +1,5 @@
 {
-  "name": "Saaslink School Management System Multitenancy",
-  "description": "A modern, fully integrated school accounting and management system tailored for primary schools, designed to replace traditional tools with an easier-to-use and fully customizable platform.",
-  "requestFramePermissions": [
-    "camera"
-  ]
+  "name": "Multi-Tenant SSO Integration",
+  "description": "A full-stack application demonstrating a multi-tenant SSO architecture with Google Workspace, Microsoft Azure AD, and Okta.",
+  "requestFramePermissions": []
 }

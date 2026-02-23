@@ -18,6 +18,7 @@ import { NAVIGATION_ITEMS, TEACHER_NAVIGATION_ITEMS, PARENT_NAVIGATION_ITEMS, SU
 import IDCardModal from '../components/common/IDCardModal';
 
 interface IDataContext {
+    login: (email: string, pass: string) => Promise<any>;
     isLoading: boolean;
     schoolInfo: SchoolInfo | null;
     currentUser: User | null;
@@ -349,7 +350,12 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         updateExams: (d) => api.updateExams(d),
         updateGrades: (d) => api.updateGrades(d),
         updateAttendance: (d) => api.updateAttendance(d),
-        updateEvents: (d) => api.updateEvents(d)
+        updateEvents: (d) => api.updateEvents(d),
+        login: async (email, pass) => {
+            const { user, token } = await api.login(email, pass);
+            handleLogin(user, token);
+            return { user, token };
+        }
     };
 
     return (

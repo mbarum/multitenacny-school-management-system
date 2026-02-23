@@ -10,6 +10,7 @@ import Spinner from '../components/common/Spinner';
 import ChartOfAccounts from '../components/settings/ChartOfAccounts';
 import FinancialAuditTrail from '../components/settings/FinancialAuditTrail';
 import AdminAuditTrail from '../components/settings/AdminAuditTrail';
+import SsoSettings from '../components/settings/SsoSettings';
 
 // --- Sub-Modals ---
 
@@ -131,7 +132,7 @@ const UserModal: React.FC<{ isOpen: boolean; onClose: () => void; onSave: (u: an
 const SettingsView: React.FC = () => {
     const { schoolInfo, updateSchoolInfo, addNotification, uploadLogo, formatCurrency } = useData();
     const queryClient = useQueryClient();
-    const [activeSection, setActiveSection] = useState<'hub' | 'info' | 'users' | 'fee_structure' | 'grading' | 'mpesa' | 'coa' | 'audit'>('hub');
+    const [activeSection, setActiveSection] = useState<'hub' | 'info' | 'users' | 'fee_structure' | 'grading' | 'mpesa' | 'coa' | 'audit' | 'sso'>('hub');
     const logoInputRef = useRef<HTMLInputElement>(null);
     const [localSchoolInfo, setLocalSchoolInfo] = useState<SchoolInfo | null>(null);
 
@@ -243,6 +244,10 @@ const SettingsView: React.FC = () => {
                         </div>
                         <div className="absolute top-0 right-0 w-32 h-32 bg-primary-600/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 group-hover:scale-150 transition-transform duration-700"></div>
                     </button>
+                    <SettingTile 
+                        id="sso" title="Single Sign-On" desc="Configure SSO with Google, Azure AD, or Okta." 
+                        icon={<svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 11c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>}
+                    />
                 </div>
             )}
 
@@ -431,6 +436,12 @@ const SettingsView: React.FC = () => {
                 <div className="bg-white p-12 rounded-[3rem] shadow-2xl border border-slate-100 max-w-6xl mx-auto animate-fade-in-up space-y-8">
                     <FinancialAuditTrail />
                     <AdminAuditTrail />
+                </div>
+            )}
+
+            {activeSection === 'sso' && (
+                <div className="bg-white p-12 rounded-[3rem] shadow-2xl border border-slate-100 max-w-6xl mx-auto animate-fade-in-up">
+                    <SsoSettings />
                 </div>
             )}
 

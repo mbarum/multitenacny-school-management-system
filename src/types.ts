@@ -487,6 +487,20 @@ export interface PlatformPricing {
     mpesaEnvironment?: 'sandbox' | 'production';
 }
 
+export enum SsoProvider {
+  Google = 'Google',
+  AzureAD = 'AzureAD',
+  Okta = 'Okta',
+}
+
+export interface SsoConfiguration {
+  id: string;
+  provider: SsoProvider;
+  clientId: string;
+  clientSecret: string;
+  issuerUrl: string;
+}
+
 export enum Country {
   Kenya = 'Kenya',
   Uganda = 'Uganda',

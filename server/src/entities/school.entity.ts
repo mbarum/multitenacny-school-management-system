@@ -2,6 +2,7 @@
 import { Entity, Column, OneToMany, OneToOne } from 'typeorm';
 import { User } from './user.entity';
 import { Subscription } from './subscription.entity';
+import { SsoConfiguration } from '../sso/sso-configuration.entity';
 import { Student } from './student.entity';
 import { Staff } from './staff.entity';
 import { SchoolClass } from './school-class.entity';
@@ -66,4 +67,7 @@ export class School extends BaseEntity {
 
   @OneToOne(() => Subscription, (subscription) => subscription.school, { cascade: true })
   subscription!: Subscription;
+
+  @OneToMany(() => SsoConfiguration, (sso) => sso.school)
+  ssoConfigurations!: SsoConfiguration[];
 }

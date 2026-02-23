@@ -35,6 +35,7 @@ import { CommunicationsModule } from '../communications/communications.module';
     }),
   ],
   providers: [AuthService, JwtStrategy],
+  exports: [AuthService],
   controllers: [AuthController],
 })
 export class AuthModule {}

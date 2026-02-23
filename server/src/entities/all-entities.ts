@@ -35,3 +35,4 @@ export { SchoolSetting } from './school-setting.entity';
 export * from './daraja-setting.entity';
 export * from '../ledger/entities';
 export * from '../audit-trail/entities';
+export * from '../sso/sso-configuration.entity';
