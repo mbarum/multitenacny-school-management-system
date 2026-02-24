@@ -19,6 +19,7 @@ import { CommunicationModule } from './modules/communication/communication.modul
 import { ReportingModule } from './modules/reporting/reporting.module';
 import { UsersModule } from './modules/users/users.module';
 import { AuthModule } from './modules/auth/auth.module';
+import { PaymentsModule } from './modules/payments/payments.module';
 
 @Module({
   imports: [
@@ -62,6 +63,9 @@ import { AuthModule } from './modules/auth/auth.module';
     // Auth & Users
     UsersModule,
     AuthModule,
+
+    // Payments
+    PaymentsModule,
   ],
   controllers: [], // Root controllers are removed for modularity
   providers: [],   // Root services are removed for modularity

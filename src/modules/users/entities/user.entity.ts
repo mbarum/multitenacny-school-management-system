@@ -1,12 +1,8 @@
 import { Entity, Column } from 'typeorm';
 import { TenantAwareEntity } from 'src/core/tenancy/tenant-aware.entity';
+import { UserRole } from 'src/common/user-role.enum';
 
-export enum UserRole { 
-  ADMIN = 'admin',
-  TEACHER = 'teacher',
-  ACCOUNTANT = 'accountant',
-  PARENT = 'parent',
-}
+
 
 @Entity({ name: 'users' })
 export class User extends TenantAwareEntity {

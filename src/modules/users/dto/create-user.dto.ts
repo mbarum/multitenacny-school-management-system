@@ -1,4 +1,4 @@
-import { UserRole } from '../entities/user.entity';
+import { UserRole } from 'src/common/user-role.enum';
 
 export class CreateUserDto {
   username: string;

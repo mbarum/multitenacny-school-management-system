@@ -3,17 +3,28 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import DashboardPage from './pages/DashboardPage';
+import SuperAdminPage from './pages/SuperAdminPage';
+import PaymentsPage from './pages/PaymentsPage';
+import { UserRole } from '../../src/common/user-role.enum';
 
 const AppRoutes: React.FC = () => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
 
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
       <Route 
-        path="/" 
+        path="/"
         element={isAuthenticated ? <DashboardPage /> : <Navigate to="/login" />}
+      />
+      <Route
+        path="/super-admin"
+        element={isAuthenticated && user?.role === UserRole.SUPER_ADMIN ? <SuperAdminPage /> : <Navigate to="/" />}
+      />
+      <Route
+        path="/payments"
+        element={isAuthenticated ? <PaymentsPage /> : <Navigate to="/login" />}
       />
     </Routes>
   );
