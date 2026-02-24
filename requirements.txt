@@ -1,7 +1,0 @@
-fastapi
-uvicorn[standard]
-scikit-learn
-pandas
-mysql-connector-python
-SQLAlchemy
-joblib
