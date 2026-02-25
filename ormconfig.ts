@@ -1,7 +1,7 @@
-import { DataSource } from 'typeorm';
 import { config } from 'dotenv';
-
 config();
+
+import { DataSource } from 'typeorm';
 
 export default new DataSource({
   type: 'mysql',
