@@ -1,4 +1,6 @@
 import { Module } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
+import { ThrottlerGuard, ThrottlerModule } from 'nestjs-throttler';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { TenantsModule } from './modules/tenants/tenants.module';
@@ -23,6 +25,14 @@ import { PaymentsModule } from './modules/payments/payments.module';
 
 @Module({
   imports: [
+    ThrottlerModule.forRoot([{
+      ttl: 60000, // 1 minute
+      limit: 20, // 20 requests per minute
+    }]),
+    ThrottlerModule.forRoot([{
+      ttl: 60000, // 1 minute
+      limit: 20, // 20 requests per minute
+    }]),
     ConfigModule.forRoot({
       isGlobal: true, // Makes ConfigService available application-wide
     }),
@@ -68,7 +78,12 @@ import { PaymentsModule } from './modules/payments/payments.module';
     PaymentsModule,
   ],
   controllers: [], // Root controllers are removed for modularity
-  providers: [],   // Root services are removed for modularity
+  providers: [
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
+  ],
 })
 export class AppModule {}
 
