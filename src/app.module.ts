@@ -36,7 +36,7 @@ import { PaymentsModule } from './modules/payments/payments.module';
         password: configService.get<string>('DB_PASSWORD'),
         database: configService.get<string>('DB_DATABASE'),
         autoLoadEntities: true, // Automatically load entities from domain modules
-        synchronize: true, // ONE-TIME-SETUP: This will be disabled again shortly.
+        synchronize: false, // This must always be false in production.
       }),
       inject: [ConfigService],
     }),
