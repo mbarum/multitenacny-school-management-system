@@ -5,7 +5,7 @@ import { TenantsModule } from 'src/modules/tenants/tenants.module'; // To find t
 
 @Module({
   imports: [TenantsModule],
-  providers: [TenancyService],
+  providers: [TenancyService, TenantMiddleware],
   exports: [TenancyService],
 })
 export class TenancyModule implements NestModule {
