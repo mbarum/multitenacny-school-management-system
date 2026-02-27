@@ -6,6 +6,9 @@ import DashboardPage from './pages/DashboardPage';
 import LandingPage from './pages/LandingPage';
 import PricingPage from './pages/PricingPage';
 import SuperAdminPage from './pages/SuperAdminPage';
+import TenantManagementPage from './pages/TenantManagementPage';
+import TenantDetailPage from './pages/TenantDetailPage';
+import FinancialManagementPage from './pages/FinancialManagementPage';
 import PaymentsPage from './pages/PaymentsPage';
 import { UserRole } from '../../src/common/user-role.enum';
 
@@ -24,6 +27,18 @@ const AppRoutes: React.FC = () => {
       <Route
         path="/super-admin"
         element={isAuthenticated && user?.role === UserRole.SUPER_ADMIN ? <SuperAdminPage /> : <Navigate to="/" />}
+      />
+      <Route
+        path="/super-admin/tenants"
+        element={isAuthenticated && user?.role === UserRole.SUPER_ADMIN ? <TenantManagementPage /> : <Navigate to="/" />}
+      />
+      <Route
+        path="/super-admin/tenants/:id"
+      />
+      <Route
+        path="/super-admin/financials"
+        element={isAuthenticated && user?.role === UserRole.SUPER_ADMIN ? <FinancialManagementPage /> : <Navigate to="/" />}
+        element={isAuthenticated && user?.role === UserRole.SUPER_ADMIN ? <TenantDetailPage /> : <Navigate to="/" />}
       />
       <Route
         path="/payments"

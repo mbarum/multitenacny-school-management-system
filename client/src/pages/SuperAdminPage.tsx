@@ -1,110 +1,74 @@
-import React, { useState, useEffect } from 'react';
-import { useAuth } from '../contexts/AuthContext';
+import { useEffect, useState } from 'react';
+import { Users, Building, Wallet, Bell } from 'lucide-react';
+import { motion } from 'framer-motion';
 import api from '../services/api';
-import { UserRole } from '../../../src/common/user-role.enum';
 
-interface User {
-  id: string;
-  username: string;
-  role: UserRole;
-}
+const StatCard = ({ icon, label, value, color }) => (
+  <motion.div
+    className="bg-gray-800 p-6 rounded-2xl flex items-center space-x-4"
+    whileHover={{ y: -5, scale: 1.03 }}
+  >
+    <div className={`p-3 rounded-lg bg-${color}-500/20 text-${color}-400`}>{icon}</div>
+    <div>
+      <p className="text-gray-400 text-sm">{label}</p>
+      <p className="text-3xl font-bold text-white">{value}</p>
+    </div>
+  </motion.div>
+);
 
-const SuperAdminPage: React.FC = () => {
-  const { user } = useAuth();
-  const [users, setUsers] = useState<User[]>([]);
-  const [editingUser, setEditingUser] = useState<User | null>(null);
-  const [newRole, setNewRole] = useState<UserRole>(UserRole.ADMIN);
+const SuperAdminPage = () => {
+  const [analytics, setAnalytics] = useState(null);
 
   useEffect(() => {
-    if (user?.role === UserRole.SUPER_ADMIN) {
-      fetchUsers();
-    }
-  }, [user]);
-
-  const fetchUsers = async () => {
-    try {
-      const response = await api.get('/users');
-      setUsers(response.data);
-    } catch (error) {
-      console.error('Failed to fetch users', error);
-    }
-  };
-
-  const handleEdit = (user: User) => {
-    setEditingUser(user);
-    setNewRole(user.role);
-  };
-
-  const handleUpdate = async () => {
-    if (!editingUser) return;
-    try {
-      await api.patch(`/users/${editingUser.id}`, { role: newRole });
-      fetchUsers();
-      setEditingUser(null);
-    } catch (error) {
-      console.error('Failed to update user', error);
-    }
-  };
-
-  const handleDelete = async (userId: string) => {
-    if (window.confirm('Are you sure you want to delete this user?')) {
+    const fetchAnalytics = async () => {
       try {
-        await api.delete(`/users/${userId}`);
-        fetchUsers();
+        const { data } = await api.get('/super-admin/analytics');
+        setAnalytics(data);
       } catch (error) {
-        console.error('Failed to delete user', error);
+        console.error('Failed to fetch analytics:', error);
       }
-    }
-  };
+    };
+    fetchAnalytics();
+  }, []);
 
   return (
-    <div className="min-h-screen bg-gray-100 p-8">
-      <div className="max-w-6xl mx-auto">
-        <h1 className="text-3xl font-bold text-gray-800 mb-6">Super Admin Dashboard</h1>
-        <div className="bg-white p-6 rounded-lg shadow-md">
-          <h2 className="text-2xl font-bold mb-4">User Management</h2>
-          <table className="w-full">
-            <thead>
-              <tr className="border-b">
-                <th className="text-left py-3 px-4">Username</th>
-                <th className="text-left py-3 px-4">Role</th>
-                <th className="text-left py-3 px-4">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {users.map((user) => (
-                <tr key={user.id} className="border-b">
-                  <td className="py-3 px-4">{user.username}</td>
-                  <td className="py-3 px-4">{user.role}</td>
-                  <td className="py-3 px-4">
-                    <button onClick={() => handleEdit(user)} className="bg-blue-500 text-white py-1 px-3 rounded-lg mr-2">Edit</button>
-                    <button onClick={() => handleDelete(user.id)} className="bg-red-500 text-white py-1 px-3 rounded-lg">Delete</button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+    <div className="min-h-screen bg-gray-900 text-white p-8">
+      <div className="max-w-7xl mx-auto">
+        <header className="mb-12">
+          <h1 className="text-4xl font-bold tracking-tighter">Mission Control</h1>
+          <p className="text-gray-400 mt-2">System-wide overview and management dashboard.</p>
+        </header>
 
-      {editingUser && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-          <div className="bg-white p-8 rounded-lg shadow-md">
-            <h2 className="text-2xl font-bold mb-4">Edit User Role</h2>
-            <select value={newRole} onChange={(e) => setNewRole(e.target.value as UserRole)} className="w-full px-3 py-2 border rounded-lg mb-4">
-              {Object.values(UserRole).map((role) => (
-                <option key={role} value={role}>{role}</option>
-              ))}
-            </select>
-            <div className="flex justify-end">
-              <button onClick={() => setEditingUser(null)} className="bg-gray-500 text-white py-2 px-4 rounded-lg mr-2">Cancel</button>
-              <button onClick={handleUpdate} className="bg-blue-500 text-white py-2 px-4 rounded-lg">Update</button>
-            </div>
+        {analytics ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+            <StatCard icon={<Users size={24} />} label="Total Tenants" value={analytics.totalTenants} color="blue" />
+            <StatCard icon={<Building size={24} />} label="Active Subscriptions" value={analytics.activeSubscriptions} color="green" />
+            <StatCard icon={<Wallet size={24} />} label="Total Revenue (KES)" value={analytics.totalRevenue.toLocaleString()} color="purple" />
+            <StatCard icon={<Bell size={24} />} label="Pending Approvals" value={analytics.pendingApprovals} color="yellow" />
+          </div>
+        ) : (
+          <p>Loading analytics...</p>
+        )}
+
+        <div className="mt-12">
+          <h2 className="text-2xl font-bold mb-6">Management Sections</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <Link to="/super-admin/tenants" className="bg-gray-800 p-8 rounded-2xl hover:bg-gray-700 transition-colors">
+              <h3 className="text-xl font-bold">Tenant Management</h3>
+              <p className="text-gray-400 mt-2">View, search, and manage all tenants.</p>
+            </Link>
+            <Link to="/super-admin/financials" className="bg-gray-800 p-8 rounded-2xl hover:bg-gray-700 transition-colors">
+              <h3 className="text-xl font-bold">Financial Command</h3>
+              <p className="text-gray-400 mt-2">Review payments and manage subscriptions.</p>
+            </Link>
           </div>
         </div>
-      )}
+      </div>
     </div>
   );
 };
+
+export default SuperAdminPage;
+
 
 export default SuperAdminPage;

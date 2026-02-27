@@ -6,6 +6,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { LmsModule } from './modules/lms/lms.module';
 import { SubscriptionsModule } from './modules/subscriptions/subscriptions.module';
 import { MpesaModule } from './modules/mpesa/mpesa.module';
+import { SuperAdminModule } from './modules/super-admin/super-admin.module';
 import { TenantsModule } from './modules/tenants/tenants.module';
 import { TenancyModule } from './core/tenancy/tenancy.module';
 import { StudentsModule } from './modules/students/students.module';
@@ -61,6 +62,7 @@ import { PaymentsModule } from './modules/payments/payments.module';
     LmsModule,
     SubscriptionsModule,
     MpesaModule,
+    SuperAdminModule,
     StudentsModule,
     FeesModule,
     ExpensesModule,
