@@ -1,7 +1,7 @@
 module.exports = {
   apps: [
     {
-      name: 'school-management-system',
+      name: 'saaslink-emis',
       script: 'dist/main.js',
       exec_mode: 'fork',
       instances: 1,

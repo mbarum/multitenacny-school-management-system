@@ -44,7 +44,7 @@ export class CryptoService {
    */
   decrypt(encryptedText: string): string {
     const parts = encryptedText.split(':');
-    const iv = Buffer.from(parts.shift(), 'hex');
+    const iv = Buffer.from(parts.shift() || '', 'hex');
     const encrypted = parts.join(':');
     const decipher = crypto.createDecipheriv(this.algorithm, this.key, iv);
     let decrypted = decipher.update(encrypted, 'hex', 'utf8');

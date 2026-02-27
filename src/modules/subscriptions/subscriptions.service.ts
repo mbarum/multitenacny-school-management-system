@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -16,14 +16,20 @@ export class SubscriptionsService {
     private readonly tenantRepository: Repository<Tenant>,
     private readonly tenancyService: TenancyService,
   ) {
-    this.stripe = new Stripe(this.configService.get<string>('STRIPE_SECRET_KEY'), {
-      apiVersion: '2024-04-10',
-    });
+    const secretKey = this.configService.get<string>('STRIPE_SECRET_KEY');
+    if (!secretKey) {
+      throw new Error('STRIPE_SECRET_KEY not found in environment variables.');
+    }
+    this.stripe = new Stripe(secretKey);
   }
 
   async createCheckoutSession(priceId: string): Promise<{ sessionId: string }> {
     const tenantId = this.tenancyService.getTenantId();
     const tenant = await this.tenantRepository.findOneBy({ id: tenantId });
+
+    if (!tenant) {
+      throw new NotFoundException('Tenant not found');
+    }
 
     let stripeCustomerId = tenant.stripeCustomerId;
     if (!stripeCustomerId) {
@@ -52,6 +58,10 @@ export class SubscriptionsService {
   async createBillingPortalSession(): Promise<{ url: string }> {
     const tenantId = this.tenancyService.getTenantId();
     const tenant = await this.tenantRepository.findOneBy({ id: tenantId });
+
+    if (!tenant) {
+      throw new NotFoundException('Tenant not found');
+    }
 
     if (!tenant.stripeCustomerId) {
       throw new Error('Tenant does not have a Stripe customer ID.');

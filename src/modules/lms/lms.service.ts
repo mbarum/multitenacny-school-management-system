@@ -29,11 +29,11 @@ export class LmsService {
     const tenantId = this.tenancyService.getTenantId();
 
     const newConnection = this.lmsConnectionRepository.create({
-      tenantId,
+      tenantId: tenantId as string,
       provider: connectLmsDto.provider,
       apiUrl: connectLmsDto.apiUrl,
       encryptedCredential1: this.cryptoService.encrypt(connectLmsDto.credential1),
-      encryptedCredential2: connectLmsDto.credential2 ? this.cryptoService.encrypt(connectLmsDto.credential2) : null,
+      encryptedCredential2: connectLmsDto.credential2 ? this.cryptoService.encrypt(connectLmsDto.credential2) : undefined,
       isConnected: false, // Will be set to true after successful authentication
     });
 

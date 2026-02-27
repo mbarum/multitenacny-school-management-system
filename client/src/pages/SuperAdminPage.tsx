@@ -69,6 +69,3 @@ const SuperAdminPage = () => {
 };
 
 export default SuperAdminPage;
-
-
-export default SuperAdminPage;

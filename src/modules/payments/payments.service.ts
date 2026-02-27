@@ -20,6 +20,10 @@ export class PaymentsService {
     const tenantId = this.tenancyService.getTenantId();
     const tenant = await this.tenantRepository.findOneBy({ id: tenantId });
 
+    if (!tenant) {
+      throw new NotFoundException('Tenant not found');
+    }
+
     const pendingPayment = this.pendingPaymentRepository.create({
       tenant,
       amount,

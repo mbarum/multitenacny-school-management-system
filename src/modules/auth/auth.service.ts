@@ -3,6 +3,8 @@ import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { UsersService } from '../users/users.service';
 import { User } from '../users/entities/user.entity';
+import { EmailService } from 'src/shared/email.service';
+import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
 export class AuthService {
@@ -29,7 +31,7 @@ export class AuthService {
   }
 
   async forgotPassword(email: string): Promise<void> {
-    const user = await this.usersService.findOneByUsername(email);
+    const user = await this.usersService.findByUsername(email);
     if (!user) {
       // Don't reveal that the user doesn't exist
       return;
@@ -42,7 +44,7 @@ export class AuthService {
     await this.emailService.sendPasswordResetEmail(user.username, token);
   }
 
-  async resetPassword(token: string, password: string): Promise<User> {
+  async resetPassword(token: string, password: string): Promise<User | null> {
     const user = await this.usersService.findOneByPasswordResetToken(token);
 
     if (!user || user.password_reset_expires < new Date()) {

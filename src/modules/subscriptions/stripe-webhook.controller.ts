@@ -15,9 +15,11 @@ export class StripeWebhookController {
     @InjectRepository(Tenant)
     private readonly tenantRepository: Repository<Tenant>,
   ) {
-    this.stripe = new Stripe(this.configService.get<string>('STRIPE_SECRET_KEY'), {
-      apiVersion: '2024-04-10',
-    });
+    const secretKey = this.configService.get<string>('STRIPE_SECRET_KEY');
+    if (!secretKey) {
+      throw new Error('STRIPE_SECRET_KEY not found in environment variables.');
+    }
+    this.stripe = new Stripe(secretKey);
   }
 
   @Post()
@@ -26,6 +28,10 @@ export class StripeWebhookController {
     let event: Stripe.Event;
 
     try {
+      const webhookSecret = this.configService.get<string>('STRIPE_WEBHOOK_SECRET');
+      if (!webhookSecret) {
+        throw new Error('STRIPE_WEBHOOK_SECRET not found in environment variables.');
+      }
       event = this.stripe.webhooks.constructEvent(req.rawBody, signature, webhookSecret);
     } catch (err) {
       throw new BadRequestException(`Webhook Error: ${err.message}`);

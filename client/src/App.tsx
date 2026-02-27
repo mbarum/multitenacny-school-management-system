@@ -34,11 +34,11 @@ const AppRoutes: React.FC = () => {
       />
       <Route
         path="/super-admin/tenants/:id"
+        element={isAuthenticated && user?.role === UserRole.SUPER_ADMIN ? <TenantDetailPage /> : <Navigate to="/" />}
       />
       <Route
         path="/super-admin/financials"
         element={isAuthenticated && user?.role === UserRole.SUPER_ADMIN ? <FinancialManagementPage /> : <Navigate to="/" />}
-        element={isAuthenticated && user?.role === UserRole.SUPER_ADMIN ? <TenantDetailPage /> : <Navigate to="/" />}
       />
       <Route
         path="/payments"

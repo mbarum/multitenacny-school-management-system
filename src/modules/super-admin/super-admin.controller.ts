@@ -30,8 +30,4 @@ export class SuperAdminController {
   getPendingPayments() {
     return this.superAdminService.getPendingPayments();
   }
-    return this.superAdminService.getTenantById(id);
-  }
-    return this.superAdminService.getDashboardAnalytics();
-  }
 }
