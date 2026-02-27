@@ -3,6 +3,8 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import DashboardPage from './pages/DashboardPage';
+import LandingPage from './pages/LandingPage';
+import PricingPage from './pages/PricingPage';
 import SuperAdminPage from './pages/SuperAdminPage';
 import PaymentsPage from './pages/PaymentsPage';
 import { UserRole } from '../../src/common/user-role.enum';
@@ -14,9 +16,10 @@ const AppRoutes: React.FC = () => {
     <Routes>
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
+      <Route path="/pricing" element={<PricingPage />} />
       <Route 
         path="/"
-        element={isAuthenticated ? <DashboardPage /> : <Navigate to="/login" />}
+        element={isAuthenticated ? <DashboardPage /> : <LandingPage />}
       />
       <Route
         path="/super-admin"

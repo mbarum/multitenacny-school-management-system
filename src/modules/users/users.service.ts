@@ -1,7 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import * as bcrypt from 'bcrypt';
 import { User } from './entities/user.entity';
 import { TenancyService } from 'src/core/tenancy/tenancy.service';
 import { TenantAwareCrudService } from 'src/core/common/tenant-aware-crud.service';
@@ -58,5 +57,24 @@ export class UsersService extends TenantAwareCrudService<User> {
         tenantId: this.tenancyService.getTenantId() 
       },
     });
+  }
+
+  async setPasswordResetToken(id: string, token: string, expires: Date): Promise<void> {
+    await this.userRepository.update(id, { password_reset_token: token, password_reset_expires: expires });
+  }
+
+  async findOneByPasswordResetToken(token: string): Promise<User> {
+    return this.userRepository.findOne({ where: { password_reset_token: token } });
+  }
+
+  async resetPassword(id: string, password: string): Promise<User> {
+    const salt = await bcrypt.genSalt();
+    const hashedPassword = await bcrypt.hash(password, salt);
+    await this.userRepository.update(id, {
+      password_hash: hashedPassword,
+      password_reset_token: null,
+      password_reset_expires: null,
+    });
+    return this.userRepository.findOne({ where: { id } });
   }
 }

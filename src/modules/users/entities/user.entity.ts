@@ -12,6 +12,12 @@ export class User extends TenantAwareEntity {
   @Column()
   password_hash: string;
 
+  @Column({ nullable: true })
+  password_reset_token: string;
+
+  @Column({ nullable: true })
+  password_reset_expires: Date;
+
   @Column({
     type: 'enum',
     enum: UserRole,

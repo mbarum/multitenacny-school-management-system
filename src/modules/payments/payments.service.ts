@@ -1,29 +1,54 @@
-import { Injectable } from '@nestjs/common';
-import Stripe from 'stripe';
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { Tenant } from '../tenants/entities/tenant.entity';
+import { PendingPayment, PaymentMethod } from './entities/pending-payment.entity';
+import { TenancyService } from 'src/core/tenancy/tenancy.service';
+import { SubscriptionStatus } from 'src/common/subscription.enums';
 
 @Injectable()
 export class PaymentsService {
-  private stripe: Stripe | null = null;
+  constructor(
+    @InjectRepository(Tenant)
+    private readonly tenantRepository: Repository<Tenant>,
+    @InjectRepository(PendingPayment)
+    private readonly pendingPaymentRepository: Repository<PendingPayment>,
+    private readonly tenancyService: TenancyService,
+  ) {}
 
-  private getStripeInstance(): Stripe {
-    if (!this.stripe) {
-      const secretKey = process.env.STRIPE_SECRET_KEY;
-      if (!secretKey) {
-        throw new Error('STRIPE_SECRET_KEY not found in environment variables. Please configure it to process payments.');
-      }
-      this.stripe = new Stripe(secretKey, {
-        apiVersion: '2026-02-25.clover',
-      });
-    }
-    return this.stripe;
+  async createBankTransferRequest(amount: number, reference: string): Promise<PendingPayment> {
+    const tenantId = this.tenancyService.getTenantId();
+    const tenant = await this.tenantRepository.findOneBy({ id: tenantId });
+
+    const pendingPayment = this.pendingPaymentRepository.create({
+      tenant,
+      amount,
+      reference,
+      method: PaymentMethod.BANK_TRANSFER,
+    });
+
+    return this.pendingPaymentRepository.save(pendingPayment);
   }
 
-  async createPaymentIntent(amount: number) {
-    const stripe = this.getStripeInstance();
-    const paymentIntent = await stripe.paymentIntents.create({
-      amount: amount * 100, // Amount in cents
-      currency: 'usd',
+  async approvePayment(paymentId: string): Promise<Tenant> {
+    const pendingPayment = await this.pendingPaymentRepository.findOne({
+      where: { id: paymentId },
+      relations: ['tenant'],
     });
-    return { clientSecret: paymentIntent.client_secret };
+
+    if (!pendingPayment) {
+      throw new NotFoundException('Pending payment not found');
+    }
+
+    pendingPayment.isApproved = true;
+    await this.pendingPaymentRepository.save(pendingPayment);
+
+    const tenant = pendingPayment.tenant;
+    tenant.subscriptionStatus = SubscriptionStatus.ACTIVE;
+    // You might want to set an expiry date here based on the plan
+    // tenant.expiresAt = ...
+
+    return this.tenantRepository.save(tenant);
   }
 }
+

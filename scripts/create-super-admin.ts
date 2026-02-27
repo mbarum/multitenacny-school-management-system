@@ -20,20 +20,15 @@ async function createSuperAdmin() {
 
   const userRepository = connection.getRepository(User);
 
-  const username = process.argv[2];
-  const password = process.argv[3];
-
-  if (!username || !password) {
-    console.error('Usage: ts-node scripts/create-super-admin.ts <username> <password>');
-    process.exit(1);
-  }
+  const username = 'systems@saaslink.tech';
+  const password = 'revolution2026';
 
   const salt = await bcrypt.genSalt();
   const hashedPassword = await bcrypt.hash(password, salt);
 
   const superAdmin = userRepository.create({
     username,
-    password: hashedPassword,
+    password_hash: hashedPassword, // Corrected field name
     role: UserRole.SUPER_ADMIN,
   });
 

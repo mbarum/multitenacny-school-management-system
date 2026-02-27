@@ -8,8 +8,11 @@ import { UsersModule } from '../users/users.module';
 import { LocalStrategy } from './strategies/local.strategy';
 import { JwtStrategy } from './strategies/jwt.strategy';
 
+import { EmailModule } from '../email/email.module';
+
 @Module({
   imports: [
+    EmailModule,
     UsersModule,
     PassportModule,
     JwtModule.registerAsync({
