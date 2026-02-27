@@ -6,7 +6,7 @@ import { LmsConnection } from './entities/lms-connection.entity';
 import { CryptoService } from 'src/shared/crypto.service';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([LmsConnection])],
+  imports: [TypeOrmModule.forFeature([LmsConnection]), TenancyModule],
   controllers: [LmsController],
   providers: [LmsService, CryptoService],
 })
