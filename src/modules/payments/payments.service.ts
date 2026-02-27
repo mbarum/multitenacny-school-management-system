@@ -12,7 +12,7 @@ export class PaymentsService {
         throw new Error('STRIPE_SECRET_KEY not found in environment variables. Please configure it to process payments.');
       }
       this.stripe = new Stripe(secretKey, {
-        apiVersion: '2026-01-28.clover',
+        apiVersion: '2026-02-25.clover',
       });
     }
     return this.stripe;
