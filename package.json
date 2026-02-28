@@ -32,7 +32,7 @@
     "create:super-admin": "ts-node -r tsconfig-paths/register -r dotenv/config scripts/create-super-admin.ts"
   },
   "dependencies": {
-    "@nestjs/axios": "^4.0.1",
+    "@nestjs/axios": "^3.0.2",
     "@nestjs/common": "^10.3.10",
     "@nestjs/config": "^3.2.2",
     "@nestjs/core": "^10.3.10",
