@@ -10,6 +10,11 @@ import TenantManagementPage from './pages/TenantManagementPage';
 import TenantDetailPage from './pages/TenantDetailPage';
 import FinancialManagementPage from './pages/FinancialManagementPage';
 import PaymentsPage from './pages/PaymentsPage';
+import ClassManagementPage from './pages/ClassManagementPage';
+import StaffManagementPage from './pages/StaffManagementPage';
+import AttendancePage from './pages/AttendancePage';
+import TimetablePage from './pages/TimetablePage';
+import ReportingPage from './pages/ReportingPage';
 import { UserRole } from '../../src/common/user-role.enum';
 
 const AppRoutes: React.FC = () => {
@@ -43,6 +48,26 @@ const AppRoutes: React.FC = () => {
       <Route
         path="/payments"
         element={isAuthenticated ? <PaymentsPage /> : <Navigate to="/login" />}
+      />
+      <Route
+        path="/academics/classes"
+        element={isAuthenticated ? <ClassManagementPage /> : <Navigate to="/login" />}
+      />
+      <Route
+        path="/staff"
+        element={isAuthenticated ? <StaffManagementPage /> : <Navigate to="/login" />}
+      />
+      <Route
+        path="/attendance"
+        element={isAuthenticated ? <AttendancePage /> : <Navigate to="/login" />}
+      />
+      <Route
+        path="/timetable"
+        element={isAuthenticated ? <TimetablePage /> : <Navigate to="/login" />}
+      />
+      <Route
+        path="/reports"
+        element={isAuthenticated ? <ReportingPage /> : <Navigate to="/login" />}
       />
     </Routes>
   );

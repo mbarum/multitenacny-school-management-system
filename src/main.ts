@@ -35,7 +35,7 @@ async function bootstrap() {
   // Serve the React frontend in production
   if (process.env.NODE_ENV === 'production') {
     app.use(express.static(join(__dirname, '..', 'client', 'dist')));
-    app.use('*', (req, res, next) => {
+    app.use('*', (req: express.Request, res: express.Response, next: express.NextFunction) => {
       if (req.originalUrl.startsWith('/api')) {
         return next();
       }

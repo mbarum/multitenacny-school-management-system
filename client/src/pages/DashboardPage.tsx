@@ -44,13 +44,18 @@ const DashboardPage: React.FC = () => {
     <div className="min-h-screen bg-gray-100 p-8">
       <div className="max-w-4xl mx-auto">
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold text-gray-800">Student Management</h1>
-          {user?.role === UserRole.SUPER_ADMIN && (
-            <a href="/super-admin" className="text-blue-500 hover:underline">Super Admin</a>
-          )}
-          <div className="flex items-center space-x-4">
-            <a href="/payments" className="text-blue-500 hover:underline">Payments</a>
-            <button onClick={logout} className="bg-red-500 text-white py-2 px-4 rounded-lg">
+          <h1 className="text-3xl font-bold text-gray-800">School Dashboard</h1>
+          <div className="flex items-center space-x-6">
+            <a href="/academics/classes" className="text-blue-600 font-medium hover:underline">Classes</a>
+            <a href="/staff" className="text-blue-600 font-medium hover:underline">Staff</a>
+            <a href="/attendance" className="text-blue-600 font-medium hover:underline">Attendance</a>
+            <a href="/timetable" className="text-blue-600 font-medium hover:underline">Timetable</a>
+            <a href="/reports" className="text-blue-600 font-medium hover:underline">Reports</a>
+            <a href="/payments" className="text-blue-600 font-medium hover:underline">Payments</a>
+            {user?.role === UserRole.SUPER_ADMIN && (
+              <a href="/super-admin" className="text-purple-600 font-bold hover:underline">Super Admin</a>
+            )}
+            <button onClick={logout} className="bg-red-500 text-white py-2 px-4 rounded-lg font-medium hover:bg-red-600 transition-colors">
               Logout
             </button>
           </div>

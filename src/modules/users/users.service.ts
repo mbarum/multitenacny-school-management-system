@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -18,9 +18,9 @@ export class UsersService extends TenantAwareCrudService<User> {
 
   async create(userDto: Partial<User>): Promise<User> {
     if (!userDto.password_hash) {
-      throw new Error('Password is required to create a user.');
+      throw new BadRequestException('Password is required to create a user.');
     }
-    const salt = await bcrypt.genSalt();
+    const salt = await bcrypt.genSalt(12); // Stronger salt rounds
     const password_hash = await bcrypt.hash(userDto.password_hash, salt);
 
     const newUser = this.userRepository.create({
@@ -39,16 +39,25 @@ export class UsersService extends TenantAwareCrudService<User> {
   }
 
   async update(id: string, userDto: Partial<User>): Promise<User> {
-    await this.userRepository.update(id, userDto);
-    const updatedUser = await this.userRepository.findOne({ where: { id } });
-    if (!updatedUser) {
-      throw new Error('User not found');
+    const user = await this.userRepository.findOne({ where: { id, tenantId: this.tenancyService.getTenantId() } });
+    if (!user) {
+      throw new NotFoundException('User not found');
     }
-    return updatedUser;
+    
+    if (userDto.password_hash) {
+      const salt = await bcrypt.genSalt(12);
+      userDto.password_hash = await bcrypt.hash(userDto.password_hash, salt);
+    }
+
+    await this.userRepository.update(id, userDto);
+    return this.userRepository.findOne({ where: { id } }) as Promise<User>;
   }
 
   async remove(id: string): Promise<void> {
-    await this.userRepository.delete(id);
+    const result = await this.userRepository.delete({ id, tenantId: this.tenancyService.getTenantId() });
+    if (result.affected === 0) {
+      throw new NotFoundException('User not found');
+    }
   }
 
   async findByUsername(username: string): Promise<User | null> {

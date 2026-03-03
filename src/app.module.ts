@@ -1,5 +1,4 @@
 import { Module } from '@nestjs/common';
-import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -28,6 +27,12 @@ import { UsersModule } from './modules/users/users.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { PaymentsModule } from './modules/payments/payments.module';
 
+import { JwtModule } from '@nestjs/jwt';
+
+import { AuditModule } from './modules/audit/audit.module';
+import { AuditInterceptor } from './core/interceptors/audit.interceptor';
+import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+
 @Module({
   imports: [
     ThrottlerModule.forRoot([
@@ -39,12 +44,21 @@ import { PaymentsModule } from './modules/payments/payments.module';
     ConfigModule.forRoot({
       isGlobal: true, // Makes ConfigService available application-wide
     }),
+    JwtModule.registerAsync({
+      global: true,
+      imports: [ConfigModule],
+      useFactory: (configService: ConfigService) => ({
+        secret: configService.get<string>('JWT_SECRET'),
+        signOptions: { expiresIn: '60m' },
+      }),
+      inject: [ConfigService],
+    }),
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => {
         const dbHost = configService.get<string>('DB_HOST');
         const useSqlite = !dbHost || dbHost === 'your_production_database_host';
-        
+
         if (useSqlite) {
           return {
             type: 'sqlite',
@@ -69,6 +83,7 @@ import { PaymentsModule } from './modules/payments/payments.module';
     }),
     // Core Modules
     TenancyModule,
+    AuditModule,
 
     // Domain modules will be imported here
     TenantsModule,
@@ -104,6 +119,10 @@ import { PaymentsModule } from './modules/payments/payments.module';
     {
       provide: APP_GUARD,
       useClass: ThrottlerGuard,
+    },
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: AuditInterceptor,
     },
   ],
 })

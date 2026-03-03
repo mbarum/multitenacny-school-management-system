@@ -58,28 +58,58 @@ export class GoogleClassroomProvider implements LmsProvider {
   }
 
   async syncStudents(): Promise<LmsStudent[]> {
-    // Note: Google Classroom API doesn't have a single endpoint to get all students
-    // across all courses. This would require iterating through each course.
-    // This is a simplified example.
-    console.warn(
-      'syncStudents for Google Classroom requires iterating all courses. This is a placeholder.',
-    );
-    return [];
+    const courses = await this.syncCourses();
+    const allStudents: LmsStudent[] = [];
+
+    for (const course of courses) {
+      const response = await (this.classroom as any).courses.students.list({
+        courseId: course.id,
+      });
+      const students = (response.data.students || []) as any[];
+      students.forEach((s) => {
+        allStudents.push({
+          id: s.userId as string,
+          name: s.profile.name.fullName as string,
+          email: s.profile.emailAddress as string,
+        });
+      });
+    }
+    return allStudents;
   }
 
   async syncCourses(): Promise<LmsCourse[]> {
-    const response = await this.classroom.courses.list({ pageSize: 100 });
-    const courses = response.data.courses || [];
+    const response = await (this.classroom as any).courses.list({
+      pageSize: 100,
+    });
+    const courses = (response.data.courses || []) as any[];
     return courses.map((course) => ({
-      id: course.id,
-      name: course.name,
+      id: course.id as string,
+      name: course.name as string,
     }));
   }
 
-  async getGrades(_studentId: string): Promise<LmsGrade[]> {
-    console.warn(
-      'getGrades for Google Classroom is a complex operation and this is a placeholder.',
-    );
-    return [];
+  async getGrades(studentId: string): Promise<LmsGrade[]> {
+    const courses = await this.syncCourses();
+    const allGrades: LmsGrade[] = [];
+
+    for (const course of courses) {
+      const response =
+        await (this.classroom as any).courses.courseWork.studentSubmissions.list({
+          courseId: course.id,
+          userId: studentId,
+        });
+      const submissions = (response.data.studentSubmissions || []) as any[];
+      submissions.forEach((sub) => {
+        if (sub.assignedGrade) {
+          allGrades.push({
+            courseId: course.id,
+            studentId,
+            grade: sub.assignedGrade.toString() as string,
+            remarks: sub.draftGrade ? `Draft: ${sub.draftGrade}` : '',
+          });
+        }
+      });
+    }
+    return allGrades;
   }
 }

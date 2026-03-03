@@ -1,4 +1,13 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  UseGuards,
+} from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { AttendanceService } from './attendance.service';
 import { CreateAttendanceDto } from './dto/create-attendance.dto';
@@ -14,6 +23,11 @@ export class AttendanceController {
     return this.attendanceService.create(createAttendanceDto);
   }
 
+  @Post('bulk')
+  bulkCreate(@Body() data: { records: CreateAttendanceDto[] }) {
+    return Promise.all(data.records.map(record => this.attendanceService.create(record)));
+  }
+
   @Get()
   findAll() {
     return this.attendanceService.findAll();
@@ -25,7 +39,10 @@ export class AttendanceController {
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateAttendanceDto: UpdateAttendanceDto) {
+  update(
+    @Param('id') id: string,
+    @Body() updateAttendanceDto: UpdateAttendanceDto,
+  ) {
     return this.attendanceService.update(id, updateAttendanceDto);
   }
 

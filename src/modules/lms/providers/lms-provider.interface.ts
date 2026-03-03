@@ -13,6 +13,7 @@ export interface LmsGrade {
   courseId: string;
   studentId: string;
   grade: number | string;
+  remarks?: string;
 }
 
 /**

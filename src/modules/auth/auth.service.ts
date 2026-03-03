@@ -5,6 +5,8 @@ import { UsersService } from '../users/users.service';
 import { User } from '../users/entities/user.entity';
 import { EmailService } from 'src/shared/email.service';
 import { v4 as uuidv4 } from 'uuid';
+import { CreateUserDto } from '../users/dto/create-user.dto';
+import { UserRole } from 'src/common/user-role.enum';
 
 @Injectable()
 export class AuthService {
@@ -15,16 +17,22 @@ export class AuthService {
   ) {}
 
   async validateUser(username: string, pass: string): Promise<any> {
-    const user = await this.usersService.findByUsername(username);
+    const user = (await this.usersService.findByUsername(username)) as any;
     if (user && (await bcrypt.compare(pass, user.password_hash))) {
-      const { password_hash: _password_hash, ...result } = user;
+      const result = { ...user };
+      delete result.password_hash;
       return result;
     }
     return null;
   }
 
   login(user: User) {
-    const payload = { username: user.username, sub: user.id, role: user.role };
+    const payload = {
+      username: user.username,
+      sub: user.id,
+      role: user.role,
+      tenantId: user.tenantId,
+    };
     return {
       access_token: this.jwtService.sign(payload),
     };
@@ -54,7 +62,19 @@ export class AuthService {
     return this.usersService.resetPassword(user.id, password);
   }
 
-  async register(user: Partial<User>): Promise<User> {
-    return this.usersService.create(user);
+  async register(userDto: CreateUserDto): Promise<any> {
+    // Security: Force a default role to prevent privilege escalation
+    // Even if the user provides a role in the DTO, it will be overridden here.
+    const userWithDefaultRole = {
+      ...userDto,
+      role: UserRole.PARENT, // Default to least privilege
+    };
+
+    const user = (await this.usersService.create(userWithDefaultRole)) as any;
+
+    // Security: Explicitly strip sensitive data from the response
+    const result = { ...user };
+    delete result.password_hash;
+    return result;
   }
 }
