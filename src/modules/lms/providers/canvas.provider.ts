@@ -1,5 +1,10 @@
 import { Injectable } from '@nestjs/common';
-import { LmsProvider, LmsStudent, LmsCourse, LmsGrade } from './lms-provider.interface';
+import {
+  LmsProvider,
+  LmsStudent,
+  LmsCourse,
+  LmsGrade,
+} from './lms-provider.interface';
 
 /**
  * @description A placeholder scaffold for a future Canvas LMS provider.
@@ -22,7 +27,7 @@ export class CanvasProvider implements LmsProvider {
     throw new Error('Canvas provider is not yet implemented.');
   }
 
-  async getGrades(studentId: string): Promise<LmsGrade[]> {
+  async getGrades(_studentId: string): Promise<LmsGrade[]> {
     throw new Error('Canvas provider is not yet implemented.');
   }
 }

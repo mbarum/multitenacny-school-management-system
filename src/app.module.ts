@@ -23,35 +23,48 @@ import { ReportCardsModule } from './modules/report-cards/report-cards.module';
 import { LibraryModule } from './modules/library/library.module';
 import { CommunicationModule } from './modules/communication/communication.module';
 import { ReportingModule } from './modules/reporting/reporting.module';
+import { SharedModule } from './shared/shared.module';
 import { UsersModule } from './modules/users/users.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { PaymentsModule } from './modules/payments/payments.module';
 
 @Module({
   imports: [
-    ThrottlerModule.forRoot([{
-      ttl: 60000, // 1 minute
-      limit: 20, // 20 requests per minute
-    }]),
-    ThrottlerModule.forRoot([{
-      ttl: 60000, // 1 minute
-      limit: 20, // 20 requests per minute
-    }]),
+    ThrottlerModule.forRoot([
+      {
+        ttl: 60000, // 1 minute
+        limit: 20, // 20 requests per minute
+      },
+    ]),
     ConfigModule.forRoot({
       isGlobal: true, // Makes ConfigService available application-wide
     }),
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
-      useFactory: (configService: ConfigService) => ({
-        type: 'mysql',
-        host: configService.get<string>('DB_HOST'),
-        port: configService.get<number>('DB_PORT'),
-        username: configService.get<string>('DB_USERNAME'),
-        password: configService.get<string>('DB_PASSWORD'),
-        database: configService.get<string>('DB_DATABASE'),
-        autoLoadEntities: true, // Automatically load entities from domain modules
-        synchronize: false, // This must always be false in production.
-      }),
+      useFactory: (configService: ConfigService) => {
+        const dbHost = configService.get<string>('DB_HOST');
+        const useSqlite = !dbHost || dbHost === 'your_production_database_host';
+        
+        if (useSqlite) {
+          return {
+            type: 'sqlite',
+            database: 'database.sqlite',
+            autoLoadEntities: true,
+            synchronize: true, // Auto-create tables for SQLite
+          };
+        }
+
+        return {
+          type: 'mysql',
+          host: dbHost,
+          port: configService.get<number>('DB_PORT'),
+          username: configService.get<string>('DB_USERNAME'),
+          password: configService.get<string>('DB_PASSWORD'),
+          database: configService.get<string>('DB_DATABASE'),
+          autoLoadEntities: true,
+          synchronize: false, // This must always be false in production.
+        };
+      },
       inject: [ConfigService],
     }),
     // Core Modules
@@ -77,6 +90,7 @@ import { PaymentsModule } from './modules/payments/payments.module';
     LibraryModule,
     CommunicationModule,
     ReportingModule,
+    SharedModule,
 
     // Auth & Users
     UsersModule,
@@ -94,13 +108,3 @@ import { PaymentsModule } from './modules/payments/payments.module';
   ],
 })
 export class AppModule {}
-
-
-
-
-
-
-
-
-
-

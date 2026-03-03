@@ -12,10 +12,10 @@ export class Tenant {
   @Column()
   domain: string;
 
-  @Column({ type: 'enum', enum: SubscriptionPlan, default: SubscriptionPlan.FREE })
+  @Column({ type: 'simple-enum', enum: SubscriptionPlan, default: SubscriptionPlan.FREE })
   plan: SubscriptionPlan;
 
-  @Column({ type: 'enum', enum: SubscriptionStatus, default: SubscriptionStatus.ACTIVE })
+  @Column({ type: 'simple-enum', enum: SubscriptionStatus, default: SubscriptionStatus.ACTIVE })
   subscriptionStatus: SubscriptionStatus;
 
   @Column({ nullable: true })

@@ -27,8 +27,14 @@ export class ReportingService {
       where: { tenantId, date: Between(startDate, endDate) },
     });
 
-    const totalIncome = fees.reduce((sum, fee) => sum + (fee.status === 'paid' ? fee.amount : 0), 0);
-    const totalExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0);
+    const totalIncome = fees.reduce(
+      (sum, fee) => sum + (fee.status === 'paid' ? fee.amount : 0),
+      0,
+    );
+    const totalExpenses = expenses.reduce(
+      (sum, expense) => sum + expense.amount,
+      0,
+    );
 
     return {
       totalIncome,
@@ -39,7 +45,7 @@ export class ReportingService {
     };
   }
 
-  async generateAttendanceReport(classLevel: string) {
+  async generateAttendanceReport(_classLevel: string) {
     const tenantId = this.tenancyService.getTenantId();
     // This is a simplified example. A real implementation would join with students table.
     const attendance = await this.attendanceRepository.find({

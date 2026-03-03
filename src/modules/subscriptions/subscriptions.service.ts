@@ -48,8 +48,8 @@ export class SubscriptionsService {
       line_items: [{ price: priceId, quantity: 1 }],
       mode: 'subscription',
       customer: stripeCustomerId,
-      success_url: `${this.configService.get('CLIENT_URL')}/dashboard?payment_success=true`,
-      cancel_url: `${this.configService.get('CLIENT_URL')}/pricing?payment_canceled=true`,
+      success_url: `${this.configService.get('FRONTEND_URL')}/dashboard?payment_success=true`,
+      cancel_url: `${this.configService.get('FRONTEND_URL')}/pricing?payment_canceled=true`,
     });
 
     return { sessionId: session.id };
@@ -69,7 +69,7 @@ export class SubscriptionsService {
 
     const portalSession = await this.stripe.billingPortal.sessions.create({
       customer: tenant.stripeCustomerId,
-      return_url: `${this.configService.get('CLIENT_URL')}/dashboard`,
+      return_url: `${this.configService.get('FRONTEND_URL')}/dashboard`,
     });
 
     return { url: portalSession.url };

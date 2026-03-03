@@ -1,3 +1,4 @@
+import 'module-alias/register';
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import helmet from 'helmet';
@@ -9,17 +10,19 @@ import { join } from 'path';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { cors: true });
 
-  app.useGlobalPipes(new ValidationPipe({
-    whitelist: true, // Strip away properties that do not have any decorators
-    forbidNonWhitelisted: true, // Throw an error if non-whitelisted values are provided
-    transform: true, // Automatically transform payloads to be objects typed according to their DTO classes
-  }));
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true, // Strip away properties that do not have any decorators
+      forbidNonWhitelisted: true, // Throw an error if non-whitelisted values are provided
+      transform: true, // Automatically transform payloads to be objects typed according to their DTO classes
+    }),
+  );
   app.use(helmet());
 
   // Enable graceful shutdown hooks
   app.enableShutdownHooks();
   const configService = app.get(ConfigService);
-  const port = configService.get<number>('PORT') || 3001;
+  const port = configService.get<number>('PORT') || 3000;
   const frontendUrl = configService.get<string>('FRONTEND_URL');
 
   app.enableCors({
@@ -27,12 +30,23 @@ async function bootstrap() {
     credentials: true,
   });
 
+  app.setGlobalPrefix('api');
+
   // Serve the React frontend in production
   if (process.env.NODE_ENV === 'production') {
     app.use(express.static(join(__dirname, '..', 'client', 'dist')));
+    app.use('*', (req, res, next) => {
+      if (req.originalUrl.startsWith('/api')) {
+        return next();
+      }
+      res.sendFile(join(__dirname, '..', 'client', 'dist', 'index.html'));
+    });
   }
 
-  await app.listen(port);
+  await app.listen(port, '0.0.0.0');
   console.log(`Application is running on: ${await app.getUrl()}`);
 }
-bootstrap();
+bootstrap().catch((err) => {
+  console.error('Error during bootstrap', err);
+  process.exit(1);
+});

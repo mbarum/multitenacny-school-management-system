@@ -1,4 +1,13 @@
-import { Controller, Post, Body, Get, Param, UseGuards, HttpCode, HttpStatus } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  Get,
+  Param,
+  UseGuards,
+  HttpCode,
+  HttpStatus,
+} from '@nestjs/common';
 import { LmsService } from './lms.service';
 import { ConnectLmsDto } from './dto/connect-lms.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -29,7 +38,7 @@ export class LmsController {
   syncStudents() {
     // In a real app, this would trigger a background job.
     // For now, we call it directly but don't wait for the full result.
-    this.lmsService.syncStudents();
+    this.lmsService.syncStudents().catch(console.error);
     return { message: 'Student synchronization has been initiated.' };
   }
 
@@ -37,7 +46,7 @@ export class LmsController {
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @HttpCode(HttpStatus.ACCEPTED)
   syncCourses() {
-    this.lmsService.syncCourses();
+    this.lmsService.syncCourses().catch(console.error);
     return { message: 'Course synchronization has been initiated.' };
   }
 

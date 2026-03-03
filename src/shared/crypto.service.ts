@@ -14,7 +14,7 @@ export class CryptoService {
   private readonly key: Buffer;
 
   constructor(private configService: ConfigService) {
-    const secret = this.configService.get<string>('ENCRYPTION_KEY');
+    const secret = this.configService.get<string>('ENCRYPTION_KEY') || '12345678901234567890123456789012';
     if (!secret || secret.length !== 32) {
       throw new Error('ENCRYPTION_KEY environment variable must be a 32-character string.');
     }

@@ -26,10 +26,10 @@ export class UsersService extends TenantAwareCrudService<User> {
     const newUser = this.userRepository.create({
       ...userDto,
       password_hash,
-      tenantId: this.tenancyService.getTenantId(),
+      tenantId: this.tenancyService.getTenantId() as string,
     });
 
-    return this.userRepository.save(newUser as any);
+    return this.userRepository.save(newUser);
   }
 
   async findAll(): Promise<User[]> {
@@ -53,19 +53,28 @@ export class UsersService extends TenantAwareCrudService<User> {
 
   async findByUsername(username: string): Promise<User | null> {
     return this.userRepository.findOne({
-      where: { 
-        username, 
-        tenantId: this.tenancyService.getTenantId() 
+      where: {
+        username,
+        tenantId: this.tenancyService.getTenantId(),
       },
     });
   }
 
-  async setPasswordResetToken(id: string, token: string, expires: Date): Promise<void> {
-    await this.userRepository.update(id, { password_reset_token: token, password_reset_expires: expires });
+  async setPasswordResetToken(
+    id: string,
+    token: string,
+    expires: Date,
+  ): Promise<void> {
+    await this.userRepository.update(id, {
+      password_reset_token: token,
+      password_reset_expires: expires,
+    });
   }
 
   async findOneByPasswordResetToken(token: string): Promise<User | null> {
-    return this.userRepository.findOne({ where: { password_reset_token: token } });
+    return this.userRepository.findOne({
+      where: { password_reset_token: token },
+    });
   }
 
   async resetPassword(id: string, password: string): Promise<User | null> {

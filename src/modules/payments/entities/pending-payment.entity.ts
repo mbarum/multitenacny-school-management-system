@@ -18,7 +18,7 @@ export class PendingPayment {
   @Column()
   amount: number;
 
-  @Column({ type: 'enum', enum: PaymentMethod })
+  @Column({ type: 'simple-enum', enum: PaymentMethod })
   method: PaymentMethod;
 
   @Column()

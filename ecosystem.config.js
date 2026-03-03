@@ -10,6 +10,7 @@ module.exports = {
       max_memory_restart: '1G',
       env: {
         NODE_ENV: 'production',
+        TS_NODE_PROJECT: 'tsconfig.paths.json',
       },
     },
   ],

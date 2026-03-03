@@ -3,7 +3,7 @@ import { Tenant } from 'src/modules/tenants/entities/tenant.entity';
 
 export const GetTenant = createParamDecorator(
   (data: unknown, ctx: ExecutionContext): Tenant => {
-    const request = ctx.switchToHttp().getRequest();
+    const request = ctx.switchToHttp().getRequest<{ tenant: Tenant }>();
     return request.tenant;
   },
 );

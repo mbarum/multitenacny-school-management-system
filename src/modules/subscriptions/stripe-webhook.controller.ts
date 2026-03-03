@@ -1,4 +1,10 @@
-import { Controller, Post, Headers, Req, BadRequestException } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Headers,
+  Req,
+  BadRequestException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -23,31 +29,43 @@ export class StripeWebhookController {
   }
 
   @Post()
-  async handleWebhook(@Headers('stripe-signature') signature: string, @Req() req) {
-    const webhookSecret = this.configService.get<string>('STRIPE_WEBHOOK_SECRET');
+  async handleWebhook(
+    @Headers('stripe-signature') signature: string,
+    @Req() req: any,
+  ) {
     let event: Stripe.Event;
 
     try {
-      const webhookSecret = this.configService.get<string>('STRIPE_WEBHOOK_SECRET');
+      const webhookSecret = this.configService.get<string>(
+        'STRIPE_WEBHOOK_SECRET',
+      );
       if (!webhookSecret) {
-        throw new Error('STRIPE_WEBHOOK_SECRET not found in environment variables.');
+        throw new Error(
+          'STRIPE_WEBHOOK_SECRET not found in environment variables.',
+        );
       }
-      event = this.stripe.webhooks.constructEvent(req.rawBody, signature, webhookSecret);
-    } catch (err) {
+      event = this.stripe.webhooks.constructEvent(
+        req.rawBody as string | Buffer,
+        signature,
+        webhookSecret,
+      );
+    } catch (err: any) {
       throw new BadRequestException(`Webhook Error: ${err.message}`);
     }
 
     // Handle the event
     switch (event.type) {
       case 'customer.subscription.updated':
-      case 'customer.subscription.created':
+      case 'customer.subscription.created': {
         const subscription = event.data.object as Stripe.Subscription;
         await this.updateTenantSubscriptionStatus(subscription);
         break;
-      case 'customer.subscription.deleted':
+      }
+      case 'customer.subscription.deleted': {
         const deletedSubscription = event.data.object as Stripe.Subscription;
         await this.handleSubscriptionCanceled(deletedSubscription);
         break;
+      }
       default:
         console.log(`Unhandled event type ${event.type}`);
     }
@@ -55,7 +73,9 @@ export class StripeWebhookController {
     return { received: true };
   }
 
-  private async updateTenantSubscriptionStatus(subscription: Stripe.Subscription) {
+  private async updateTenantSubscriptionStatus(
+    subscription: Stripe.Subscription,
+  ) {
     const stripeCustomerId = subscription.customer as string;
     const tenant = await this.tenantRepository.findOneBy({ stripeCustomerId });
 

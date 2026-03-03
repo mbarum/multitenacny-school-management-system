@@ -19,7 +19,7 @@ export class SubscriptionPlan {
   @Column()
   price: number; // Price in the smallest currency unit (e.g., cents)
 
-  @Column({ type: 'enum', enum: PlanInterval, default: PlanInterval.MONTH })
+  @Column({ type: 'simple-enum', enum: PlanInterval, default: PlanInterval.MONTH })
   interval: PlanInterval;
 
   @Column()

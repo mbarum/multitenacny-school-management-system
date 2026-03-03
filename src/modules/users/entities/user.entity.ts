@@ -19,7 +19,7 @@ export class User extends TenantAwareEntity {
   password_reset_expires: Date;
 
   @Column({
-    type: 'enum',
+    type: 'simple-enum',
     enum: UserRole,
     default: UserRole.ADMIN,
   })

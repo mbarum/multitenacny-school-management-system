@@ -14,7 +14,7 @@ export enum LmsProviderType {
 @Entity({ name: 'lms_connections' })
 @Index(['tenantId', 'provider'], { unique: true })
 export class LmsConnection extends TenantAwareEntity {
-  @Column({ type: 'enum', enum: LmsProviderType })
+  @Column({ type: 'simple-enum', enum: LmsProviderType })
   provider: LmsProviderType;
 
   @Column()
