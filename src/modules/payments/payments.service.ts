@@ -7,7 +7,7 @@ import {
   PaymentMethod,
 } from './entities/pending-payment.entity';
 import { TenancyService } from 'src/core/tenancy/tenancy.service';
-import { SubscriptionStatus } from 'src/common/subscription.enums';
+import { SubscriptionStatus, SubscriptionPlan } from 'src/common/subscription.enums';
 
 @Injectable()
 export class PaymentsService {
