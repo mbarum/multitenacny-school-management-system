@@ -23,7 +23,7 @@ export class PermissionsGuard implements CanActivate {
       return true;
     }
 
-    const request = context.switchToHttp().getRequest<any>();
+    const request = context.switchToHttp().getRequest<{ user: any }>();
     const user = request.user;
     if (!user) return false;
 
@@ -31,7 +31,7 @@ export class PermissionsGuard implements CanActivate {
     if (user.role === 'SuperAdmin') return true;
 
     const rolePermissions = await this.rolePermissionRepository.find({
-      where: { role: user.role, tenantId: user.tenantId },
+      where: { role: user.role, tenantId: user.tenantId as string },
       relations: ['permission'],
     });
 
