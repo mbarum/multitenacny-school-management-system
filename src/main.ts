@@ -35,12 +35,19 @@ async function bootstrap() {
   // Serve the React frontend in production
   if (process.env.NODE_ENV === 'production') {
     app.use(express.static(join(__dirname, '..', 'client', 'dist')));
-    app.use('*', (req: express.Request, res: express.Response, next: express.NextFunction) => {
-      if (req.originalUrl.startsWith('/api')) {
-        return next();
-      }
-      res.sendFile(join(__dirname, '..', 'client', 'dist', 'index.html'));
-    });
+    app.use(
+      '(.*)',
+      (
+        req: express.Request,
+        res: express.Response,
+        next: express.NextFunction,
+      ) => {
+        if (req.originalUrl.startsWith('/api')) {
+          return next();
+        }
+        res.sendFile(join(__dirname, '..', 'client', 'dist', 'index.html'));
+      },
+    );
   }
 
   await app.listen(port, '0.0.0.0');
