@@ -1,13 +1,24 @@
-import { Controller, Post, Body, Param, UseGuards, HttpCode, HttpStatus } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  Param,
+  UseGuards,
+  HttpCode,
+  HttpStatus,
+} from '@nestjs/common';
 import { PaymentsService } from './payments.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from 'src/core/decorators/roles.decorator';
 import { UserRole } from 'src/common/user-role.enum';
 
+import { SubscriptionPlan } from 'src/common/subscription.enums';
+
 class BankTransferRequestDto {
   amount: number;
   reference: string;
+  plan: SubscriptionPlan;
 }
 
 @Controller('payments')
@@ -19,7 +30,11 @@ export class PaymentsController {
   @Roles(UserRole.ADMIN)
   @HttpCode(HttpStatus.CREATED)
   createBankTransferRequest(@Body() body: BankTransferRequestDto) {
-    return this.paymentsService.createBankTransferRequest(body.amount, body.reference);
+    return this.paymentsService.createBankTransferRequest(
+      body.amount,
+      body.reference,
+      body.plan,
+    );
   }
 
   @Post(':id/approve')
@@ -29,4 +44,3 @@ export class PaymentsController {
     return this.paymentsService.approvePayment(id);
   }
 }
-

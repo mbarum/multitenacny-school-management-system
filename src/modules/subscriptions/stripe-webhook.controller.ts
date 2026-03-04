@@ -10,7 +10,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import Stripe from 'stripe';
 import { Tenant } from '../tenants/entities/tenant.entity';
-import { SubscriptionStatus } from 'src/common/subscription.enums';
+import { SubscriptionStatus, SubscriptionPlan } from 'src/common/subscription.enums';
 
 @Controller('stripe-webhook')
 export class StripeWebhookController {
@@ -26,7 +26,9 @@ export class StripeWebhookController {
     if (!this.stripe) {
       const secretKey = this.configService.get<string>('STRIPE_SECRET_KEY');
       if (!secretKey) {
-        throw new Error('STRIPE_SECRET_KEY not found in environment variables.');
+        throw new Error(
+          'STRIPE_SECRET_KEY not found in environment variables.',
+        );
       }
       this.stripe = new Stripe(secretKey);
     }
@@ -62,12 +64,12 @@ export class StripeWebhookController {
     switch (event.type) {
       case 'customer.subscription.updated':
       case 'customer.subscription.created': {
-        const subscription = event.data.object;
+        const subscription = event.data.object as Stripe.Subscription;
         await this.updateTenantSubscriptionStatus(subscription);
         break;
       }
       case 'customer.subscription.deleted': {
-        const deletedSubscription = event.data.object;
+        const deletedSubscription = event.data.object as Stripe.Subscription;
         await this.handleSubscriptionCanceled(deletedSubscription);
         break;
       }
@@ -86,6 +88,19 @@ export class StripeWebhookController {
 
     if (tenant) {
       tenant.subscriptionStatus = subscription.status as SubscriptionStatus;
+      
+      // Map Stripe Price ID to SubscriptionPlan
+      const priceId = subscription.items.data[0].price.id;
+      if (priceId.includes('basic')) {
+        tenant.plan = SubscriptionPlan.BASIC;
+      } else if (priceId.includes('standard')) {
+        tenant.plan = SubscriptionPlan.STANDARD;
+      } else if (priceId.includes('premium')) {
+        tenant.plan = SubscriptionPlan.PREMIUM;
+      } else if (priceId.includes('enterprise')) {
+        tenant.plan = SubscriptionPlan.ENTERPRISE;
+      }
+
       await this.tenantRepository.save(tenant);
     }
   }

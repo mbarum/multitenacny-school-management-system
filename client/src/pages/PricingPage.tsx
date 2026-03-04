@@ -1,4 +1,4 @@
-import { CheckCircle, CreditCard, Smartphone, Banknote, Zap, Shield, Star } from 'lucide-react';
+import { CheckCircle, CreditCard, Smartphone, Banknote, Zap, Shield, Star, Globe, ArrowRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState } from 'react';
 import { loadStripe } from '@stripe/stripe-js';
@@ -18,15 +18,34 @@ const plans = [
     features: ['Student Records', 'Fee Management', 'Basic Reporting', 'Attendance Tracking'],
   },
   {
+    name: 'Standard',
+    icon: <Shield className="w-6 h-6" />,
+    monthlyPrice: 200,
+    annualPrice: 2000,
+    interval: 'KES / student',
+    monthlyPriceId: 'price_standard_monthly',
+    annualPriceId: 'price_standard_annual',
+    features: ['All Basic Features', 'LMS Integration', 'Parent Portal', 'SMS Notifications'],
+  },
+  {
     name: 'Premium',
     icon: <Star className="w-6 h-6" />,
-    monthlyPrice: 250,
-    annualPrice: 2500,
+    monthlyPrice: 350,
+    annualPrice: 3500,
     interval: 'KES / student',
     monthlyPriceId: 'price_premium_monthly',
     annualPriceId: 'price_premium_annual',
-    features: ['All Basic Features', 'LMS Integration', 'Advanced Reporting', 'Parent Portal', 'Custom Timetabling'],
+    features: ['All Standard Features', 'Advanced Analytics', 'Custom Timetabling', 'Priority Support'],
     popular: true
+  },
+  {
+    name: 'Enterprise',
+    icon: <Globe className="w-6 h-6" />,
+    monthlyPrice: 'Custom',
+    annualPrice: 'Custom',
+    interval: 'Contact Sales',
+    features: ['Unlimited Students', 'Multi-Campus Management', 'Dedicated Account Manager', 'Custom Integrations'],
+    isEnterprise: true
   },
 ];
 
@@ -46,11 +65,15 @@ const PricingPage = () => {
     }
   };
 
-  const handleMpesaSubscribe = async (amount: number) => {
+  const handleMpesaSubscribe = async (amount: number, planName: string) => {
     const phone = prompt('Please enter your M-Pesa phone number (e.g., 2547...):');
     if (phone) {
       try {
-        await api.post('/mpesa/stk-push', { phone, amount });
+        await api.post('/mpesa/stk-push', { 
+          phone, 
+          amount, 
+          plan: planName.toLowerCase() 
+        });
         alert('STK Push sent to your phone. Please complete the transaction.');
         setSelectedPlan(null);
       } catch (error) {
@@ -60,10 +83,14 @@ const PricingPage = () => {
     }
   };
 
-  const handleBankTransferSubscribe = async (amount: number) => {
+  const handleBankTransferSubscribe = async (amount: number, planName: string) => {
     const reference = `BT-${Date.now()}`;
     try {
-      await api.post('/payments/bank-transfer', { amount, reference });
+      await api.post('/payments/bank-transfer', { 
+        amount, 
+        reference,
+        plan: planName.toLowerCase()
+      });
       alert('Bank transfer request sent. Please check your email for payment instructions.');
       setSelectedPlan(null);
     } catch (error) {
@@ -110,17 +137,17 @@ const PricingPage = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl mx-auto">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 max-w-7xl mx-auto">
           {plans.map((plan) => (
             <motion.div
               key={plan.name}
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               whileHover={{ y: -10 }}
-              className={`relative rounded-[32px] p-10 bg-white/5 border transition-all ${plan.popular ? 'border-brand-sand shadow-2xl shadow-brand-sand/10' : 'border-white/5'}`}
+              className={`relative rounded-[32px] p-8 bg-white/5 border transition-all flex flex-col ${plan.popular ? 'border-brand-sand shadow-2xl shadow-brand-sand/10' : 'border-white/5'}`}
             >
               {plan.popular && (
-                <div className="absolute top-0 right-10 -translate-y-1/2 bg-brand-sand text-brand-dark px-4 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest">
+                <div className="absolute top-0 right-8 -translate-y-1/2 bg-brand-sand text-brand-dark px-4 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest">
                   Most Popular
                 </div>
               )}
@@ -131,25 +158,31 @@ const PricingPage = () => {
 
               <h2 className="text-2xl font-bold mb-2">{plan.name}</h2>
               <div className="flex items-baseline space-x-2 mb-8">
-                <span className="text-5xl font-bold tracking-tighter">
-                  {billingCycle === 'monthly' ? plan.monthlyPrice : plan.annualPrice}
+                <span className="text-4xl font-bold tracking-tighter">
+                  {plan.isEnterprise ? 'Custom' : (billingCycle === 'monthly' ? plan.monthlyPrice : plan.annualPrice)}
                 </span>
-                <span className="text-brand-white/40 text-sm font-bold uppercase tracking-widest">
-                  {plan.interval} / {billingCycle}
+                <span className="text-brand-white/40 text-[10px] font-bold uppercase tracking-widest">
+                  {plan.interval} {!plan.isEnterprise && `/ ${billingCycle}`}
                 </span>
               </div>
 
               <button
-                onClick={() => setSelectedPlan(plan)}
-                className={`w-full py-4 rounded-2xl font-bold uppercase tracking-widest text-[11px] transition-all active:scale-95 ${plan.popular ? 'bg-brand-sand text-brand-dark shadow-lg shadow-brand-sand/20' : 'bg-white/10 text-brand-white hover:bg-white/20'}`}
+                onClick={() => {
+                  if (plan.isEnterprise) {
+                    window.location.href = 'mailto:sales@saaslink.tech?subject=Enterprise Plan Inquiry';
+                  } else {
+                    setSelectedPlan(plan);
+                  }
+                }}
+                className={`w-full py-4 rounded-2xl font-bold uppercase tracking-widest text-[10px] transition-all active:scale-95 mt-auto ${plan.popular ? 'bg-brand-sand text-brand-dark shadow-lg shadow-brand-sand/20' : 'bg-white/10 text-brand-white hover:bg-white/20'}`}
               >
-                Choose {plan.name}
+                {plan.isEnterprise ? 'Contact Sales' : `Choose ${plan.name}`}
               </button>
 
               <ul className="mt-10 space-y-4">
                 {plan.features.map((feature) => (
-                  <li key={feature} className="flex items-center text-sm text-brand-white/60">
-                    <CheckCircle className="h-4 w-4 text-brand-sand mr-3 flex-shrink-0" />
+                  <li key={feature} className="flex items-start text-[13px] text-brand-white/60">
+                    <CheckCircle className="h-4 w-4 text-brand-sand mr-3 flex-shrink-0 mt-0.5" />
                     <span>{feature}</span>
                   </li>
                 ))}
@@ -199,7 +232,7 @@ const PricingPage = () => {
                 </button>
 
                 <button
-                  onClick={() => handleMpesaSubscribe(billingCycle === 'monthly' ? selectedPlan.monthlyPrice : selectedPlan.annualPrice)}
+                  onClick={() => handleMpesaSubscribe(billingCycle === 'monthly' ? selectedPlan.monthlyPrice : selectedPlan.annualPrice, selectedPlan.name)}
                   className="w-full flex items-center justify-between p-5 bg-white/5 border border-white/5 rounded-2xl hover:bg-white/10 transition-all group"
                 >
                   <div className="flex items-center">
@@ -210,7 +243,7 @@ const PricingPage = () => {
                 </button>
 
                 <button
-                  onClick={() => handleBankTransferSubscribe(billingCycle === 'monthly' ? selectedPlan.monthlyPrice : selectedPlan.annualPrice)}
+                  onClick={() => handleBankTransferSubscribe(billingCycle === 'monthly' ? selectedPlan.monthlyPrice : selectedPlan.annualPrice, selectedPlan.name)}
                   className="w-full flex items-center justify-between p-5 bg-white/5 border border-white/5 rounded-2xl hover:bg-white/10 transition-all group"
                 >
                   <div className="flex items-center">

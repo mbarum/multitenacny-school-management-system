@@ -2,7 +2,10 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Tenant } from '../tenants/entities/tenant.entity';
-import { PendingPayment, PaymentMethod } from './entities/pending-payment.entity';
+import {
+  PendingPayment,
+  PaymentMethod,
+} from './entities/pending-payment.entity';
 import { TenancyService } from 'src/core/tenancy/tenancy.service';
 import { SubscriptionStatus } from 'src/common/subscription.enums';
 
@@ -16,7 +19,11 @@ export class PaymentsService {
     private readonly tenancyService: TenancyService,
   ) {}
 
-  async createBankTransferRequest(amount: number, reference: string): Promise<PendingPayment> {
+  async createBankTransferRequest(
+    amount: number,
+    reference: string,
+    plan: SubscriptionPlan,
+  ): Promise<PendingPayment> {
     const tenantId = this.tenancyService.getTenantId();
     const tenant = await this.tenantRepository.findOneBy({ id: tenantId });
 
@@ -29,6 +36,7 @@ export class PaymentsService {
       amount,
       reference,
       method: PaymentMethod.BANK_TRANSFER,
+      plan,
     });
 
     return this.pendingPaymentRepository.save(pendingPayment);
@@ -49,10 +57,12 @@ export class PaymentsService {
 
     const tenant = pendingPayment.tenant;
     tenant.subscriptionStatus = SubscriptionStatus.ACTIVE;
+    if (pendingPayment.plan) {
+      tenant.plan = pendingPayment.plan;
+    }
     // You might want to set an expiry date here based on the plan
     // tenant.expiresAt = ...
 
     return this.tenantRepository.save(tenant);
   }
 }
-
