@@ -15,12 +15,17 @@ export class SubscriptionsService {
     @InjectRepository(Tenant)
     private readonly tenantRepository: Repository<Tenant>,
     private readonly tenancyService: TenancyService,
-  ) {
-    const secretKey = this.configService.get<string>('STRIPE_SECRET_KEY');
-    if (!secretKey) {
-      throw new Error('STRIPE_SECRET_KEY not found in environment variables.');
+  ) {}
+
+  private getStripe(): Stripe {
+    if (!this.stripe) {
+      const secretKey = this.configService.get<string>('STRIPE_SECRET_KEY');
+      if (!secretKey) {
+        throw new Error('STRIPE_SECRET_KEY not found in environment variables.');
+      }
+      this.stripe = new Stripe(secretKey);
     }
-    this.stripe = new Stripe(secretKey);
+    return this.stripe;
   }
 
   async createCheckoutSession(priceId: string): Promise<{ sessionId: string }> {
@@ -33,7 +38,7 @@ export class SubscriptionsService {
 
     let stripeCustomerId = tenant.stripeCustomerId;
     if (!stripeCustomerId) {
-      const customer = await this.stripe.customers.create({
+      const customer = await this.getStripe().customers.create({
         name: tenant.name,
         metadata: {
           tenantId: tenant.id,
@@ -43,7 +48,7 @@ export class SubscriptionsService {
       await this.tenantRepository.update(tenant.id, { stripeCustomerId });
     }
 
-    const session = await this.stripe.checkout.sessions.create({
+    const session = await this.getStripe().checkout.sessions.create({
       payment_method_types: ['card'],
       line_items: [{ price: priceId, quantity: 1 }],
       mode: 'subscription',
@@ -67,7 +72,7 @@ export class SubscriptionsService {
       throw new Error('Tenant does not have a Stripe customer ID.');
     }
 
-    const portalSession = await this.stripe.billingPortal.sessions.create({
+    const portalSession = await this.getStripe().billingPortal.sessions.create({
       customer: tenant.stripeCustomerId,
       return_url: `${this.configService.get('FRONTEND_URL')}/dashboard`,
     });

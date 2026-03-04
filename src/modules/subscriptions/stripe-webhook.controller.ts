@@ -20,12 +20,17 @@ export class StripeWebhookController {
     private readonly configService: ConfigService,
     @InjectRepository(Tenant)
     private readonly tenantRepository: Repository<Tenant>,
-  ) {
-    const secretKey = this.configService.get<string>('STRIPE_SECRET_KEY');
-    if (!secretKey) {
-      throw new Error('STRIPE_SECRET_KEY not found in environment variables.');
+  ) {}
+
+  private getStripe(): Stripe {
+    if (!this.stripe) {
+      const secretKey = this.configService.get<string>('STRIPE_SECRET_KEY');
+      if (!secretKey) {
+        throw new Error('STRIPE_SECRET_KEY not found in environment variables.');
+      }
+      this.stripe = new Stripe(secretKey);
     }
-    this.stripe = new Stripe(secretKey);
+    return this.stripe;
   }
 
   @Post()
@@ -44,7 +49,7 @@ export class StripeWebhookController {
           'STRIPE_WEBHOOK_SECRET not found in environment variables.',
         );
       }
-      event = this.stripe.webhooks.constructEvent(
+      event = this.getStripe().webhooks.constructEvent(
         req.rawBody as string | Buffer,
         signature,
         webhookSecret,
@@ -57,12 +62,12 @@ export class StripeWebhookController {
     switch (event.type) {
       case 'customer.subscription.updated':
       case 'customer.subscription.created': {
-        const subscription = event.data.object as Stripe.Subscription;
+        const subscription = event.data.object;
         await this.updateTenantSubscriptionStatus(subscription);
         break;
       }
       case 'customer.subscription.deleted': {
-        const deletedSubscription = event.data.object as Stripe.Subscription;
+        const deletedSubscription = event.data.object;
         await this.handleSubscriptionCanceled(deletedSubscription);
         break;
       }

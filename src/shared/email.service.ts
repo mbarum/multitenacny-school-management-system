@@ -6,22 +6,27 @@ import * as nodemailer from 'nodemailer';
 export class EmailService {
   private transporter;
 
-  constructor(private readonly configService: ConfigService) {
-    this.transporter = nodemailer.createTransport({
-      host: this.configService.get<string>('EMAIL_HOST'),
-      port: this.configService.get<number>('EMAIL_PORT'),
-      secure: false, // true for 465, false for other ports
-      auth: {
-        user: this.configService.get<string>('EMAIL_USER'),
-        pass: this.configService.get<string>('EMAIL_PASS'),
-      },
-    });
+  constructor(private readonly configService: ConfigService) {}
+
+  private getTransporter() {
+    if (!this.transporter) {
+      this.transporter = nodemailer.createTransport({
+        host: this.configService.get<string>('EMAIL_HOST'),
+        port: this.configService.get<number>('EMAIL_PORT'),
+        secure: false, // true for 465, false for other ports
+        auth: {
+          user: this.configService.get<string>('EMAIL_USER'),
+          pass: this.configService.get<string>('EMAIL_PASS'),
+        },
+      });
+    }
+    return this.transporter;
   }
 
   async sendPasswordResetEmail(to: string, token: string): Promise<void> {
     const resetLink = `${this.configService.get<string>('FRONTEND_URL')}/reset-password?token=${token}`;
 
-    await this.transporter.sendMail({
+    await this.getTransporter().sendMail({
       from: this.configService.get<string>('EMAIL_FROM'),
       to,
       subject: 'Your Password Reset Request',

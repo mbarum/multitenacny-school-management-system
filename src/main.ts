@@ -34,7 +34,8 @@ async function bootstrap() {
 
   // Serve the React frontend in production
   if (process.env.NODE_ENV === 'production') {
-    app.use(express.static(join(__dirname, '..', 'client', 'dist')));
+    const clientDistPath = join(__dirname, 'client');
+    app.use(express.static(clientDistPath));
     app.use(
       (
         req: express.Request,
@@ -44,7 +45,7 @@ async function bootstrap() {
         if (req.originalUrl.startsWith('/api')) {
           return next();
         }
-        res.sendFile(join(__dirname, '..', 'client', 'dist', 'index.html'));
+        res.sendFile(join(clientDistPath, 'index.html'));
       },
     );
   }
