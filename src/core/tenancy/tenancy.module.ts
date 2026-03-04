@@ -10,6 +10,6 @@ import { TenantsModule } from 'src/modules/tenants/tenants.module'; // To find t
 })
 export class TenancyModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
-    consumer.apply(TenantMiddleware).forRoutes('/:path(.*)');
+    consumer.apply(TenantMiddleware).forRoutes(':path*');
   }
 }

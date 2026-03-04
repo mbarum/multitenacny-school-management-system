@@ -36,7 +36,6 @@ async function bootstrap() {
   if (process.env.NODE_ENV === 'production') {
     app.use(express.static(join(__dirname, '..', 'client', 'dist')));
     app.use(
-      '/:path(.*)',
       (
         req: express.Request,
         res: express.Response,
