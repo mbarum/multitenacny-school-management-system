@@ -17,7 +17,31 @@ async function bootstrap() {
       transform: true, // Automatically transform payloads to be objects typed according to their DTO classes
     }),
   );
-  app.use(helmet());
+  app.use(
+    helmet({
+      crossOriginEmbedderPolicy: false,
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'self'"],
+          scriptSrc: ["'self'", "'unsafe-inline'", 'https://js.stripe.com'],
+          styleSrc: [
+            "'self'",
+            "'unsafe-inline'",
+            'https://fonts.googleapis.com',
+          ],
+          fontSrc: ["'self'", 'https://fonts.gstatic.com'],
+          imgSrc: [
+            "'self'",
+            'data:',
+            'https://picsum.photos',
+            'https://*.stripe.com',
+          ],
+          connectSrc: ["'self'", 'https://api.stripe.com'],
+          frameSrc: ["'self'", 'https://js.stripe.com'],
+        },
+      },
+    }),
+  );
 
   // Enable graceful shutdown hooks
   app.enableShutdownHooks();
