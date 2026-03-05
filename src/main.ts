@@ -1,4 +1,5 @@
 import 'module-alias/register';
+import 'reflect-metadata';
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import helmet from 'helmet';
@@ -48,10 +49,16 @@ async function bootstrap() {
   app.enableShutdownHooks();
 
   // Request logging middleware
-  app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
-    console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
-    next();
-  });
+  app.use(
+    (
+      req: express.Request,
+      res: express.Response,
+      next: express.NextFunction,
+    ) => {
+      console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+      next();
+    },
+  );
 
   const configService = app.get(ConfigService);
   const port = configService.get<number>('PORT') || 3000;
