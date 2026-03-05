@@ -1,10 +1,8 @@
 import { CheckCircle, CreditCard, Smartphone, Banknote, Zap, Shield, Star, Globe, ArrowRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState } from 'react';
-import { loadStripe } from '@stripe/stripe-js';
+import { getStripe } from '../services/stripe';
 import api from '../services/api';
-
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
 
 const plans = [
   {
@@ -56,7 +54,7 @@ const PricingPage = () => {
   const handleStripeSubscribe = async (priceId: string) => {
     try {
       const { sessionId } = await api.post('/subscriptions/create-checkout-session', { priceId });
-      const stripe = await stripePromise;
+      const stripe = await getStripe();
       if (stripe) {
         await stripe.redirectToCheckout({ sessionId });
       }

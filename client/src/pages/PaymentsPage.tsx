@@ -1,11 +1,20 @@
-import React from 'react';
-import { loadStripe } from '@stripe/stripe-js';
+import React, { useEffect, useState } from 'react';
+import { Stripe } from '@stripe/stripe-js';
 import { Elements } from '@stripe/react-stripe-js';
 import CheckoutForm from '../components/CheckoutForm';
-
-const stripePromise = loadStripe(process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY || '');
+import { getStripe } from '../services/stripe';
 
 const PaymentsPage: React.FC = () => {
+  const [stripePromise, setStripePromise] = useState<Promise<Stripe | null> | null>(null);
+
+  useEffect(() => {
+    setStripePromise(getStripe());
+  }, []);
+
+  if (!stripePromise) {
+    return <div>Loading...</div>;
+  }
+
   return (
     <div className="min-h-screen bg-gray-100 p-8">
       <div className="max-w-md mx-auto">

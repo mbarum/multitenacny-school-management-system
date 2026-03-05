@@ -34,6 +34,7 @@ async function bootstrap() {
             "'self'",
             'data:',
             'https://picsum.photos',
+            'https://fastly.picsum.photos',
             'https://*.stripe.com',
           ],
           connectSrc: ["'self'", 'https://api.stripe.com'],
@@ -45,6 +46,13 @@ async function bootstrap() {
 
   // Enable graceful shutdown hooks
   app.enableShutdownHooks();
+
+  // Request logging middleware
+  app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
+    console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+    next();
+  });
+
   const configService = app.get(ConfigService);
   const port = configService.get<number>('PORT') || 3000;
   const frontendUrl = configService.get<string>('FRONTEND_URL');

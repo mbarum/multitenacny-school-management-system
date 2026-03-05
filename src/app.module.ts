@@ -26,6 +26,7 @@ import { SharedModule } from './shared/shared.module';
 import { UsersModule } from './modules/users/users.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { PaymentsModule } from './modules/payments/payments.module';
+import { AppConfigModule } from './modules/config/config.module';
 
 import { JwtModule } from '@nestjs/jwt';
 
@@ -113,6 +114,9 @@ import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 
     // Payments
     PaymentsModule,
+
+    // Config
+    AppConfigModule,
   ],
   controllers: [], // Root controllers are removed for modularity
   providers: [
