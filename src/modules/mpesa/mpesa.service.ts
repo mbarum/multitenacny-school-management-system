@@ -80,7 +80,7 @@ export class MpesaService {
     );
 
     const { data } = await firstValueFrom(
-      this.httpService.post<any>(
+      this.httpService.post<Record<string, any>>(
         'https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest',
         {
           BusinessShortCode: shortCode,
@@ -104,7 +104,7 @@ export class MpesaService {
         tenant,
         amount,
         method: PaymentMethod.MPESA,
-        reference: data.CheckoutRequestID,
+        reference: data.CheckoutRequestID as string,
         plan,
       });
     }

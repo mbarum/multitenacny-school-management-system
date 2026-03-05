@@ -21,7 +21,7 @@ export class AuthController {
   @UseGuards(AuthGuard('local'))
   @Post('login')
   login(@Request() req: { user: any }) {
-    return this.authService.login(req.user);
+    return this.authService.login(req.user as any);
   }
 
   @Post('register')

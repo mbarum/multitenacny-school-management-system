@@ -30,7 +30,7 @@ export class TenantMiddleware implements NestMiddleware {
     if (!tenantId && authHeader && authHeader.startsWith('Bearer ')) {
       try {
         const token = authHeader.split(' ')[1];
-        const payload = this.jwtService.decode(token) as Record<string, any>;
+        const payload = this.jwtService.decode(token) as Record<string, any> | null;
         if (payload && typeof payload.tenantId === 'string') {
           tenantId = payload.tenantId;
         }
