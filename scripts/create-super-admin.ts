@@ -34,6 +34,18 @@ async function createSuperAdmin() {
   await dataSource.initialize();
 
   const userRepository = dataSource.getRepository(User);
+  const tenantRepository = dataSource.getRepository(Tenant);
+
+  // Ensure a System tenant exists for the Super Admin
+  let systemTenant = await tenantRepository.findOne({ where: { name: 'System' } });
+  if (!systemTenant) {
+    systemTenant = tenantRepository.create({
+      name: 'System',
+      domain: 'system.saaslink.tech',
+    });
+    await tenantRepository.save(systemTenant);
+    console.log('System tenant created');
+  }
 
   const username = 'systems@saaslink.tech';
   const password = 'revolution2026';
@@ -41,15 +53,20 @@ async function createSuperAdmin() {
   const salt = await bcrypt.genSalt();
   const hashedPassword = await bcrypt.hash(password, salt);
 
-  const superAdmin = userRepository.create({
-    username,
-    password_hash: hashedPassword, // Corrected field name
-    role: UserRole.SUPER_ADMIN,
-  });
+  let superAdmin = await userRepository.findOne({ where: { username } });
+  if (!superAdmin) {
+    superAdmin = userRepository.create({
+      username,
+      password_hash: hashedPassword,
+      role: UserRole.SUPER_ADMIN,
+      tenantId: systemTenant.id,
+    });
+    await userRepository.save(superAdmin);
+    console.log('Super admin created successfully');
+  } else {
+    console.log('Super admin already exists');
+  }
 
-  await userRepository.save(superAdmin);
-
-  console.log('Super admin created successfully');
   await dataSource.destroy();
 }
 
