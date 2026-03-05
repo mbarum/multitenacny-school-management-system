@@ -18,17 +18,39 @@ export class TenantMiddleware implements NestMiddleware {
   ) {}
 
   async use(req: Request, res: Response, next: NextFunction) {
-    const tenantId = req.headers['x-tenant-id'] as string;
+    // Skip tenant check for public auth routes
+    if (req.originalUrl.includes('/api/auth/')) {
+      return next();
+    }
+
+    let tenantId = req.headers['x-tenant-id'] as string;
+
+    // If tenantId is not in header, try to get it from JWT
+    const authHeader = req.headers.authorization;
+    if (!tenantId && authHeader && authHeader.startsWith('Bearer ')) {
+      try {
+        const token = authHeader.split(' ')[1];
+        const payload = this.jwtService.decode(token) as Record<string, any>;
+        if (payload && typeof payload.tenantId === 'string') {
+          tenantId = payload.tenantId;
+        }
+      } catch {
+        // Ignore decoding errors here, JwtAuthGuard will handle it later
+      }
+    }
+
     if (!tenantId) {
+      // For some routes, we might want to allow missing tenantId (e.g. health check)
+      if (req.originalUrl.includes('/api/health')) {
+        return next();
+      }
       throw new NotFoundException('Tenant ID not provided');
     }
 
     // Security: If a JWT is provided, verify the tenantId matches
-    const authHeader = req.headers.authorization;
     if (authHeader && authHeader.startsWith('Bearer ')) {
       try {
         const token = authHeader.split(' ')[1];
-        // Use verify() instead of decode() to ensure the token is authentic
         const payload = this.jwtService.verify(token) as {
           tenantId?: string;
           role?: string;
@@ -42,8 +64,7 @@ export class TenantMiddleware implements NestMiddleware {
           throw new ForbiddenException('Cross-tenant access denied');
         }
       } catch {
-        // Token is invalid or expired. JwtAuthGuard will handle the final rejection,
-        // but we block cross-tenant attempts early if a token is present.
+        // Token is invalid or expired. JwtAuthGuard will handle the final rejection.
       }
     }
 

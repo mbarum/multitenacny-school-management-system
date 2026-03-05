@@ -8,10 +8,15 @@ import { v4 as uuidv4 } from 'uuid';
 import { CreateUserDto } from '../users/dto/create-user.dto';
 import { UserRole } from 'src/common/user-role.enum';
 
+import { RegisterSchoolDto } from './dto/register-school.dto';
+import { TenantsService } from '../tenants/tenants.service';
+import { SubscriptionPlan } from 'src/common/subscription.enums';
+
 @Injectable()
 export class AuthService {
   constructor(
     private readonly usersService: UsersService,
+    private readonly tenantsService: TenantsService,
     private readonly jwtService: JwtService,
     private readonly emailService: EmailService,
   ) {}
@@ -76,5 +81,29 @@ export class AuthService {
     const result = { ...user };
     delete result.password_hash;
     return result;
+  }
+
+  async registerSchool(dto: RegisterSchoolDto): Promise<any> {
+    // 1. Create Tenant
+    const tenant = await this.tenantsService.create({
+      name: dto.schoolName,
+      domain: dto.domain,
+      plan: (dto.plan as SubscriptionPlan) || SubscriptionPlan.FREE,
+    });
+
+    // 2. Create Admin User for this tenant
+    // We need to bypass the normal tenancy check during registration
+    const salt = await bcrypt.genSalt(12);
+    const password_hash = await bcrypt.hash(dto.adminPassword, salt);
+
+    const adminUser = await this.usersService.createRaw({
+      username: dto.adminEmail,
+      password_hash,
+      role: UserRole.ADMIN,
+      tenantId: tenant.id,
+    });
+
+    // 3. Login the user automatically
+    return this.login(adminUser);
   }
 }

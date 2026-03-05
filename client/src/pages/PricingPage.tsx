@@ -1,7 +1,7 @@
 import { CheckCircle, CreditCard, Smartphone, Banknote, Zap, Shield, Star, Globe, ArrowRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { getStripe } from '../services/stripe';
 import api from '../services/api';
 
@@ -49,8 +49,14 @@ const plans = [
 ];
 
 const PricingPage = () => {
-  const [selectedPlan, setSelectedPlan] = useState(null);
+  const [selectedPlan, setSelectedPlan] = useState<any>(null);
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('monthly');
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    setIsLoggedIn(!!localStorage.getItem('token'));
+  }, []);
 
   const handleStripeSubscribe = async (priceId: string) => {
     try {
@@ -169,13 +175,15 @@ const PricingPage = () => {
                 onClick={() => {
                   if (plan.isEnterprise) {
                     window.location.href = 'mailto:sales@saaslink.tech?subject=Enterprise Plan Inquiry';
+                  } else if (!isLoggedIn) {
+                    navigate(`/register?plan=${plan.name.toLowerCase()}`);
                   } else {
                     setSelectedPlan(plan);
                   }
                 }}
                 className={`w-full py-4 rounded-2xl font-bold uppercase tracking-widest text-[10px] transition-all active:scale-95 mt-auto ${plan.popular ? 'bg-brand-sand text-brand-dark shadow-lg shadow-brand-sand/20' : 'bg-white/10 text-brand-white hover:bg-white/20'}`}
               >
-                {plan.isEnterprise ? 'Contact Sales' : `Choose ${plan.name}`}
+                {plan.isEnterprise ? 'Contact Sales' : (isLoggedIn ? `Choose ${plan.name}` : `Get Started with ${plan.name}`)}
               </button>
 
               <ul className="mt-10 space-y-4">

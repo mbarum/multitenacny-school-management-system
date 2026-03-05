@@ -5,9 +5,15 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { firstValueFrom } from 'rxjs';
 import { Tenant } from '../tenants/entities/tenant.entity';
-import { PendingPayment, PaymentMethod } from '../payments/entities/pending-payment.entity';
+import {
+  PendingPayment,
+  PaymentMethod,
+} from '../payments/entities/pending-payment.entity';
 import { TenancyService } from 'src/core/tenancy/tenancy.service';
-import { SubscriptionPlan, SubscriptionStatus } from 'src/common/subscription.enums';
+import {
+  SubscriptionPlan,
+  SubscriptionStatus,
+} from 'src/common/subscription.enums';
 
 @Injectable()
 export class MpesaService {
@@ -30,22 +36,33 @@ export class MpesaService {
       'base64',
     );
 
-    const { data } = await firstValueFrom<{ data: { access_token: string } }>(
-      this.httpService.get(
+    const { data } = await firstValueFrom(
+      this.httpService.get<{ access_token: string }>(
         'https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials',
         { headers: { Authorization: `Basic ${auth}` } },
-      ) as any,
+      ),
     );
 
     return data.access_token;
   }
 
-  async stkPush(phone: string, amount: number, plan: SubscriptionPlan): Promise<unknown> {
+  async stkPush(
+    phone: string,
+    amount: number,
+    plan: SubscriptionPlan,
+  ): Promise<unknown> {
     const tenantId = this.tenancyService.getTenantId();
+    if (!tenantId) {
+      throw new NotFoundException(
+        'Tenant context missing. Please ensure you are logged in and have a valid tenant ID.',
+      );
+    }
     const tenant = await this.tenantRepository.findOneBy({ id: tenantId });
 
     if (!tenant) {
-      throw new NotFoundException('Tenant not found');
+      throw new NotFoundException(
+        `Tenant with ID ${tenantId} not found in database.`,
+      );
     }
 
     const accessToken = await this.getAccessToken();
@@ -62,8 +79,8 @@ export class MpesaService {
       'base64',
     );
 
-    const { data } = await firstValueFrom<{ data: any }>(
-      this.httpService.post(
+    const { data } = await firstValueFrom(
+      this.httpService.post<any>(
         'https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest',
         {
           BusinessShortCode: shortCode,
@@ -79,10 +96,10 @@ export class MpesaService {
           TransactionDesc: 'Payment for subscription',
         },
         { headers: { Authorization: `Bearer ${accessToken}` } },
-      ) as any,
+      ),
     );
 
-    if (data.ResponseCode === '0') {
+    if (data && data.ResponseCode === '0') {
       await this.pendingPaymentRepository.save({
         tenant,
         amount,
@@ -95,9 +112,10 @@ export class MpesaService {
     return data;
   }
 
-  async handleCallback(callbackData: any): Promise<void> {
-    const { Body } = callbackData;
-    const { stkCallback } = Body;
+  async handleCallback(callbackData: Record<string, any>): Promise<void> {
+    const Body = callbackData.Body;
+    if (!Body || !Body.stkCallback) return;
+    const stkCallback = Body.stkCallback;
 
     if (stkCallback.ResultCode === 0) {
       const checkoutRequestId = stkCallback.CheckoutRequestID;

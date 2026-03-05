@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -26,9 +30,14 @@ export class UsersService extends TenantAwareCrudService<User> {
     const newUser = this.userRepository.create({
       ...userDto,
       password_hash,
-      tenantId: this.tenancyService.getTenantId() as string,
+      tenantId: this.tenancyService.getTenantId(),
     });
 
+    return this.userRepository.save(newUser);
+  }
+
+  async createRaw(userDto: Partial<User>): Promise<User> {
+    const newUser = this.userRepository.create(userDto);
     return this.userRepository.save(newUser);
   }
 
@@ -39,11 +48,13 @@ export class UsersService extends TenantAwareCrudService<User> {
   }
 
   async update(id: string, userDto: Partial<User>): Promise<User> {
-    const user = await this.userRepository.findOne({ where: { id, tenantId: this.tenancyService.getTenantId() } });
+    const user = await this.userRepository.findOne({
+      where: { id, tenantId: this.tenancyService.getTenantId() },
+    });
     if (!user) {
       throw new NotFoundException('User not found');
     }
-    
+
     if (userDto.password_hash) {
       const salt = await bcrypt.genSalt(12);
       userDto.password_hash = await bcrypt.hash(userDto.password_hash, salt);
@@ -54,7 +65,10 @@ export class UsersService extends TenantAwareCrudService<User> {
   }
 
   async remove(id: string): Promise<void> {
-    const result = await this.userRepository.delete({ id, tenantId: this.tenancyService.getTenantId() });
+    const result = await this.userRepository.delete({
+      id,
+      tenantId: this.tenancyService.getTenantId(),
+    });
     if (result.affected === 0) {
       throw new NotFoundException('User not found');
     }

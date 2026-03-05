@@ -12,6 +12,7 @@ import { ResetPasswordDto } from './dto/reset-password.dto';
 import { AuthGuard } from '@nestjs/passport';
 import { AuthService } from './auth.service';
 import { CreateUserDto } from '../users/dto/create-user.dto';
+import { RegisterSchoolDto } from './dto/register-school.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -19,13 +20,18 @@ export class AuthController {
 
   @UseGuards(AuthGuard('local'))
   @Post('login')
-  async login(@Request() req: any) {
-    return this.authService.login(req.user as any);
+  login(@Request() req: { user: any }) {
+    return this.authService.login(req.user);
   }
 
   @Post('register')
   async register(@Body() createUserDto: CreateUserDto) {
     return this.authService.register(createUserDto);
+  }
+
+  @Post('register-school')
+  async registerSchool(@Body() registerSchoolDto: RegisterSchoolDto) {
+    return this.authService.registerSchool(registerSchoolDto);
   }
 
   @Post('forgot-password')
