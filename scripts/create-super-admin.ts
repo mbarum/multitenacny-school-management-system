@@ -1,5 +1,6 @@
 import { DataSource } from 'typeorm';
 import { User } from '../src/modules/users/entities/user.entity';
+import { Tenant } from '../src/modules/tenants/entities/tenant.entity';
 import { UserRole } from '../src/common/user-role.enum';
 import * as bcrypt from 'bcrypt';
 import { config } from 'dotenv';
@@ -15,7 +16,7 @@ async function createSuperAdmin() {
       ? {
           type: 'sqlite',
           database: 'database.sqlite',
-          entities: [User],
+          entities: [User, Tenant],
           synchronize: true,
         }
       : {
@@ -25,7 +26,7 @@ async function createSuperAdmin() {
           username: process.env.DB_USERNAME,
           password: process.env.DB_PASSWORD,
           database: process.env.DB_DATABASE,
-          entities: [User],
+          entities: [User, Tenant],
           synchronize: false,
         },
   );

@@ -1,6 +1,7 @@
 import { CheckCircle, CreditCard, Smartphone, Banknote, Zap, Shield, Star, Globe, ArrowRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { getStripe } from '../services/stripe';
 import api from '../services/api';
 
@@ -262,6 +263,28 @@ const PricingPage = () => {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Footer */}
+      <footer className="py-24 bg-brand-green border-t border-white/5">
+        <div className="max-w-7xl mx-auto px-6 lg:px-8">
+          <div className="flex flex-col md:flex-row justify-between items-center gap-8 text-brand-white/40">
+            <div className="flex items-center space-x-3">
+              <div className="w-8 h-8 bg-brand-sand rounded-lg flex items-center justify-center">
+                <span className="text-brand-dark font-bold">S</span>
+              </div>
+              <span className="text-xl font-bold tracking-tight text-brand-white">SaaSLink</span>
+            </div>
+            <div className="flex space-x-8 text-sm font-bold uppercase tracking-widest">
+              <Link to="/privacy" className="hover:text-brand-sand transition-colors">Privacy</Link>
+              <Link to="/terms" className="hover:text-brand-sand transition-colors">Terms</Link>
+              <Link to="/contact" className="hover:text-brand-sand transition-colors">Contact</Link>
+            </div>
+            <div className="text-sm">
+              © 2026 SaaSLink Technologies Limited.
+            </div>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 };

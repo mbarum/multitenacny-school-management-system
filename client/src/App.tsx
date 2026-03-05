@@ -15,6 +15,9 @@ import StaffManagementPage from './pages/StaffManagementPage';
 import AttendancePage from './pages/AttendancePage';
 import TimetablePage from './pages/TimetablePage';
 import ReportingPage from './pages/ReportingPage';
+import PrivacyPage from './pages/PrivacyPage';
+import TermsPage from './pages/TermsPage';
+import ContactPage from './pages/ContactPage';
 import { UserRole } from '../../src/common/user-role.enum';
 
 const AppRoutes: React.FC = () => {
@@ -69,6 +72,9 @@ const AppRoutes: React.FC = () => {
         path="/reports"
         element={isAuthenticated ? <ReportingPage /> : <Navigate to="/login" />}
       />
+      <Route path="/privacy" element={<PrivacyPage />} />
+      <Route path="/terms" element={<TermsPage />} />
+      <Route path="/contact" element={<ContactPage />} />
     </Routes>
   );
 };

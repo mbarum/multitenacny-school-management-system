@@ -228,9 +228,9 @@ const LandingPage = () => {
               <span className="text-xl font-bold tracking-tight text-brand-green">SaaSLink</span>
             </div>
             <div className="flex space-x-8 text-sm font-bold uppercase tracking-widest text-brand-green/40">
-              <a href="#" className="hover:text-brand-green transition-colors">Privacy</a>
-              <a href="#" className="hover:text-brand-green transition-colors">Terms</a>
-              <a href="#" className="hover:text-brand-green transition-colors">Contact</a>
+              <Link to="/privacy" className="hover:text-brand-green transition-colors">Privacy</Link>
+              <Link to="/terms" className="hover:text-brand-green transition-colors">Terms</Link>
+              <Link to="/contact" className="hover:text-brand-green transition-colors">Contact</Link>
             </div>
             <div className="text-sm text-brand-green/40">
               © 2026 SaaSLink Technologies.
