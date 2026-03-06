@@ -3,6 +3,7 @@ import { Reflector } from '@nestjs/core';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { RolePermission } from 'src/modules/users/entities/role-permission.entity';
+import { UserRole } from 'src/common/user-role.enum';
 import { PERMISSIONS_KEY } from '../decorators/permissions.decorator';
 
 @Injectable()
@@ -31,7 +32,7 @@ export class PermissionsGuard implements CanActivate {
     if (user.role === 'SuperAdmin') return true;
 
     const rolePermissions = await this.rolePermissionRepository.find({
-      where: { role: user.role as string, tenantId: user.tenantId as string },
+      where: { role: user.role as UserRole, tenantId: user.tenantId as string },
       relations: ['permission'],
     });
 
