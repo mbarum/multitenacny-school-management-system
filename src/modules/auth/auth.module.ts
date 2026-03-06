@@ -10,17 +10,8 @@ import { JwtStrategy } from './strategies/jwt.strategy';
 import { SharedModule } from 'src/shared/shared.module';
 
 @Module({
-  imports: [
-    SharedModule,
-    UsersModule,
-    TenantsModule,
-    PassportModule.register({ defaultStrategy: 'local' }),
-  ],
+  imports: [SharedModule, UsersModule, TenantsModule, PassportModule],
   providers: [AuthService, LocalStrategy, JwtStrategy],
   controllers: [AuthController],
 })
-export class AuthModule {
-  constructor(private readonly localStrategy: LocalStrategy) {
-    console.log('AuthModule initialized');
-  }
-}
+export class AuthModule {}
