@@ -10,7 +10,12 @@ import { JwtStrategy } from './strategies/jwt.strategy';
 import { SharedModule } from 'src/shared/shared.module';
 
 @Module({
-  imports: [SharedModule, UsersModule, TenantsModule, PassportModule],
+  imports: [
+    SharedModule,
+    UsersModule,
+    TenantsModule,
+    PassportModule.register({ defaultStrategy: 'local' }),
+  ],
   providers: [AuthService, LocalStrategy, JwtStrategy],
   controllers: [AuthController],
 })
