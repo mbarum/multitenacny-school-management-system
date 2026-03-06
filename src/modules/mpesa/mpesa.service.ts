@@ -65,6 +65,14 @@ export class MpesaService {
       );
     }
 
+    // Normalize phone number: 07... -> 2547...
+    let normalizedPhone = phone.replace(/\D/g, '');
+    if (normalizedPhone.startsWith('0')) {
+      normalizedPhone = '254' + normalizedPhone.substring(1);
+    } else if (normalizedPhone.startsWith('7')) {
+      normalizedPhone = '254' + normalizedPhone;
+    }
+
     const accessToken = await this.getAccessToken();
     const shortCode = this.configService.get<string>('MPESA_SHORTCODE');
     const passkey = this.configService.get<string>('MPESA_PASSKEY');
@@ -79,37 +87,45 @@ export class MpesaService {
       'base64',
     );
 
-    const { data } = await firstValueFrom(
-      this.httpService.post<Record<string, any>>(
-        'https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest',
-        {
-          BusinessShortCode: shortCode,
-          Password: password,
-          Timestamp: timestamp,
-          TransactionType: 'CustomerPayBillOnline',
-          Amount: amount,
-          PartyA: phone,
-          PartyB: shortCode,
-          PhoneNumber: phone,
-          CallBackURL: callbackUrl,
-          AccountReference: 'SaasLink Subscription',
-          TransactionDesc: 'Payment for subscription',
-        },
-        { headers: { Authorization: `Bearer ${accessToken}` } },
-      ),
-    );
+    try {
+      const { data } = await firstValueFrom(
+        this.httpService.post<Record<string, any>>(
+          'https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest',
+          {
+            BusinessShortCode: shortCode,
+            Password: password,
+            Timestamp: timestamp,
+            TransactionType: 'CustomerPayBillOnline',
+            Amount: Math.round(amount),
+            PartyA: normalizedPhone,
+            PartyB: shortCode,
+            PhoneNumber: normalizedPhone,
+            CallBackURL: callbackUrl,
+            AccountReference: 'SaasLink Subscription',
+            TransactionDesc: 'Payment for subscription',
+          },
+          { headers: { Authorization: `Bearer ${accessToken}` } },
+        ),
+      );
 
-    if (data && data.ResponseCode === '0') {
-      await this.pendingPaymentRepository.save({
-        tenant,
-        amount,
-        method: PaymentMethod.MPESA,
-        reference: data.CheckoutRequestID as string,
-        plan,
-      });
+      if (data && data.ResponseCode === '0') {
+        await this.pendingPaymentRepository.save({
+          tenant,
+          amount,
+          method: PaymentMethod.MPESA,
+          reference: data.CheckoutRequestID as string,
+          plan,
+        });
+      }
+
+      return data;
+    } catch (error: any) {
+      console.error(
+        'Mpesa STK Push Error:',
+        JSON.stringify(error.response?.data || error.message, null, 2),
+      );
+      throw error;
     }
-
-    return data;
   }
 
   async handleCallback(callbackData: Record<string, any>): Promise<void> {
