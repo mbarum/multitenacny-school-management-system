@@ -61,7 +61,7 @@ export class UsersService extends TenantAwareCrudService<User> {
     }
 
     await this.userRepository.update(id, userDto);
-    return this.userRepository.findOne({ where: { id } }) as Promise<User>;
+    return this.userRepository.findOne({ where: { id } });
   }
 
   async remove(id: string): Promise<void> {
@@ -76,10 +76,7 @@ export class UsersService extends TenantAwareCrudService<User> {
 
   async findByUsername(username: string): Promise<User | null> {
     return this.userRepository.findOne({
-      where: {
-        username,
-        tenantId: this.tenancyService.getTenantId(),
-      },
+      where: { username },
     });
   }
 

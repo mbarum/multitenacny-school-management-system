@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Tenant } from './entities/tenant.entity';
@@ -11,7 +11,15 @@ export class TenantsService {
     private readonly tenantRepository: Repository<Tenant>,
   ) {}
 
-  create(createTenantDto: CreateTenantDto): Promise<Tenant> {
+  async create(createTenantDto: CreateTenantDto): Promise<Tenant> {
+    const existing = await this.tenantRepository.findOne({
+      where: [{ name: createTenantDto.name }, { domain: createTenantDto.domain }],
+    });
+    if (existing) {
+      throw new BadRequestException(
+        'A school with this name or domain already exists.',
+      );
+    }
     const tenant = this.tenantRepository.create(createTenantDto);
     return this.tenantRepository.save(tenant);
   }

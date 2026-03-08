@@ -17,6 +17,7 @@ import { CreateSubjectDto } from './dto/create-subject.dto';
 import { CreateAcademicYearDto } from './dto/create-academic-year.dto';
 import { CreateClassLevelDto } from './dto/create-class-level.dto';
 import { CreateSectionDto } from './dto/create-section.dto';
+import { GradingScale } from './entities/grading-scale.entity';
 
 @UseGuards(JwtAuthGuard)
 @Controller('academics')
@@ -80,8 +81,8 @@ export class AcademicsController {
 
   // Grading Scales
   @Post('grading-scales')
-  createGradingScale(@Body() createDto: any) {
-    return this.gradingService.create(createDto as any);
+  createGradingScale(@Body() createDto: Partial<GradingScale>) {
+    return this.gradingService.create(createDto);
   }
 
   @Get('grading-scales')

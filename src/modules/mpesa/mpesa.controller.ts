@@ -27,7 +27,7 @@ export class MpesaController {
 
   @Post('callback')
   @HttpCode(HttpStatus.OK)
-  handleCallback(@Body() body: any) {
+  handleCallback(@Body() body: Record<string, any>) {
     return this.mpesaService.handleCallback(body);
   }
 }

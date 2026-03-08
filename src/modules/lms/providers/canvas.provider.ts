@@ -15,19 +15,19 @@ import {
 export class CanvasProvider implements LmsProvider {
   constructor() {}
 
-  async authenticate(): Promise<void> {
+  authenticate(): Promise<void> {
     throw new Error('Canvas provider is not yet implemented.');
   }
 
-  async syncStudents(): Promise<LmsStudent[]> {
+  syncStudents(): Promise<LmsStudent[]> {
     throw new Error('Canvas provider is not yet implemented.');
   }
 
-  async syncCourses(): Promise<LmsCourse[]> {
+  syncCourses(): Promise<LmsCourse[]> {
     throw new Error('Canvas provider is not yet implemented.');
   }
 
-  async getGrades(_studentId: string): Promise<LmsGrade[]> {
+  getGrades(): Promise<LmsGrade[]> {
     throw new Error('Canvas provider is not yet implemented.');
   }
 }

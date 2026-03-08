@@ -7,8 +7,9 @@ import {
 } from './lms-provider.interface';
 import { LmsConnection } from '../entities/lms-connection.entity';
 import { CryptoService } from 'src/shared/crypto.service';
-import { google } from 'googleapis';
+import { google, classroom_v1 } from 'googleapis';
 import { ConfigService } from '@nestjs/config';
+import { OAuth2Client } from 'google-auth-library';
 
 /**
  * @description A concrete implementation of the LmsProvider strategy for Google Classroom.
@@ -16,8 +17,8 @@ import { ConfigService } from '@nestjs/config';
  */
 @Injectable()
 export class GoogleClassroomProvider implements LmsProvider {
-  private oauth2Client;
-  private classroom;
+  private oauth2Client: OAuth2Client;
+  private classroom: classroom_v1.Classroom;
 
   constructor(
     private readonly connection: LmsConnection,
@@ -49,8 +50,9 @@ export class GoogleClassroomProvider implements LmsProvider {
       // We can test the connection by making a simple, low-cost API call.
       await this.classroom.courses.list({ pageSize: 1 });
       console.log('Successfully authenticated with Google Classroom.');
-    } catch (error) {
-      console.error('Google Classroom authentication failed:', error.message);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      console.error('Google Classroom authentication failed:', message);
       throw new Error(
         'Google Classroom authentication failed. Please reconnect.',
       );
@@ -62,15 +64,15 @@ export class GoogleClassroomProvider implements LmsProvider {
     const allStudents: LmsStudent[] = [];
 
     for (const course of courses) {
-      const response = await (this.classroom as any).courses.students.list({
+      const response = await this.classroom.courses.students.list({
         courseId: course.id,
       });
-      const students = (response.data.students || []) as any[];
+      const students = response.data.students || [];
       students.forEach((s) => {
         allStudents.push({
-          id: s.userId as string,
-          name: s.profile.name.fullName as string,
-          email: s.profile.emailAddress as string,
+          id: s.userId || '',
+          name: s.profile?.name?.fullName || '',
+          email: s.profile?.emailAddress || '',
         });
       });
     }
@@ -78,13 +80,13 @@ export class GoogleClassroomProvider implements LmsProvider {
   }
 
   async syncCourses(): Promise<LmsCourse[]> {
-    const response = await (this.classroom as any).courses.list({
+    const response = await this.classroom.courses.list({
       pageSize: 100,
     });
-    const courses = (response.data.courses || []) as any[];
+    const courses = response.data.courses || [];
     return courses.map((course) => ({
-      id: course.id as string,
-      name: course.name as string,
+      id: course.id || '',
+      name: course.name || '',
     }));
   }
 
@@ -94,17 +96,17 @@ export class GoogleClassroomProvider implements LmsProvider {
 
     for (const course of courses) {
       const response =
-        await (this.classroom as any).courses.courseWork.studentSubmissions.list({
+        await this.classroom.courses.courseWork.studentSubmissions.list({
           courseId: course.id,
           userId: studentId,
         });
-      const submissions = (response.data.studentSubmissions || []) as any[];
+      const submissions = response.data.studentSubmissions || [];
       submissions.forEach((sub) => {
         if (sub.assignedGrade) {
           allGrades.push({
             courseId: course.id,
             studentId,
-            grade: sub.assignedGrade.toString() as string,
+            grade: sub.assignedGrade.toString(),
             remarks: sub.draftGrade ? `Draft: ${sub.draftGrade}` : '',
           });
         }

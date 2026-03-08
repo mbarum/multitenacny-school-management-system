@@ -27,7 +27,8 @@ export class AuthService {
   ): Promise<Partial<User> | null> {
     const user = await this.usersService.findByUsername(username);
     if (user && (await bcrypt.compare(pass, user.password_hash))) {
-      const { password_hash: _, ...result } = user;
+      const result: Partial<User> = { ...user };
+      delete result.password_hash;
       return result;
     }
     return null;
@@ -80,7 +81,8 @@ export class AuthService {
     const user = await this.usersService.create(userWithDefaultRole);
 
     // Security: Explicitly strip sensitive data from the response
-    const { password_hash: _, ...result } = user;
+    const result: Partial<User> = { ...user };
+    delete result.password_hash;
     return result;
   }
 

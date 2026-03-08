@@ -14,4 +14,9 @@ import { SharedModule } from 'src/shared/shared.module';
   providers: [AuthService, LocalStrategy, JwtStrategy],
   controllers: [AuthController],
 })
-export class AuthModule {}
+export class AuthModule {
+  constructor(
+    private localStrategy: LocalStrategy,
+    private jwtStrategy: JwtStrategy,
+  ) {}
+}

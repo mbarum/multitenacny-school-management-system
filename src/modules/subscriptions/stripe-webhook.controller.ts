@@ -10,7 +10,14 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import Stripe from 'stripe';
 import { Tenant } from '../tenants/entities/tenant.entity';
-import { SubscriptionStatus, SubscriptionPlan } from 'src/common/subscription.enums';
+import {
+  SubscriptionStatus,
+  SubscriptionPlan,
+} from 'src/common/subscription.enums';
+
+interface RequestWithRawBody extends Request {
+  rawBody?: string | Buffer;
+}
 
 @Controller('stripe-webhook')
 export class StripeWebhookController {
@@ -38,7 +45,7 @@ export class StripeWebhookController {
   @Post()
   async handleWebhook(
     @Headers('stripe-signature') signature: string,
-    @Req() req: any,
+    @Req() req: RequestWithRawBody,
   ) {
     let event: Stripe.Event;
 
@@ -51,25 +58,29 @@ export class StripeWebhookController {
           'STRIPE_WEBHOOK_SECRET not found in environment variables.',
         );
       }
+      if (!req.rawBody) {
+        throw new Error('Raw body not found in request.');
+      }
       event = this.getStripe().webhooks.constructEvent(
-        req.rawBody as string | Buffer,
+        req.rawBody,
         signature,
         webhookSecret,
       );
-    } catch (err: any) {
-      throw new BadRequestException(`Webhook Error: ${err.message}`);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      throw new BadRequestException(`Webhook Error: ${message}`);
     }
 
     // Handle the event
     switch (event.type) {
       case 'customer.subscription.updated':
       case 'customer.subscription.created': {
-        const subscription = event.data.object as Stripe.Subscription;
+        const subscription = event.data.object;
         await this.updateTenantSubscriptionStatus(subscription);
         break;
       }
       case 'customer.subscription.deleted': {
-        const deletedSubscription = event.data.object as Stripe.Subscription;
+        const deletedSubscription = event.data.object;
         await this.handleSubscriptionCanceled(deletedSubscription);
         break;
       }
@@ -88,7 +99,7 @@ export class StripeWebhookController {
 
     if (tenant) {
       tenant.subscriptionStatus = subscription.status as SubscriptionStatus;
-      
+
       // Map Stripe Price ID to SubscriptionPlan
       const priceId = subscription.items.data[0].price.id;
       if (priceId.includes('basic')) {

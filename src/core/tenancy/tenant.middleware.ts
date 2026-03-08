@@ -9,6 +9,13 @@ import { TenantsService } from 'src/modules/tenants/tenants.service';
 import { TenancyService } from './tenancy.service';
 import { JwtService } from '@nestjs/jwt';
 
+export interface JwtPayload {
+  tenantId?: string;
+  role?: string;
+  sub?: string;
+  username?: string;
+}
+
 @Injectable()
 export class TenantMiddleware implements NestMiddleware {
   constructor(
@@ -30,9 +37,12 @@ export class TenantMiddleware implements NestMiddleware {
     if (!tenantId && authHeader && authHeader.startsWith('Bearer ')) {
       try {
         const token = authHeader.split(' ')[1];
-        const payload = this.jwtService.decode(token) as Record<string, any> | null;
-        if (payload && typeof payload.tenantId === 'string') {
-          tenantId = payload.tenantId;
+        const decodedToken: unknown = this.jwtService.decode(token);
+        if (decodedToken && typeof decodedToken === 'object' && 'tenantId' in decodedToken) {
+          const payload = decodedToken as { tenantId?: string };
+          if (payload.tenantId) {
+            tenantId = payload.tenantId;
+          }
         }
       } catch {
         // Ignore decoding errors here, JwtAuthGuard will handle it later
@@ -51,15 +61,14 @@ export class TenantMiddleware implements NestMiddleware {
     if (authHeader && authHeader.startsWith('Bearer ')) {
       try {
         const token = authHeader.split(' ')[1];
-        const payload = this.jwtService.verify(token) as {
-          tenantId?: string;
-          role?: string;
-        } | null;
+        const payload = this.jwtService.verify(
+          token,
+        ) as unknown as JwtPayload | null;
         if (
           payload &&
           payload.tenantId &&
           payload.tenantId !== tenantId &&
-          payload.role !== 'SUPER_ADMIN'
+          payload.role !== 'super_admin'
         ) {
           throw new ForbiddenException('Cross-tenant access denied');
         }

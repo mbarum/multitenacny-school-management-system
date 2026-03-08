@@ -1,5 +1,5 @@
 {
-  "name": "Multi-Tenant SSO Integration",
-  "description": "A full-stack application demonstrating a multi-tenant SSO architecture with Google Workspace, Microsoft Azure AD, and Okta.",
+  "name": "SaasLink School Management System",
+  "description": "A robust multi-tenant school management system with LMS integration, M-Pesa payments, and super-admin analytics.",
   "requestFramePermissions": []
 }

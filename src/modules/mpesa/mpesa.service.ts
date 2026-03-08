@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
+import axios from 'axios';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -14,6 +15,16 @@ import {
   SubscriptionPlan,
   SubscriptionStatus,
 } from 'src/common/subscription.enums';
+
+interface MpesaOAuthResponse {
+  access_token: string;
+}
+
+interface MpesaStkPushResponse {
+  ResponseCode: string;
+  CheckoutRequestID: string;
+  [key: string]: any;
+}
 
 @Injectable()
 export class MpesaService {
@@ -32,18 +43,42 @@ export class MpesaService {
     const consumerSecret = this.configService.get<string>(
       'MPESA_CONSUMER_SECRET',
     );
+
+    if (!consumerKey || !consumerSecret) {
+      throw new Error(
+        'M-Pesa Consumer Key or Secret is missing in environment variables.',
+      );
+    }
+
     const auth = Buffer.from(`${consumerKey}:${consumerSecret}`).toString(
       'base64',
     );
 
-    const { data } = await firstValueFrom(
-      this.httpService.get<{ access_token: string }>(
-        'https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials',
-        { headers: { Authorization: `Basic ${auth}` } },
-      ),
-    );
+    try {
+      const { data } = await firstValueFrom(
+        this.httpService.get<MpesaOAuthResponse>(
+          'https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials',
+          { headers: { Authorization: `Basic ${auth}` } },
+        ),
+      );
 
-    return data.access_token;
+      return data.access_token;
+    } catch (error: unknown) {
+      let errorMessage = 'Unknown error';
+      if (axios.isAxiosError(error)) {
+        const errorData = error.response?.data as
+          | { errorMessage?: string; message?: string }
+          | undefined;
+        errorMessage =
+          errorData?.errorMessage || errorData?.message || error.message;
+      } else if (error instanceof Error) {
+        errorMessage = error.message;
+      }
+      console.error('M-Pesa OAuth Error:', errorMessage);
+      throw new Error(
+        `Failed to generate M-Pesa access token: ${errorMessage}`,
+      );
+    }
   }
 
   async stkPush(
@@ -89,7 +124,7 @@ export class MpesaService {
 
     try {
       const { data } = await firstValueFrom(
-        this.httpService.post<Record<string, any>>(
+        this.httpService.post<MpesaStkPushResponse>(
           'https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest',
           {
             BusinessShortCode: shortCode,
@@ -113,25 +148,33 @@ export class MpesaService {
           tenant,
           amount,
           method: PaymentMethod.MPESA,
-          reference: data.CheckoutRequestID as string,
+          reference: data.CheckoutRequestID,
           plan,
         });
       }
 
       return data;
-    } catch (error: any) {
+    } catch (error: unknown) {
+      let errorData: any = 'Unknown error';
+      if (axios.isAxiosError(error)) {
+        errorData = (error.response?.data as unknown) || error.message;
+      } else if (error instanceof Error) {
+        errorData = error.message;
+      }
       console.error(
         'Mpesa STK Push Error:',
-        JSON.stringify(error.response?.data || error.message, null, 2),
+        JSON.stringify(errorData, null, 2),
       );
       throw error;
     }
   }
 
   async handleCallback(callbackData: Record<string, any>): Promise<void> {
-    const Body = callbackData.Body;
-    if (!Body || !Body.stkCallback) return;
-    const stkCallback = Body.stkCallback;
+    const body = callbackData.Body as
+      | { stkCallback?: { ResultCode: number; CheckoutRequestID: string } }
+      | undefined;
+    if (!body || !body.stkCallback) return;
+    const stkCallback = body.stkCallback;
 
     if (stkCallback.ResultCode === 0) {
       const checkoutRequestId = stkCallback.CheckoutRequestID;

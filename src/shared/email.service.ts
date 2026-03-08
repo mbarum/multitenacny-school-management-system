@@ -4,11 +4,11 @@ import * as nodemailer from 'nodemailer';
 
 @Injectable()
 export class EmailService {
-  private transporter;
+  private transporter: nodemailer.Transporter | null = null;
 
   constructor(private readonly configService: ConfigService) {}
 
-  private getTransporter() {
+  private getTransporter(): nodemailer.Transporter {
     if (!this.transporter) {
       this.transporter = nodemailer.createTransport({
         host: this.configService.get<string>('EMAIL_HOST'),
