@@ -10,13 +10,19 @@ import { JwtStrategy } from './strategies/jwt.strategy';
 import { SharedModule } from 'src/shared/shared.module';
 
 @Module({
-  imports: [SharedModule, UsersModule, TenantsModule, PassportModule],
+  imports: [
+    SharedModule,
+    UsersModule,
+    TenantsModule,
+    PassportModule.register({ defaultStrategy: 'jwt' }),
+  ],
   providers: [AuthService, LocalStrategy, JwtStrategy],
   controllers: [AuthController],
+  exports: [AuthService],
 })
 export class AuthModule {
   constructor(
-    private localStrategy: LocalStrategy,
-    private jwtStrategy: JwtStrategy,
+    private readonly localStrategy: LocalStrategy,
+    private readonly jwtStrategy: JwtStrategy,
   ) {}
 }
