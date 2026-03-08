@@ -16,12 +16,15 @@ import { RegisterSchoolDto } from './dto/register-school.dto';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly localStrategy: LocalStrategy,
+  ) {}
 
   @UseGuards(AuthGuard('local'))
   @Post('login')
   login(@Request() req: { user: any }) {
-    return this.authService.login(req.user as any);
+    return this.authService.login(req.user);
   }
 
   @Post('register')
