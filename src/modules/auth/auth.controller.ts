@@ -13,17 +13,15 @@ import { AuthGuard } from '@nestjs/passport';
 import { AuthService } from './auth.service';
 import { CreateUserDto } from '../users/dto/create-user.dto';
 import { RegisterSchoolDto } from './dto/register-school.dto';
+import { User } from '../users/entities/user.entity';
 
 @Controller('auth')
 export class AuthController {
-  constructor(
-    private readonly authService: AuthService,
-    private readonly localStrategy: LocalStrategy,
-  ) {}
+  constructor(private readonly authService: AuthService) {}
 
   @UseGuards(AuthGuard('local'))
   @Post('login')
-  login(@Request() req: { user: any }) {
+  login(@Request() req: { user: User }) {
     return this.authService.login(req.user);
   }
 

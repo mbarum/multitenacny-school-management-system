@@ -21,17 +21,19 @@ export class AuthService {
     private readonly emailService: EmailService,
   ) {}
 
-  async validateUser(username: string, pass: string): Promise<any> {
-    const user = (await this.usersService.findByUsername(username)) as any;
+  async validateUser(
+    username: string,
+    pass: string,
+  ): Promise<Partial<User> | null> {
+    const user = await this.usersService.findByUsername(username);
     if (user && (await bcrypt.compare(pass, user.password_hash))) {
-      const result = { ...user };
-      delete result.password_hash;
+      const { password_hash: _, ...result } = user;
       return result;
     }
     return null;
   }
 
-  login(user: User) {
+  login(user: User): { access_token: string } {
     const payload = {
       username: user.username,
       sub: user.id,
@@ -67,7 +69,7 @@ export class AuthService {
     return this.usersService.resetPassword(user.id, password);
   }
 
-  async register(userDto: CreateUserDto): Promise<any> {
+  async register(userDto: CreateUserDto): Promise<Partial<User>> {
     // Security: Force a default role to prevent privilege escalation
     // Even if the user provides a role in the DTO, it will be overridden here.
     const userWithDefaultRole = {
@@ -75,15 +77,16 @@ export class AuthService {
       role: UserRole.PARENT, // Default to least privilege
     };
 
-    const user = (await this.usersService.create(userWithDefaultRole)) as any;
+    const user = await this.usersService.create(userWithDefaultRole);
 
     // Security: Explicitly strip sensitive data from the response
-    const result = { ...user };
-    delete result.password_hash;
+    const { password_hash: _, ...result } = user;
     return result;
   }
 
-  async registerSchool(dto: RegisterSchoolDto): Promise<any> {
+  async registerSchool(
+    dto: RegisterSchoolDto,
+  ): Promise<{ access_token: string }> {
     // 1. Create Tenant
     const tenant = await this.tenantsService.create({
       name: dto.schoolName,
