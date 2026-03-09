@@ -35,7 +35,8 @@ export class AuditInterceptor implements NestInterceptor {
         // Extract entity name from URL (simplified)
         const entity = url.split('/')[2] || 'unknown';
 
-        const tenantId = user?.tenantId || (headers['x-tenant-id'] as string);
+        const tenantId =
+          user?.tenantId || (headers['x-tenant-id'] as string) || 'global';
         const userId = user?.sub || 'system';
         const entityId = (data?.id ||
           (body as { id?: string })?.id ||
@@ -50,7 +51,7 @@ export class AuditInterceptor implements NestInterceptor {
             entityId,
             newValue: JSON.stringify(body),
             ipAddress: ip,
-            userAgent: headers['user-agent'] as string,
+            userAgent: headers['user-agent'],
           })
           .catch((err) => console.error('Audit logging failed', err));
       }),
