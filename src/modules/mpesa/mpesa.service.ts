@@ -50,27 +50,38 @@ export class MpesaService {
       );
     }
 
-    const auth = Buffer.from(`${consumerKey}:${consumerSecret}`).toString(
+    const auth = Buffer.from(`${consumerKey.trim()}:${consumerSecret.trim()}`).toString(
       'base64',
     );
 
     try {
-      const { data } = await firstValueFrom(
-        this.httpService.get<MpesaOAuthResponse>(
-          'https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials',
-          { headers: { Authorization: `Basic ${auth}` } },
-        ),
+      // Use axios directly to avoid any potential HttpService issues
+      const response = await axios.get<MpesaOAuthResponse>(
+        'https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials',
+        {
+          headers: {
+            Authorization: `Basic ${auth}`,
+            Accept: 'application/json',
+          },
+        },
       );
 
-      return data.access_token;
+      return response.data.access_token;
     } catch (error: unknown) {
       let errorMessage = 'Unknown error';
       if (axios.isAxiosError(error)) {
         const errorData = error.response?.data as
-          | { errorMessage?: string; message?: string }
+          | { errorMessage?: string; message?: string; errorCode?: string }
           | undefined;
         errorMessage =
-          errorData?.errorMessage || errorData?.message || error.message;
+          errorData?.errorMessage ||
+          errorData?.message ||
+          errorData?.errorCode ||
+          error.message;
+        console.error('M-Pesa OAuth Error Details:', {
+          status: error.response?.status,
+          data: error.response?.data,
+        });
       } else if (error instanceof Error) {
         errorMessage = error.message;
       }

@@ -17,7 +17,7 @@ import { SharedModule } from '../../shared/shared.module';
   ],
   providers: [AuthService, LocalStrategy, JwtStrategy],
   controllers: [AuthController],
-  exports: [AuthService],
+  exports: [AuthService, PassportModule, LocalStrategy],
 })
 export class AuthModule {
   constructor(private localStrategy: LocalStrategy) {}
