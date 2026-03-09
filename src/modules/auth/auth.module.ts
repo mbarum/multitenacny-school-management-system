@@ -14,7 +14,7 @@ import { SharedModule } from 'src/shared/shared.module';
     SharedModule,
     UsersModule,
     TenantsModule,
-    PassportModule.register({ defaultStrategy: 'jwt' }),
+    PassportModule.register({ session: false }),
   ],
   providers: [AuthService, LocalStrategy, JwtStrategy],
   controllers: [AuthController],
