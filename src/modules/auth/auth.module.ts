@@ -6,7 +6,6 @@ import { UsersModule } from '../users/users.module';
 import { TenantsModule } from '../tenants/tenants.module';
 import { LocalStrategy } from './strategies/local.strategy';
 import { JwtStrategy } from './strategies/jwt.strategy';
-
 import { SharedModule } from 'src/shared/shared.module';
 
 @Module({
@@ -21,8 +20,5 @@ import { SharedModule } from 'src/shared/shared.module';
   exports: [AuthService],
 })
 export class AuthModule {
-  constructor(
-    private readonly localStrategy: LocalStrategy,
-    private readonly jwtStrategy: JwtStrategy,
-  ) {}
+  constructor(private localStrategy: LocalStrategy) {}
 }
