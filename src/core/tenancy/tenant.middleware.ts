@@ -5,13 +5,14 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { Request, Response, NextFunction } from 'express';
-import { TenantsService } from 'src/modules/tenants/tenants.service';
+import { TenantsService } from '../../modules/tenants/tenants.service';
 import { TenancyService } from './tenancy.service';
 import { JwtService } from '@nestjs/jwt';
+import { UserRole } from '../../common/user-role.enum';
 
 export interface JwtPayload {
   tenantId?: string;
-  role?: string;
+  role?: UserRole;
   sub?: string;
   username?: string;
 }
@@ -30,59 +31,69 @@ export class TenantMiddleware implements NestMiddleware {
       return next();
     }
 
-    let tenantId = req.headers['x-tenant-id'] as string;
-
-    // If tenantId is not in header, try to get it from JWT
+    let tenantId: string | undefined;
     const authHeader = req.headers.authorization;
-    if (!tenantId && authHeader && authHeader.startsWith('Bearer ')) {
+
+    // 1. Try to extract and verify tenantId from JWT if Authorization header is present
+    if (authHeader && authHeader.startsWith('Bearer ')) {
       try {
         const token = authHeader.split(' ')[1];
-        const decodedToken: unknown = this.jwtService.decode(token);
-        if (decodedToken && typeof decodedToken === 'object' && 'tenantId' in decodedToken) {
-          const payload = decodedToken as { tenantId?: string };
-          if (payload.tenantId) {
-            tenantId = payload.tenantId;
+        // We use verify here to ensure the token is legitimate before trusting its tenantId
+        const payload = this.jwtService.verify(token) as unknown as JwtPayload;
+
+        if (payload && payload.tenantId) {
+          tenantId = payload.tenantId;
+
+          // Security: If an x-tenant-id header is also provided, it MUST match the JWT tenantId
+          // This prevents tenant enumeration or spoofing by authenticated users.
+          const headerTenantId = req.headers['x-tenant-id'] as string;
+          if (
+            headerTenantId &&
+            headerTenantId !== tenantId &&
+            payload.role !== UserRole.SUPER_ADMIN
+          ) {
+            throw new ForbiddenException(
+              'Security Violation: Provided Tenant ID does not match authenticated session',
+            );
           }
         }
-      } catch {
-        // Ignore decoding errors here, JwtAuthGuard will handle it later
+      } catch (error) {
+        // If verification fails, we don't trust the JWT.
+        // We fall back to checking the header, but JwtAuthGuard will likely block the request later if it's protected.
+        if (error instanceof ForbiddenException) {
+          throw error;
+        }
       }
     }
 
+    // 2. Fallback to x-tenant-id header if not set by JWT
     if (!tenantId) {
-      // For some routes, we might want to allow missing tenantId (e.g. health check)
+      tenantId = req.headers['x-tenant-id'] as string;
+    }
+
+    // 3. Final check for tenantId presence
+    if (!tenantId) {
+      // Allow health check without tenantId
       if (req.originalUrl.includes('/api/health')) {
         return next();
       }
       throw new NotFoundException('Tenant ID not provided');
     }
 
-    // Security: If a JWT is provided, verify the tenantId matches
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-      try {
-        const token = authHeader.split(' ')[1];
-        const payload = this.jwtService.verify(
-          token,
-        ) as unknown as JwtPayload | null;
-        if (
-          payload &&
-          payload.tenantId &&
-          payload.tenantId !== tenantId &&
-          payload.role !== 'super_admin'
-        ) {
-          throw new ForbiddenException('Cross-tenant access denied');
-        }
-      } catch {
-        // Token is invalid or expired. JwtAuthGuard will handle the final rejection.
+    // 4. Verify tenant existence in database
+    try {
+      const tenant = await this.tenantsService.findOne(tenantId);
+      if (!tenant) {
+        throw new NotFoundException('Tenant not found');
       }
+      this.tenancyService.setTenant(tenant);
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      throw new NotFoundException('Invalid Tenant ID');
     }
 
-    const tenant = await this.tenantsService.findOne(tenantId);
-    if (!tenant) {
-      throw new NotFoundException('Tenant not found');
-    }
-
-    this.tenancyService.setTenant(tenant);
     next();
   }
 }

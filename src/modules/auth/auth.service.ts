@@ -3,14 +3,14 @@ import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { UsersService } from '../users/users.service';
 import { User } from '../users/entities/user.entity';
-import { EmailService } from 'src/shared/email.service';
+import { EmailService } from '../../shared/email.service';
 import { v4 as uuidv4 } from 'uuid';
 import { CreateUserDto } from '../users/dto/create-user.dto';
-import { UserRole } from 'src/common/user-role.enum';
+import { UserRole } from '../../common/user-role.enum';
 
 import { RegisterSchoolDto } from './dto/register-school.dto';
 import { TenantsService } from '../tenants/tenants.service';
-import { SubscriptionPlan } from 'src/common/subscription.enums';
+import { SubscriptionPlan } from '../../common/subscription.enums';
 
 @Injectable()
 export class AuthService {
