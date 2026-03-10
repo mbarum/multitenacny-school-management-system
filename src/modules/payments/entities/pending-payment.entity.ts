@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 import { Tenant } from 'src/modules/tenants/entities/tenant.entity';
 import { SubscriptionPlan } from 'src/common/subscription.enums';
 
@@ -34,4 +34,10 @@ export class PendingPayment {
 
   @Column({ default: false })
   isApproved: boolean;
+
+  @CreateDateColumn()
+  createdAt: Date;
+
+  @UpdateDateColumn()
+  updatedAt: Date;
 }

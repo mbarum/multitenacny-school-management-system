@@ -34,7 +34,11 @@ const AppRoutes: React.FC = () => {
       <Route path="/pricing" element={<PricingPage />} />
       <Route 
         path="/"
-        element={isAuthenticated ? <DashboardPage /> : <LandingPage />}
+        element={
+          !isAuthenticated ? <LandingPage /> : 
+          user?.role === UserRole.SUPER_ADMIN ? <Navigate to="/super-admin" /> : 
+          <DashboardPage />
+        }
       />
       <Route
         path="/super-admin"

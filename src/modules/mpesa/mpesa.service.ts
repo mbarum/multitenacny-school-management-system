@@ -50,9 +50,9 @@ export class MpesaService {
       );
     }
 
-    const auth = Buffer.from(`${consumerKey.trim()}:${consumerSecret.trim()}`).toString(
-      'base64',
-    );
+    const auth = Buffer.from(
+      `${consumerKey.trim()}:${consumerSecret.trim()}`,
+    ).toString('base64');
 
     try {
       // Use axios directly to avoid any potential HttpService issues
@@ -69,25 +69,37 @@ export class MpesaService {
       return response.data.access_token;
     } catch (error: unknown) {
       let errorMessage = 'Unknown error';
+      let statusCode = 500;
+
       if (axios.isAxiosError(error)) {
+        statusCode = error.response?.status || 500;
         const errorData = error.response?.data as
           | { errorMessage?: string; message?: string; errorCode?: string }
           | undefined;
+
         errorMessage =
           errorData?.errorMessage ||
           errorData?.message ||
           errorData?.errorCode ||
           error.message;
+
         console.error('M-Pesa OAuth Error Details:', {
-          status: error.response?.status,
-          data: error.response?.data,
+          status: statusCode,
+          data: error.response?.data as unknown,
         });
+
+        if (statusCode === 400) {
+          errorMessage = `Bad Request: Check if your Consumer Key/Secret are valid for the sandbox environment. (${errorMessage})`;
+        } else if (statusCode === 401) {
+          errorMessage = `Unauthorized: Invalid Consumer Key or Secret. (${errorMessage})`;
+        }
       } else if (error instanceof Error) {
         errorMessage = error.message;
       }
+
       console.error('M-Pesa OAuth Error:', errorMessage);
       throw new Error(
-        `Failed to generate M-Pesa access token: ${errorMessage}`,
+        `M-Pesa Authentication Failed (Status ${statusCode}): ${errorMessage}`,
       );
     }
   }
@@ -120,9 +132,15 @@ export class MpesaService {
     }
 
     const accessToken = await this.getAccessToken();
-    const shortCode = this.configService.get<string>('MPESA_SHORTCODE');
-    const passkey = this.configService.get<string>('MPESA_PASSKEY');
-    const callbackUrl = this.configService.get<string>('MPESA_CALLBACK_URL');
+    const shortCode = this.configService.get<string>('MPESA_SHORTCODE')?.trim();
+    const passkey = this.configService.get<string>('MPESA_PASSKEY')?.trim();
+    const callbackUrl = this.configService.get<string>('MPESA_CALLBACK_URL')?.trim();
+
+    if (!shortCode || !passkey || !callbackUrl) {
+      throw new Error(
+        'M-Pesa configuration (Shortcode, Passkey, or Callback URL) is missing.',
+      );
+    }
 
     const timestamp = new Date()
       .toISOString()
@@ -166,31 +184,53 @@ export class MpesaService {
 
       return data;
     } catch (error: unknown) {
-      let errorData: any = 'Unknown error';
+      let errorData: unknown = 'Unknown error';
+      let errorMessage = 'Failed to process STK Push';
+      let statusCode = 500;
+
       if (axios.isAxiosError(error)) {
-        errorData = (error.response?.data as unknown) || error.message;
+        statusCode = error.response?.status || 500;
+        errorData = error.response?.data || error.message;
+
+        if (typeof errorData === 'object' && errorData !== null) {
+          const data = errorData as { errorMessage?: string; message?: string };
+          errorMessage = data.errorMessage || data.message || errorMessage;
+        } else {
+          errorMessage = error.message;
+        }
       } else if (error instanceof Error) {
-        errorData = error.message;
+        errorMessage = error.message;
       }
+
       console.error(
         'Mpesa STK Push Error:',
         JSON.stringify(errorData, null, 2),
       );
-      throw error;
+
+      throw new Error(
+        `M-Pesa STK Push Failed (Status ${statusCode}): ${errorMessage}`,
+      );
     }
   }
 
-  async handleCallback(callbackData: Record<string, any>): Promise<void> {
-    const body = callbackData.Body as
-      | { stkCallback?: { ResultCode: number; CheckoutRequestID: string } }
-      | undefined;
-    if (!body || !body.stkCallback) return;
-    const stkCallback = body.stkCallback;
+  async handleCallback(callbackData: Record<string, any>): Promise<any> {
+    console.log('M-Pesa Callback Received:', JSON.stringify(callbackData, null, 2));
 
-    if (stkCallback.ResultCode === 0) {
-      const checkoutRequestId = stkCallback.CheckoutRequestID;
+    const body = callbackData.Body as
+      | { stkCallback?: { ResultCode: number; ResultDesc: string; CheckoutRequestID: string } }
+      | undefined;
+    
+    if (!body || !body.stkCallback) {
+      console.warn('Invalid M-Pesa callback body received');
+      return { ResultCode: 1, ResultDesc: 'Invalid body' };
+    }
+
+    const { ResultCode, ResultDesc, CheckoutRequestID } = body.stkCallback;
+
+    if (ResultCode === 0) {
+      console.log(`M-Pesa Payment Successful for CheckoutRequestID: ${CheckoutRequestID}`);
       const pendingPayment = await this.pendingPaymentRepository.findOne({
-        where: { reference: checkoutRequestId },
+        where: { reference: CheckoutRequestID },
         relations: ['tenant'],
       });
 
@@ -204,7 +244,14 @@ export class MpesaService {
           tenant.plan = pendingPayment.plan;
         }
         await this.tenantRepository.save(tenant);
+        console.log(`Tenant ${tenant.name} subscription activated/updated to ${tenant.plan}`);
+      } else {
+        console.error(`Pending payment not found for CheckoutRequestID: ${CheckoutRequestID}`);
       }
+    } else {
+      console.warn(`M-Pesa Payment Failed/Cancelled. ResultCode: ${ResultCode}, Description: ${ResultDesc}`);
     }
+
+    return { ResultCode: 0, ResultDesc: 'Success' };
   }
 }

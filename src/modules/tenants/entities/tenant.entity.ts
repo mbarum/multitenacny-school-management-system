@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 import { SubscriptionPlan, SubscriptionStatus } from 'src/common/subscription.enums';
 
 @Entity({ name: 'tenants' })
@@ -23,4 +23,10 @@ export class Tenant {
 
   @Column({ nullable: true, name: 'stripe_customer_id' })
   stripeCustomerId: string;
+
+  @CreateDateColumn()
+  createdAt: Date;
+
+  @UpdateDateColumn()
+  updatedAt: Date;
 }

@@ -47,14 +47,21 @@ export class TenantMiddleware implements NestMiddleware {
           // Security: If an x-tenant-id header is also provided, it MUST match the JWT tenantId
           // This prevents tenant enumeration or spoofing by authenticated users.
           const headerTenantId = req.headers['x-tenant-id'] as string;
-          if (
-            headerTenantId &&
-            headerTenantId !== tenantId &&
-            payload.role !== UserRole.SUPER_ADMIN
-          ) {
-            throw new ForbiddenException(
-              'Security Violation: Provided Tenant ID does not match authenticated session',
-            );
+          if (headerTenantId && headerTenantId !== tenantId) {
+            if (payload.role === UserRole.SUPER_ADMIN) {
+              // Allow SUPER_ADMIN to override the tenantId for impersonation/management
+              tenantId = headerTenantId;
+            } else {
+              throw new ForbiddenException(
+                'Security Violation: Provided Tenant ID does not match authenticated session',
+              );
+            }
+          }
+        } else if (payload && payload.role === UserRole.SUPER_ADMIN) {
+          // If SUPER_ADMIN doesn't have a tenantId in their token, they can still provide one via header
+          const headerTenantId = req.headers['x-tenant-id'] as string;
+          if (headerTenantId) {
+            tenantId = headerTenantId;
           }
         }
       } catch (error) {
@@ -77,6 +84,12 @@ export class TenantMiddleware implements NestMiddleware {
       if (req.originalUrl.includes('/api/health')) {
         return next();
       }
+      
+      // Allow super-admin routes to bypass tenant check if no tenant is specified
+      if (req.originalUrl.includes('/api/super-admin')) {
+        return next();
+      }
+      
       throw new NotFoundException('Tenant ID not provided');
     }
 
