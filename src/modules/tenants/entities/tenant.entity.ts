@@ -1,5 +1,12 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn } from 'typeorm';
-import { SubscriptionPlan, SubscriptionStatus } from 'src/common/subscription.enums';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+} from 'typeorm';
+import {
+  SubscriptionPlan,
+  SubscriptionStatus,
+} from 'src/common/subscription.enums';
 
 @Entity({ name: 'tenants' })
 export class Tenant {
@@ -12,10 +19,18 @@ export class Tenant {
   @Column()
   domain: string;
 
-  @Column({ type: 'simple-enum', enum: SubscriptionPlan, default: SubscriptionPlan.FREE })
+  @Column({
+    type: 'simple-enum',
+    enum: SubscriptionPlan,
+    default: SubscriptionPlan.FREE,
+  })
   plan: SubscriptionPlan;
 
-  @Column({ type: 'simple-enum', enum: SubscriptionStatus, default: SubscriptionStatus.ACTIVE })
+  @Column({
+    type: 'simple-enum',
+    enum: SubscriptionStatus,
+    default: SubscriptionStatus.ACTIVE,
+  })
   subscriptionStatus: SubscriptionStatus;
 
   @Column({ nullable: true })
@@ -23,10 +38,4 @@ export class Tenant {
 
   @Column({ nullable: true, name: 'stripe_customer_id' })
   stripeCustomerId: string;
-
-  @CreateDateColumn()
-  createdAt: Date;
-
-  @UpdateDateColumn()
-  updatedAt: Date;
 }
