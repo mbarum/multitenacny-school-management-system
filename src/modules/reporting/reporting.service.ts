@@ -134,4 +134,41 @@ export class ReportingService {
       recentStudents,
     };
   }
+
+  async getTeacherDashboardStats() {
+    const tenantId = this.tenancyService.getTenantId();
+    
+    // For a real app, we'd filter by the teacher's assigned classes.
+    // Here we'll return some aggregate stats for the teacher dashboard.
+    const totalStudents = await this.feeRepository.manager.query(
+      `SELECT COUNT(*) as count FROM students WHERE tenantId = ?`,
+      [tenantId]
+    ).then(res => parseInt(res[0].count, 10));
+
+    const totalClasses = await this.feeRepository.manager.query(
+      `SELECT COUNT(*) as count FROM sections WHERE tenantId = ?`,
+      [tenantId]
+    ).then(res => parseInt(res[0].count, 10));
+
+    // Mock schedule for today
+    const todaysSchedule = [
+      { id: 1, time: '08:00 AM - 09:30 AM', subject: 'Mathematics', class: 'Grade 10A', room: 'Room 101' },
+      { id: 2, time: '10:00 AM - 11:30 AM', subject: 'Physics', class: 'Grade 11B', room: 'Lab 2' },
+      { id: 3, time: '12:30 PM - 02:00 PM', subject: 'Computer Science', class: 'Grade 12A', room: 'Computer Lab' },
+    ];
+
+    // Mock pending tasks
+    const pendingTasks = [
+      { id: 1, title: 'Grade Midterm Exams', due: 'Today', type: 'grading' },
+      { id: 2, title: 'Submit Attendance for 10A', due: 'Today', type: 'attendance' },
+      { id: 3, title: 'Review Science Projects', due: 'Tomorrow', type: 'review' },
+    ];
+
+    return {
+      totalStudents,
+      totalClasses,
+      todaysSchedule,
+      pendingTasks,
+    };
+  }
 }
