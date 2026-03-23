@@ -1,4 +1,4 @@
-import { Controller, Get, UseGuards, Param } from '@nestjs/common';
+import { Controller, Get, UseGuards, Param, Patch, Body } from '@nestjs/common';
 import { SuperAdminService } from './super-admin.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -29,5 +29,13 @@ export class SuperAdminController {
   @Get('payments/pending')
   getPendingPayments() {
     return this.superAdminService.getPendingPayments();
+  }
+
+  @Patch('tenants/:id/status')
+  updateTenantStatus(
+    @Param('id') id: string,
+    @Body('status') status: string,
+  ) {
+    return this.superAdminService.updateTenantStatus(id, status);
   }
 }

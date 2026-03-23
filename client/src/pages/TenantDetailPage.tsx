@@ -5,19 +5,38 @@ import api from '../services/api';
 
 const TenantDetailPage = () => {
   const { id } = useParams();
-  const [tenant, setTenant] = useState(null);
+  const [tenant, setTenant] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    const fetchTenant = async () => {
-      try {
-        const { data } = await api.get(`/super-admin/tenants/${id}`);
-        setTenant(data);
-      } catch (error) {
-        console.error('Failed to fetch tenant details:', error);
-      }
-    };
     fetchTenant();
   }, [id]);
+
+  const fetchTenant = async () => {
+    try {
+      const { data } = await api.get(`/super-admin/tenants/${id}`);
+      setTenant(data);
+    } catch (error) {
+      console.error('Failed to fetch tenant details:', error);
+    }
+  };
+
+  const toggleTenantStatus = async () => {
+    if (!tenant) return;
+    const newStatus = tenant.subscriptionStatus === 'active' ? 'inactive' : 'active';
+    if (!window.confirm(`Are you sure you want to ${newStatus === 'active' ? 'activate' : 'deactivate'} this tenant?`)) return;
+    
+    setLoading(true);
+    try {
+      await api.patch(`/super-admin/tenants/${id}/status`, { status: newStatus });
+      await fetchTenant();
+    } catch (error) {
+      console.error('Failed to update tenant status:', error);
+      alert('Failed to update tenant status');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   if (!tenant) {
     return <div className="min-h-screen bg-gray-900 text-white p-8">Loading tenant details...</div>;
@@ -37,23 +56,31 @@ const TenantDetailPage = () => {
             <h2 className="text-2xl font-bold mb-6">Tenant Information</h2>
             <div className="space-y-4">
               <p><strong>ID:</strong> <span className="font-mono text-sm">{tenant.id}</span></p>
-              <p><strong>Subscription Status:</strong> {tenant.subscriptionStatus}</p>
+              <p><strong>Domain:</strong> {tenant.domain}</p>
+              <p><strong>Plan:</strong> <span className="capitalize">{tenant.plan}</span></p>
+              <p>
+                <strong>Status:</strong> 
+                <span className={`ml-2 px-2 py-1 rounded-full text-xs font-bold ${tenant.subscriptionStatus === 'active' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                  {tenant.subscriptionStatus.toUpperCase()}
+                </span>
+              </p>
               <p><strong>Stripe Customer ID:</strong> <span className="font-mono text-sm">{tenant.stripeCustomerId || 'N/A'}</span></p>
-              {/* Add more tenant details here as needed */}
             </div>
           </div>
 
           <div className="bg-gray-800 p-8 rounded-2xl">
             <h2 className="text-2xl font-bold mb-6">Actions</h2>
             <div className="space-y-4">
-              <button className="w-full bg-blue-500 text-white py-3 rounded-lg font-semibold hover:bg-blue-600 transition-colors">
-                Impersonate Admin
-              </button>
-              <button className="w-full bg-yellow-500 text-black py-3 rounded-lg font-semibold hover:bg-yellow-600 transition-colors">
-                Manage Subscription
-              </button>
-              <button className="w-full bg-red-500 text-white py-3 rounded-lg font-semibold hover:bg-red-600 transition-colors">
-                Deactivate Tenant
+              <button 
+                onClick={toggleTenantStatus}
+                disabled={loading}
+                className={`w-full py-3 rounded-lg font-semibold transition-colors ${
+                  tenant.subscriptionStatus === 'active' 
+                    ? 'bg-red-500 hover:bg-red-600 text-white' 
+                    : 'bg-green-500 hover:bg-green-600 text-white'
+                } disabled:opacity-50`}
+              >
+                {loading ? 'Processing...' : tenant.subscriptionStatus === 'active' ? 'Deactivate Tenant' : 'Activate Tenant'}
               </button>
             </div>
           </div>

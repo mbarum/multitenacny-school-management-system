@@ -132,4 +132,10 @@ export class SuperAdminService {
       relations: ['tenant'],
     });
   }
+
+  async updateTenantStatus(id: string, status: string) {
+    const tenant = await this.getTenantById(id);
+    tenant.subscriptionStatus = status as SubscriptionStatus;
+    return this.tenantRepository.save(tenant);
+  }
 }

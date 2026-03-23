@@ -111,7 +111,7 @@ const LandingPage = () => {
               <div className="absolute -inset-4 bg-brand-sand/20 blur-3xl rounded-[40px] -z-10" />
               <div className="rounded-3xl border-8 border-brand-green/5 shadow-2xl overflow-hidden bg-white">
                 <img 
-                  src="https://picsum.photos/seed/school-app/1200/800" 
+                  src="https://images.unsplash.com/photo-1509062522246-3755977927d7?auto=format&fit=crop&q=80&w=1200&h=800" 
                   alt="SaaSLink Dashboard Preview" 
                   className="w-full h-auto"
                   referrerPolicy="no-referrer"

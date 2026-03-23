@@ -78,6 +78,22 @@ const ClassManagementPage: React.FC = () => {
     }
   };
 
+  const handleAddStream = async (classLevelId: string) => {
+    const streamName = window.prompt('Enter stream name (e.g. North, Blue, A):');
+    if (!streamName) return;
+
+    try {
+      await api.post('/academics/sections', {
+        name: streamName,
+        classLevelId,
+      });
+      fetchData();
+    } catch (error) {
+      console.error('Failed to add stream', error);
+      alert('Failed to add stream');
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 p-8">
       <div className="max-w-6xl mx-auto">
@@ -160,7 +176,10 @@ const ClassManagementPage: React.FC = () => {
                         {section.name}
                       </span>
                     ))}
-                    <button className="px-3 py-1 border border-dashed border-gray-300 rounded-lg text-sm text-gray-400 hover:border-purple-400 hover:text-purple-500 transition-colors">
+                    <button 
+                      onClick={() => handleAddStream(level.id)}
+                      className="px-3 py-1 border border-dashed border-gray-300 rounded-lg text-sm text-gray-400 hover:border-purple-400 hover:text-purple-500 transition-colors"
+                    >
                       + Add Stream
                     </button>
                   </div>

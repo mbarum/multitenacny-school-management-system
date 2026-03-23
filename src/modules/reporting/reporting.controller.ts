@@ -46,4 +46,9 @@ export class ReportingController {
   getAttendanceReport(@Query('classLevelId') classLevelId: string) {
     return this.reportingService.generateAttendanceReport(classLevelId);
   }
+
+  @Get('dashboard-stats')
+  getDashboardStats() {
+    return this.reportingService.getDashboardStats();
+  }
 }

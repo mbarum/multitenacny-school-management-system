@@ -91,4 +91,47 @@ export class ReportingService {
       relations: ['student'],
     });
   }
+
+  async getDashboardStats() {
+    const tenantId = this.tenancyService.getTenantId();
+    
+    // Get total students
+    const totalStudents = await this.feeRepository.manager.query(
+      `SELECT COUNT(*) as count FROM students WHERE tenantId = ?`,
+      [tenantId]
+    ).then(res => parseInt(res[0].count, 10));
+
+    // Get total staff
+    const totalStaff = await this.feeRepository.manager.query(
+      `SELECT COUNT(*) as count FROM staff WHERE tenantId = ?`,
+      [tenantId]
+    ).then(res => parseInt(res[0].count, 10));
+
+    // Get total fees collected this month
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    
+    const fees = await this.feeRepository.find({
+      where: { tenantId, dueDate: Between(startOfMonth, endOfMonth) },
+    });
+    
+    const revenueThisMonth = fees.reduce(
+      (sum, fee) => sum + (fee.status === 'paid' ? Number(fee.amount) : 0),
+      0,
+    );
+
+    // Get recent activities (last 5 students added)
+    const recentStudents = await this.feeRepository.manager.query(
+      `SELECT id, name, email FROM students WHERE tenantId = ? ORDER BY id DESC LIMIT 5`,
+      [tenantId]
+    );
+
+    return {
+      totalStudents,
+      totalStaff,
+      revenueThisMonth,
+      recentStudents,
+    };
+  }
 }
