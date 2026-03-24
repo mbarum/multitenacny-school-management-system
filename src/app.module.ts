@@ -48,36 +48,37 @@ import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
     JwtModule.registerAsync({
       global: true,
       imports: [ConfigModule],
-      useFactory: (configService: ConfigService) => ({
-        secret: configService.get<string>('JWT_SECRET'),
-        signOptions: { expiresIn: '60m' },
-      }),
+      useFactory: (configService: ConfigService) => {
+        const secret = configService.get<string>('JWT_SECRET');
+        if (!secret) {
+          throw new Error('CRITICAL: JWT_SECRET is not configured. Please set it in your environment variables.');
+        }
+        return {
+          secret,
+          signOptions: { expiresIn: '60m' },
+        };
+      },
       inject: [ConfigService],
     }),
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => {
         const dbHost = configService.get<string>('DB_HOST');
-        const useSqlite = !dbHost || dbHost === 'your_production_database_host';
-
-        if (useSqlite) {
-          return {
-            type: 'sqlite',
-            database: 'database.sqlite',
-            autoLoadEntities: true,
-            synchronize: true, // Auto-create tables for SQLite
-          };
+        
+        if (!dbHost || dbHost === 'your_production_database_host') {
+          throw new Error('CRITICAL: Database host (DB_HOST) is not configured. Please set your MySQL credentials in the environment variables.');
         }
 
         return {
           type: 'mysql',
           host: dbHost,
-          port: configService.get<number>('DB_PORT'),
+          port: configService.get<number>('DB_PORT') || 3306,
           username: configService.get<string>('DB_USERNAME'),
           password: configService.get<string>('DB_PASSWORD'),
           database: configService.get<string>('DB_DATABASE'),
           autoLoadEntities: true,
-          synchronize: false, // This must always be false in production.
+          // In production, synchronize should be false and migrations should be used.
+          synchronize: configService.get<string>('NODE_ENV') !== 'production',
         };
       },
       inject: [ConfigService],

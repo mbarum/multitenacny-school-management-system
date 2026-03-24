@@ -1,9 +1,20 @@
-import { Controller, Get, Query, UseGuards, Res } from '@nestjs/common';
-import type { Response } from 'express';
+import { Controller, Get, Query, UseGuards, Res, Req } from '@nestjs/common';
+import type { Request, Response } from 'express';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { Permissions } from '../auth/decorators/permissions.decorator';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { UserRole } from '../../common/user-role.enum';
 import { ReportingService } from './reporting.service';
+
+interface AuthenticatedRequest extends Request {
+  user: {
+    userId: string;
+    username: string;
+    role: string;
+    tenantId: string;
+  };
+}
 
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller('reporting')
@@ -34,7 +45,8 @@ export class ReportingController {
       new Date(endDate),
     );
     res.set({
-      'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'Content-Type':
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       'Content-Disposition': 'attachment; filename="financial-report.xlsx"',
       'Content-Length': buffer.length,
     });
@@ -53,12 +65,14 @@ export class ReportingController {
   }
 
   @Get('teacher-dashboard-stats')
-  getTeacherDashboardStats() {
-    return this.reportingService.getTeacherDashboardStats();
+  @Roles(UserRole.TEACHER)
+  getTeacherDashboardStats(@Req() req: AuthenticatedRequest) {
+    return this.reportingService.getTeacherDashboardStats(req.user.userId);
   }
 
   @Get('parent-dashboard-stats')
-  getParentDashboardStats() {
-    return this.reportingService.getParentDashboardStats();
+  @Roles(UserRole.PARENT)
+  getParentDashboardStats(@Req() req: AuthenticatedRequest) {
+    return this.reportingService.getParentDashboardStats(req.user.userId);
   }
 }

@@ -137,7 +137,7 @@ const TeacherDashboardPage: React.FC = () => {
               </div>
               <div>
                 <p className="text-sm font-medium text-gray-500">Pending Tasks</p>
-                <p className="text-3xl font-bold text-gray-900">{stats?.pendingTasks.length || 0}</p>
+                <p className="text-3xl font-bold text-gray-900">{stats?.pendingTasks?.length || 0}</p>
               </div>
             </div>
           </div>
@@ -156,10 +156,10 @@ const TeacherDashboardPage: React.FC = () => {
               </div>
               <div className="p-6">
                 <div className="space-y-6">
-                  {stats?.todaysSchedule.map((session, index) => (
+                  {stats?.todaysSchedule?.map((session, index) => (
                     <div key={session.id} className="flex relative">
                       {/* Timeline line */}
-                      {index !== stats.todaysSchedule.length - 1 && (
+                      {index !== (stats?.todaysSchedule?.length || 0) - 1 && (
                         <div className="absolute top-8 bottom-[-24px] left-[11px] w-0.5 bg-gray-100"></div>
                       )}
                       
@@ -214,7 +214,7 @@ const TeacherDashboardPage: React.FC = () => {
               </div>
               <div className="p-0">
                 <ul className="divide-y divide-gray-100">
-                  {stats?.pendingTasks.map((task) => (
+                  {stats?.pendingTasks?.map((task) => (
                     <li key={task.id} className="p-6 hover:bg-gray-50 transition-colors">
                       <div className="flex items-start">
                         <div className="flex-shrink-0 mt-0.5">

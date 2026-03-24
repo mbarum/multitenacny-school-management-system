@@ -11,7 +11,6 @@ import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { LocalAuthGuard } from './guards/local-auth.guard';
 import { AuthService } from './auth.service';
-import { CreateUserDto } from '../users/dto/create-user.dto';
 import { RegisterSchoolDto } from './dto/register-school.dto';
 import { User } from '../users/entities/user.entity';
 
@@ -23,11 +22,6 @@ export class AuthController {
   @Post('login')
   login(@Request() req: { user: User }) {
     return this.authService.login(req.user);
-  }
-
-  @Post('register')
-  async register(@Body() createUserDto: CreateUserDto) {
-    return this.authService.register(createUserDto);
   }
 
   @Post('register-school')

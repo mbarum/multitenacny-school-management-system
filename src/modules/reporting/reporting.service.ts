@@ -4,6 +4,12 @@ import { Between, Repository } from 'typeorm';
 import { Fee } from '../fees/entities/fee.entity';
 import { Expense } from '../expenses/entities/expense.entity';
 import { Attendance } from '../attendance/entities/attendance.entity';
+import { Student } from '../students/entities/student.entity';
+import { TimetableEntry } from '../timetable/entities/timetable-entry.entity';
+import { ReportCard } from '../report-cards/entities/report-card.entity';
+import { CalendarEvent } from '../calendar/entities/calendar-event.entity';
+import { Subject } from '../academics/entities/subject.entity';
+import { Examination } from '../examinations/entities/examination.entity';
 import { TenancyService } from 'src/core/tenancy/tenancy.service';
 import * as ExcelJS from 'exceljs';
 
@@ -16,6 +22,18 @@ export class ReportingService {
     private readonly expenseRepository: Repository<Expense>,
     @InjectRepository(Attendance)
     private readonly attendanceRepository: Repository<Attendance>,
+    @InjectRepository(Student)
+    private readonly studentRepository: Repository<Student>,
+    @InjectRepository(TimetableEntry)
+    private readonly timetableRepository: Repository<TimetableEntry>,
+    @InjectRepository(ReportCard)
+    private readonly reportCardRepository: Repository<ReportCard>,
+    @InjectRepository(CalendarEvent)
+    private readonly calendarEventRepository: Repository<CalendarEvent>,
+    @InjectRepository(Subject)
+    private readonly subjectRepository: Repository<Subject>,
+    @InjectRepository(Examination)
+    private readonly examinationRepository: Repository<Examination>,
     private readonly tenancyService: TenancyService,
   ) {}
 
@@ -46,7 +64,10 @@ export class ReportingService {
     };
   }
 
-  async exportFinancialsToExcel(startDate: Date, endDate: Date): Promise<Buffer> {
+  async exportFinancialsToExcel(
+    startDate: Date,
+    endDate: Date,
+  ): Promise<Buffer> {
     const report = await this.generateFinancialReport(startDate, endDate);
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Financial Report');
@@ -58,7 +79,7 @@ export class ReportingService {
       { header: 'Date', key: 'date', width: 20 },
     ];
 
-    report.fees.forEach(fee => {
+    report.fees.forEach((fee) => {
       worksheet.addRow({
         type: 'Income (Fee)',
         description: `Fee for student ${fee.studentId}`,
@@ -67,7 +88,7 @@ export class ReportingService {
       });
     });
 
-    report.expenses.forEach(expense => {
+    report.expenses.forEach((expense) => {
       worksheet.addRow({
         type: 'Expense',
         description: expense.description,
@@ -94,38 +115,47 @@ export class ReportingService {
 
   async getDashboardStats() {
     const tenantId = this.tenancyService.getTenantId();
-    
+
     // Get total students
-    const totalStudents = await this.feeRepository.manager.query(
-      `SELECT COUNT(*) as count FROM students WHERE tenantId = ?`,
-      [tenantId]
-    ).then(res => parseInt(res[0].count, 10));
+    const totalStudents = await this.feeRepository.manager
+      .query(`SELECT COUNT(*) as count FROM students WHERE tenantId = ?`, [
+        tenantId,
+      ])
+      .then((res: { count: string }[]) => parseInt(res[0].count, 10));
 
     // Get total staff
-    const totalStaff = await this.feeRepository.manager.query(
-      `SELECT COUNT(*) as count FROM staff WHERE tenantId = ?`,
-      [tenantId]
-    ).then(res => parseInt(res[0].count, 10));
+    const totalStaff = await this.feeRepository.manager
+      .query(`SELECT COUNT(*) as count FROM staff WHERE tenantId = ?`, [
+        tenantId,
+      ])
+      .then((res: { count: string }[]) => parseInt(res[0].count, 10));
 
     // Get total fees collected this month
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-    
+
     const fees = await this.feeRepository.find({
       where: { tenantId, dueDate: Between(startOfMonth, endOfMonth) },
     });
-    
+
     const revenueThisMonth = fees.reduce(
       (sum, fee) => sum + (fee.status === 'paid' ? Number(fee.amount) : 0),
       0,
     );
 
     // Get recent activities (last 5 students added)
-    const recentStudents = await this.feeRepository.manager.query(
-      `SELECT id, name, email FROM students WHERE tenantId = ? ORDER BY id DESC LIMIT 5`,
-      [tenantId]
-    );
+    const recentStudentsRaw = await this.studentRepository.find({
+      where: { tenantId },
+      order: { id: 'DESC' },
+      take: 5,
+    });
+
+    const recentStudents = recentStudentsRaw.map((s) => ({
+      id: s.id,
+      name: `${s.firstName} ${s.lastName}`,
+      email: s.registrationNumber || 'N/A', // Use regNo as fallback since no email
+    }));
 
     return {
       totalStudents,
@@ -135,34 +165,88 @@ export class ReportingService {
     };
   }
 
-  async getTeacherDashboardStats() {
+  async getTeacherDashboardStats(userId: string) {
     const tenantId = this.tenancyService.getTenantId();
-    
-    // For a real app, we'd filter by the teacher's assigned classes.
-    // Here we'll return some aggregate stats for the teacher dashboard.
-    const totalStudents = await this.feeRepository.manager.query(
-      `SELECT COUNT(*) as count FROM students WHERE tenantId = ?`,
-      [tenantId]
-    ).then(res => parseInt(res[0].count, 10));
 
-    const totalClasses = await this.feeRepository.manager.query(
-      `SELECT COUNT(*) as count FROM sections WHERE tenantId = ?`,
-      [tenantId]
-    ).then(res => parseInt(res[0].count, 10));
+    // Get total students in the school
+    const totalStudents = await this.studentRepository.count({
+      where: { tenantId },
+    });
 
-    // Mock schedule for today
-    const todaysSchedule = [
-      { id: 1, time: '08:00 AM - 09:30 AM', subject: 'Mathematics', class: 'Grade 10A', room: 'Room 101' },
-      { id: 2, time: '10:00 AM - 11:30 AM', subject: 'Physics', class: 'Grade 11B', room: 'Lab 2' },
-      { id: 3, time: '12:30 PM - 02:00 PM', subject: 'Computer Science', class: 'Grade 12A', room: 'Computer Lab' },
-    ];
+    // Get total classes (sections)
+    const totalClasses = await this.feeRepository.manager
+      .query(`SELECT COUNT(*) as count FROM sections WHERE tenantId = ?`, [
+        tenantId,
+      ])
+      .then((res: { count: string }[]) => parseInt(res[0].count, 10));
 
-    // Mock pending tasks
-    const pendingTasks = [
-      { id: 1, title: 'Grade Midterm Exams', due: 'Today', type: 'grading' },
-      { id: 2, title: 'Submit Attendance for 10A', due: 'Today', type: 'attendance' },
-      { id: 3, title: 'Review Science Projects', due: 'Tomorrow', type: 'review' },
-    ];
+    // Get today's schedule for this teacher
+    const today = new Date()
+      .toLocaleDateString('en-US', { weekday: 'long' })
+      .toLowerCase();
+    const todaysScheduleRaw = await this.timetableRepository.find({
+      where: {
+        tenantId,
+        teacherId: userId,
+        dayOfWeek: today as
+          | 'monday'
+          | 'tuesday'
+          | 'wednesday'
+          | 'thursday'
+          | 'friday',
+      },
+      order: { startTime: 'ASC' },
+    });
+
+    const todaysSchedule = await Promise.all(
+      todaysScheduleRaw.map(async (entry) => {
+        const subject = await this.subjectRepository.findOne({
+          where: { id: entry.subjectId },
+        });
+        return {
+          id: entry.id,
+          time: `${entry.startTime} - ${entry.endTime}`,
+          subject: subject ? subject.name : 'Unknown Subject',
+          class: entry.classLevel,
+          room: 'Assigned Room', // Could fetch from section if linked
+        };
+      }),
+    );
+
+    // Derive pending tasks from real data
+    const pendingTasks = [];
+    let taskIdCounter = 1;
+
+    // 1. Grading tasks: Exams in the past 7 days for subjects taught by this teacher
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    const recentExams = await this.examinationRepository.find({
+      where: { tenantId, date: Between(sevenDaysAgo, new Date()) },
+    });
+
+    for (const exam of recentExams) {
+      const subject = await this.subjectRepository.findOne({
+        where: { id: exam.subjectId, teacherId: userId },
+      });
+      if (subject) {
+        pendingTasks.push({
+          id: taskIdCounter++,
+          title: `Grade ${exam.name} - ${subject.name}`,
+          due: 'Soon',
+          type: 'grading',
+        });
+      }
+    }
+
+    // 2. Attendance tasks: Classes taught today
+    for (const session of todaysSchedule) {
+      pendingTasks.push({
+        id: taskIdCounter++,
+        title: `Submit Attendance for ${session.class} - ${session.subject}`,
+        due: 'Today',
+        type: 'attendance',
+      });
+    }
 
     return {
       totalStudents,
@@ -172,25 +256,105 @@ export class ReportingService {
     };
   }
 
-  async getParentDashboardStats() {
+  async getParentDashboardStats(userId: string) {
     const tenantId = this.tenancyService.getTenantId();
-    
-    // In a real app, we'd query the database for the specific parent's children.
-    // For now, returning mock data that matches the frontend interface.
+
+    // Fetch children for this parent
+    const childrenRaw = await this.studentRepository.find({
+      where: { tenantId, parentId: userId },
+      relations: ['classLevel', 'section'],
+    });
+
+    const children = await Promise.all(
+      childrenRaw.map(async (child) => {
+        // Calculate attendance
+        const totalDays = await this.attendanceRepository.count({
+          where: { studentId: child.id },
+        });
+        const presentDays = await this.attendanceRepository.count({
+          where: { studentId: child.id, status: 'present' },
+        });
+        const attendance =
+          totalDays > 0
+            ? Math.round((presentDays / totalDays) * 100) + '%'
+            : 'N/A';
+
+        // Next payment
+        const nextFee = await this.feeRepository.findOne({
+          where: { studentId: child.id, status: 'unpaid' },
+          order: { dueDate: 'ASC' },
+        });
+
+        return {
+          id: child.id,
+          name: `${child.firstName} ${child.lastName}`,
+          grade: child.classLevel ? child.classLevel.name : 'Unknown Grade',
+          attendance,
+          nextPaymentDue: nextFee
+            ? nextFee.dueDate.toDateString()
+            : 'No pending fees',
+          nextPaymentAmount: nextFee ? Number(nextFee.amount) : 0,
+        };
+      }),
+    );
+
+    // Fetch recent grades for these children
+    const childIds = childrenRaw.map((c) => c.id);
+    let recentGrades = [];
+    if (childIds.length > 0) {
+      const gradesRaw = await this.reportCardRepository.find({
+        where: childIds.map((id) => ({ studentId: id, tenantId })),
+        order: { id: 'DESC' }, // Assuming newer IDs are more recent, or add createdAt
+        take: 5,
+      });
+
+      recentGrades = await Promise.all(
+        gradesRaw.map(async (grade) => {
+          const student = childrenRaw.find((c) => c.id === grade.studentId);
+          const exam = await this.examinationRepository.findOne({
+            where: { id: grade.examinationId },
+          });
+          const subject = exam
+            ? await this.subjectRepository.findOne({
+                where: { id: exam.subjectId },
+              })
+            : null;
+
+          return {
+            id: grade.id,
+            childName: student
+              ? `${student.firstName} ${student.lastName}`
+              : 'Unknown',
+            subject: subject ? subject.name : 'Unknown Subject',
+            grade: grade.grade || grade.marks.toString(),
+            date: exam ? exam.date.toDateString() : 'Unknown Date',
+          };
+        }),
+      );
+    }
+
+    // Upcoming events
+    const now = new Date();
+    const upcomingEventsRaw = await this.calendarEventRepository.find({
+      where: {
+        tenantId,
+        start: Between(now, new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000)),
+      },
+      order: { start: 'ASC' },
+      take: 5,
+    });
+
+    const upcomingEvents = upcomingEventsRaw.map((event) => ({
+      id: event.id,
+      title: event.title,
+      date: event.start.toDateString(),
+      time: `${event.start.getHours()}:${event.start.getMinutes().toString().padStart(2, '0')} - ${event.end.getHours()}:${event.end.getMinutes().toString().padStart(2, '0')}`,
+    }));
+
     return {
-      children: [
-        { id: '1', name: 'Alice Johnson', grade: 'Grade 10A', attendance: '98%', nextPaymentDue: 'Oct 1, 2026', nextPaymentAmount: 500 },
-        { id: '2', name: 'Tommy Johnson', grade: 'Grade 8B', attendance: '95%', nextPaymentDue: 'Oct 1, 2026', nextPaymentAmount: 450 }
-      ],
-      recentGrades: [
-        { id: 1, childName: 'Alice Johnson', subject: 'Mathematics', grade: 'A', date: 'Yesterday' },
-        { id: 2, childName: 'Tommy Johnson', subject: 'Science', grade: 'B+', date: '2 days ago' },
-        { id: 3, childName: 'Alice Johnson', subject: 'History', grade: 'A-', date: 'Last week' }
-      ],
-      upcomingEvents: [
-        { id: 1, title: 'Parent-Teacher Conference', date: 'Oct 15, 2026', time: '14:00 - 16:00' },
-        { id: 2, title: 'Science Fair', date: 'Oct 20, 2026', time: '09:00 - 12:00' }
-      ]
+      children,
+      recentGrades,
+      upcomingEvents,
     };
   }
 }

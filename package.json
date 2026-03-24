@@ -32,6 +32,8 @@
     "typeorm:generate": "npm run typeorm -- migration:generate src/migrations/NewMigration",
     "typeorm:run": "npm run typeorm -- migration:run",
     "typeorm:revert": "npm run typeorm -- migration:revert",
+    "db:migrate": "npm run typeorm:run",
+    "db:seed": "ts-node -r tsconfig-paths/register -r dotenv/config scripts/seed.ts",
     "create:super-admin": "ts-node -r tsconfig-paths/register -r dotenv/config scripts/create-super-admin.ts"
   },
   "dependencies": {
@@ -71,7 +73,6 @@
     "recharts": "^3.7.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
-    "sqlite3": "^5.1.7",
     "stripe": "^20.4.0",
     "ts-node": "^10.9.2",
     "tsconfig-paths": "^4.2.0",

@@ -35,4 +35,7 @@ export class Student extends TenantAwareEntity {
 
   @Column({ default: 'Active' })
   status: string; // Active, Graduated, Transferred, Suspended
+
+  @Column({ nullable: true })
+  parentId: string;
 }

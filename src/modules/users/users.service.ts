@@ -24,6 +24,10 @@ export class UsersService extends TenantAwareCrudService<User> {
     if (!userDto.password_hash) {
       throw new BadRequestException('Password is required to create a user.');
     }
+
+    // Security: Prevent setting id manually
+    Reflect.deleteProperty(userDto, 'id');
+
     const salt = await bcrypt.genSalt(12); // Stronger salt rounds
     const password_hash = await bcrypt.hash(userDto.password_hash, salt);
 
@@ -55,9 +59,16 @@ export class UsersService extends TenantAwareCrudService<User> {
       throw new NotFoundException('User not found');
     }
 
+    // Security: Prevent updating tenantId or id
+    Reflect.deleteProperty(userDto, 'id');
+    Reflect.deleteProperty(userDto, 'tenantId');
+
     if (userDto.password_hash) {
       const salt = await bcrypt.genSalt(12);
-      userDto.password_hash = await bcrypt.hash(userDto.password_hash, salt);
+      userDto.password_hash = await bcrypt.hash(
+        userDto.password_hash,
+        salt,
+      );
     }
 
     await this.userRepository.update(id, userDto);

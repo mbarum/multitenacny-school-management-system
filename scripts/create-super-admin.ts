@@ -9,27 +9,20 @@ config();
 
 async function createSuperAdmin() {
   const dbHost = process.env.DB_HOST;
-  const useSqlite = !dbHost || dbHost === 'your_production_database_host';
+  if (!dbHost || dbHost === 'your_production_database_host') {
+    throw new Error('CRITICAL: Database host (DB_HOST) is not configured. Please set your MySQL credentials in the environment variables.');
+  }
 
-  const dataSource = new DataSource(
-    useSqlite
-      ? {
-          type: 'sqlite',
-          database: 'database.sqlite',
-          entities: [User, Tenant],
-          synchronize: true,
-        }
-      : {
-          type: 'mysql',
-          host: dbHost,
-          port: parseInt(process.env.DB_PORT || '3306', 10),
-          username: process.env.DB_USERNAME,
-          password: process.env.DB_PASSWORD,
-          database: process.env.DB_DATABASE,
-          entities: [User, Tenant],
-          synchronize: false,
-        },
-  );
+  const dataSource = new DataSource({
+    type: 'mysql',
+    host: dbHost,
+    port: parseInt(process.env.DB_PORT || '3306', 10),
+    username: process.env.DB_USERNAME,
+    password: process.env.DB_PASSWORD,
+    database: process.env.DB_DATABASE,
+    entities: [User, Tenant],
+    synchronize: process.env.NODE_ENV !== 'production',
+  });
 
   await dataSource.initialize();
 

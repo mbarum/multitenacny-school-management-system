@@ -45,21 +45,10 @@ const ParentDashboardPage: React.FC = () => {
       setStats(response.data);
     } catch (error) {
       console.error('Failed to fetch parent dashboard stats', error);
-      // Fallback to mock data if endpoint fails
       setStats({
-        children: [
-          { id: '1', name: 'Alice Johnson', grade: 'Grade 10A', attendance: '98%', nextPaymentDue: 'Oct 1, 2026', nextPaymentAmount: 500 },
-          { id: '2', name: 'Tommy Johnson', grade: 'Grade 8B', attendance: '95%', nextPaymentDue: 'Oct 1, 2026', nextPaymentAmount: 450 }
-        ],
-        recentGrades: [
-          { id: 1, childName: 'Alice Johnson', subject: 'Mathematics', grade: 'A', date: 'Yesterday' },
-          { id: 2, childName: 'Tommy Johnson', subject: 'Science', grade: 'B+', date: '2 days ago' },
-          { id: 3, childName: 'Alice Johnson', subject: 'History', grade: 'A-', date: 'Last week' }
-        ],
-        upcomingEvents: [
-          { id: 1, title: 'Parent-Teacher Conference', date: 'Oct 15, 2026', time: '14:00 - 16:00' },
-          { id: 2, title: 'Science Fair', date: 'Oct 20, 2026', time: '09:00 - 12:00' }
-        ]
+        children: [],
+        recentGrades: [],
+        upcomingEvents: []
       });
     } finally {
       setLoading(false);
@@ -137,7 +126,7 @@ const ParentDashboardPage: React.FC = () => {
 
           {/* Children Overview Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-            {stats?.children.map(child => (
+            {stats?.children?.map(child => (
               <div key={child.id} className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
                 <div className="flex justify-between items-start mb-6">
                   <div className="flex items-center">
@@ -181,7 +170,7 @@ const ParentDashboardPage: React.FC = () => {
               </div>
               <div className="p-0">
                 <ul className="divide-y divide-gray-100">
-                  {stats?.recentGrades.map((grade) => (
+                  {stats?.recentGrades?.map((grade) => (
                     <li key={grade.id} className="p-6 hover:bg-gray-50 transition-colors">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center">
@@ -220,7 +209,7 @@ const ParentDashboardPage: React.FC = () => {
               </div>
               <div className="p-0">
                 <ul className="divide-y divide-gray-100">
-                  {stats?.upcomingEvents.map((event) => (
+                  {stats?.upcomingEvents?.map((event) => (
                     <li key={event.id} className="p-6 hover:bg-gray-50 transition-colors">
                       <div className="flex items-start">
                         <div className="flex-shrink-0 mr-4 text-center">

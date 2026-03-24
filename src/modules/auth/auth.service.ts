@@ -5,7 +5,6 @@ import { UsersService } from '../users/users.service';
 import { User } from '../users/entities/user.entity';
 import { EmailService } from '../../shared/email.service';
 import { v4 as uuidv4 } from 'uuid';
-import { CreateUserDto } from '../users/dto/create-user.dto';
 import { UserRole } from '../../common/user-role.enum';
 
 import { RegisterSchoolDto } from './dto/register-school.dto';
@@ -68,22 +67,6 @@ export class AuthService {
     }
 
     return this.usersService.resetPassword(user.id, password);
-  }
-
-  async register(userDto: CreateUserDto): Promise<Partial<User>> {
-    // Security: Force a default role to prevent privilege escalation
-    // Even if the user provides a role in the DTO, it will be overridden here.
-    const userWithDefaultRole = {
-      ...userDto,
-      role: UserRole.PARENT, // Default to least privilege
-    };
-
-    const user = await this.usersService.create(userWithDefaultRole);
-
-    // Security: Explicitly strip sensitive data from the response
-    const result: Partial<User> = { ...user };
-    delete result.password_hash;
-    return result;
   }
 
   async registerSchool(
