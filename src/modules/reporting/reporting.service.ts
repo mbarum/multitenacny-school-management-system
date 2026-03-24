@@ -171,4 +171,26 @@ export class ReportingService {
       pendingTasks,
     };
   }
+
+  async getParentDashboardStats() {
+    const tenantId = this.tenancyService.getTenantId();
+    
+    // In a real app, we'd query the database for the specific parent's children.
+    // For now, returning mock data that matches the frontend interface.
+    return {
+      children: [
+        { id: '1', name: 'Alice Johnson', grade: 'Grade 10A', attendance: '98%', nextPaymentDue: 'Oct 1, 2026', nextPaymentAmount: 500 },
+        { id: '2', name: 'Tommy Johnson', grade: 'Grade 8B', attendance: '95%', nextPaymentDue: 'Oct 1, 2026', nextPaymentAmount: 450 }
+      ],
+      recentGrades: [
+        { id: 1, childName: 'Alice Johnson', subject: 'Mathematics', grade: 'A', date: 'Yesterday' },
+        { id: 2, childName: 'Tommy Johnson', subject: 'Science', grade: 'B+', date: '2 days ago' },
+        { id: 3, childName: 'Alice Johnson', subject: 'History', grade: 'A-', date: 'Last week' }
+      ],
+      upcomingEvents: [
+        { id: 1, title: 'Parent-Teacher Conference', date: 'Oct 15, 2026', time: '14:00 - 16:00' },
+        { id: 2, title: 'Science Fair', date: 'Oct 20, 2026', time: '09:00 - 12:00' }
+      ]
+    };
+  }
 }

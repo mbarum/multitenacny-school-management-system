@@ -56,4 +56,9 @@ export class ReportingController {
   getTeacherDashboardStats() {
     return this.reportingService.getTeacherDashboardStats();
   }
+
+  @Get('parent-dashboard-stats')
+  getParentDashboardStats() {
+    return this.reportingService.getParentDashboardStats();
+  }
 }

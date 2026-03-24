@@ -9,6 +9,7 @@ import TeacherDashboardPage from './pages/TeacherDashboardPage';
 import TeacherClassesPage from './pages/TeacherClassesPage';
 import TeacherAttendancePage from './pages/TeacherAttendancePage';
 import TeacherGradingPage from './pages/TeacherGradingPage';
+import ParentDashboardPage from './pages/ParentDashboardPage';
 import LandingPage from './pages/LandingPage';
 import PricingPage from './pages/PricingPage';
 import SuperAdminPage from './pages/SuperAdminPage';
@@ -31,7 +32,7 @@ const AppRoutes: React.FC = () => {
 
   return (
     <Routes>
-      <Route path="/login" element={<LoginPage />} />
+      <Route path="/login" element={isAuthenticated ? <Navigate to="/" /> : <LoginPage />} />
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       <Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route path="/register" element={<RegisterPage />} />
@@ -42,8 +43,13 @@ const AppRoutes: React.FC = () => {
           !isAuthenticated ? <LandingPage /> : 
           user?.role === UserRole.SUPER_ADMIN ? <Navigate to="/super-admin" /> : 
           user?.role === UserRole.TEACHER ? <Navigate to="/teacher" /> :
+          user?.role === UserRole.PARENT ? <Navigate to="/parent" /> :
           <DashboardPage />
         }
+      />
+      <Route
+        path="/dashboard"
+        element={isAuthenticated && user?.role === UserRole.ADMIN ? <DashboardPage /> : <Navigate to="/" />}
       />
       <Route
         path="/super-admin"
@@ -76,6 +82,10 @@ const AppRoutes: React.FC = () => {
       <Route
         path="/teacher/grading"
         element={isAuthenticated && user?.role === UserRole.TEACHER ? <TeacherGradingPage /> : <Navigate to="/" />}
+      />
+      <Route
+        path="/parent"
+        element={isAuthenticated && user?.role === UserRole.PARENT ? <ParentDashboardPage /> : <Navigate to="/" />}
       />
       <Route
         path="/payments"
