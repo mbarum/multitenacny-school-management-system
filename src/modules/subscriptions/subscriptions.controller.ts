@@ -5,9 +5,11 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from 'src/core/decorators/roles.decorator';
 import { UserRole } from 'src/common/user-role.enum';
+import { SkipSubscriptionCheck } from '../auth/decorators/skip-subscription-check.decorator';
 
 @Controller('subscriptions')
 @UseGuards(JwtAuthGuard, RolesGuard)
+@SkipSubscriptionCheck()
 export class SubscriptionsController {
   constructor(private readonly subscriptionsService: SubscriptionsService) {}
 

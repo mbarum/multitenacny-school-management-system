@@ -9,8 +9,10 @@ import {
 import { MpesaService } from './mpesa.service';
 import { StkPushDto } from './dto/stk-push.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { SkipSubscriptionCheck } from '../auth/decorators/skip-subscription-check.decorator';
 
 @Controller('mpesa')
+@SkipSubscriptionCheck()
 export class MpesaController {
   constructor(private readonly mpesaService: MpesaService) {}
 
@@ -22,6 +24,7 @@ export class MpesaController {
       stkPushDto.phone,
       stkPushDto.amount,
       stkPushDto.plan,
+      stkPushDto.billingCycle || 'monthly',
     );
   }
 

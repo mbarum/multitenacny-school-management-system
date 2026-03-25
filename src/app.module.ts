@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { ScheduleModule } from '@nestjs/schedule';
 import { LmsModule } from './modules/lms/lms.module';
 import { SubscriptionsModule } from './modules/subscriptions/subscriptions.module';
 import { MpesaModule } from './modules/mpesa/mpesa.module';
@@ -33,6 +34,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { AuditModule } from './modules/audit/audit.module';
 import { AuditInterceptor } from './core/interceptors/audit.interceptor';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+import { SubscriptionGuard } from './modules/auth/guards/subscription.guard';
 
 @Module({
   imports: [
@@ -45,6 +47,7 @@ import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
     ConfigModule.forRoot({
       isGlobal: true, // Makes ConfigService available application-wide
     }),
+    ScheduleModule.forRoot(),
     JwtModule.registerAsync({
       global: true,
       imports: [ConfigModule],
@@ -124,6 +127,10 @@ import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
     {
       provide: APP_GUARD,
       useClass: ThrottlerGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: SubscriptionGuard,
     },
     {
       provide: APP_INTERCEPTOR,

@@ -79,4 +79,32 @@ export class EmailService {
       throw error;
     }
   }
+
+  async sendEmail(to: string, subject: string, html: string): Promise<void> {
+    const from = this.configService.get<string>('EMAIL_FROM') || this.configService.get<string>('MAIL_FROM_ADDRESS') || 'noreply@example.com';
+
+    const host = this.configService.get<string>('EMAIL_HOST') || this.configService.get<string>('MAIL_HOST');
+    if (!host) {
+      this.logger.warn(`EMAIL_HOST is not configured. Mocking email to ${to}.`);
+      this.logger.log(`[MOCK EMAIL] To: ${to}, Subject: ${subject}, Body: ${html}`);
+      return;
+    }
+
+    try {
+      await this.getTransporter().sendMail({
+        from,
+        to,
+        subject,
+        html,
+      });
+      this.logger.log(`Email sent to ${to} with subject: ${subject}`);
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      this.logger.error(
+        `Failed to send email to ${to}: ${errorMessage}`,
+      );
+      throw error;
+    }
+  }
 }

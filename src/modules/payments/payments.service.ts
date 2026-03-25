@@ -6,8 +6,14 @@ import {
   PendingPayment,
   PaymentMethod,
 } from './entities/pending-payment.entity';
+import { User } from '../users/entities/user.entity';
+import { UserRole } from '../../common/user-role.enum';
 import { TenancyService } from 'src/core/tenancy/tenancy.service';
-import { SubscriptionStatus, SubscriptionPlan } from 'src/common/subscription.enums';
+import {
+  SubscriptionStatus,
+  SubscriptionPlan,
+} from 'src/common/subscription.enums';
+import { EmailService } from '../../shared/email.service';
 
 @Injectable()
 export class PaymentsService {
@@ -16,13 +22,17 @@ export class PaymentsService {
     private readonly tenantRepository: Repository<Tenant>,
     @InjectRepository(PendingPayment)
     private readonly pendingPaymentRepository: Repository<PendingPayment>,
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
     private readonly tenancyService: TenancyService,
+    private readonly emailService: EmailService,
   ) {}
 
   async createBankTransferRequest(
     amount: number,
     reference: string,
     plan: SubscriptionPlan,
+    billingCycle: 'monthly' | 'annual',
   ): Promise<PendingPayment> {
     const tenantId = this.tenancyService.getTenantId();
     const tenant = await this.tenantRepository.findOneBy({ id: tenantId });
@@ -37,9 +47,35 @@ export class PaymentsService {
       reference,
       method: PaymentMethod.BANK_TRANSFER,
       plan,
+      billingCycle,
     });
 
-    return this.pendingPaymentRepository.save(pendingPayment);
+    const savedPayment = await this.pendingPaymentRepository.save(pendingPayment);
+
+    // Send email to admins
+    const admins = await this.userRepository.find({
+      where: { tenantId, role: UserRole.ADMIN },
+    });
+
+    for (const admin of admins) {
+      await this.emailService.sendEmail(
+        admin.username,
+        'Bank Transfer Instructions - SaaSLink',
+        `<p>Dear Admin,</p>
+        <p>We have received your request to pay <strong>KES ${amount}</strong> via Bank Transfer for the <strong>${plan}</strong> plan (${billingCycle}).</p>
+        <p>Please use the following reference when making the transfer:</p>
+        <h3>Reference: ${reference}</h3>
+        <p><strong>Bank Details:</strong></p>
+        <ul>
+          <li>Bank: SaaSLink Technologies Bank</li>
+          <li>Account Name: SaaSLink Tech</li>
+          <li>Account Number: 1234567890</li>
+        </ul>
+        <p>Once we receive the payment, your account will be activated automatically.</p>`,
+      );
+    }
+
+    return savedPayment;
   }
 
   async approvePayment(paymentId: string): Promise<Tenant> {
@@ -60,8 +96,18 @@ export class PaymentsService {
     if (pendingPayment.plan) {
       tenant.plan = pendingPayment.plan;
     }
-    // You might want to set an expiry date here based on the plan
-    // tenant.expiresAt = ...
+
+    // Set expiry date based on billing cycle
+    const baseDate =
+      tenant.expiresAt && tenant.expiresAt > new Date()
+        ? new Date(tenant.expiresAt)
+        : new Date();
+    if (pendingPayment.billingCycle === 'annual') {
+      baseDate.setFullYear(baseDate.getFullYear() + 1);
+    } else {
+      baseDate.setMonth(baseDate.getMonth() + 1);
+    }
+    tenant.expiresAt = baseDate;
 
     return this.tenantRepository.save(tenant);
   }

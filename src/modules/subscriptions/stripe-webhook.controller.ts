@@ -92,13 +92,14 @@ export class StripeWebhookController {
   }
 
   private async updateTenantSubscriptionStatus(
-    subscription: Stripe.Subscription,
+    subscription: any,
   ) {
     const stripeCustomerId = subscription.customer as string;
     const tenant = await this.tenantRepository.findOneBy({ stripeCustomerId });
 
     if (tenant) {
       tenant.subscriptionStatus = subscription.status as SubscriptionStatus;
+      tenant.expiresAt = new Date(subscription.current_period_end * 1000);
 
       // Map Stripe Price ID to SubscriptionPlan
       const priceId = subscription.items.data[0].price.id;
@@ -116,7 +117,7 @@ export class StripeWebhookController {
     }
   }
 
-  private async handleSubscriptionCanceled(subscription: Stripe.Subscription) {
+  private async handleSubscriptionCanceled(subscription: any) {
     const stripeCustomerId = subscription.customer as string;
     const tenant = await this.tenantRepository.findOneBy({ stripeCustomerId });
 

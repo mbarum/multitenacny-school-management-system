@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsString, IsNumber, IsEnum } from 'class-validator';
+import { IsNotEmpty, IsString, IsNumber, IsEnum, IsOptional, IsIn } from 'class-validator';
 import { SubscriptionPlan } from 'src/common/subscription.enums';
 
 export class StkPushDto {
@@ -13,4 +13,8 @@ export class StkPushDto {
   @IsEnum(SubscriptionPlan)
   @IsNotEmpty()
   plan: SubscriptionPlan;
+
+  @IsOptional()
+  @IsIn(['monthly', 'annual'])
+  billingCycle?: 'monthly' | 'annual';
 }

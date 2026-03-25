@@ -25,10 +25,10 @@ const steps = [
 ];
 
 const plans = [
-  { id: 'free', name: 'Free', price: 0, features: ['Up to 50 students', 'Basic Attendance', 'Basic Reports'] },
-  { id: 'basic', name: 'Basic', price: 100, features: ['Up to 200 students', 'Fee Management', 'SMS Alerts'] },
-  { id: 'standard', name: 'Standard', price: 200, features: ['Unlimited students', 'LMS Integration', 'Advanced Analytics'] },
-  { id: 'premium', name: 'Premium', price: 350, features: ['Priority Support', 'Custom Domain', 'Multi-campus'] }
+  { id: 'free', name: 'Free', monthlyPrice: 0, annualPrice: 0, features: ['Up to 50 students', 'Basic Attendance', 'Basic Reports'] },
+  { id: 'basic', name: 'Basic', monthlyPrice: 1000, annualPrice: 10000, features: ['Up to 200 students', 'Fee Management', 'SMS Alerts'] },
+  { id: 'standard', name: 'Standard', monthlyPrice: 2000, annualPrice: 20000, features: ['Unlimited students', 'LMS Integration', 'Advanced Analytics'] },
+  { id: 'premium', name: 'Premium', monthlyPrice: 3500, annualPrice: 35000, features: ['Priority Support', 'Custom Domain', 'Multi-campus'] }
 ];
 
 const RegisterPage: React.FC = () => {
@@ -42,6 +42,7 @@ const RegisterPage: React.FC = () => {
     adminEmail: '',
     adminPassword: '',
     plan: 'free',
+    billingCycle: 'monthly' as 'monthly' | 'annual',
     phone: ''
   });
 
@@ -79,11 +80,15 @@ const RegisterPage: React.FC = () => {
       // 3. If plan is not free, initiate payment
       if (formData.plan !== 'free' && formData.phone) {
         try {
+          const selectedPlan = plans.find(p => p.id === formData.plan);
+          const amount = formData.billingCycle === 'monthly' ? selectedPlan?.monthlyPrice : selectedPlan?.annualPrice;
+          
           // The token is now in localStorage, so api.post will include it
           await api.post('/mpesa/stk-push', {
             phone: formData.phone,
-            amount: plans.find(p => p.id === formData.plan)?.price || 0,
-            plan: formData.plan
+            amount: amount || 0,
+            plan: formData.plan,
+            billingCycle: formData.billingCycle
           });
           alert('STK Push sent! Please complete payment on your phone.');
         } catch (payErr) {
@@ -209,9 +214,25 @@ const RegisterPage: React.FC = () => {
 
           {currentStep === 3 && (
             <div className="space-y-6">
-              <div className="mb-8">
-                <h2 className="text-3xl font-bold text-brand-white mb-2">Select a Plan</h2>
-                <p className="text-brand-white/40 text-sm">Choose the best fit for your institution.</p>
+              <div className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                  <h2 className="text-3xl font-bold text-brand-white mb-2">Select a Plan</h2>
+                  <p className="text-brand-white/40 text-sm">Choose the best fit for your institution.</p>
+                </div>
+                <div className="flex items-center space-x-4 bg-white/5 p-2 rounded-2xl border border-white/10">
+                  <button
+                    onClick={() => setFormData({ ...formData, billingCycle: 'monthly' })}
+                    className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-all ${formData.billingCycle === 'monthly' ? 'bg-brand-sand text-brand-dark shadow-md' : 'text-brand-white/40 hover:text-brand-white'}`}
+                  >
+                    Monthly
+                  </button>
+                  <button
+                    onClick={() => setFormData({ ...formData, billingCycle: 'annual' })}
+                    className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-all ${formData.billingCycle === 'annual' ? 'bg-brand-sand text-brand-dark shadow-md' : 'text-brand-white/40 hover:text-brand-white'}`}
+                  >
+                    Annual
+                  </button>
+                </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 {plans.map((plan) => (
@@ -224,8 +245,12 @@ const RegisterPage: React.FC = () => {
                       <span className={`text-xs font-bold uppercase tracking-widest ${formData.plan === plan.id ? 'text-brand-sand' : 'text-brand-white/40'}`}>{plan.name}</span>
                       {formData.plan === plan.id && <CheckCircle2 className="w-4 h-4 text-brand-sand" />}
                     </div>
-                    <div className="text-2xl font-bold text-brand-white mb-1">KES {plan.price}</div>
-                    <div className="text-[10px] text-brand-white/40 font-bold uppercase tracking-tighter">per student / month</div>
+                    <div className="text-2xl font-bold text-brand-white mb-1">
+                      KES {formData.billingCycle === 'monthly' ? plan.monthlyPrice : plan.annualPrice}
+                    </div>
+                    <div className="text-[10px] text-brand-white/40 font-bold uppercase tracking-tighter">
+                      per {formData.billingCycle === 'monthly' ? 'month' : 'year'}
+                    </div>
                   </button>
                 ))}
               </div>
@@ -245,7 +270,9 @@ const RegisterPage: React.FC = () => {
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-brand-white/40 text-sm">Selected Plan</span>
-                  <span className="text-brand-sand font-bold uppercase tracking-widest text-xs">{formData.plan}</span>
+                  <span className="text-brand-sand font-bold uppercase tracking-widest text-xs">
+                    {formData.plan} ({formData.billingCycle})
+                  </span>
                 </div>
                 {formData.plan !== 'free' && (
                   <div className="pt-4 border-t border-white/10 space-y-4">

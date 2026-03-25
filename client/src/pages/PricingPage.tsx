@@ -1,17 +1,18 @@
-import { CheckCircle, CreditCard, Smartphone, Banknote, Zap, Shield, Star, Globe, ArrowRight } from 'lucide-react';
+import { CheckCircle, CreditCard, Smartphone, Banknote, Zap, Shield, Star, Globe, ArrowRight, AlertTriangle, LogOut } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { getStripe } from '../services/stripe';
 import api from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
 
 const plans = [
   {
     name: 'Basic',
     icon: <Zap className="w-6 h-6" />,
-    monthlyPrice: 100,
-    annualPrice: 1000,
-    interval: 'KES / student',
+    monthlyPrice: 1000,
+    annualPrice: 10000,
+    interval: 'KES',
     monthlyPriceId: 'price_basic_monthly',
     annualPriceId: 'price_basic_annual',
     features: ['Student Records', 'Fee Management', 'Basic Reporting', 'Attendance Tracking'],
@@ -19,9 +20,9 @@ const plans = [
   {
     name: 'Standard',
     icon: <Shield className="w-6 h-6" />,
-    monthlyPrice: 200,
-    annualPrice: 2000,
-    interval: 'KES / student',
+    monthlyPrice: 2000,
+    annualPrice: 20000,
+    interval: 'KES',
     monthlyPriceId: 'price_standard_monthly',
     annualPriceId: 'price_standard_annual',
     features: ['All Basic Features', 'LMS Integration', 'Parent Portal', 'SMS Notifications'],
@@ -29,9 +30,9 @@ const plans = [
   {
     name: 'Premium',
     icon: <Star className="w-6 h-6" />,
-    monthlyPrice: 350,
-    annualPrice: 3500,
-    interval: 'KES / student',
+    monthlyPrice: 3500,
+    annualPrice: 35000,
+    interval: 'KES',
     monthlyPriceId: 'price_premium_monthly',
     annualPriceId: 'price_premium_annual',
     features: ['All Standard Features', 'Advanced Analytics', 'Custom Timetabling', 'Priority Support'],
@@ -53,6 +54,9 @@ const PricingPage = () => {
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('monthly');
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
+  const { logout } = useAuth();
+  const isLocked = new URLSearchParams(location.search).get('locked') === 'true';
 
   useEffect(() => {
     setIsLoggedIn(!!localStorage.getItem('token'));
@@ -77,7 +81,8 @@ const PricingPage = () => {
         await api.post('/mpesa/stk-push', { 
           phone, 
           amount, 
-          plan: planName.toLowerCase() 
+          plan: planName.toLowerCase(),
+          billingCycle
         });
         alert('STK Push sent to your phone. Please complete the transaction.');
         setSelectedPlan(null);
@@ -94,7 +99,8 @@ const PricingPage = () => {
       await api.post('/payments/bank-transfer', { 
         amount, 
         reference,
-        plan: planName.toLowerCase()
+        plan: planName.toLowerCase(),
+        billingCycle
       });
       alert('Bank transfer request sent. Please check your email for payment instructions.');
       setSelectedPlan(null);
@@ -107,6 +113,36 @@ const PricingPage = () => {
   return (
     <div className="min-h-screen bg-brand-green text-brand-white font-sans selection:bg-brand-sand selection:text-brand-dark">
       <div className="pt-32 pb-24 max-w-7xl mx-auto px-6 lg:px-8">
+        {isLocked && (
+          <motion.div 
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-12 bg-red-500/10 border border-red-500/20 rounded-2xl p-6 flex items-start space-x-4 max-w-3xl mx-auto justify-between"
+          >
+            <div className="flex items-start space-x-4">
+              <AlertTriangle className="w-6 h-6 text-red-400 flex-shrink-0 mt-1" />
+              <div>
+                <h3 className="text-red-400 font-bold text-lg mb-1">Account Locked - Payment Required</h3>
+                <p className="text-brand-white/80 text-sm">
+                  Your subscription has expired or is inactive. Please select a plan and complete payment to restore access to your account.
+                </p>
+              </div>
+            </div>
+            {isLoggedIn && (
+              <button
+                onClick={() => {
+                  logout();
+                  navigate('/login');
+                }}
+                className="flex items-center space-x-2 px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-xl transition-colors text-sm font-bold"
+              >
+                <LogOut className="w-4 h-4" />
+                <span>Log Out</span>
+              </button>
+            )}
+          </motion.div>
+        )}
+
         <div className="text-center max-w-3xl mx-auto mb-20">
           <motion.div
             initial={{ opacity: 0, y: 20 }}

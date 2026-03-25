@@ -108,6 +108,7 @@ export class MpesaService {
     phone: string,
     amount: number,
     plan: SubscriptionPlan,
+    billingCycle: 'monthly' | 'annual',
   ): Promise<unknown> {
     const tenantId = this.tenancyService.getTenantId();
     if (!tenantId) {
@@ -173,13 +174,15 @@ export class MpesaService {
       );
 
       if (data && data.ResponseCode === '0') {
-        await this.pendingPaymentRepository.save({
+        const pendingPayment = this.pendingPaymentRepository.create({
           tenant,
           amount,
           method: PaymentMethod.MPESA,
           reference: data.CheckoutRequestID,
           plan,
+          billingCycle,
         });
+        await this.pendingPaymentRepository.save(pendingPayment);
       }
 
       return data;
@@ -243,6 +246,16 @@ export class MpesaService {
         if (pendingPayment.plan) {
           tenant.plan = pendingPayment.plan;
         }
+        
+        // Set expiry date based on billing cycle
+        const baseDate = tenant.expiresAt && tenant.expiresAt > new Date() ? new Date(tenant.expiresAt) : new Date();
+        if (pendingPayment.billingCycle === 'annual') {
+          baseDate.setFullYear(baseDate.getFullYear() + 1);
+        } else {
+          baseDate.setMonth(baseDate.getMonth() + 1);
+        }
+        tenant.expiresAt = baseDate;
+        
         await this.tenantRepository.save(tenant);
         console.log(`Tenant ${tenant.name} subscription activated/updated to ${tenant.plan}`);
       } else {

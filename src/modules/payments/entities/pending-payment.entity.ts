@@ -32,6 +32,9 @@ export class PendingPayment {
   })
   plan: SubscriptionPlan;
 
+  @Column({ nullable: true })
+  billingCycle: 'monthly' | 'annual';
+
   @Column({ default: false })
   isApproved: boolean;
 

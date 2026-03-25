@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Tenant } from './entities/tenant.entity';
 import { CreateTenantDto } from './dto/create-tenant.dto';
+import { SubscriptionStatus, SubscriptionPlan } from '../../common/subscription.enums';
 
 @Injectable()
 export class TenantsService {
@@ -20,7 +21,16 @@ export class TenantsService {
         'A school with this name or domain already exists.',
       );
     }
+    
     const tenant = this.tenantRepository.create(createTenantDto);
+    
+    // If the plan is not free, they must pay before it becomes active
+    if (tenant.plan && tenant.plan !== SubscriptionPlan.FREE) {
+      tenant.subscriptionStatus = SubscriptionStatus.INACTIVE;
+    } else {
+      tenant.subscriptionStatus = SubscriptionStatus.ACTIVE;
+    }
+    
     return this.tenantRepository.save(tenant);
   }
 

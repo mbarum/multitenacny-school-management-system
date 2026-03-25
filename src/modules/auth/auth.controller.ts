@@ -13,8 +13,10 @@ import { LocalAuthGuard } from './guards/local-auth.guard';
 import { AuthService } from './auth.service';
 import { RegisterSchoolDto } from './dto/register-school.dto';
 import { User } from '../users/entities/user.entity';
+import { SkipSubscriptionCheck } from './decorators/skip-subscription-check.decorator';
 
 @Controller('auth')
+@SkipSubscriptionCheck()
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
