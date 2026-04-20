@@ -13,6 +13,7 @@ import ParentDashboardPage from './pages/ParentDashboardPage';
 import LandingPage from './pages/LandingPage';
 import PricingPage from './pages/PricingPage';
 import SuperAdminPage from './pages/SuperAdminPage';
+import SuperAdminSettingsPage from './pages/SuperAdminSettingsPage';
 import TenantManagementPage from './pages/TenantManagementPage';
 import TenantDetailPage from './pages/TenantDetailPage';
 import FinancialManagementPage from './pages/FinancialManagementPage';
@@ -25,6 +26,7 @@ import ReportingPage from './pages/ReportingPage';
 import PrivacyPage from './pages/PrivacyPage';
 import TermsPage from './pages/TermsPage';
 import ContactPage from './pages/ContactPage';
+import StudentsPage from './pages/StudentsPage';
 import { UserRole } from '../../src/common/user-role.enum';
 
 const AppRoutes: React.FC = () => {
@@ -52,6 +54,10 @@ const AppRoutes: React.FC = () => {
         element={isAuthenticated && user?.role === UserRole.ADMIN ? <DashboardPage /> : <Navigate to="/" />}
       />
       <Route
+        path="/students"
+        element={isAuthenticated && user?.role === UserRole.ADMIN ? <StudentsPage /> : <Navigate to="/" />}
+      />
+      <Route
         path="/super-admin"
         element={isAuthenticated && user?.role === UserRole.SUPER_ADMIN ? <SuperAdminPage /> : <Navigate to="/" />}
       />
@@ -62,6 +68,10 @@ const AppRoutes: React.FC = () => {
       <Route
         path="/super-admin/tenants/:id"
         element={isAuthenticated && user?.role === UserRole.SUPER_ADMIN ? <TenantDetailPage /> : <Navigate to="/" />}
+      />
+      <Route
+        path="/super-admin/settings"
+        element={isAuthenticated && user?.role === UserRole.SUPER_ADMIN ? <SuperAdminSettingsPage /> : <Navigate to="/" />}
       />
       <Route
         path="/super-admin/financials"

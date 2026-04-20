@@ -10,4 +10,12 @@ export class CreateSectionDto {
   @IsOptional()
   @IsString()
   room?: string;
+
+  @IsOptional()
+  @IsUUID()
+  classTeacherId?: string;
+
+  @IsOptional()
+  @IsUUID()
+  academicYearId?: string;
 }

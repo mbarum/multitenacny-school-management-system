@@ -1,6 +1,7 @@
-import { Entity, Column, OneToMany } from 'typeorm';
+import { Entity, Column, OneToMany, ManyToOne } from 'typeorm';
 import { TenantAwareEntity } from 'src/core/tenancy/tenant-aware.entity';
 import { Section } from './section.entity';
+import { Staff } from 'src/modules/staff/entities/staff.entity';
 
 @Entity('class_levels')
 export class ClassLevel extends TenantAwareEntity {
@@ -12,4 +13,10 @@ export class ClassLevel extends TenantAwareEntity {
 
   @OneToMany(() => Section, (section) => section.classLevel)
   sections: Section[];
+
+  @ManyToOne(() => Staff, { nullable: true })
+  headTeacher: Staff;
+
+  @Column({ nullable: true })
+  headTeacherId: string;
 }

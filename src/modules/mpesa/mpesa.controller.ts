@@ -9,6 +9,9 @@ import {
 import { MpesaService } from './mpesa.service';
 import { StkPushDto } from './dto/stk-push.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { UserRole } from '../../common/user-role.enum';
 import { SkipSubscriptionCheck } from '../auth/decorators/skip-subscription-check.decorator';
 
 @Controller('mpesa')
@@ -17,7 +20,8 @@ export class MpesaController {
   constructor(private readonly mpesaService: MpesaService) {}
 
   @Post('stk-push')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
   @HttpCode(HttpStatus.OK)
   stkPush(@Body() stkPushDto: StkPushDto) {
     return this.mpesaService.stkPush(

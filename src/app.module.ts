@@ -30,11 +30,13 @@ import { PaymentsModule } from './modules/payments/payments.module';
 import { AppConfigModule } from './modules/config/config.module';
 
 import { JwtModule } from '@nestjs/jwt';
+import { BullModule } from '@nestjs/bullmq';
 
 import { AuditModule } from './modules/audit/audit.module';
 import { AuditInterceptor } from './core/interceptors/audit.interceptor';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { SubscriptionGuard } from './modules/auth/guards/subscription.guard';
+import { CbeModule } from './modules/cbe/cbe.module';
 
 @Module({
   imports: [
@@ -48,13 +50,26 @@ import { SubscriptionGuard } from './modules/auth/guards/subscription.guard';
       isGlobal: true, // Makes ConfigService available application-wide
     }),
     ScheduleModule.forRoot(),
+    BullModule.forRootAsync({
+      imports: [ConfigModule],
+      useFactory: async (configService: ConfigService) => ({
+        connection: {
+          host: configService.get('REDIS_HOST', 'localhost'),
+          port: configService.get<number>('REDIS_PORT', 6379),
+          password: configService.get('REDIS_PASSWORD', ''),
+        },
+      }),
+      inject: [ConfigService],
+    }),
     JwtModule.registerAsync({
       global: true,
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => {
         const secret = configService.get<string>('JWT_SECRET');
         if (!secret) {
-          throw new Error('CRITICAL: JWT_SECRET is not configured. Please set it in your environment variables.');
+          throw new Error(
+            'CRITICAL: JWT_SECRET is not configured. Please set it in your environment variables.',
+          );
         }
         return {
           secret,
@@ -66,19 +81,24 @@ import { SubscriptionGuard } from './modules/auth/guards/subscription.guard';
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => {
-        const dbHost = configService.get<string>('DB_HOST');
-        
-        if (!dbHost || dbHost === 'your_production_database_host') {
-          throw new Error('CRITICAL: Database host (DB_HOST) is not configured. Please set your MySQL credentials in the environment variables.');
+        const dbHost = configService.get<string>('DB_HOST') || 'localhost';
+
+        if (
+          !configService.get<string>('DB_HOST') ||
+          dbHost === 'your_production_database_host'
+        ) {
+          console.warn(
+            'WARNING: DB_HOST is missing or invalid, proceeding with default MySQL connection attempts.',
+          );
         }
 
         return {
           type: 'mysql',
           host: dbHost,
           port: configService.get<number>('DB_PORT') || 3306,
-          username: configService.get<string>('DB_USERNAME'),
-          password: configService.get<string>('DB_PASSWORD'),
-          database: configService.get<string>('DB_DATABASE'),
+          username: configService.get<string>('DB_USERNAME') || 'root',
+          password: configService.get<string>('DB_PASSWORD') || '',
+          database: configService.get<string>('DB_DATABASE') || 'saaslink',
           autoLoadEntities: true,
           // In production, synchronize should be false and migrations should be used.
           synchronize: configService.get<string>('NODE_ENV') !== 'production',
@@ -121,6 +141,8 @@ import { SubscriptionGuard } from './modules/auth/guards/subscription.guard';
 
     // Config
     AppConfigModule,
+
+    CbeModule,
   ],
   controllers: [], // Root controllers are removed for modularity
   providers: [

@@ -8,18 +8,15 @@ import { config } from 'dotenv';
 config();
 
 async function createSuperAdmin() {
-  const dbHost = process.env.DB_HOST;
-  if (!dbHost || dbHost === 'your_production_database_host') {
-    throw new Error('CRITICAL: Database host (DB_HOST) is not configured. Please set your MySQL credentials in the environment variables.');
-  }
+  const dbHost = process.env.DB_HOST || 'localhost';
 
   const dataSource = new DataSource({
     type: 'mysql',
     host: dbHost,
     port: parseInt(process.env.DB_PORT || '3306', 10),
-    username: process.env.DB_USERNAME,
-    password: process.env.DB_PASSWORD,
-    database: process.env.DB_DATABASE,
+    username: process.env.DB_USERNAME || 'root',
+    password: process.env.DB_PASSWORD || '',
+    database: process.env.DB_DATABASE || 'saaslink',
     entities: [User, Tenant],
     synchronize: process.env.NODE_ENV !== 'production',
   });

@@ -5,6 +5,7 @@ import { Repository } from 'typeorm';
 import Stripe from 'stripe';
 import { Tenant } from '../tenants/entities/tenant.entity';
 import { TenancyService } from 'src/core/tenancy/tenancy.service';
+import { SystemConfigService } from '../config/system-config.service';
 
 @Injectable()
 export class SubscriptionsService {
@@ -12,16 +13,19 @@ export class SubscriptionsService {
 
   constructor(
     private readonly configService: ConfigService,
+    private readonly systemConfigService: SystemConfigService,
     @InjectRepository(Tenant)
     private readonly tenantRepository: Repository<Tenant>,
     private readonly tenancyService: TenancyService,
   ) {}
 
-  private getStripe(): Stripe {
+  private async getStripe(): Promise<Stripe> {
     if (!this.stripe) {
-      const secretKey = this.configService.get<string>('STRIPE_SECRET_KEY');
+      const secretKey = await this.systemConfigService.get('STRIPE_SECRET_KEY');
       if (!secretKey) {
-        throw new Error('STRIPE_SECRET_KEY not found in environment variables.');
+        throw new Error(
+          'STRIPE_SECRET_KEY not found in system generic config or environment variables.',
+        );
       }
       this.stripe = new Stripe(secretKey);
     }
@@ -36,9 +40,10 @@ export class SubscriptionsService {
       throw new NotFoundException('Tenant not found');
     }
 
+    const stripeClient = await this.getStripe();
     let stripeCustomerId = tenant.stripeCustomerId;
     if (!stripeCustomerId) {
-      const customer = await this.getStripe().customers.create({
+      const customer = await stripeClient.customers.create({
         name: tenant.name,
         metadata: {
           tenantId: tenant.id,
@@ -48,7 +53,7 @@ export class SubscriptionsService {
       await this.tenantRepository.update(tenant.id, { stripeCustomerId });
     }
 
-    const session = await this.getStripe().checkout.sessions.create({
+    const session = await stripeClient.checkout.sessions.create({
       payment_method_types: ['card'],
       line_items: [{ price: priceId, quantity: 1 }],
       mode: 'subscription',
@@ -72,7 +77,8 @@ export class SubscriptionsService {
       throw new Error('Tenant does not have a Stripe customer ID.');
     }
 
-    const portalSession = await this.getStripe().billingPortal.sessions.create({
+    const stripeC = await this.getStripe();
+    const portalSession = await stripeC.billingPortal.sessions.create({
       customer: tenant.stripeCustomerId,
       return_url: `${this.configService.get('FRONTEND_URL')}/dashboard`,
     });

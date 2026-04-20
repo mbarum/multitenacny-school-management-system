@@ -26,10 +26,13 @@ interface MpesaStkPushResponse {
   [key: string]: any;
 }
 
+import { SystemConfigService } from '../config/system-config.service';
+
 @Injectable()
 export class MpesaService {
   constructor(
     private readonly configService: ConfigService,
+    private readonly systemConfigService: SystemConfigService,
     private readonly httpService: HttpService,
     @InjectRepository(Tenant)
     private readonly tenantRepository: Repository<Tenant>,
@@ -39,14 +42,12 @@ export class MpesaService {
   ) {}
 
   private async getAccessToken(): Promise<string> {
-    const consumerKey = this.configService.get<string>('MPESA_CONSUMER_KEY');
-    const consumerSecret = this.configService.get<string>(
-      'MPESA_CONSUMER_SECRET',
-    );
+    const consumerKey = await this.systemConfigService.get('MPESA_CONSUMER_KEY');
+    const consumerSecret = await this.systemConfigService.get('MPESA_CONSUMER_SECRET');
 
     if (!consumerKey || !consumerSecret) {
       throw new Error(
-        'M-Pesa Consumer Key or Secret is missing in environment variables.',
+        'M-Pesa Consumer Key or Secret is missing in system configurations or environment variables.',
       );
     }
 
@@ -133,9 +134,9 @@ export class MpesaService {
     }
 
     const accessToken = await this.getAccessToken();
-    const shortCode = this.configService.get<string>('MPESA_SHORTCODE')?.trim();
-    const passkey = this.configService.get<string>('MPESA_PASSKEY')?.trim();
-    const callbackUrl = this.configService.get<string>('MPESA_CALLBACK_URL')?.trim();
+    const shortCode = (await this.systemConfigService.get('MPESA_SHORTCODE'))?.trim();
+    const passkey = (await this.systemConfigService.get('MPESA_PASSKEY'))?.trim();
+    const callbackUrl = (await this.systemConfigService.get('MPESA_CALLBACK_URL'))?.trim();
 
     if (!shortCode || !passkey || !callbackUrl) {
       throw new Error(
@@ -217,12 +218,21 @@ export class MpesaService {
   }
 
   async handleCallback(callbackData: Record<string, any>): Promise<any> {
-    console.log('M-Pesa Callback Received:', JSON.stringify(callbackData, null, 2));
+    console.log(
+      'M-Pesa Callback Received:',
+      JSON.stringify(callbackData, null, 2),
+    );
 
     const body = callbackData.Body as
-      | { stkCallback?: { ResultCode: number; ResultDesc: string; CheckoutRequestID: string } }
+      | {
+          stkCallback?: {
+            ResultCode: number;
+            ResultDesc: string;
+            CheckoutRequestID: string;
+          };
+        }
       | undefined;
-    
+
     if (!body || !body.stkCallback) {
       console.warn('Invalid M-Pesa callback body received');
       return { ResultCode: 1, ResultDesc: 'Invalid body' };
@@ -231,7 +241,9 @@ export class MpesaService {
     const { ResultCode, ResultDesc, CheckoutRequestID } = body.stkCallback;
 
     if (ResultCode === 0) {
-      console.log(`M-Pesa Payment Successful for CheckoutRequestID: ${CheckoutRequestID}`);
+      console.log(
+        `M-Pesa Payment Successful for CheckoutRequestID: ${CheckoutRequestID}`,
+      );
       const pendingPayment = await this.pendingPaymentRepository.findOne({
         where: { reference: CheckoutRequestID },
         relations: ['tenant'],
@@ -246,23 +258,32 @@ export class MpesaService {
         if (pendingPayment.plan) {
           tenant.plan = pendingPayment.plan;
         }
-        
+
         // Set expiry date based on billing cycle
-        const baseDate = tenant.expiresAt && tenant.expiresAt > new Date() ? new Date(tenant.expiresAt) : new Date();
+        const baseDate =
+          tenant.expiresAt && tenant.expiresAt > new Date()
+            ? new Date(tenant.expiresAt)
+            : new Date();
         if (pendingPayment.billingCycle === 'annual') {
           baseDate.setFullYear(baseDate.getFullYear() + 1);
         } else {
           baseDate.setMonth(baseDate.getMonth() + 1);
         }
         tenant.expiresAt = baseDate;
-        
+
         await this.tenantRepository.save(tenant);
-        console.log(`Tenant ${tenant.name} subscription activated/updated to ${tenant.plan}`);
+        console.log(
+          `Tenant ${tenant.name} subscription activated/updated to ${tenant.plan}`,
+        );
       } else {
-        console.error(`Pending payment not found for CheckoutRequestID: ${CheckoutRequestID}`);
+        console.error(
+          `Pending payment not found for CheckoutRequestID: ${CheckoutRequestID}`,
+        );
       }
     } else {
-      console.warn(`M-Pesa Payment Failed/Cancelled. ResultCode: ${ResultCode}, Description: ${ResultDesc}`);
+      console.warn(
+        `M-Pesa Payment Failed/Cancelled. ResultCode: ${ResultCode}, Description: ${ResultDesc}`,
+      );
     }
 
     return { ResultCode: 0, ResultDesc: 'Success' };

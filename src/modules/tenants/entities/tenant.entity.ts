@@ -1,8 +1,4 @@
-import {
-  Entity,
-  PrimaryGeneratedColumn,
-  Column,
-} from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
 import {
   SubscriptionPlan,
   SubscriptionStatus,
@@ -38,4 +34,7 @@ export class Tenant {
 
   @Column({ nullable: true, name: 'stripe_customer_id' })
   stripeCustomerId: string;
+
+  @Column({ default: 'TRADITIONAL' })
+  gradingMode: string; // 'TRADITIONAL', 'CBE', 'HYBRID'
 }

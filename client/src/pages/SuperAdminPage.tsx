@@ -58,6 +58,9 @@ const SuperAdminPage = () => {
             <Link to="/super-admin/tenants" className="px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg text-sm font-medium transition-colors border border-gray-700">
               Manage Tenants
             </Link>
+            <Link to="/super-admin/settings" className="px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg text-sm font-medium transition-colors border border-gray-700">
+              Gateway Configs
+            </Link>
             <Link to="/super-admin/financials" className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm font-medium transition-colors">
               Financial Command
             </Link>

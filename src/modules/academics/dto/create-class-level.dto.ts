@@ -1,4 +1,4 @@
-import { IsString, IsOptional } from 'class-validator';
+import { IsString, IsOptional, IsUUID } from 'class-validator';
 
 export class CreateClassLevelDto {
   @IsString()
@@ -7,4 +7,8 @@ export class CreateClassLevelDto {
   @IsOptional()
   @IsString()
   description?: string;
+
+  @IsOptional()
+  @IsUUID()
+  headTeacherId?: string;
 }

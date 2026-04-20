@@ -14,6 +14,7 @@ import {
   SubscriptionStatus,
   SubscriptionPlan,
 } from 'src/common/subscription.enums';
+import { SystemConfigService } from '../config/system-config.service';
 
 interface RequestWithRawBody extends Request {
   rawBody?: string | Buffer;
@@ -25,13 +26,14 @@ export class StripeWebhookController {
 
   constructor(
     private readonly configService: ConfigService,
+    private readonly systemConfigService: SystemConfigService,
     @InjectRepository(Tenant)
     private readonly tenantRepository: Repository<Tenant>,
   ) {}
 
-  private getStripe(): Stripe {
+  private async getStripe(): Promise<Stripe> {
     if (!this.stripe) {
-      const secretKey = this.configService.get<string>('STRIPE_SECRET_KEY');
+      const secretKey = await this.systemConfigService.get('STRIPE_SECRET_KEY');
       if (!secretKey) {
         throw new Error(
           'STRIPE_SECRET_KEY not found in environment variables.',
@@ -50,9 +52,7 @@ export class StripeWebhookController {
     let event: Stripe.Event;
 
     try {
-      const webhookSecret = this.configService.get<string>(
-        'STRIPE_WEBHOOK_SECRET',
-      );
+      const webhookSecret = await this.systemConfigService.get('STRIPE_WEBHOOK_SECRET');
       if (!webhookSecret) {
         throw new Error(
           'STRIPE_WEBHOOK_SECRET not found in environment variables.',
@@ -61,7 +61,8 @@ export class StripeWebhookController {
       if (!req.rawBody) {
         throw new Error('Raw body not found in request.');
       }
-      event = this.getStripe().webhooks.constructEvent(
+      const stripeClient = await this.getStripe();
+      event = stripeClient.webhooks.constructEvent(
         req.rawBody,
         signature,
         webhookSecret,
@@ -92,14 +93,17 @@ export class StripeWebhookController {
   }
 
   private async updateTenantSubscriptionStatus(
-    subscription: any,
+    subscription: Stripe.Subscription,
   ) {
     const stripeCustomerId = subscription.customer as string;
     const tenant = await this.tenantRepository.findOneBy({ stripeCustomerId });
 
     if (tenant) {
       tenant.subscriptionStatus = subscription.status as SubscriptionStatus;
-      tenant.expiresAt = new Date(subscription.current_period_end * 1000);
+      const periodEnd = (
+        subscription as unknown as { current_period_end: number }
+      ).current_period_end;
+      tenant.expiresAt = new Date(periodEnd * 1000);
 
       // Map Stripe Price ID to SubscriptionPlan
       const priceId = subscription.items.data[0].price.id;
@@ -117,7 +121,7 @@ export class StripeWebhookController {
     }
   }
 
-  private async handleSubscriptionCanceled(subscription: any) {
+  private async handleSubscriptionCanceled(subscription: Stripe.Subscription) {
     const stripeCustomerId = subscription.customer as string;
     const tenant = await this.tenantRepository.findOneBy({ stripeCustomerId });
 

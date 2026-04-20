@@ -1,14 +1,23 @@
 import { Controller, Get } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { SystemConfigService } from './system-config.service';
 
 @Controller('config')
 export class ConfigController {
-  constructor(private readonly configService: ConfigService) {}
+  constructor(
+    private readonly configService: ConfigService,
+    private readonly systemConfigService: SystemConfigService,
+  ) {}
 
   @Get()
-  getConfig() {
+  async getConfig() {
+    const dbStripeKey = await this.systemConfigService.get('STRIPE_PUBLISHABLE_KEY');
+    
     return {
-      stripePublishableKey: this.configService.get<string>('VITE_STRIPE_PUBLISHABLE_KEY') || this.configService.get<string>('STRIPE_PUBLISHABLE_KEY'),
+      stripePublishableKey:
+        dbStripeKey ||
+        this.configService.get<string>('VITE_STRIPE_PUBLISHABLE_KEY') ||
+        this.configService.get<string>('STRIPE_PUBLISHABLE_KEY'),
     };
   }
 
