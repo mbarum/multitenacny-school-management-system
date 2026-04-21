@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CbeCompetency } from './entities/cbe-competency.entity';
@@ -34,9 +34,9 @@ export class CbeService {
 
   async getStudentAssessments(studentId: string): Promise<CbeAssessment[]> {
     return this.assessmentRepository.find({
-      where: { 
+      where: {
         tenantId: this.tenancyService.getTenantId(),
-        studentId
+        studentId,
       },
       relations: ['competency', 'rubric', 'academicYear'],
       order: { assessmentDate: 'DESC' },

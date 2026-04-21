@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { ThrottlerModule } from '@nestjs/throttler';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ScheduleModule } from '@nestjs/schedule';
@@ -31,28 +31,47 @@ import { AppConfigModule } from './modules/config/config.module';
 
 import { JwtModule } from '@nestjs/jwt';
 import { BullModule } from '@nestjs/bullmq';
+import { CacheModule } from '@nestjs/cache-manager';
+import { redisStore } from 'cache-manager-redis-yet';
 
 import { AuditModule } from './modules/audit/audit.module';
 import { AuditInterceptor } from './core/interceptors/audit.interceptor';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { SubscriptionGuard } from './modules/auth/guards/subscription.guard';
 import { CbeModule } from './modules/cbe/cbe.module';
+import { JobsModule } from './modules/jobs/jobs.module';
+
+import { TenantThrottlerGuard } from './core/guards/tenant-throttler.guard';
 
 @Module({
   imports: [
     ThrottlerModule.forRoot([
       {
         ttl: 60000, // 1 minute
-        limit: 20, // 20 requests per minute
+        limit: 100, // Shared global capacity
       },
     ]),
+    CacheModule.registerAsync({
+      isGlobal: true,
+      useFactory: async (configService: ConfigService) => ({
+        store: await redisStore({
+          socket: {
+            host: configService.get('REDIS_HOST', 'localhost'),
+            port: configService.get<number>('REDIS_PORT', 6379),
+          },
+          password: configService.get('REDIS_PASSWORD'),
+          ttl: 300, // 5 minutes default
+        }),
+      }),
+      inject: [ConfigService],
+    }),
     ConfigModule.forRoot({
       isGlobal: true, // Makes ConfigService available application-wide
     }),
     ScheduleModule.forRoot(),
     BullModule.forRootAsync({
       imports: [ConfigModule],
-      useFactory: async (configService: ConfigService) => ({
+      useFactory: (configService: ConfigService) => ({
         connection: {
           host: configService.get('REDIS_HOST', 'localhost'),
           port: configService.get<number>('REDIS_PORT', 6379),
@@ -143,12 +162,13 @@ import { CbeModule } from './modules/cbe/cbe.module';
     AppConfigModule,
 
     CbeModule,
+    JobsModule,
   ],
   controllers: [], // Root controllers are removed for modularity
   providers: [
     {
       provide: APP_GUARD,
-      useClass: ThrottlerGuard,
+      useClass: TenantThrottlerGuard,
     },
     {
       provide: APP_GUARD,

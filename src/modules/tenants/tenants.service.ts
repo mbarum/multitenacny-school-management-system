@@ -2,9 +2,12 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  Inject,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import { Cache } from 'cache-manager';
 import { Tenant } from './entities/tenant.entity';
 import { CreateTenantDto } from './dto/create-tenant.dto';
 import {
@@ -17,6 +20,7 @@ export class TenantsService {
   constructor(
     @InjectRepository(Tenant)
     private readonly tenantRepository: Repository<Tenant>,
+    @Inject(CACHE_MANAGER) private cacheManager: Cache,
   ) {}
 
   async create(createTenantDto: CreateTenantDto): Promise<Tenant> {
@@ -41,14 +45,24 @@ export class TenantsService {
       tenant.subscriptionStatus = SubscriptionStatus.ACTIVE;
     }
 
-    return this.tenantRepository.save(tenant);
+    const savedTenant = await this.tenantRepository.save(tenant);
+    // Cache the new tenant
+    await this.cacheManager.set(`tenant_${savedTenant.id}`, savedTenant);
+    return savedTenant;
   }
 
   async findOne(id: string): Promise<Tenant> {
+    const cachedTenant = await this.cacheManager.get<Tenant>(`tenant_${id}`);
+    if (cachedTenant) {
+      return cachedTenant;
+    }
+
     const tenant = await this.tenantRepository.findOneBy({ id });
     if (!tenant) {
       throw new NotFoundException(`Tenant with id ${id} not found`);
     }
+
+    await this.cacheManager.set(`tenant_${id}`, tenant);
     return tenant;
   }
 
@@ -58,6 +72,9 @@ export class TenantsService {
       throw new BadRequestException('Invalid grading mode');
     }
     tenant.gradingMode = gradingMode;
-    return this.tenantRepository.save(tenant);
+    const savedTenant = await this.tenantRepository.save(tenant);
+    // Update cache
+    await this.cacheManager.set(`tenant_${id}`, savedTenant);
+    return savedTenant;
   }
 }
