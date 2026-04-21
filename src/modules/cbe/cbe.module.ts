@@ -7,7 +7,9 @@ import { CbeRubric } from './entities/cbe-rubric.entity';
 import { CbeAssessment } from './entities/cbe-assessment.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([CbeCompetency, CbeRubric, CbeAssessment])],
+  imports: [
+    TypeOrmModule.forFeature([CbeCompetency, CbeRubric, CbeAssessment])
+  ],
   controllers: [CbeController],
   providers: [CbeService]
 })
