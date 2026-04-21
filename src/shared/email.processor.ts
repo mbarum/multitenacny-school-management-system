@@ -85,7 +85,8 @@ export class EmailProcessor extends WorkerHost {
     const from =
       this.configService.get<string>('EMAIL_FROM') ||
       this.configService.get<string>('MAIL_FROM_ADDRESS') ||
-      'noreply@saaslink.test';
+      this.configService.get<string>('EMAIL_USER') ||
+      'emis@saaslink.tech';
 
     try {
       await this.getTransporter().sendMail({

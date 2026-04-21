@@ -13,7 +13,7 @@ import { SharedModule } from '../../shared/shared.module';
     SharedModule,
     UsersModule,
     TenantsModule,
-    PassportModule.register({ session: false }),
+    PassportModule.register({ session: false, global: true }),
   ],
   providers: [AuthService, LocalStrategy, JwtStrategy],
   controllers: [AuthController],
