@@ -78,15 +78,15 @@ async function bootstrap() {
 
   // Serve the React frontend in production
   if (process.env.NODE_ENV === 'production') {
-    let clientDistPath = join(process.cwd(), 'dist', 'client');
-    
-    // Fallback if the path doesn't exist via process.cwd()
     const fs = require('fs');
+    let clientDistPath = join(process.cwd(), 'client-dist');
+    
+    // Check possible locations if cwd doesn't work
     if (!fs.existsSync(clientDistPath)) {
-      clientDistPath = join(__dirname, 'client');
+      clientDistPath = join(__dirname, '..', 'client-dist');
     }
 
-    console.log(`[Static] Serving frontend from: ${clientDistPath}`);
+    console.log(`[Static] Final frontend path: ${clientDistPath}`);
 
     app.use(express.static(clientDistPath));
     app.use(
@@ -103,8 +103,8 @@ async function bootstrap() {
         if (fs.existsSync(indexPath)) {
           res.sendFile(indexPath);
         } else {
-          console.error(`[Static] index.html missing at ${indexPath}`);
-          res.status(404).send('Frontend build files not found. Run "npm run build" to generate them.');
+          console.error(`[Static] Critical Error: index.html not found at ${indexPath}`);
+          res.status(404).send('Application Frontend is missing. Please run "npm run build" to generate it.');
         }
       },
     );

@@ -13,7 +13,7 @@
   },
   "scripts": {
     "build:server": "nest build --tsc",
-    "build:client": "cd client && vite build --outDir ../dist/client",
+    "build:client": "cd client && vite build --outDir ../client-dist --emptyOutDir",
     "build": "npm run build:server && npm run build:client",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
