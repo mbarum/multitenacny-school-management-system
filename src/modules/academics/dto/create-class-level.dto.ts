@@ -11,4 +11,8 @@ export class CreateClassLevelDto {
   @IsOptional()
   @IsUUID()
   headTeacherId?: string;
+
+  @IsOptional()
+  @IsUUID()
+  academicYearId?: string;
 }

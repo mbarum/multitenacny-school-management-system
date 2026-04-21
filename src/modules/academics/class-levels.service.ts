@@ -18,7 +18,13 @@ export class ClassLevelsService extends TenantAwareCrudService<ClassLevel> {
   async findAllWithSections(): Promise<ClassLevel[]> {
     return this.classLevelRepository.find({
       where: { tenantId: this.tenancyService.getTenantId() },
-      relations: ['sections'],
+      relations: [
+        'sections',
+        'headTeacher',
+        'academicYear',
+        'sections.classTeacher',
+        'sections.academicYear',
+      ],
     });
   }
 }

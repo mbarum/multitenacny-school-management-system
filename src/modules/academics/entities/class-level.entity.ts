@@ -2,6 +2,7 @@ import { Entity, Column, OneToMany, ManyToOne } from 'typeorm';
 import { TenantAwareEntity } from 'src/core/tenancy/tenant-aware.entity';
 import { Section } from './section.entity';
 import { Staff } from 'src/modules/staff/entities/staff.entity';
+import { AcademicYear } from './academic-year.entity';
 
 @Entity('class_levels')
 export class ClassLevel extends TenantAwareEntity {
@@ -19,4 +20,10 @@ export class ClassLevel extends TenantAwareEntity {
 
   @Column({ nullable: true })
   headTeacherId: string;
+
+  @ManyToOne(() => AcademicYear, { nullable: true })
+  academicYear: AcademicYear;
+
+  @Column({ nullable: true })
+  academicYearId: string;
 }

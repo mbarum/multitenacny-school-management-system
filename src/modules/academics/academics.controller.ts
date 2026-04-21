@@ -20,6 +20,8 @@ import { CreateSubjectDto } from './dto/create-subject.dto';
 import { CreateAcademicYearDto } from './dto/create-academic-year.dto';
 import { CreateClassLevelDto } from './dto/create-class-level.dto';
 import { CreateSectionDto } from './dto/create-section.dto';
+import { UpdateClassLevelDto } from './dto/update-class-level.dto';
+import { UpdateSectionDto } from './dto/update-section.dto';
 import { GradingScale } from './entities/grading-scale.entity';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -70,6 +72,12 @@ export class AcademicsController {
     return this.classLevelsService.create(createDto);
   }
 
+  @Patch('class-levels/:id')
+  @Roles(UserRole.ADMIN)
+  updateClassLevel(@Param('id') id: string, @Body() updateDto: UpdateClassLevelDto) {
+    return this.classLevelsService.update(id, updateDto);
+  }
+
   @Get('class-levels')
   findAllClassLevels() {
     return this.classLevelsService.findAllWithSections();
@@ -80,6 +88,12 @@ export class AcademicsController {
   @Roles(UserRole.ADMIN)
   createSection(@Body() createDto: CreateSectionDto) {
     return this.sectionsService.create(createDto);
+  }
+
+  @Patch('sections/:id')
+  @Roles(UserRole.ADMIN)
+  updateSection(@Param('id') id: string, @Body() updateDto: UpdateSectionDto) {
+    return this.sectionsService.update(id, updateDto);
   }
 
   @Get('sections')
