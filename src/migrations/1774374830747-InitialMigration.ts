@@ -1,26 +1,19 @@
 import { MigrationInterface, QueryRunner } from "typeorm";
 
-export class InitialMigration1774374830746 implements MigrationInterface {
-    name = 'InitialMigration1774374830746'
+export class InitialMigration1774374830747 implements MigrationInterface {
+    name = 'InitialMigration1774374830747'
 
     public async up(queryRunner: QueryRunner): Promise<void> {
         // Tenants
         await queryRunner.query("CREATE TABLE IF NOT EXISTS `tenants` (`id` varchar(255) PRIMARY KEY NOT NULL, `name` varchar(255) NOT NULL, `domain` varchar(255) NOT NULL, `plan` varchar(255) NOT NULL DEFAULT 'free', `subscriptionStatus` varchar(255) NOT NULL DEFAULT 'active', `expiresAt` datetime, `stripe_customer_id` varchar(255), `gradingMode` varchar(255) NOT NULL DEFAULT 'TRADITIONAL', UNIQUE INDEX `UQ_tenants_name` (`name`)) ENGINE=InnoDB");
         
-        // Ensure missing columns exist in tenants (if table was created without them)
-        const columns = await queryRunner.query("SHOW COLUMNS FROM `tenants` LIKE 'gradingMode'");
-        if (columns.length === 0) {
+        const tenantColumns = await queryRunner.query("SHOW COLUMNS FROM `tenants` LIKE 'gradingMode'");
+        if (tenantColumns.length === 0) {
             await queryRunner.query("ALTER TABLE `tenants` ADD COLUMN `gradingMode` varchar(255) NOT NULL DEFAULT 'TRADITIONAL'");
         }
 
         // Users
         await queryRunner.query("CREATE TABLE IF NOT EXISTS `users` (`id` varchar(255) PRIMARY KEY NOT NULL, `tenantId` varchar(255) NOT NULL, `username` varchar(255) NOT NULL, `password_hash` varchar(255) NOT NULL, `password_reset_token` varchar(255), `password_reset_expires` datetime, `role` varchar(255) NOT NULL DEFAULT 'parent', UNIQUE INDEX `UQ_users_username` (`username`)) ENGINE=InnoDB");
-
-        // Permissions
-        await queryRunner.query("CREATE TABLE IF NOT EXISTS `permissions` (`id` varchar(255) PRIMARY KEY NOT NULL, `tenantId` varchar(255) NOT NULL, `name` varchar(255) NOT NULL, `description` varchar(255)) ENGINE=InnoDB");
-
-        // Role Permissions
-        await queryRunner.query("CREATE TABLE IF NOT EXISTS `role_permissions` (`id` varchar(255) PRIMARY KEY NOT NULL, `tenantId` varchar(255) NOT NULL, `role` varchar(255) NOT NULL, `permissionId` varchar(255) NOT NULL) ENGINE=InnoDB");
 
         // Sections
         await queryRunner.query("CREATE TABLE IF NOT EXISTS `sections` (`id` varchar(255) PRIMARY KEY NOT NULL, `tenantId` varchar(255) NOT NULL, `name` varchar(255) NOT NULL, `classLevelId` varchar(255) NOT NULL, `room` varchar(255), `classTeacherId` varchar(255), `academicYearId` varchar(255)) ENGINE=InnoDB");
@@ -36,11 +29,15 @@ export class InitialMigration1774374830746 implements MigrationInterface {
             await queryRunner.query("ALTER TABLE `class_levels` ADD COLUMN `headTeacherId` varchar(255), ADD COLUMN `academicYearId` varchar(255)");
         }
 
-        // Academic Years
-        await queryRunner.query("CREATE TABLE IF NOT EXISTS `academic_years` (`id` varchar(255) PRIMARY KEY NOT NULL, `tenantId` varchar(255) NOT NULL, `name` varchar(255) NOT NULL, `startDate` date NOT NULL, `endDate` date NOT NULL, `isCurrent` tinyint(1) NOT NULL DEFAULT 0) ENGINE=InnoDB");
-
         // Students
         await queryRunner.query("CREATE TABLE IF NOT EXISTS `students` (`id` varchar(255) PRIMARY KEY NOT NULL, `tenantId` varchar(255) NOT NULL, `firstName` varchar(255) NOT NULL, `lastName` varchar(255) NOT NULL, `registrationNumber` varchar(255), `classLevelId` varchar(255), `sectionId` varchar(255), `academicYearId` varchar(255), `status` varchar(255) NOT NULL DEFAULT 'Active', `parentId` varchar(255)) ENGINE=InnoDB");
+        const studentColumns = await queryRunner.query("SHOW COLUMNS FROM `students` LIKE 'parentId'");
+        if (studentColumns.length === 0) {
+            await queryRunner.query("ALTER TABLE `students` ADD COLUMN `parentId` varchar(255)");
+        }
+
+        // Academic Years
+        await queryRunner.query("CREATE TABLE IF NOT EXISTS `academic_years` (`id` varchar(255) PRIMARY KEY NOT NULL, `tenantId` varchar(255) NOT NULL, `name` varchar(255) NOT NULL, `startDate` date NOT NULL, `endDate` date NOT NULL, `isCurrent` tinyint(1) NOT NULL DEFAULT 0) ENGINE=InnoDB");
 
         // Staff
         await queryRunner.query("CREATE TABLE IF NOT EXISTS `staff` (`id` varchar(255) PRIMARY KEY NOT NULL, `tenantId` varchar(255) NOT NULL, `firstName` varchar(255) NOT NULL, `lastName` varchar(255) NOT NULL, `role` varchar(255) NOT NULL, `email` varchar(255) NOT NULL, `phone` varchar(255), UNIQUE INDEX `UQ_staff_email` (`email`)) ENGINE=InnoDB");
@@ -103,34 +100,34 @@ export class InitialMigration1774374830746 implements MigrationInterface {
     }
 
     public async down(queryRunner: QueryRunner): Promise<void> {
-        await queryRunner.query("DROP TABLE `cbe_assessments`")
-        await queryRunner.query("DROP TABLE `cbe_rubrics`")
-        await queryRunner.query("DROP TABLE `cbe_competencies`")
-        await queryRunner.query("DROP TABLE `system_config`")
-        await queryRunner.query("DROP TABLE `grading_scales`")
-        await queryRunner.query("DROP TABLE `lms_connections`")
-        await queryRunner.query("DROP TABLE `pending_payments`")
-        await queryRunner.query("DROP TABLE `subscription_plans`")
-        await queryRunner.query("DROP TABLE `books`")
-        await queryRunner.query("DROP TABLE `messages`")
-        await queryRunner.query("DROP TABLE `audit_logs`")
-        await queryRunner.query("DROP TABLE `calendar_events`")
-        await queryRunner.query("DROP TABLE `timetable_entries`")
-        await queryRunner.query("DROP TABLE `payrolls`")
-        await queryRunner.query("DROP TABLE `report_cards`")
-        await queryRunner.query("DROP TABLE `examinations`")
-        await queryRunner.query("DROP TABLE `expenses`")
-        await queryRunner.query("DROP TABLE `fees`")
-        await queryRunner.query("DROP TABLE `attendance`")
-        await queryRunner.query("DROP TABLE `subjects`")
-        await queryRunner.query("DROP TABLE `staff`")
-        await queryRunner.query("DROP TABLE `students`")
-        await queryRunner.query("DROP TABLE `academic_years`")
-        await queryRunner.query("DROP TABLE `class_levels`")
-        await queryRunner.query("DROP TABLE `sections`")
-        await queryRunner.query("DROP TABLE `role_permissions`")
-        await queryRunner.query("DROP TABLE `permissions`")
-        await queryRunner.query("DROP TABLE `users`")
-        await queryRunner.query("DROP TABLE `tenants`")
+        await queryRunner.query("DROP TABLE IF EXISTS `cbe_assessments`")
+        await queryRunner.query("DROP TABLE IF EXISTS `cbe_rubrics`")
+        await queryRunner.query("DROP TABLE IF EXISTS `cbe_competencies`")
+        await queryRunner.query("DROP TABLE IF EXISTS `system_config`")
+        await queryRunner.query("DROP TABLE IF EXISTS `grading_scales`")
+        await queryRunner.query("DROP TABLE IF EXISTS `lms_connections`")
+        await queryRunner.query("DROP TABLE IF EXISTS `pending_payments`")
+        await queryRunner.query("DROP TABLE IF EXISTS `subscription_plans`")
+        await queryRunner.query("DROP TABLE IF EXISTS `books`")
+        await queryRunner.query("DROP TABLE IF EXISTS `messages`")
+        await queryRunner.query("DROP TABLE IF EXISTS `audit_logs`")
+        await queryRunner.query("DROP TABLE IF EXISTS `calendar_events`")
+        await queryRunner.query("DROP TABLE IF EXISTS `timetable_entries`")
+        await queryRunner.query("DROP TABLE IF EXISTS `payrolls`")
+        await queryRunner.query("DROP TABLE IF EXISTS `report_cards`")
+        await queryRunner.query("DROP TABLE IF EXISTS `examinations`")
+        await queryRunner.query("DROP TABLE IF EXISTS `expenses`")
+        await queryRunner.query("DROP TABLE IF EXISTS `fees`")
+        await queryRunner.query("DROP TABLE IF EXISTS `attendance`")
+        await queryRunner.query("DROP TABLE IF EXISTS `subjects`")
+        await queryRunner.query("DROP TABLE IF EXISTS `staff`")
+        await queryRunner.query("DROP TABLE IF EXISTS `students`")
+        await queryRunner.query("DROP TABLE IF EXISTS `academic_years`")
+        await queryRunner.query("DROP TABLE IF EXISTS `class_levels`")
+        await queryRunner.query("DROP TABLE IF EXISTS `sections`")
+        await queryRunner.query("DROP TABLE IF EXISTS `role_permissions`")
+        await queryRunner.query("DROP TABLE IF EXISTS `permissions`")
+        await queryRunner.query("DROP TABLE IF EXISTS `users`")
+        await queryRunner.query("DROP TABLE IF EXISTS `tenants`")
     }
 }
