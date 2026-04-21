@@ -1,7 +1,7 @@
 import { MigrationInterface, QueryRunner } from "typeorm";
 
-export class InitialMigration1774374830745 implements MigrationInterface {
-    name = 'InitialMigration1774374830745'
+export class InitialMigration1774374830746 implements MigrationInterface {
+    name = 'InitialMigration1774374830746'
 
     public async up(queryRunner: QueryRunner): Promise<void> {
         // Tenants
@@ -101,7 +101,6 @@ export class InitialMigration1774374830745 implements MigrationInterface {
         await queryRunner.query("CREATE TABLE IF NOT EXISTS `cbe_rubrics` (`id` varchar(255) PRIMARY KEY NOT NULL, `tenantId` varchar(255) NOT NULL, `name` varchar(255) NOT NULL, `description` text, `level` int NOT NULL, `score` int NOT NULL) ENGINE=InnoDB");
         await queryRunner.query("CREATE TABLE IF NOT EXISTS `cbe_assessments` (`id` varchar(255) PRIMARY KEY NOT NULL, `tenantId` varchar(255) NOT NULL, `studentId` varchar(255) NOT NULL, `competencyId` varchar(255) NOT NULL, `rubricId` varchar(255) NOT NULL, `assessmentDate` datetime NOT NULL, `comments` text, `academicYearId` varchar(255) NOT NULL) ENGINE=InnoDB");
     }
-
 
     public async down(queryRunner: QueryRunner): Promise<void> {
         await queryRunner.query("DROP TABLE `cbe_assessments`")
