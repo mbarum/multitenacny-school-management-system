@@ -8,6 +8,7 @@ module.exports = {
       autorestart: true,
       watch: false,
       max_memory_restart: '1G',
+      node_args: '-r tsconfig-paths/register',
       env: {
         NODE_ENV: 'production',
         TS_NODE_PROJECT: 'tsconfig.paths.json',

@@ -6,6 +6,12 @@ export class InitialMigration1774374830745 implements MigrationInterface {
     public async up(queryRunner: QueryRunner): Promise<void> {
         // Tenants
         await queryRunner.query("CREATE TABLE IF NOT EXISTS `tenants` (`id` varchar(255) PRIMARY KEY NOT NULL, `name` varchar(255) NOT NULL, `domain` varchar(255) NOT NULL, `plan` varchar(255) NOT NULL DEFAULT 'free', `subscriptionStatus` varchar(255) NOT NULL DEFAULT 'active', `expiresAt` datetime, `stripe_customer_id` varchar(255), `gradingMode` varchar(255) NOT NULL DEFAULT 'TRADITIONAL', UNIQUE INDEX `UQ_tenants_name` (`name`)) ENGINE=InnoDB");
+        
+        // Ensure missing columns exist in tenants (if table was created without them)
+        const columns = await queryRunner.query("SHOW COLUMNS FROM `tenants` LIKE 'gradingMode'");
+        if (columns.length === 0) {
+            await queryRunner.query("ALTER TABLE `tenants` ADD COLUMN `gradingMode` varchar(255) NOT NULL DEFAULT 'TRADITIONAL'");
+        }
 
         // Users
         await queryRunner.query("CREATE TABLE IF NOT EXISTS `users` (`id` varchar(255) PRIMARY KEY NOT NULL, `tenantId` varchar(255) NOT NULL, `username` varchar(255) NOT NULL, `password_hash` varchar(255) NOT NULL, `password_reset_token` varchar(255), `password_reset_expires` datetime, `role` varchar(255) NOT NULL DEFAULT 'parent', UNIQUE INDEX `UQ_users_username` (`username`)) ENGINE=InnoDB");
@@ -18,9 +24,17 @@ export class InitialMigration1774374830745 implements MigrationInterface {
 
         // Sections
         await queryRunner.query("CREATE TABLE IF NOT EXISTS `sections` (`id` varchar(255) PRIMARY KEY NOT NULL, `tenantId` varchar(255) NOT NULL, `name` varchar(255) NOT NULL, `classLevelId` varchar(255) NOT NULL, `room` varchar(255), `classTeacherId` varchar(255), `academicYearId` varchar(255)) ENGINE=InnoDB");
+        const sectionColumns = await queryRunner.query("SHOW COLUMNS FROM `sections` LIKE 'classTeacherId'");
+        if (sectionColumns.length === 0) {
+            await queryRunner.query("ALTER TABLE `sections` ADD COLUMN `classTeacherId` varchar(255), ADD COLUMN `academicYearId` varchar(255)");
+        }
 
         // Class Levels
         await queryRunner.query("CREATE TABLE IF NOT EXISTS `class_levels` (`id` varchar(255) PRIMARY KEY NOT NULL, `tenantId` varchar(255) NOT NULL, `name` varchar(255) NOT NULL, `description` varchar(255), `headTeacherId` varchar(255), `academicYearId` varchar(255)) ENGINE=InnoDB");
+        const classLevelColumns = await queryRunner.query("SHOW COLUMNS FROM `class_levels` LIKE 'headTeacherId'");
+        if (classLevelColumns.length === 0) {
+            await queryRunner.query("ALTER TABLE `class_levels` ADD COLUMN `headTeacherId` varchar(255), ADD COLUMN `academicYearId` varchar(255)");
+        }
 
         // Academic Years
         await queryRunner.query("CREATE TABLE IF NOT EXISTS `academic_years` (`id` varchar(255) PRIMARY KEY NOT NULL, `tenantId` varchar(255) NOT NULL, `name` varchar(255) NOT NULL, `startDate` date NOT NULL, `endDate` date NOT NULL, `isCurrent` tinyint(1) NOT NULL DEFAULT 0) ENGINE=InnoDB");
