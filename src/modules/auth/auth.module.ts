@@ -1,4 +1,4 @@
-import { Module, OnApplicationBootstrap } from '@nestjs/common';
+import { Module, OnApplicationBootstrap, Global } from '@nestjs/common';
 import { PassportModule } from '@nestjs/passport';
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
@@ -9,6 +9,7 @@ import { JwtStrategy } from './strategies/jwt.strategy';
 import { SharedModule } from '../../shared/shared.module';
 import * as passport from 'passport';
 
+@Global()
 @Module({
   imports: [
     SharedModule,
