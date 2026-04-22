@@ -1,10 +1,21 @@
-import { Controller, Get, UseGuards, Param, Patch, Body, Put } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Get,
+  UseGuards,
+  Param,
+  Patch,
+  Body,
+  Put,
+} from '@nestjs/common';
 import { SuperAdminService } from './super-admin.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from 'src/core/decorators/roles.decorator';
 import { UserRole } from 'src/common/user-role.enum';
 import { SystemConfigService } from '../config/system-config.service';
+import { TenantsService } from '../tenants/tenants.service';
+import { CreateTenantDto } from '../tenants/dto/create-tenant.dto';
 
 @Controller('super-admin')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -13,7 +24,13 @@ export class SuperAdminController {
   constructor(
     private readonly superAdminService: SuperAdminService,
     private readonly systemConfigService: SystemConfigService,
+    private readonly tenantsService: TenantsService,
   ) {}
+
+  @Post('tenants')
+  createTenant(@Body() createTenantDto: CreateTenantDto) {
+    return this.tenantsService.create(createTenantDto);
+  }
 
   @Get('config')
   getAllConfig() {
@@ -48,5 +65,14 @@ export class SuperAdminController {
   @Patch('tenants/:id/status')
   updateTenantStatus(@Param('id') id: string, @Body('status') status: string) {
     return this.superAdminService.updateTenantStatus(id, status);
+  }
+
+  @Patch('tenants/:id/plan')
+  updateTenantPlan(
+    @Param('id') id: string,
+    @Body('plan') plan: string,
+    @Body('status') status?: string,
+  ) {
+    return this.superAdminService.updateTenantPlan(id, plan, status);
   }
 }
