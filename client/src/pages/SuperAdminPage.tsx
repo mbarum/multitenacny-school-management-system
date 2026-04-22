@@ -68,27 +68,29 @@ const SuperAdminPage = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      // We don't catch individually here to allow the main catch to handle true failures, 
-      // but we provide defaults if the structure is missing
       const [analyticsRes, tenantsRes] = await Promise.all([
-        api.get('/super-admin/analytics'),
-        api.get('/super-admin/tenants')
+        api.get('/super-admin/analytics').catch(e => {
+          console.error('Failed to fetch analytics:', e);
+          return { data: { 
+            totalTenants: 0, 
+            activeSubscriptions: 0, 
+            pendingApprovals: 0, 
+            totalRevenue: 0,
+            recentPayments: [],
+            revenueOverTime: [],
+            tenantsByPlan: []
+          }};
+        }),
+        api.get('/super-admin/tenants').catch(e => {
+          console.error('Failed to fetch tenants:', e);
+          return { data: [] };
+        })
       ]);
       
-      setAnalytics(analyticsRes.data || { 
-        totalTenants: 0, 
-        activeSubscriptions: 0, 
-        pendingApprovals: 0, 
-        totalRevenue: 0,
-        recentPayments: [],
-        revenueOverTime: [],
-        tenantsByPlan: []
-      });
+      setAnalytics(analyticsRes.data);
       setTenants(Array.isArray(tenantsRes.data) ? tenantsRes.data : []);
     } catch (error) {
-      console.error('CRITICAL: SuperAdmin data fetch failed:', error);
-      // Ensure we don't leave state in limbo
-      setTenants([]);
+      console.error('Unexpected error in SuperAdmin data fetch:', error);
     } finally {
       setLoading(false);
     }

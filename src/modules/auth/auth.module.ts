@@ -12,6 +12,8 @@ import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { RolesGuard } from './guards/roles.guard';
 import { SubscriptionGuard } from './guards/subscription.guard';
 
+import { APP_GUARD } from '@nestjs/core';
+
 @Global()
 @Module({
   imports: [
@@ -26,7 +28,11 @@ import { SubscriptionGuard } from './guards/subscription.guard';
     JwtStrategy,
     JwtAuthGuard,
     RolesGuard,
-    SubscriptionGuard
+    SubscriptionGuard,
+    {
+      provide: APP_GUARD,
+      useClass: SubscriptionGuard,
+    },
   ],
   controllers: [AuthController],
   exports: [AuthService, PassportModule, LocalStrategy, JwtAuthGuard, RolesGuard, SubscriptionGuard],

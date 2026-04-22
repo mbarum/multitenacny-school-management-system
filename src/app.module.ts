@@ -37,7 +37,6 @@ import { redisStore } from 'cache-manager-redis-yet';
 import { AuditModule } from './modules/audit/audit.module';
 import { AuditInterceptor } from './core/interceptors/audit.interceptor';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
-import { SubscriptionGuard } from './modules/auth/guards/subscription.guard';
 import { CbeModule } from './modules/cbe/cbe.module';
 import { JobsModule } from './modules/jobs/jobs.module';
 
@@ -169,10 +168,6 @@ import { TenantThrottlerGuard } from './core/guards/tenant-throttler.guard';
     {
       provide: APP_GUARD,
       useClass: TenantThrottlerGuard,
-    },
-    {
-      provide: APP_GUARD,
-      useClass: SubscriptionGuard,
     },
     {
       provide: APP_INTERCEPTOR,
