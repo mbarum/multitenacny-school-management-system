@@ -5,6 +5,7 @@ import {
   ForbiddenException,
   HttpException,
   HttpStatus,
+  Inject,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { TenantsService } from '../../tenants/tenants.service';
@@ -18,11 +19,16 @@ export const SKIP_SUBSCRIPTION_CHECK = 'skipSubscriptionCheck';
 @Injectable()
 export class SubscriptionGuard implements CanActivate {
   constructor(
-    private reflector: Reflector,
-    private tenantsService: TenantsService,
+    @Inject(Reflector) private readonly reflector: Reflector,
+    private readonly tenantsService: TenantsService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
+    if (!this.reflector) {
+      console.error('SubscriptionGuard: Reflector is undefined!');
+      return true;
+    }
+
     const skipCheck = this.reflector.getAllAndOverride<boolean>(
       SKIP_SUBSCRIPTION_CHECK,
       [context.getHandler(), context.getClass()],
@@ -32,7 +38,9 @@ export class SubscriptionGuard implements CanActivate {
       return true;
     }
 
-    const request = context.switchToHttp().getRequest<{ user?: { tenantId?: string } }>();
+    const request = context
+      .switchToHttp()
+      .getRequest<{ user?: { tenantId?: string } }>();
     const user = request.user;
 
     if (!user || !user.tenantId) {

@@ -8,6 +8,10 @@ import { LocalStrategy } from './strategies/local.strategy';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { SharedModule } from '../../shared/shared.module';
 
+import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { RolesGuard } from './guards/roles.guard';
+import { SubscriptionGuard } from './guards/subscription.guard';
+
 @Global()
 @Module({
   imports: [
@@ -16,8 +20,15 @@ import { SharedModule } from '../../shared/shared.module';
     TenantsModule,
     PassportModule.register({ session: false, global: true }),
   ],
-  providers: [AuthService, LocalStrategy, JwtStrategy],
+  providers: [
+    AuthService, 
+    LocalStrategy, 
+    JwtStrategy,
+    JwtAuthGuard,
+    RolesGuard,
+    SubscriptionGuard
+  ],
   controllers: [AuthController],
-  exports: [AuthService, PassportModule, LocalStrategy],
+  exports: [AuthService, PassportModule, LocalStrategy, JwtAuthGuard, RolesGuard, SubscriptionGuard],
 })
 export class AuthModule {}
