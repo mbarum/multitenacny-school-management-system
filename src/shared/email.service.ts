@@ -19,7 +19,7 @@ export class EmailService {
       this.configService.get<string>('APP_URL') ||
       'http://localhost:3000';
     const resetLink = `${frontendUrl}/reset-password?token=${token}`;
-    
+
     await this.emailQueue.add('sendEmail', {
       to,
       subject: 'Your Password Reset Request',
@@ -35,5 +35,22 @@ export class EmailService {
       html,
     });
     this.logger.log(`Email queued for ${to} with subject: ${subject}`);
+  }
+
+  async sendEmailWithAttachments(
+    to: string,
+    subject: string,
+    html: string,
+    attachments: { filename: string; content: string; encoding?: string }[],
+  ): Promise<void> {
+    await this.emailQueue.add('sendEmail', {
+      to,
+      subject,
+      html,
+      attachments,
+    });
+    this.logger.log(
+      `Email with ${attachments.length} attachments queued for ${to} with subject: ${subject}`,
+    );
   }
 }

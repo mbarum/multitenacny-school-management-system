@@ -9,7 +9,10 @@ import { UserRole } from '../../common/user-role.enum';
 
 import { RegisterSchoolDto } from './dto/register-school.dto';
 import { TenantsService } from '../tenants/tenants.service';
-import { SubscriptionPlan, SubscriptionStatus } from '../../common/subscription.enums';
+import {
+  SubscriptionPlan,
+  SubscriptionStatus,
+} from '../../common/subscription.enums';
 
 @Injectable()
 export class AuthService {
@@ -26,7 +29,9 @@ export class AuthService {
   ): Promise<Partial<User> | null> {
     const user = await this.usersService.findByUsername(username);
     if (!user) {
-      console.log(`[AuthService] Login failed: User not found with username "${username}"`);
+      console.log(
+        `[AuthService] Login failed: User not found with username "${username}"`,
+      );
       return null;
     }
 
@@ -35,8 +40,10 @@ export class AuthService {
       delete result.password_hash;
       return result;
     }
-    
-    console.log(`[AuthService] Login failed: Password mismatch for user "${username}"`);
+
+    console.log(
+      `[AuthService] Login failed: Password mismatch for user "${username}"`,
+    );
     return null;
   }
 
@@ -92,24 +99,26 @@ export class AuthService {
   async registerSchool(
     dto: RegisterSchoolDto,
   ): Promise<{ access_token: string }> {
-    // 1. Create Tenant
-    const tenant = await this.tenantsService.create({
-      name: dto.schoolName,
-      domain: dto.domain,
-      plan: (dto.plan as SubscriptionPlan) || SubscriptionPlan.FREE,
-    });
+    // 1. Create Tenant (This now also creates the admin user and sends email)
+    const tenant = await this.tenantsService.create(
+      {
+        name: dto.schoolName,
+        domain: dto.domain,
+        plan: (dto.plan as SubscriptionPlan) || SubscriptionPlan.FREE,
+        email: dto.adminEmail,
+      },
+      {
+        email: dto.adminEmail,
+        password: dto.adminPassword,
+        username: dto.adminEmail,
+      },
+    );
 
-    // 2. Create Admin User for this tenant
-    // We need to bypass the normal tenancy check during registration
-    const salt = await bcrypt.genSalt(12);
-    const password_hash = await bcrypt.hash(dto.adminPassword, salt);
-
-    const adminUser = await this.usersService.createRaw({
-      username: dto.adminEmail,
-      password_hash,
-      role: UserRole.ADMIN,
-      tenantId: tenant.id,
-    });
+    // Get the admin user that was just created to generate token
+    const adminUser = await this.usersService.findByUsername(dto.adminEmail);
+    if (!adminUser) {
+      throw new Error('Failed to create administrative user during registration.');
+    }
 
     // 3. Login the user automatically
     return this.login(adminUser);

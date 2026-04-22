@@ -58,7 +58,7 @@ const SuperAdminPage = () => {
   const [showPlanModal, setShowPlanModal] = useState(false);
   const [showEnrollModal, setShowEnrollModal] = useState(false);
   const [updatingPlan, setUpdatingPlan] = useState(false);
-  const [newTenant, setNewTenant] = useState({ name: '', domain: '', plan: 'standard' });
+  const [newTenant, setNewTenant] = useState({ name: '', domain: '', plan: 'standard', email: '', subscriptionFee: 0 });
   const [enrolling, setEnrolling] = useState(false);
 
   useEffect(() => {
@@ -141,73 +141,50 @@ const SuperAdminPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0c] text-[#f7f7f7] font-sans selection:bg-brand-sand selection:text-brand-dark">
-      {/* Sidebar Navigation */}
-      <aside className="fixed left-0 top-0 h-full w-20 bg-gray-900 border-r border-white/5 flex flex-col items-center py-8 space-y-8 z-50">
-        <div className="w-10 h-10 bg-brand-sand rounded-xl flex items-center justify-center mb-4">
-          <span className="text-brand-dark font-black">S</span>
-        </div>
-        
-        <nav className="flex flex-col space-y-6">
-          <button 
-            onClick={() => setActiveTab('overview')}
-            className={`p-3 rounded-xl transition-all ${activeTab === 'overview' ? 'bg-brand-sand text-brand-dark' : 'text-gray-500 hover:text-white hover:bg-white/5'}`}
-            title="Overview"
+    <div className="max-w-7xl mx-auto">
+      {/* Internal Navigation Tabs */}
+      <div className="flex space-x-1 bg-white p-1 rounded-2xl border border-gray-100 mb-10 w-fit">
+        {[
+          { id: 'overview', label: 'Overview', icon: <BarChart3 size={16} /> },
+          { id: 'schools', label: 'Institutions', icon: <Building size={16} /> },
+          { id: 'financials', label: 'Financials', icon: <Wallet size={16} /> },
+          { id: 'settings', label: 'Logic & Config', icon: <Settings size={16} /> },
+        ].map(tab => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id as any)}
+            className={`px-6 py-2.5 rounded-xl text-[13px] font-bold flex items-center space-x-2 transition-all ${
+              activeTab === tab.id 
+                ? 'bg-brand-green text-brand-sand shadow-lg shadow-brand-green/10' 
+                : 'text-gray-500 hover:text-brand-green'
+            }`}
           >
-            <BarChart3 size={20} />
+            {tab.icon}
+            <span>{tab.label}</span>
           </button>
-          <button 
-            onClick={() => setActiveTab('schools')}
-            className={`p-3 rounded-xl transition-all ${activeTab === 'schools' ? 'bg-brand-sand text-brand-dark' : 'text-gray-500 hover:text-white hover:bg-white/5'}`}
-            title="Schools"
-          >
-            <Building size={20} />
-          </button>
-          <button 
-            onClick={() => setActiveTab('financials')}
-            className={`p-3 rounded-xl transition-all ${activeTab === 'financials' ? 'bg-brand-sand text-brand-dark' : 'text-gray-500 hover:text-white hover:bg-white/5'}`}
-            title="Financials"
-          >
-            <Wallet size={20} />
-          </button>
-          <button 
-            onClick={() => setActiveTab('settings')}
-            className={`p-3 rounded-xl transition-all ${activeTab === 'settings' ? 'bg-brand-sand text-brand-dark' : 'text-gray-500 hover:text-white hover:bg-white/5'}`}
-            title="System Config"
-          >
-            <Settings size={20} />
-          </button>
-        </nav>
+        ))}
+      </div>
 
-        <div className="mt-auto">
-          <Link to="/" className="p-3 text-gray-500 hover:text-white transition-colors">
-            <XCircle size={20} />
-          </Link>
+      {/* Header Context */}
+      <header className="mb-12 flex flex-col md:flex-row md:items-end justify-between gap-6">
+        <div>
+          <div className="flex items-center space-x-2 text-brand-sand uppercase tracking-[0.3em] text-[10px] font-black mb-3">
+            <Globe size={12} />
+            <span>Infrastructure Dashboard</span>
+          </div>
+          <h1 className="text-4xl md:text-5xl font-black tracking-tighter text-gray-900 leading-none">
+            {activeTab === 'overview' && 'System Analytics'}
+            {activeTab === 'schools' && 'Managed Schools'}
+            {activeTab === 'financials' && 'Revenue Vectors'}
+            {activeTab === 'settings' && 'Platform Logic'}
+          </h1>
+          <p className="text-gray-400 mt-4 font-medium max-w-xl">
+            {activeTab === 'overview' && 'Comprehensive real-time instrumentation across all provisioned platform nodes and educational clusters.'}
+            {activeTab === 'schools' && 'Direct management and state control for all high-value educational institutions within the SaaSLink network.'}
+            {activeTab === 'financials' && 'Centralized ledger for all subscription revenue, manual bank reconciliation, and fiscal health tracking.'}
+            {activeTab === 'settings' && 'Critical platform parameters, gateway logic, and ecosystem configuration for the entire EMIS network.'}
+          </p>
         </div>
-      </aside>
-
-      <div className="ml-20 p-8 lg:p-12">
-        <div className="max-w-7xl mx-auto">
-          {/* Header */}
-          <header className="mb-12 flex flex-col md:flex-row md:items-end justify-between gap-6">
-            <div>
-              <div className="flex items-center space-x-2 text-brand-sand uppercase tracking-[0.3em] text-[10px] font-bold mb-3">
-                <Globe size={12} />
-                <span>Global Infrastructure Dashboard</span>
-              </div>
-              <h1 className="text-4xl md:text-5xl font-bold tracking-tighter">
-                {activeTab === 'overview' && 'System Analytics'}
-                {activeTab === 'schools' && 'Managed Institutions'}
-                {activeTab === 'financials' && 'Revenue Streams'}
-                {activeTab === 'settings' && 'Global Configurations'}
-              </h1>
-              <p className="text-gray-400 mt-2">
-                {activeTab === 'overview' && 'Real-time performance metrics and multi-tenant health.'}
-                {activeTab === 'schools' && 'Monitor and manage all client school accounts.'}
-                {activeTab === 'financials' && 'Track subscriptions and verify manual payments.'}
-                {activeTab === 'settings' && 'Manage system settings and gateway configurations.'}
-              </p>
-            </div>
             
             <div className="flex items-center space-x-3">
               <button 
@@ -502,8 +479,6 @@ const SuperAdminPage = () => {
               </motion.div>
             )}
           </AnimatePresence>
-        </div>
-      </div>
 
       {/* Plan Modification Modal */}
       <AnimatePresence>
@@ -610,18 +585,42 @@ const SuperAdminPage = () => {
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-2">Initial Package</label>
-                    <select 
-                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-brand-sand appearance-none"
-                      value={newTenant.plan}
-                      onChange={e => setNewTenant({...newTenant, plan: e.target.value})}
-                    >
-                      <option value="free">Free Tier</option>
-                      <option value="basic">Basic School</option>
-                      <option value="standard">Standard Academy</option>
-                      <option value="premium">Premium Institution</option>
-                      <option value="enterprise">Enterprise Infrastructure</option>
-                    </select>
+                    <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-2">Admin Email (Required for Credentials)</label>
+                    <input 
+                      type="email" 
+                      required
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-brand-sand"
+                      placeholder="e.g. principal@skyline.ac"
+                      value={newTenant.email}
+                      onChange={e => setNewTenant({...newTenant, email: e.target.value})}
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-2">Package</label>
+                      <select 
+                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-brand-sand appearance-none"
+                        value={newTenant.plan}
+                        onChange={e => setNewTenant({...newTenant, plan: e.target.value})}
+                      >
+                        <option value="free">Free Tier</option>
+                        <option value="basic">Basic School</option>
+                        <option value="standard">Standard Academy</option>
+                        <option value="premium">Premium Institution</option>
+                        <option value="enterprise">Enterprise Infrastructure</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-2">Subscription Fee (KES)</label>
+                      <input 
+                        type="number" 
+                        required
+                        min="0"
+                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-brand-sand"
+                        value={newTenant.subscriptionFee}
+                        onChange={e => setNewTenant({...newTenant, subscriptionFee: parseFloat(e.target.value) || 0})}
+                      />
+                    </div>
                   </div>
                 </div>
 

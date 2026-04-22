@@ -29,8 +29,16 @@ import ContactPage from './pages/ContactPage';
 import StudentsPage from './pages/StudentsPage';
 import { UserRole } from '../../src/common/user-role.enum';
 
+import DashboardLayout from './components/DashboardLayout';
+
 const AppRoutes: React.FC = () => {
   const { isAuthenticated, user } = useAuth();
+
+  const renderProtectedRoute = (element: React.ReactNode, role?: UserRole) => {
+    if (!isAuthenticated) return <Navigate to="/login" />;
+    if (role && user?.role !== role) return <Navigate to="/" />;
+    return <DashboardLayout>{element}</DashboardLayout>;
+  };
 
   return (
     <Routes>
@@ -46,80 +54,80 @@ const AppRoutes: React.FC = () => {
           user?.role === UserRole.SUPER_ADMIN ? <Navigate to="/super-admin" /> : 
           user?.role === UserRole.TEACHER ? <Navigate to="/teacher" /> :
           user?.role === UserRole.PARENT ? <Navigate to="/parent" /> :
-          <DashboardPage />
+          <Navigate to="/dashboard" />
         }
       />
       <Route
         path="/dashboard"
-        element={isAuthenticated && user?.role === UserRole.ADMIN ? <DashboardPage /> : <Navigate to="/" />}
+        element={renderProtectedRoute(<DashboardPage />, UserRole.ADMIN)}
       />
       <Route
         path="/students"
-        element={isAuthenticated && user?.role === UserRole.ADMIN ? <StudentsPage /> : <Navigate to="/" />}
+        element={renderProtectedRoute(<StudentsPage />, UserRole.ADMIN)}
       />
       <Route
         path="/super-admin"
-        element={isAuthenticated && user?.role === UserRole.SUPER_ADMIN ? <SuperAdminPage /> : <Navigate to="/" />}
+        element={renderProtectedRoute(<SuperAdminPage />, UserRole.SUPER_ADMIN)}
       />
       <Route
         path="/super-admin/tenants"
-        element={isAuthenticated && user?.role === UserRole.SUPER_ADMIN ? <TenantManagementPage /> : <Navigate to="/" />}
+        element={renderProtectedRoute(<TenantManagementPage />, UserRole.SUPER_ADMIN)}
       />
       <Route
         path="/super-admin/tenants/:id"
-        element={isAuthenticated && user?.role === UserRole.SUPER_ADMIN ? <TenantDetailPage /> : <Navigate to="/" />}
+        element={renderProtectedRoute(<TenantDetailPage />, UserRole.SUPER_ADMIN)}
       />
       <Route
         path="/super-admin/settings"
-        element={isAuthenticated && user?.role === UserRole.SUPER_ADMIN ? <SuperAdminSettingsPage /> : <Navigate to="/" />}
+        element={renderProtectedRoute(<SuperAdminSettingsPage />, UserRole.SUPER_ADMIN)}
       />
       <Route
         path="/super-admin/financials"
-        element={isAuthenticated && user?.role === UserRole.SUPER_ADMIN ? <FinancialManagementPage /> : <Navigate to="/" />}
+        element={renderProtectedRoute(<FinancialManagementPage />, UserRole.SUPER_ADMIN)}
       />
       <Route
         path="/teacher"
-        element={isAuthenticated && user?.role === UserRole.TEACHER ? <TeacherDashboardPage /> : <Navigate to="/" />}
+        element={renderProtectedRoute(<TeacherDashboardPage />, UserRole.TEACHER)}
       />
       <Route
         path="/teacher/classes"
-        element={isAuthenticated && user?.role === UserRole.TEACHER ? <TeacherClassesPage /> : <Navigate to="/" />}
+        element={renderProtectedRoute(<TeacherClassesPage />, UserRole.TEACHER)}
       />
       <Route
         path="/teacher/attendance"
-        element={isAuthenticated && user?.role === UserRole.TEACHER ? <TeacherAttendancePage /> : <Navigate to="/" />}
+        element={renderProtectedRoute(<TeacherAttendancePage />, UserRole.TEACHER)}
       />
       <Route
         path="/teacher/grading"
-        element={isAuthenticated && user?.role === UserRole.TEACHER ? <TeacherGradingPage /> : <Navigate to="/" />}
+        element={renderProtectedRoute(<TeacherGradingPage />, UserRole.TEACHER)}
       />
       <Route
         path="/parent"
-        element={isAuthenticated && user?.role === UserRole.PARENT ? <ParentDashboardPage /> : <Navigate to="/" />}
+        element={renderProtectedRoute(<ParentDashboardPage />, UserRole.PARENT)}
       />
       <Route
         path="/payments"
-        element={isAuthenticated ? <PaymentsPage /> : <Navigate to="/login" />}
+        element={renderProtectedRoute(<PaymentsPage />)}
       />
       <Route
         path="/academics/classes"
-        element={isAuthenticated ? <ClassManagementPage /> : <Navigate to="/login" />}
+        element={renderProtectedRoute(<ClassManagementPage />)}
       />
       <Route
         path="/staff"
-        element={isAuthenticated ? <StaffManagementPage /> : <Navigate to="/login" />}
+        element={renderProtectedRoute(<StaffManagementPage />)}
       />
       <Route
         path="/attendance"
-        element={isAuthenticated ? <AttendancePage /> : <Navigate to="/login" />}
+        element={renderProtectedRoute(<AttendancePage />)}
       />
       <Route
         path="/timetable"
-        element={isAuthenticated ? <TimetablePage /> : <Navigate to="/login" />}
+        element={renderProtectedRoute(<TimetablePage />)}
       />
       <Route
         path="/reports"
-        element={isAuthenticated ? <ReportingPage /> : <Navigate to="/login" />}
+        element={renderProtectedRoute(<ReportingPage />)}
       />
       <Route path="/privacy" element={<PrivacyPage />} />
       <Route path="/terms" element={<TermsPage />} />

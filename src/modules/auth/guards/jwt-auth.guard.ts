@@ -39,7 +39,7 @@ export class JwtAuthGuard implements CanActivate {
     const token = authHeader.split(' ')[1];
 
     try {
-      const payload = this.jwtService.verify(token) as JwtPayload;
+      const payload: JwtPayload = this.jwtService.verify(token);
 
       // Attach user to request for use in controllers and other guards
       // We use findById to bypass tenant check since we are currently authenticating the user

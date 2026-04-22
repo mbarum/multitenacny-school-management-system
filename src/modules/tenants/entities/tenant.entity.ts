@@ -37,4 +37,10 @@ export class Tenant {
 
   @Column({ default: 'TRADITIONAL' })
   gradingMode: string; // 'TRADITIONAL', 'CBE', 'HYBRID'
+
+  @Column({ nullable: true })
+  contactEmail: string;
+
+  @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
+  subscriptionFee: number;
 }

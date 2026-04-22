@@ -7,6 +7,9 @@ export class User extends TenantAwareEntity {
   @Column({ unique: true })
   username: string;
 
+  @Column({ unique: true, nullable: true })
+  email: string;
+
   @Column({ select: false })
   password_hash: string;
 

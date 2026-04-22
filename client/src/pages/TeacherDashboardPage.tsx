@@ -51,65 +51,23 @@ const TeacherDashboardPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
-      {/* Sidebar */}
-      <aside className="w-64 bg-white border-r border-gray-200 hidden md:flex flex-col">
-        <div className="p-6 border-b border-gray-200">
-          <h2 className="text-2xl font-bold text-indigo-600">SaaSLink</h2>
-          <p className="text-sm text-gray-500 mt-1">Teacher Portal</p>
+    <div className="max-w-6xl mx-auto">
+      <header className="flex justify-between items-center mb-10">
+        <div>
+          <h1 className="text-[32px] font-black tracking-tight text-gray-900 leading-none mb-3 uppercase">
+            Educator <span className="text-brand-green">Hub</span>
+          </h1>
+          <p className="text-gray-400 font-bold text-xs uppercase tracking-widest">
+            Welcome back, {user?.username} • {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+          </p>
         </div>
-        <nav className="flex-1 p-4 space-y-1">
-          <Link to="/teacher" className="flex items-center px-4 py-3 text-indigo-600 bg-indigo-50 rounded-lg font-medium">
-            <BookOpen className="w-5 h-5 mr-3" />
-            My Dashboard
-          </Link>
-          <Link to="/teacher/classes" className="flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 rounded-lg font-medium transition-colors">
-            <Users className="w-5 h-5 mr-3" />
-            My Classes
-          </Link>
-          <Link to="/teacher/attendance" className="flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 rounded-lg font-medium transition-colors">
-            <CheckSquare className="w-5 h-5 mr-3" />
-            Attendance
-          </Link>
-          <Link to="/teacher/grading" className="flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 rounded-lg font-medium transition-colors">
-            <Award className="w-5 h-5 mr-3" />
-            Grading
-          </Link>
-          <a href="#" className="flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 rounded-lg font-medium transition-colors">
-            <Calendar className="w-5 h-5 mr-3" />
-            Schedule
-          </a>
-          <a href="#" className="flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 rounded-lg font-medium transition-colors">
-            <MessageSquare className="w-5 h-5 mr-3" />
-            Messages
-          </a>
-        </nav>
-        <div className="p-4 border-t border-gray-200">
-          <button onClick={logout} className="flex items-center w-full px-4 py-3 text-red-600 hover:bg-red-50 rounded-lg font-medium transition-colors">
-            <LogOut className="w-5 h-5 mr-3" />
-            Logout
+        <div className="flex items-center space-x-4">
+          <button className="w-12 h-12 rounded-xl bg-white border border-gray-100 flex items-center justify-center text-gray-400 hover:text-brand-green transition-all relative group">
+            <Bell size={20} />
+            <span className="absolute top-3 right-3 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white"></span>
           </button>
         </div>
-      </aside>
-
-      {/* Main Content */}
-      <main className="flex-1 p-8 overflow-y-auto">
-        <div className="max-w-6xl mx-auto">
-          <header className="flex justify-between items-center mb-8">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">Good morning, {user?.username}</h1>
-              <p className="text-gray-500 mt-1">Here is your schedule and tasks for today.</p>
-            </div>
-            <div className="flex items-center space-x-4">
-              <button className="p-2 text-gray-400 hover:text-indigo-600 transition-colors relative">
-                <Bell className="w-6 h-6" />
-                <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-gray-50"></span>
-              </button>
-              <div className="md:hidden">
-                <button onClick={logout} className="text-red-600 font-medium">Logout</button>
-              </div>
-            </div>
-          </header>
+      </header>
 
           {/* Stats Grid */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
@@ -248,8 +206,6 @@ const TeacherDashboardPage: React.FC = () => {
               </div>
             </div>
           </div>
-        </div>
-      </main>
     </div>
   );
 };

@@ -13,4 +13,11 @@ export class CreateTenantDto {
   @IsEnum(SubscriptionPlan)
   @IsOptional()
   plan?: SubscriptionPlan;
+
+  @IsString()
+  @IsNotEmpty()
+  email: string;
+
+  @IsOptional()
+  subscriptionFee?: number;
 }

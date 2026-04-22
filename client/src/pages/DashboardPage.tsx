@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../services/api';
 import { UserRole } from '../../../src/common/user-role.enum';
+import { SubscriptionPlan } from '../../../src/common/subscription.enums';
 import { Users, UserCheck, DollarSign, Activity, LogOut, Settings, GraduationCap, Calendar, FileText, CreditCard, Zap } from 'lucide-react';
 import { motion } from 'framer-motion';
 
@@ -41,78 +42,19 @@ const DashboardPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
-      {/* Sidebar */}
-      <aside className="w-64 bg-white border-r border-gray-200 hidden md:flex flex-col">
-        <div className="p-6 border-b border-gray-200">
-          <h2 className="text-2xl font-bold text-blue-600">SaaSLink</h2>
-          <p className="text-sm text-gray-500 mt-1">School Management</p>
+    <div className="max-w-6xl mx-auto">
+      <header className="flex justify-between items-center mb-10">
+        <div>
+          <h1 className="text-[32px] font-black tracking-tight text-gray-900 leading-none mb-3 uppercase">
+            Control <span className="text-brand-green">Nexus</span>
+          </h1>
+          <p className="text-gray-400 font-bold text-xs uppercase tracking-widest">
+            {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+          </p>
         </div>
-        <nav className="flex-1 p-4 space-y-1">
-          <a href="/dashboard" className="flex items-center px-4 py-3 text-blue-600 bg-blue-50 rounded-lg font-medium">
-            <Activity className="w-5 h-5 mr-3" />
-            Dashboard
-          </a>
-          <a href="/students" className="flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 rounded-lg font-medium transition-colors">
-            <Users className="w-5 h-5 mr-3" />
-            Students
-          </a>
-          <a href="/academics/classes" className="flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 rounded-lg font-medium transition-colors">
-            <GraduationCap className="w-5 h-5 mr-3" />
-            Academics
-          </a>
-          <a href="/staff" className="flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 rounded-lg font-medium transition-colors">
-            <UserCheck className="w-5 h-5 mr-3" />
-            Staff
-          </a>
-          <a href="/attendance" className="flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 rounded-lg font-medium transition-colors">
-            <Calendar className="w-5 h-5 mr-3" />
-            Attendance
-          </a>
-          <a href="/reports" className="flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 rounded-lg font-medium transition-colors">
-            <FileText className="w-5 h-5 mr-3" />
-            Reports
-          </a>
-          <a href="/payments" className="flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 rounded-lg font-medium transition-colors">
-            <CreditCard className="w-5 h-5 mr-3" />
-            Payments
-          </a>
-          {user?.role === UserRole.ADMIN && (
-            <a href="/pricing" className="flex items-center px-4 py-3 text-blue-600 hover:text-blue-700 bg-blue-50/50 hover:bg-blue-50 rounded-lg font-medium transition-colors mt-2">
-              <Zap className="w-5 h-5 mr-3" />
-              <span>Subscription</span>
-              <span className="ml-auto bg-blue-600 text-white text-[10px] px-2 py-0.5 rounded-full font-bold">UPGRADE</span>
-            </a>
-          )}
-          {user?.role === UserRole.SUPER_ADMIN && (
-            <a href="/super-admin" className="flex items-center px-4 py-3 text-purple-600 hover:bg-purple-50 rounded-lg font-medium transition-colors mt-4 border border-purple-100">
-              <Settings className="w-5 h-5 mr-3" />
-              Super Admin
-            </a>
-          )}
-        </nav>
-        <div className="p-4 border-t border-gray-200">
-          <button onClick={logout} className="flex items-center w-full px-4 py-3 text-red-600 hover:bg-red-50 rounded-lg font-medium transition-colors">
-            <LogOut className="w-5 h-5 mr-3" />
-            Logout
-          </button>
-        </div>
-      </aside>
+      </header>
 
-      {/* Main Content */}
-      <main className="flex-1 p-8 overflow-y-auto">
-        <div className="max-w-6xl mx-auto">
-          <header className="flex justify-between items-center mb-8">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">Welcome back, {user?.username}</h1>
-              <p className="text-gray-500 mt-1">Here's what's happening at your school today.</p>
-            </div>
-            <div className="md:hidden">
-              <button onClick={logout} className="text-red-600 font-medium">Logout</button>
-            </div>
-          </header>
-
-          {user?.role === UserRole.ADMIN && (user?.plan === 'FREE' || !user?.plan) && (
+      {user?.role === UserRole.ADMIN && (user?.plan === SubscriptionPlan.FREE || !user?.plan) && (
             <motion.div 
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -204,8 +146,6 @@ const DashboardPage: React.FC = () => {
               </table>
             </div>
           </div>
-        </div>
-      </main>
     </div>
   );
 };

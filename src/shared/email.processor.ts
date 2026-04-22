@@ -8,6 +8,11 @@ export interface EmailJobData {
   to: string;
   subject: string;
   html: string;
+  attachments?: {
+    filename: string;
+    content: string; // Base64 string
+    encoding?: string;
+  }[];
 }
 
 @Processor('emailQueue')
@@ -68,14 +73,16 @@ export class EmailProcessor extends WorkerHost {
   }
 
   async process(job: Job<EmailJobData, any, string>): Promise<any> {
-    const { to, subject, html } = job.data;
-    
+    const { to, subject, html, attachments } = job.data;
+
     const host =
       this.configService.get<string>('EMAIL_HOST') ||
       this.configService.get<string>('MAIL_HOST');
-      
+
     if (!host) {
-      this.logger.warn(`EMAIL_HOST is not configured. Mocking async email to ${to} via job ${job.id}.`);
+      this.logger.warn(
+        `EMAIL_HOST is not configured. Mocking async email to ${to} via job ${job.id}.`,
+      );
       this.logger.log(
         `[MOCK EMAIL QUEUED] To: ${to}, Subject: ${subject}, Body: ${html}`,
       );
@@ -89,7 +96,11 @@ export class EmailProcessor extends WorkerHost {
       'emis@saaslink.tech';
 
     // Aggressive override if it contains placeholders
-    if (from.includes('yourdomain.com') || from.includes('saaslink.test') || from === 'noreply@example.com') {
+    if (
+      from.includes('yourdomain.com') ||
+      from.includes('saaslink.test') ||
+      from === 'noreply@example.com'
+    ) {
       from = 'emis@saaslink.tech';
     }
 
@@ -99,8 +110,15 @@ export class EmailProcessor extends WorkerHost {
         to,
         subject,
         html,
+        attachments: attachments?.map(a => ({
+          filename: a.filename,
+          content: Buffer.from(a.content, 'base64'),
+          encoding: 'base64'
+        })),
       });
-      this.logger.log(`Async email successfully sent to ${to} with subject: ${subject}`);
+      this.logger.log(
+        `Async email successfully sent to ${to} with subject: ${subject}`,
+      );
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : String(error);
