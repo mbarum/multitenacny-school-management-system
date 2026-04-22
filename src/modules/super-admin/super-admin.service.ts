@@ -2,7 +2,10 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Tenant } from '../tenants/entities/tenant.entity';
-import { SubscriptionStatus } from 'src/common/subscription.enums';
+import {
+  SubscriptionStatus,
+  SubscriptionPlan,
+} from 'src/common/subscription.enums';
 import { PendingPayment } from '../payments/entities/pending-payment.entity';
 import { Student } from '../students/entities/student.entity';
 import { Attendance } from '../attendance/entities/attendance.entity';
@@ -35,14 +38,16 @@ export class SuperAdminService {
         .catch(() => 0);
 
       // Calculate total revenue from approved payments
-      const approvedPayments: PendingPayment[] = await this.pendingPaymentRepository
-        .find({
-          where: { isApproved: true },
-        })
-        .catch(() => []);
+      const approvedPayments: PendingPayment[] =
+        await this.pendingPaymentRepository
+          .find({
+            where: { isApproved: true },
+          })
+          .catch(() => []);
 
       const totalRevenue = approvedPayments.reduce(
-        (sum: number, payment: PendingPayment) => sum + (Number(payment.amount) || 0),
+        (sum: number, payment: PendingPayment) =>
+          sum + (Number(payment.amount) || 0),
         0,
       );
 
@@ -66,7 +71,9 @@ export class SuperAdminService {
           : 0;
 
       // Get tenants by plan
-      const tenants: Tenant[] = await this.tenantRepository.find().catch(() => []);
+      const tenants: Tenant[] = await this.tenantRepository
+        .find()
+        .catch(() => []);
       const tenantsByPlan = tenants.reduce(
         (acc: Record<string, number>, tenant: Tenant) => {
           const plan = tenant.plan || 'unknown';
@@ -105,13 +112,14 @@ export class SuperAdminService {
       }
 
       // Get recent payments
-      const recentPayments: PendingPayment[] = await this.pendingPaymentRepository
-        .find({
-          order: { createdAt: 'DESC' },
-          take: 5,
-          relations: ['tenant'],
-        })
-        .catch(() => []);
+      const recentPayments: PendingPayment[] =
+        await this.pendingPaymentRepository
+          .find({
+            order: { createdAt: 'DESC' },
+            take: 5,
+            relations: ['tenant'],
+          })
+          .catch(() => []);
 
       return {
         totalTenants,
@@ -181,7 +189,7 @@ export class SuperAdminService {
 
   async updateTenantPlan(id: string, plan: string, status?: string) {
     const tenant = await this.getTenantById(id);
-    tenant.plan = plan as any;
+    tenant.plan = plan as SubscriptionPlan;
     if (status) {
       tenant.subscriptionStatus = status as SubscriptionStatus;
     }

@@ -7,17 +7,16 @@ import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { ConfigService } from '@nestjs/config';
 import * as express from 'express';
+import * as fs from 'fs';
 import { join } from 'path';
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
   logger.log('SaaSLink Application Starting - VERSION: 1.0.9-GLOBAL-AUTH-FIX');
-  
-  const app = await NestFactory.create(
-    AppModule,
-    new ExpressAdapter(),
-    { cors: true }
-  );
+
+  const app = await NestFactory.create(AppModule, new ExpressAdapter(), {
+    cors: true,
+  });
 
   app.useGlobalPipes(
     new ValidationPipe({
@@ -81,9 +80,8 @@ async function bootstrap() {
 
   // Serve the React frontend in production
   if (process.env.NODE_ENV === 'production') {
-    const fs = require('fs');
     let clientDistPath = join(process.cwd(), 'client-dist');
-    
+
     // Check possible locations if cwd doesn't work
     if (!fs.existsSync(clientDistPath)) {
       clientDistPath = join(__dirname, '..', 'client-dist');
@@ -101,13 +99,19 @@ async function bootstrap() {
         if (req.originalUrl.startsWith('/api')) {
           return next();
         }
-        
+
         const indexPath = join(clientDistPath, 'index.html');
         if (fs.existsSync(indexPath)) {
           res.sendFile(indexPath);
         } else {
-          console.error(`[Static] Critical Error: index.html not found at ${indexPath}`);
-          res.status(404).send('Application Frontend is missing. Please run "npm run build" to generate it.');
+          console.error(
+            `[Static] Critical Error: index.html not found at ${indexPath}`,
+          );
+          res
+            .status(404)
+            .send(
+              'Application Frontend is missing. Please run "npm run build" to generate it.',
+            );
         }
       },
     );

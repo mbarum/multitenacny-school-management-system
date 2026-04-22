@@ -5,8 +5,6 @@ import { UsersService } from '../users/users.service';
 import { User } from '../users/entities/user.entity';
 import { EmailService } from '../../shared/email.service';
 import { v4 as uuidv4 } from 'uuid';
-import { UserRole } from '../../common/user-role.enum';
-
 import { RegisterSchoolDto } from './dto/register-school.dto';
 import { TenantsService } from '../tenants/tenants.service';
 import {
@@ -100,7 +98,7 @@ export class AuthService {
     dto: RegisterSchoolDto,
   ): Promise<{ access_token: string }> {
     // 1. Create Tenant (This now also creates the admin user and sends email)
-    const tenant = await this.tenantsService.create(
+    await this.tenantsService.create(
       {
         name: dto.schoolName,
         domain: dto.domain,
@@ -117,7 +115,9 @@ export class AuthService {
     // Get the admin user that was just created to generate token
     const adminUser = await this.usersService.findByUsername(dto.adminEmail);
     if (!adminUser) {
-      throw new Error('Failed to create administrative user during registration.');
+      throw new Error(
+        'Failed to create administrative user during registration.',
+      );
     }
 
     // 3. Login the user automatically

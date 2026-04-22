@@ -5,19 +5,21 @@ import { AuthService } from '../auth.service';
 import * as passport from 'passport';
 
 @Injectable()
-export class LocalStrategy extends PassportStrategy(passportLocal.Strategy, 'emis-local') {
+export class LocalStrategy extends PassportStrategy(
+  passportLocal.Strategy,
+  'emis-local',
+) {
   constructor(private authService: AuthService) {
     super({
       usernameField: 'username',
       passwordField: 'password',
     });
-    
+
     // Failsafe: Manually register with the global passport singleton
     try {
-      const passportInstance = require('passport');
-      passportInstance.use('emis-local', this as any);
-      passportInstance.use('local', this as any); // Backwards compatibility for ghost calls
-    } catch (e) {
+      passport.use('emis-local', this as any);
+      passport.use('local', this as any); // Backwards compatibility for ghost calls
+    } catch (e: any) {
       console.warn('Manual passport registration skip/fail:', e.message);
     }
   }

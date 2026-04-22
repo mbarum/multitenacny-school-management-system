@@ -1,4 +1,4 @@
-import { Module, Global } from '@nestjs/common';
+import { Module, Global, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { UsersService } from './users.service';
 import { User } from './entities/user.entity';
@@ -10,7 +10,7 @@ import { TenancyModule } from 'src/core/tenancy/tenancy.module';
 @Module({
   imports: [
     TypeOrmModule.forFeature([User, Permission, RolePermission]),
-    TenancyModule,
+    forwardRef(() => TenancyModule),
   ],
   providers: [UsersService],
   exports: [UsersService, TypeOrmModule], // Export TypeOrmModule for other modules to use entities if needed

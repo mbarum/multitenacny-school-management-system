@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { TenantsService } from './tenants.service';
 import { TenantsController } from './tenants.controller';
@@ -9,7 +9,7 @@ import { SharedModule } from '../../shared/shared.module';
 @Module({
   imports: [
     TypeOrmModule.forFeature([Tenant]),
-    UsersModule,
+    forwardRef(() => UsersModule),
     SharedModule,
   ],
   controllers: [TenantsController],

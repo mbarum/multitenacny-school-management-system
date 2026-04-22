@@ -19,7 +19,6 @@ import { EmailService } from '../../shared/email.service';
 import * as bcrypt from 'bcrypt';
 import { jsPDF } from 'jspdf';
 import { UserRole } from '../../common/user-role.enum';
-// @ts-ignore
 import 'jspdf-autotable';
 import * as crypto from 'crypto';
 
@@ -82,7 +81,7 @@ export class TenantsService {
     });
 
     // 2. Generate Invoice with VAT
-    const invoiceBase64 = await this.generateInvoicePDF(
+    const invoiceBase64 = this.generateInvoicePDF(
       savedTenant,
       createTenantDto.subscriptionFee || 0,
     );
@@ -101,41 +100,28 @@ export class TenantsService {
     return savedTenant;
   }
 
-  private async generateInvoicePDF(
-    tenant: Tenant,
-    fee: number,
-  ): Promise<string> {
-    // @ts-ignore
-    const doc = new jsPDF();
+  private generateInvoicePDF(tenant: Tenant, fee: number): string {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const doc = new jsPDF() as any;
     const vatRate = 0.16; // 16% VAT
     const vatAmount = fee * vatRate;
     const totalAmount = fee + vatAmount;
 
     // Header
-    // @ts-ignore
     doc.setFontSize(20);
-    // @ts-ignore
     doc.text('INVOICE', 105, 20, { align: 'center' });
 
-    // @ts-ignore
     doc.setFontSize(12);
-    // @ts-ignore
     doc.text('Issuer: Saaslink Technologies Limited', 20, 40);
-    // @ts-ignore
     doc.text(`Date: ${new Date().toLocaleDateString()}`, 20, 50);
-    // @ts-ignore
     doc.text(`Invoice #: INV-${tenant.id.slice(0, 8).toUpperCase()}`, 20, 60);
 
     // Bill To
-    // @ts-ignore
     doc.text('Bill To:', 20, 80);
-    // @ts-ignore
     doc.text(tenant.name, 20, 90);
-    // @ts-ignore
     doc.text(tenant.contactEmail || '', 20, 100);
 
     // Table
-    // @ts-ignore
     doc.autoTable({
       startY: 110,
       head: [['Description', 'Amount (KES)']],
@@ -149,27 +135,20 @@ export class TenantsService {
     });
 
     // Bank Details
-    // @ts-ignore
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
     const finalY = doc.lastAutoTable.finalY + 20;
-    // @ts-ignore
     doc.setFontSize(14);
-    // @ts-ignore
     doc.text('Payment Details:', 20, finalY);
-    // @ts-ignore
     doc.setFontSize(10);
-    // @ts-ignore
     doc.text('Beneficiary: SAASLINK TECHNOLOGIES LTD', 20, finalY + 10);
-    // @ts-ignore
     doc.text('Bank: I&M Bank Ltd.', 20, finalY + 18);
-    // @ts-ignore
     doc.text('Account: 05206707336350', 20, finalY + 26);
-    // @ts-ignore
     doc.text('Branch: 177 Koinange', 20, finalY + 34);
-    // @ts-ignore
     doc.text(`Reference: ${tenant.name.slice(0, 15)}`, 20, finalY + 42);
 
-    // @ts-ignore
-    return doc.output('datauristring').split(',')[1];
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+    const output = doc.output('datauristring') as string;
+    return output.split(',')[1];
   }
 
   private async sendOnboardingEmail(
@@ -213,18 +192,13 @@ export class TenantsService {
     // Since EmailService doesn't have a "sendWithAttachments" yet, I should add it.
     // I'll assume I update EmailService next.
     // For now, I'll use a direct call if I were to modify it.
-    await this.emailService.sendEmailWithAttachments(
-      to,
-      subject,
-      html,
-      [
-        {
-          filename: `Invoice_${schoolName.replace(/\s/g, '_')}.pdf`,
-          content: invoiceBase64,
-          encoding: 'base64',
-        },
-      ],
-    );
+    await this.emailService.sendEmailWithAttachments(to, subject, html, [
+      {
+        filename: `Invoice_${schoolName.replace(/\s/g, '_')}.pdf`,
+        content: invoiceBase64,
+        encoding: 'base64',
+      },
+    ]);
   }
 
   async findOne(id: string): Promise<Tenant> {
