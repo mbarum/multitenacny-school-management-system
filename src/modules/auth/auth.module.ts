@@ -25,12 +25,14 @@ export class AuthModule implements OnApplicationBootstrap {
 
   onApplicationBootstrap() {
     const passportInstance = require('passport');
-    const isLocalRegistered = passportInstance._strategies?.local;
+    const isLocalRegistered = passportInstance._strategies?.['emis-local'];
     if (!isLocalRegistered) {
-      console.warn('[AuthModule] Local strategy NOT found in passport registry at bootstrap. Forcing registration...');
+      console.warn('[AuthModule] emis-local strategy NOT found in passport registry at bootstrap. Forcing registration...');
+      // Register both names to be 100% sure
+      passportInstance.use('emis-local', this.localStrategy);
       passportInstance.use('local', this.localStrategy);
     } else {
-      console.log('[AuthModule] Local strategy successfully verified in passport registry.');
+      console.log('[AuthModule] emis-local strategy successfully verified in passport registry.');
     }
   }
 }

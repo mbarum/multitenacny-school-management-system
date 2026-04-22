@@ -5,7 +5,7 @@ import { AuthService } from '../auth.service';
 import * as passport from 'passport';
 
 @Injectable()
-export class LocalStrategy extends PassportStrategy(passportLocal.Strategy, 'local') {
+export class LocalStrategy extends PassportStrategy(passportLocal.Strategy, 'emis-local') {
   constructor(private authService: AuthService) {
     super({
       usernameField: 'username',
@@ -13,10 +13,10 @@ export class LocalStrategy extends PassportStrategy(passportLocal.Strategy, 'loc
     });
     
     // Failsafe: Manually register with the global passport singleton
-    // This solves issues where @nestjs/passport and passport instance mismatches occur
     try {
       const passportInstance = require('passport');
-      passportInstance.use('local', this as any);
+      passportInstance.use('emis-local', this as any);
+      passportInstance.use('local', this as any); // Backwards compatibility for ghost calls
     } catch (e) {
       console.warn('Manual passport registration skip/fail:', e.message);
     }
