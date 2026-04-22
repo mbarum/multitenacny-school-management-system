@@ -1,28 +1,43 @@
 import {
   Injectable,
+  CanActivate,
+  ExecutionContext,
   UnauthorizedException,
-  InternalServerErrorException,
 } from '@nestjs/common';
-import { AuthGuard } from '@nestjs/passport';
+import { JwtService } from '@nestjs/jwt';
+import { UsersService } from '../../users/users.service';
 
 @Injectable()
-export class JwtAuthGuard extends AuthGuard('jwt') {
-  handleRequest<TUser = any>(err: any, user: TUser, info: any): TUser {
-    if (err || !user) {
-      const infoMessage = (info as { message?: string } | undefined)?.message;
-      // Check for specific passport errors
-      if (infoMessage === 'Unknown authentication strategy "jwt"') {
-        throw new InternalServerErrorException(
-          'Authentication configuration error: JWT strategy not registered.',
-        );
-      }
+export class JwtAuthGuard implements CanActivate {
+  constructor(
+    private readonly jwtService: JwtService,
+    private readonly usersService: UsersService,
+  ) {}
 
-      if (infoMessage) {
-        throw new UnauthorizedException(`Authentication failed: ${infoMessage}`);
-      }
+  async canActivate(context: ExecutionContext): Promise<boolean> {
+    const request = context.switchToHttp().getRequest();
+    const authHeader = request.headers.authorization;
 
-      throw err || new UnauthorizedException('Authentication required');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      throw new UnauthorizedException('Authentication required');
     }
-    return user;
+
+    const token = authHeader.split(' ')[1];
+
+    try {
+      const payload = this.jwtService.verify(token);
+      
+      // Attach user to request for use in controllers and other guards
+      const user = await this.usersService.findOne(payload.sub);
+      
+      if (!user) {
+        throw new UnauthorizedException('User not found');
+      }
+
+      request.user = user;
+      return true;
+    } catch (err) {
+      throw new UnauthorizedException('Invalid token');
+    }
   }
 }

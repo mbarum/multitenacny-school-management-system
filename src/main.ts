@@ -11,7 +11,7 @@ import { join } from 'path';
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
-  logger.log('SaaSLink Application Starting - VERSION: 1.0.7-DUAL-STRATEGY-FIX');
+  logger.log('SaaSLink Application Starting - VERSION: 1.0.8-IMMUTABLE-AUTH-OVERHAUL');
   
   const app = await NestFactory.create(
     AppModule,

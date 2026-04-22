@@ -6,10 +6,11 @@ import {
   Body,
   HttpCode,
   HttpStatus,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
-import { LocalAuthGuard } from './guards/local-auth.guard';
+import { LoginDto } from './dto/login.dto';
 import { AuthService } from './auth.service';
 import { RegisterSchoolDto } from './dto/register-school.dto';
 import { User } from '../users/entities/user.entity';
@@ -20,10 +21,19 @@ import { SkipSubscriptionCheck } from './decorators/skip-subscription-check.deco
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
-  @UseGuards(LocalAuthGuard)
   @Post('login')
-  login(@Request() req: { user: User }) {
-    return this.authService.login(req.user);
+  @HttpCode(HttpStatus.OK)
+  async login(@Body() loginDto: LoginDto) {
+    const user = await this.authService.validateUser(
+      loginDto.username,
+      loginDto.password,
+    );
+
+    if (!user) {
+      throw new UnauthorizedException('Invalid username or password');
+    }
+
+    return this.authService.login(user as User);
   }
 
   @Post('register-school')
