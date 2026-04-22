@@ -1,7 +1,6 @@
 import {
   Controller,
   Post,
-  UseGuards,
   Request,
   Body,
   HttpCode,
@@ -33,7 +32,7 @@ export class AuthController {
       throw new UnauthorizedException('Invalid username or password');
     }
 
-    return this.authService.login(user as User);
+    return await this.authService.login(user as User);
   }
 
   @Post('register-school')

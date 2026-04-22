@@ -5,6 +5,9 @@ import { UserRole } from '../../../src/common/user-role.enum';
 interface User {
   username: string;
   role: UserRole;
+  tenantId?: string;
+  plan?: string;
+  subscriptionStatus?: string;
 }
 
 interface AuthContextType {
@@ -23,16 +26,47 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (token) {
-      const decoded: { username: string; role: UserRole } = jwtDecode(token);
-      setUser({ username: decoded.username, role: decoded.role });
-      setIsAuthenticated(true);
+      try {
+        const decoded: { 
+          username: string; 
+          role: UserRole; 
+          tenantId: string;
+          plan: string;
+          subscriptionStatus: string;
+        } = jwtDecode(token);
+        
+        setUser({ 
+          username: decoded.username, 
+          role: decoded.role,
+          tenantId: decoded.tenantId,
+          plan: decoded.plan,
+          subscriptionStatus: decoded.subscriptionStatus
+        });
+        setIsAuthenticated(true);
+      } catch (e) {
+        console.error('Failed to decode token', e);
+        localStorage.removeItem('token');
+      }
     }
   }, []);
 
   const login = (token: string) => {
     localStorage.setItem('token', token);
-    const decoded: { username: string; role: UserRole } = jwtDecode(token);
-    setUser({ username: decoded.username, role: decoded.role });
+    const decoded: { 
+      username: string; 
+      role: UserRole; 
+      tenantId: string;
+      plan: string;
+      subscriptionStatus: string;
+    } = jwtDecode(token);
+
+    setUser({ 
+      username: decoded.username, 
+      role: decoded.role,
+      tenantId: decoded.tenantId,
+      plan: decoded.plan,
+      subscriptionStatus: decoded.subscriptionStatus
+    });
     setIsAuthenticated(true);
   };
 

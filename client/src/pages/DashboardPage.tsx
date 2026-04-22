@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../services/api';
 import { UserRole } from '../../../src/common/user-role.enum';
-import { Users, UserCheck, DollarSign, Activity, LogOut, Settings, GraduationCap, Calendar, FileText, CreditCard } from 'lucide-react';
+import { Users, UserCheck, DollarSign, Activity, LogOut, Settings, GraduationCap, Calendar, FileText, CreditCard, Zap } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 interface DashboardStats {
   totalStudents: number;
@@ -76,6 +77,13 @@ const DashboardPage: React.FC = () => {
             <CreditCard className="w-5 h-5 mr-3" />
             Payments
           </a>
+          {user?.role === UserRole.ADMIN && (
+            <a href="/pricing" className="flex items-center px-4 py-3 text-blue-600 hover:text-blue-700 bg-blue-50/50 hover:bg-blue-50 rounded-lg font-medium transition-colors mt-2">
+              <Zap className="w-5 h-5 mr-3" />
+              <span>Subscription</span>
+              <span className="ml-auto bg-blue-600 text-white text-[10px] px-2 py-0.5 rounded-full font-bold">UPGRADE</span>
+            </a>
+          )}
           {user?.role === UserRole.SUPER_ADMIN && (
             <a href="/super-admin" className="flex items-center px-4 py-3 text-purple-600 hover:bg-purple-50 rounded-lg font-medium transition-colors mt-4 border border-purple-100">
               <Settings className="w-5 h-5 mr-3" />
@@ -103,6 +111,30 @@ const DashboardPage: React.FC = () => {
               <button onClick={logout} className="text-red-600 font-medium">Logout</button>
             </div>
           </header>
+
+          {user?.role === UserRole.ADMIN && (user?.plan === 'FREE' || !user?.plan) && (
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="mb-8 bg-blue-600 rounded-2xl p-6 text-white flex flex-col md:flex-row items-center justify-between shadow-lg shadow-blue-200"
+            >
+              <div className="flex items-center mb-4 md:mb-0">
+                <div className="p-3 bg-white/20 rounded-xl mr-4">
+                  <Zap className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold">You are currently on the Free Plan</h3>
+                  <p className="text-blue-100 text-sm">Upgrade to Standard or Premium to unlock all features for your school.</p>
+                </div>
+              </div>
+              <a 
+                href="/pricing"
+                className="px-6 py-2 bg-white text-blue-600 rounded-xl font-bold text-sm hover:bg-blue-50 transition-colors uppercase tracking-wider"
+              >
+                Upgrade Now
+              </a>
+            </motion.div>
+          )}
 
           {/* Stats Grid */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">

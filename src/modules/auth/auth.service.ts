@@ -9,7 +9,7 @@ import { UserRole } from '../../common/user-role.enum';
 
 import { RegisterSchoolDto } from './dto/register-school.dto';
 import { TenantsService } from '../tenants/tenants.service';
-import { SubscriptionPlan } from '../../common/subscription.enums';
+import { SubscriptionPlan, SubscriptionStatus } from '../../common/subscription.enums';
 
 @Injectable()
 export class AuthService {
@@ -25,20 +25,40 @@ export class AuthService {
     pass: string,
   ): Promise<Partial<User> | null> {
     const user = await this.usersService.findByUsername(username);
-    if (user && (await bcrypt.compare(pass, user.password_hash))) {
+    if (!user) {
+      console.log(`[AuthService] Login failed: User not found with username "${username}"`);
+      return null;
+    }
+
+    if (await bcrypt.compare(pass, user.password_hash)) {
       const result: Partial<User> = { ...user };
       delete result.password_hash;
       return result;
     }
+    
+    console.log(`[AuthService] Login failed: Password mismatch for user "${username}"`);
     return null;
   }
 
-  login(user: User): { access_token: string } {
+  async login(user: User): Promise<{ access_token: string }> {
+    let plan = SubscriptionPlan.FREE;
+    let status = SubscriptionStatus.ACTIVE;
+
+    if (user.tenantId) {
+      const tenant = await this.tenantsService.findOne(user.tenantId);
+      if (tenant) {
+        plan = tenant.plan;
+        status = tenant.subscriptionStatus;
+      }
+    }
+
     const payload = {
       username: user.username,
       sub: user.id,
       role: user.role,
       tenantId: user.tenantId,
+      plan,
+      subscriptionStatus: status,
     };
     return {
       access_token: this.jwtService.sign(payload),

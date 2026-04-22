@@ -6,6 +6,14 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { UsersService } from '../../users/users.service';
+import { Request } from 'express';
+
+interface JwtPayload {
+  sub: string;
+  username: string;
+  role: string;
+  tenantId?: string;
+}
 
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
@@ -15,28 +23,29 @@ export class JwtAuthGuard implements CanActivate {
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const request = context.switchToHttp().getRequest();
+    const request = context.switchToHttp().getRequest<Request & { user?: any }>();
     const authHeader = request.headers.authorization;
 
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    if (!authHeader || typeof authHeader !== 'string' || !authHeader.startsWith('Bearer ')) {
       throw new UnauthorizedException('Authentication required');
     }
 
     const token = authHeader.split(' ')[1];
 
     try {
-      const payload = this.jwtService.verify(token);
-      
+      const payload = this.jwtService.verify(token) as JwtPayload;
+
       // Attach user to request for use in controllers and other guards
-      const user = await this.usersService.findOne(payload.sub);
-      
+      // We use findById to bypass tenant check since we are currently authenticating the user
+      const user = await this.usersService.findById(payload.sub);
+
       if (!user) {
         throw new UnauthorizedException('User not found');
       }
 
       request.user = user;
       return true;
-    } catch (err) {
+    } catch {
       throw new UnauthorizedException('Invalid token');
     }
   }

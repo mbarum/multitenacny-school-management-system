@@ -93,6 +93,10 @@ export class UsersService extends TenantAwareCrudService<User> {
       .getOne();
   }
 
+  async findById(id: string): Promise<User | null> {
+    return this.userRepository.findOne({ where: { id } });
+  }
+
   async setPasswordResetToken(
     id: string,
     token: string,
