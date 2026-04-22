@@ -1,4 +1,4 @@
-import { Module, OnModuleInit } from '@nestjs/common';
+import { Module, OnApplicationBootstrap } from '@nestjs/common';
 import { PassportModule } from '@nestjs/passport';
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
@@ -20,14 +20,15 @@ import * as passport from 'passport';
   controllers: [AuthController],
   exports: [AuthService, PassportModule, LocalStrategy],
 })
-export class AuthModule implements OnModuleInit {
+export class AuthModule implements OnApplicationBootstrap {
   constructor(private localStrategy: LocalStrategy) {}
 
-  onModuleInit() {
-    const isLocalRegistered = (passport as any)._strategies?.local;
+  onApplicationBootstrap() {
+    const passportInstance = require('passport');
+    const isLocalRegistered = passportInstance._strategies?.local;
     if (!isLocalRegistered) {
-      console.warn('[AuthModule] Local strategy NOT found in passport registry. Forcing registration...');
-      // PassportStrategy usually handles this, but we'll double check the singleton
+      console.warn('[AuthModule] Local strategy NOT found in passport registry at bootstrap. Forcing registration...');
+      passportInstance.use('local', this.localStrategy);
     } else {
       console.log('[AuthModule] Local strategy successfully verified in passport registry.');
     }

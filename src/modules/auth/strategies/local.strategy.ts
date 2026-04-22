@@ -15,7 +15,8 @@ export class LocalStrategy extends PassportStrategy(passportLocal.Strategy, 'loc
     // Failsafe: Manually register with the global passport singleton
     // This solves issues where @nestjs/passport and passport instance mismatches occur
     try {
-      passport.use('local', this as any);
+      const passportInstance = require('passport');
+      passportInstance.use('local', this as any);
     } catch (e) {
       console.warn('Manual passport registration skip/fail:', e.message);
     }
