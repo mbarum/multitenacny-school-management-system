@@ -1,6 +1,6 @@
 import 'module-alias/register';
 import 'reflect-metadata';
-import { ValidationPipe } from '@nestjs/common';
+import { ValidationPipe, Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { ExpressAdapter } from '@nestjs/platform-express';
 import helmet from 'helmet';
@@ -10,6 +10,9 @@ import * as express from 'express';
 import { join } from 'path';
 
 async function bootstrap() {
+  const logger = new Logger('Bootstrap');
+  logger.log('SaaSLink Application Starting - VERSION: 1.0.5-FIX-AUTH');
+  
   const app = await NestFactory.create(
     AppModule,
     new ExpressAdapter(),

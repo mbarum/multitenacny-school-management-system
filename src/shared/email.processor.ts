@@ -82,11 +82,16 @@ export class EmailProcessor extends WorkerHost {
       return;
     }
 
-    const from =
+    let from =
       this.configService.get<string>('EMAIL_FROM') ||
       this.configService.get<string>('MAIL_FROM_ADDRESS') ||
       this.configService.get<string>('EMAIL_USER') ||
       'emis@saaslink.tech';
+
+    // Aggressive override if it contains placeholders
+    if (from.includes('yourdomain.com') || from.includes('saaslink.test') || from === 'noreply@example.com') {
+      from = 'emis@saaslink.tech';
+    }
 
     try {
       await this.getTransporter().sendMail({
