@@ -19,10 +19,11 @@ import {
   Star
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { toast } from 'sonner';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 import api from '../services/api';
 
-const StatCard = ({ icon, label, value, color }: { icon: React.ReactNode, label: string, value: string | number, color: string }) => {
+const StatCard = ({ icon, label, value, color, tooltip }: { icon: React.ReactNode, label: string, value: string | number, color: string, tooltip?: string }) => {
   const colorMap: Record<string, string> = {
     blue: 'bg-blue-50 text-blue-600 border-blue-100',
     green: 'bg-green-50 text-green-600 border-green-100',
@@ -34,7 +35,7 @@ const StatCard = ({ icon, label, value, color }: { icon: React.ReactNode, label:
 
   return (
     <motion.div
-      className="bg-white p-5 rounded-3xl flex items-center space-x-3 border border-gray-100 shadow-sm min-w-0"
+      className="bg-white p-5 rounded-3xl flex items-center space-x-3 border border-gray-100 shadow-sm min-w-0 group relative cursor-help"
       whileHover={{ y: -5, scale: 1.02 }}
     >
       <div className={`p-3 rounded-2xl shrink-0 ${colorMap[color] || 'bg-gray-50 text-gray-400 border-gray-100'} border`}>{icon}</div>
@@ -42,6 +43,11 @@ const StatCard = ({ icon, label, value, color }: { icon: React.ReactNode, label:
         <p className="text-gray-400 text-[9px] font-bold uppercase tracking-wider truncate">{label}</p>
         <p className="text-xl font-black text-gray-900 mt-0.5 truncate">{value}</p>
       </div>
+      {tooltip && (
+        <div className="absolute -top-12 left-1/2 -translate-x-1/2 px-3 py-2 bg-gray-900 text-white text-[10px] rounded-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
+          {tooltip}
+        </div>
+      )}
     </motion.div>
   );
 };
@@ -117,10 +123,10 @@ const SuperAdminPage = () => {
       await fetchData();
       setShowEnrollModal(false);
       setNewTenant({ name: '', domain: '', plan: 'standard', email: '', subscriptionFee: '' });
-      alert('School enrolled successfully!');
+      toast.success('School enrolled successfully!');
     } catch (error) {
        console.error('Failed to enroll tenant:', error);
-       alert('Failed to enroll school. Name or domain might already exist.');
+       toast.error('Failed to enroll school. Name or domain might already exist.');
     } finally {
       setEnrolling(false);
     }
@@ -133,10 +139,10 @@ const SuperAdminPage = () => {
       await fetchData();
       setShowPlanModal(false);
       setSelectedTenant(null);
-      alert(`Subscription updated to ${plan} successfully.`);
+      toast.success(`Subscription updated to ${plan} successfully.`);
     } catch (error) {
       console.error('Failed to update plan:', error);
-      alert('Failed to update subscription.');
+      toast.error('Failed to update subscription.');
     } finally {
       setUpdatingPlan(false);
     }
@@ -243,12 +249,12 @@ const SuperAdminPage = () => {
                 transition={{ duration: 0.3 }}
               >
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6 mb-12">
-                  <StatCard icon={<Building size={20} />} label="Total Schools" value={analytics.totalTenants} color="blue" />
-                  <StatCard icon={<CheckCircle size={20} />} label="Active Subs" value={analytics.activeSubscriptions} color="green" />
-                  <StatCard icon={<GraduationCap size={20} />} label="Student Base" value={analytics.totalStudents} color="purple" />
-                  <StatCard icon={<ArrowRight size={20} />} label="Attendance" value={`${analytics.averageAttendance}%`} color="indigo" />
-                  <StatCard icon={<Wallet size={20} />} label="Gross Revenue" value={`KES ${(analytics.totalRevenue || 0).toLocaleString()}`} color="emerald" />
-                  <StatCard icon={<Bell size={20} />} label="Approvals" value={analytics.pendingApprovals} color="yellow" />
+                  <StatCard icon={<Building size={20} />} label="Total Schools" value={analytics.totalTenants} color="blue" tooltip="Total schools provisioned on the platform" />
+                  <StatCard icon={<CheckCircle size={20} />} label="Active Subs" value={analytics.activeSubscriptions} color="green" tooltip="Schools with currently active and paid subscriptions" />
+                  <StatCard icon={<GraduationCap size={20} />} label="Student Base" value={analytics.totalStudents} color="purple" tooltip="Cumulative students across all managed institutions" />
+                  <StatCard icon={<ArrowRight size={20} />} label="Attendance" value={`${analytics.averageAttendance}%`} color="indigo" tooltip="Real-time average student attendance across the network" />
+                  <StatCard icon={<Wallet size={20} />} label="Gross Revenue" value={`KES ${(analytics.totalRevenue || 0).toLocaleString()}`} color="emerald" tooltip="Total system-wide revenue from all payment vectors" />
+                  <StatCard icon={<Bell size={20} />} label="Approvals" value={analytics.pendingApprovals} color="yellow" tooltip="Manual bank/M-Pesa confirmations awaiting action" />
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
@@ -395,53 +401,75 @@ const SuperAdminPage = () => {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-100">
-                        {filteredTenants.map((tenant) => (
-                          <tr key={tenant.id} className="hover:bg-gray-50 transition-colors group">
-                            <td className="px-8 py-6">
-                              <div className="font-bold text-gray-900 tracking-tight">{tenant.name}</div>
-                              <div className="text-[10px] text-gray-500 uppercase tracking-widest mt-1">ID: {tenant.id.split('-')[0]}</div>
-                            </td>
-                            <td className="px-8 py-6">
-                              <span className="text-xs font-mono text-indigo-600 font-bold">{tenant.domain}</span>
-                            </td>
-                            <td className="px-8 py-6">
-                              <div className="flex items-center space-x-2">
-                                <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border ${
-                                  tenant.plan === 'enterprise' ? 'bg-purple-50 text-purple-600 border-purple-200' :
-                                  tenant.plan === 'premium' ? 'bg-emerald-50 text-emerald-600 border-emerald-200' :
-                                  'bg-blue-50 text-blue-600 border-blue-200'
-                                }`}>
-                                  {tenant.plan}
-                                </span>
-                                <button 
-                                  onClick={() => { setSelectedTenant(tenant); setShowPlanModal(true); }}
-                                  className="p-1.5 text-gray-300 hover:text-brand-green transition-colors"
-                                  title="Edit Subscription"
-                                >
-                                  <Settings size={14} />
-                                </button>
-                              </div>
-                            </td>
-                            <td className="px-8 py-6">
-                              <button 
-                                onClick={() => handleToggleStatus(tenant.id, tenant.subscriptionStatus)}
-                                className={`flex items-center space-x-2 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest border transition-all ${
-                                  tenant.subscriptionStatus === 'active' 
-                                    ? 'bg-green-50 text-green-600 border-green-200 hover:bg-green-100' 
-                                    : 'bg-red-50 text-red-600 border-red-200 hover:bg-red-100'
-                                }`}
-                              >
-                                <span className={`w-1.5 h-1.5 rounded-full ${tenant.subscriptionStatus === 'active' ? 'bg-green-500' : 'bg-red-500'}`}></span>
-                                <span>{tenant.subscriptionStatus}</span>
-                              </button>
-                            </td>
-                            <td className="px-8 py-6 text-right">
-                               <Link to={`/super-admin/tenants/${tenant.id}`} className="p-2 text-gray-300 hover:text-brand-green transition-colors inline-block">
-                                 <MoreVertical size={18} />
-                               </Link>
-                            </td>
-                          </tr>
-                        ))}
+                         {filteredTenants.length > 0 ? (
+                           filteredTenants.map((tenant) => (
+                             <tr key={tenant.id} className="hover:bg-gray-50 transition-colors group">
+                               <td className="px-8 py-6">
+                                 <div className="font-bold text-gray-900 tracking-tight">{tenant.name}</div>
+                                 <div className="text-[10px] text-gray-500 uppercase tracking-widest mt-1">ID: {tenant.id.split('-')[0]}</div>
+                               </td>
+                               <td className="px-8 py-6">
+                                 <span className="text-xs font-mono text-indigo-600 font-bold">{tenant.domain}</span>
+                               </td>
+                               <td className="px-8 py-6">
+                                 <div className="flex items-center space-x-2">
+                                   <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border ${
+                                     tenant.plan === 'enterprise' ? 'bg-purple-50 text-purple-600 border-purple-200' :
+                                     tenant.plan === 'premium' ? 'bg-emerald-50 text-emerald-600 border-emerald-200' :
+                                     'bg-blue-50 text-blue-600 border-blue-200'
+                                   }`}>
+                                     {tenant.plan}
+                                   </span>
+                                   <button 
+                                     onClick={() => { setSelectedTenant(tenant); setShowPlanModal(true); }}
+                                     className="p-1.5 text-gray-300 hover:text-brand-green transition-colors"
+                                     title="Edit Subscription"
+                                   >
+                                     <Settings size={14} />
+                                   </button>
+                                 </div>
+                               </td>
+                               <td className="px-8 py-6">
+                                 <button 
+                                   onClick={() => handleToggleStatus(tenant.id, tenant.subscriptionStatus)}
+                                   className={`flex items-center space-x-2 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest border transition-all ${
+                                     tenant.subscriptionStatus === 'active' 
+                                       ? 'bg-green-50 text-green-600 border-green-200 hover:bg-green-100' 
+                                       : 'bg-red-50 text-red-600 border-red-200 hover:bg-red-100'
+                                   }`}
+                                 >
+                                   <span className={`w-1.5 h-1.5 rounded-full ${tenant.subscriptionStatus === 'active' ? 'bg-green-500' : 'bg-red-500'}`}></span>
+                                   <span>{tenant.subscriptionStatus}</span>
+                                 </button>
+                               </td>
+                               <td className="px-8 py-6 text-right">
+                                  <Link to={`/super-admin/tenants/${tenant.id}`} className="p-2 text-gray-300 hover:text-brand-green transition-colors inline-block">
+                                    <MoreVertical size={18} />
+                                  </Link>
+                               </td>
+                             </tr>
+                           ))
+                         ) : (
+                           <tr>
+                              <td colSpan={5} className="px-8 py-32 text-center">
+                                <div className="flex flex-col items-center justify-center">
+                                  <div className="w-20 h-20 bg-gray-50 rounded-[32px] flex items-center justify-center mb-6 border border-gray-100">
+                                    <Building size={32} className="text-gray-200" />
+                                  </div>
+                                  <h3 className="text-xl font-black text-gray-900 tracking-tight leading-none">No Institutions Found</h3>
+                                  <p className="text-gray-500 mt-3 text-sm font-medium max-w-xs mx-auto">
+                                    The global network is waiting for its first node. Direct enrollment is required to proceed.
+                                  </p>
+                                  <button 
+                                    onClick={() => setShowEnrollModal(true)}
+                                    className="mt-8 px-8 py-3 bg-brand-green text-brand-sand rounded-2xl text-[11px] font-black uppercase tracking-widest shadow-xl shadow-brand-green/10 active:scale-95 transition-all"
+                                  >
+                                    Enroll First Institution
+                                  </button>
+                                </div>
+                              </td>
+                           </tr>
+                         )}
                       </tbody>
                     </table>
                   </div>

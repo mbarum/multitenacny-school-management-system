@@ -3,6 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { motion } from 'framer-motion';
 import { Lock, User, ArrowRight, Zap } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { toast } from 'sonner';
 import api from '../services/api';
 
 const LoginPage: React.FC = () => {
@@ -17,7 +18,7 @@ const LoginPage: React.FC = () => {
       login(response.data.access_token);
     } catch (error) {
       console.error('Login failed', error);
-      alert('Invalid credentials. Please try again.');
+      toast.error('Invalid credentials. Please try again.');
     }
   };
 

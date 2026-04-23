@@ -7,6 +7,7 @@ import {
   HttpStatus,
   UnauthorizedException,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { LoginDto } from './dto/login.dto';
@@ -20,6 +21,7 @@ import { SkipSubscriptionCheck } from './decorators/skip-subscription-check.deco
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
+  @Throttle({ default: { limit: 5, ttl: 60000 } }) // 5 attempts per minute
   @Post('login')
   @HttpCode(HttpStatus.OK)
   async login(@Body() loginDto: LoginDto) {
@@ -40,6 +42,7 @@ export class AuthController {
     return this.authService.registerSchool(registerSchoolDto);
   }
 
+  @Throttle({ default: { limit: 3, ttl: 3600000 } }) // 3 requests per hour
   @Post('forgot-password')
   @HttpCode(HttpStatus.OK)
   async forgotPassword(@Body() forgotPasswordDto: ForgotPasswordDto) {

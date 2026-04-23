@@ -3,6 +3,7 @@ import {
   NestMiddleware,
   NotFoundException,
   ForbiddenException,
+  Logger,
 } from '@nestjs/common';
 import { Request, Response, NextFunction } from 'express';
 import { TenantsService } from '../../modules/tenants/tenants.service';
@@ -19,6 +20,8 @@ export interface JwtPayload {
 
 @Injectable()
 export class TenantMiddleware implements NestMiddleware {
+  private readonly logger = new Logger(TenantMiddleware.name);
+
   constructor(
     private readonly tenantsService: TenantsService,
     private readonly tenancyService: TenancyService,
@@ -32,6 +35,7 @@ export class TenantMiddleware implements NestMiddleware {
     }
 
     let tenantId: string | undefined;
+    let isImpersonating = false;
     const authHeader = req.headers.authorization;
 
     // 1. Try to extract and verify tenantId from JWT if Authorization header is present
@@ -51,6 +55,7 @@ export class TenantMiddleware implements NestMiddleware {
             if (payload.role === UserRole.SUPER_ADMIN) {
               // Allow SUPER_ADMIN to override the tenantId for impersonation/management
               tenantId = headerTenantId;
+              isImpersonating = true;
             } else {
               throw new ForbiddenException(
                 'Security Violation: Provided Tenant ID does not match authenticated session',
@@ -62,7 +67,12 @@ export class TenantMiddleware implements NestMiddleware {
           const headerTenantId = req.headers['x-tenant-id'] as string;
           if (headerTenantId) {
             tenantId = headerTenantId;
+            isImpersonating = true;
           }
+        }
+
+        if (isImpersonating && tenantId) {
+          this.logger.warn(`IMPERSONATION DETECTED: Super Admin ${payload.username} (${payload.sub}) is accessing Tenant ${tenantId}`);
         }
       } catch (error) {
         // If verification fails, we don't trust the JWT.

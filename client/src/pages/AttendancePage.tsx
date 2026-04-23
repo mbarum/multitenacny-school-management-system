@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../services/api';
 import { motion } from 'framer-motion';
+import { toast } from 'sonner';
 
 interface Student {
   id: string;
@@ -75,7 +76,7 @@ const AttendancePage: React.FC = () => {
         sectionId: selectedSection,
       }));
       await api.post('/attendance/bulk', { records: payload });
-      alert('Attendance saved successfully!');
+      toast.success('Attendance saved successfully!');
     } catch (error) {
       console.error('Failed to save attendance', error);
     }

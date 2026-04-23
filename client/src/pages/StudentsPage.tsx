@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../services/api';
+import { toast } from 'sonner';
 import { UserRole } from '../../../src/common/user-role.enum';
 import { Users, UserCheck, DollarSign, Activity, LogOut, Settings, GraduationCap, Calendar, FileText, CreditCard, Plus, Edit, Trash2, X, Search, Eye, User, Mail, Phone, ShieldCheck, Award, Info } from 'lucide-react';
 
@@ -119,10 +120,11 @@ const StudentsPage: React.FC = () => {
       await api.patch('/students/bulk/update', payload);
       setIsBulkStatusModalOpen(false);
       setIsBulkClassModalOpen(false);
+      toast.success('Students updated successfully');
       fetchData();
     } catch (error: any) {
       console.error('Failed to update students', error);
-      alert('Failed to update students. Please try again.');
+      toast.error('Failed to update students. Please try again.');
     }
   };
 
@@ -184,17 +186,19 @@ const StudentsPage: React.FC = () => {
 
       if (editingStudent) {
         await api.patch(`/students/${editingStudent.id}`, payload);
+        toast.success('Student updated successfully');
       } else {
         await api.post('/students', payload);
+        toast.success('Student added successfully');
       }
       handleCloseModal();
       fetchData();
     } catch (error: any) {
       console.error('Failed to save student', error);
       if (error.response && error.response.data && error.response.data.message) {
-        alert(`Error: ${error.response.data.message}`);
+        toast.error(`Error: ${error.response.data.message}`);
       } else {
-        alert('Failed to save student. Please try again.');
+        toast.error('Failed to save student. Please try again.');
       }
     }
   };
@@ -203,10 +207,11 @@ const StudentsPage: React.FC = () => {
     if (window.confirm('Are you sure you want to delete this student?')) {
       try {
         await api.delete(`/students/${id}`);
+        toast.success('Student deleted successfully');
         fetchData();
       } catch (error) {
         console.error('Failed to delete student', error);
-        alert('Failed to delete student.');
+        toast.error('Failed to delete student.');
       }
     }
   };
@@ -416,13 +421,28 @@ const StudentsPage: React.FC = () => {
                         </td>
                       </tr>
                     ))
-                  ) : (
-                    <tr>
-                      <td colSpan={7} className="px-6 py-8 text-center text-gray-500">
-                        No students found. Click "Add Student" to create one.
-                      </td>
-                    </tr>
-                  )}
+                    ) : (
+                      <tr>
+                        <td colSpan={7} className="px-6 py-20 text-center">
+                          <div className="flex flex-col items-center justify-center text-center">
+                            <div className="w-20 h-20 bg-gray-50 rounded-[2rem] flex items-center justify-center mb-6 border border-gray-100 shadow-sm transition-transform hover:scale-105">
+                              <Users className="w-10 h-10 text-gray-300" />
+                            </div>
+                            <h3 className="text-xl font-bold text-gray-900 tracking-tight">No Students Registered</h3>
+                            <p className="text-sm text-gray-500 mt-2.5 max-w-xs mx-auto">
+                              Begin building your educational database by adding your school's first student directly to this class logic.
+                            </p>
+                            <button 
+                              onClick={() => handleOpenModal()}
+                              className="mt-8 px-6 py-2.5 bg-blue-600 text-white rounded-xl text-[13px] font-bold shadow-lg shadow-blue-600/10 hover:bg-blue-700 active:scale-95 transition-all flex items-center space-x-2 mx-auto"
+                            >
+                              <Plus className="w-4 h-4" />
+                              <span>Enroll New Student</span>
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
                 </tbody>
               </table>
             </div>

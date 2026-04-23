@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Users, BookOpen, Calendar, CheckSquare, LogOut, Bell, MessageSquare, Award, ChevronRight, Search, Check, X, Clock, Save } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { toast } from 'sonner';
 
 const TeacherGradingPage: React.FC = () => {
   const { user, logout } = useAuth();
@@ -30,7 +31,7 @@ const TeacherGradingPage: React.FC = () => {
   };
 
   const handleSave = () => {
-    alert('Grades saved successfully!');
+    toast.success('Grades saved successfully!');
   };
 
   return (

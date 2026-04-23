@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import { toast } from 'sonner';
 import { 
   Lock, 
   User, 
@@ -90,7 +91,7 @@ const RegisterPage: React.FC = () => {
             plan: formData.plan,
             billingCycle: formData.billingCycle
           });
-          alert('STK Push sent! Please complete payment on your phone.');
+          toast.success('STK Push sent! Please complete payment on your phone.');
         } catch (payErr) {
           console.error('Payment initiation failed', payErr);
           // We still registered successfully, so we can continue to dashboard
