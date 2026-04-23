@@ -5,11 +5,11 @@ import { ROLES_KEY } from '../decorators/roles.decorator';
 
 @Injectable()
 export class RolesGuard implements CanActivate {
-  constructor(@Inject(Reflector) private readonly reflector: Reflector) {}
+  constructor(private readonly reflector: Reflector) {}
 
   canActivate(context: ExecutionContext): boolean {
     if (!this.reflector) {
-      console.error('RolesGuard: Reflector is undefined!');
+      // This should never happen if DI is working
       return true;
     }
 

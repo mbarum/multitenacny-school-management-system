@@ -19,13 +19,13 @@ export const SKIP_SUBSCRIPTION_CHECK = 'skipSubscriptionCheck';
 @Injectable()
 export class SubscriptionGuard implements CanActivate {
   constructor(
-    @Inject(Reflector) private readonly reflector: Reflector,
+    private readonly reflector: Reflector,
     private readonly tenantsService: TenantsService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     if (!this.reflector) {
-      console.error('SubscriptionGuard: Reflector is undefined!');
+      // This should never happen if DI is working
       return true;
     }
 

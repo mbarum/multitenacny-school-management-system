@@ -34,13 +34,13 @@ const StatCard = ({ icon, label, value, color }: { icon: React.ReactNode, label:
 
   return (
     <motion.div
-      className="bg-white p-6 rounded-3xl flex items-center space-x-4 border border-gray-100 shadow-sm"
+      className="bg-white p-5 rounded-3xl flex items-center space-x-3 border border-gray-100 shadow-sm min-w-0"
       whileHover={{ y: -5, scale: 1.02 }}
     >
-      <div className={`p-4 rounded-2xl ${colorMap[color] || 'bg-gray-50 text-gray-400 border-gray-100'} border`}>{icon}</div>
-      <div>
-        <p className="text-gray-400 text-[10px] font-bold uppercase tracking-[0.2em]">{label}</p>
-        <p className="text-2xl font-black text-gray-900 mt-1">{value}</p>
+      <div className={`p-3 rounded-2xl shrink-0 ${colorMap[color] || 'bg-gray-50 text-gray-400 border-gray-100'} border`}>{icon}</div>
+      <div className="min-w-0">
+        <p className="text-gray-400 text-[9px] font-bold uppercase tracking-wider truncate">{label}</p>
+        <p className="text-xl font-black text-gray-900 mt-0.5 truncate">{value}</p>
       </div>
     </motion.div>
   );
@@ -76,6 +76,8 @@ const SuperAdminPage = () => {
             activeSubscriptions: 0, 
             pendingApprovals: 0, 
             totalRevenue: 0,
+            totalStudents: 0,
+            averageAttendance: 0,
             recentPayments: [],
             revenueOverTime: [],
             tenantsByPlan: []
@@ -87,7 +89,18 @@ const SuperAdminPage = () => {
         })
       ]);
       
-      setAnalytics(analyticsRes.data);
+      const analyticsData = analyticsRes.data || {};
+      setAnalytics({
+        totalTenants: analyticsData.totalTenants ?? 0,
+        activeSubscriptions: analyticsData.activeSubscriptions ?? 0,
+        pendingApprovals: analyticsData.pendingApprovals ?? 0,
+        totalRevenue: analyticsData.totalRevenue ?? 0,
+        totalStudents: analyticsData.totalStudents ?? 0,
+        averageAttendance: analyticsData.averageAttendance ?? 0,
+        recentPayments: analyticsData.recentPayments || [],
+        revenueOverTime: analyticsData.revenueOverTime || [],
+        tenantsByPlan: analyticsData.tenantsByPlan || []
+      });
       setTenants(Array.isArray(tenantsRes.data) ? tenantsRes.data : []);
     } catch (error) {
       console.error('Unexpected error in SuperAdmin data fetch:', error);
@@ -229,12 +242,12 @@ const SuperAdminPage = () => {
                 exit={{ opacity: 0, y: -20 }}
                 transition={{ duration: 0.3 }}
               >
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-6 mb-12">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6 mb-12">
                   <StatCard icon={<Building size={20} />} label="Total Schools" value={analytics.totalTenants} color="blue" />
                   <StatCard icon={<CheckCircle size={20} />} label="Active Subs" value={analytics.activeSubscriptions} color="green" />
                   <StatCard icon={<GraduationCap size={20} />} label="Student Base" value={analytics.totalStudents} color="purple" />
                   <StatCard icon={<ArrowRight size={20} />} label="Attendance" value={`${analytics.averageAttendance}%`} color="indigo" />
-                  <StatCard icon={<Wallet size={20} />} label="Gross Revenue" value={`KES ${analytics.totalRevenue.toLocaleString()}`} color="emerald" />
+                  <StatCard icon={<Wallet size={20} />} label="Gross Revenue" value={`KES ${(analytics.totalRevenue || 0).toLocaleString()}`} color="emerald" />
                   <StatCard icon={<Bell size={20} />} label="Approvals" value={analytics.pendingApprovals} color="yellow" />
                 </div>
 

@@ -31,7 +31,7 @@ import { APP_GUARD } from '@nestjs/core';
     SubscriptionGuard,
     {
       provide: APP_GUARD,
-      useClass: SubscriptionGuard,
+      useExisting: SubscriptionGuard,
     },
   ],
   controllers: [AuthController],
