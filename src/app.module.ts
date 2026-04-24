@@ -28,6 +28,8 @@ import { UsersModule } from './modules/users/users.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { PaymentsModule } from './modules/payments/payments.module';
 import { AppConfigModule } from './modules/config/config.module';
+import { FinanceModule } from './modules/finance/finance.module';
+import { AdmissionsModule } from './modules/admissions/admissions.module';
 
 import { JwtModule } from '@nestjs/jwt';
 import { BullModule } from '@nestjs/bullmq';
@@ -55,9 +57,13 @@ import { TenantThrottlerGuard } from './core/guards/tenant-throttler.guard';
       useFactory: async (configService: ConfigService) => {
         const redisHost = configService.get('REDIS_HOST');
         const redisPort = configService.get<number>('REDIS_PORT');
-        
+
         // Use memory store if Redis is not configured or in placeholder state
-        if (!redisHost || redisHost === 'localhost' || redisHost === 'your_redis_host') {
+        if (
+          !redisHost ||
+          redisHost === 'localhost' ||
+          redisHost === 'your_redis_host'
+        ) {
           return {
             store: 'memory',
             ttl: 300,
@@ -86,13 +92,16 @@ import { TenantThrottlerGuard } from './core/guards/tenant-throttler.guard';
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => {
         const redisHost = configService.get('REDIS_HOST');
-        
+
         // If Redis is missing, Bull will fail. We'll use a dummy/local config or warn.
-        // For AIS environment, we usually expect Redis if Bull is used, 
+        // For AIS environment, we usually expect Redis if Bull is used,
         // but we'll fallback to localhost to at least allow bootstrap if it's there.
         return {
           connection: {
-            host: redisHost === 'your_redis_host' ? 'localhost' : (redisHost || 'localhost'),
+            host:
+              redisHost === 'your_redis_host'
+                ? 'localhost'
+                : redisHost || 'localhost',
             port: configService.get<number>('REDIS_PORT', 6379),
             password: configService.get('REDIS_PASSWORD', ''),
           },
@@ -131,12 +140,21 @@ import { TenantThrottlerGuard } from './core/guards/tenant-throttler.guard';
           type: 'mysql',
           host: dbHost,
           port: configService.get<number>('DB_PORT') || 3306,
-          username: configService.get<string>('DB_USERNAME') === 'your_production_database_username' 
-            ? 'root' : (configService.get<string>('DB_USERNAME') || 'root'),
-          password: configService.get<string>('DB_PASSWORD') === 'your_production_database_password'
-            ? '' : (configService.get<string>('DB_PASSWORD') || ''),
-          database: configService.get<string>('DB_DATABASE') === 'your_production_database_name'
-            ? 'saaslink' : (configService.get<string>('DB_DATABASE') || 'saaslink'),
+          username:
+            configService.get<string>('DB_USERNAME') ===
+            'your_production_database_username'
+              ? 'root'
+              : configService.get<string>('DB_USERNAME') || 'root',
+          password:
+            configService.get<string>('DB_PASSWORD') ===
+            'your_production_database_password'
+              ? ''
+              : configService.get<string>('DB_PASSWORD') || '',
+          database:
+            configService.get<string>('DB_DATABASE') ===
+            'your_production_database_name'
+              ? 'saaslink'
+              : configService.get<string>('DB_DATABASE') || 'saaslink',
           autoLoadEntities: true,
           synchronize: true, // Force synchronization to resolve missing columns
         };
@@ -175,6 +193,8 @@ import { TenantThrottlerGuard } from './core/guards/tenant-throttler.guard';
 
     // Payments
     PaymentsModule,
+    FinanceModule,
+    AdmissionsModule,
 
     // Config
     AppConfigModule,

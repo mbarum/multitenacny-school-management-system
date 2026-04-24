@@ -37,6 +37,9 @@ import { UserRole } from '../../src/common/user-role.enum';
 
 import DashboardLayout from './components/DashboardLayout';
 
+import AdmissionsPage from './pages/AdmissionsPage';
+import OnlineApplicationPage from './pages/OnlineApplicationPage';
+
 const AppRoutes: React.FC = () => {
   const { isAuthenticated, user } = useAuth();
 
@@ -53,6 +56,7 @@ const AppRoutes: React.FC = () => {
       <Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route path="/register" element={<RegisterPage />} />
       <Route path="/pricing" element={<PricingPage />} />
+      <Route path="/apply/:tenantId" element={<OnlineApplicationPage />} />
       <Route 
         path="/"
         element={
@@ -74,6 +78,10 @@ const AppRoutes: React.FC = () => {
       <Route
         path="/students"
         element={renderProtectedRoute(<StudentsPage />, UserRole.ADMIN)}
+      />
+      <Route
+        path="/admissions"
+        element={renderProtectedRoute(<AdmissionsPage />, UserRole.ADMIN)}
       />
       <Route
         path="/super-admin"
