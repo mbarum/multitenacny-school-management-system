@@ -115,7 +115,7 @@ const PayrollPage: React.FC = () => {
           <div>
             <div className="flex items-center space-x-2 text-blue-600 mb-2">
               <Calculator size={16} className="animate-pulse" />
-              <span className="text-[10px] font-black uppercase tracking-[0.2em]">Treasury & Finance</span>
+              <span className="text-[10px] font-black uppercase tracking-[0.2em]">Institutional Finance</span>
             </div>
             <h1 className="text-5xl font-black text-gray-900 uppercase tracking-tighter leading-none italic">
               Payroll <span className="text-blue-600">Engine</span>

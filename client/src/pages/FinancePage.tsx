@@ -29,6 +29,7 @@ import {
   X
 } from 'lucide-react';
 import { toast } from 'sonner';
+import DashboardLayout from '../components/DashboardLayout';
 
 interface Invoice {
   id: string;
@@ -60,7 +61,7 @@ interface DashboardMetrics {
   expenses: number;
 }
 
-const TreasuryPage: React.FC = () => {
+const FinancePage: React.FC = () => {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
@@ -108,7 +109,7 @@ const TreasuryPage: React.FC = () => {
       setExpenses(expensesRes.data);
     } catch (error) {
       console.error('Failed to fetch financials', error);
-      toast.error('Could not sync treasury data');
+      toast.error('Could not sync finance data');
     } finally {
       setLoading(false);
     }
@@ -174,29 +175,35 @@ const TreasuryPage: React.FC = () => {
   };
 
   if (loading) {
-     return <div className="min-h-screen flex items-center justify-center bg-white"><RefreshCw className="animate-spin text-emerald-500" size={48} /></div>;
+     return (
+       <DashboardLayout>
+         <div className="h-full flex items-center justify-center">
+            <RefreshCw className="animate-spin text-indigo-600" size={32} />
+         </div>
+       </DashboardLayout>
+     );
   }
 
   return (
-    <div className="min-h-screen bg-[#FDFDFD] p-8">
-      <div className="max-w-7xl mx-auto">
-        <header className="flex flex-col md:flex-row md:items-end justify-between gap-8 mb-16">
+    <DashboardLayout>
+      <div className="max-w-7xl mx-auto pb-20">
+        <header className="flex flex-col md:flex-row md:items-center justify-between gap-8 mb-12">
           <div>
-            <div className="flex items-center space-x-2 text-emerald-600 mb-3">
-              <Building2 size={18} />
-              <span className="text-[10px] font-black uppercase tracking-[0.3em]">Treasury Command</span>
+            <div className="flex items-center space-x-2 text-indigo-600 mb-2">
+              <Building2 size={16} />
+              <span className="text-[10px] font-black uppercase tracking-[0.2em]">Fiscal Intelligence</span>
             </div>
-            <h1 className="text-6xl font-black text-gray-900 uppercase tracking-tighter italic leading-none">
-              Fiscal <span className="text-emerald-500">Ops</span>
+            <h1 className="text-4xl font-display font-black text-gray-900 tracking-tight leading-none uppercase italic">
+              FINANCE <span className="text-indigo-600">COMMAND</span>
             </h1>
           </div>
           
-          <div className="flex items-center bg-gray-100/50 p-1.5 rounded-2xl border border-gray-100">
+          <div className="flex bg-white p-1.5 rounded-2xl border border-gray-200/60 shadow-sm">
              {['overview', 'invoices', 'revenue', 'expenses'].map(tab => (
                <button
                 key={tab}
                 onClick={() => setActiveTab(tab as any)}
-                className={`px-8 py-3 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all ${activeTab === tab ? 'bg-white text-gray-900 shadow-xl shadow-gray-200' : 'text-gray-400 hover:text-gray-600'}`}
+                className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === tab ? 'bg-gray-900 text-white shadow-lg' : 'text-gray-400 hover:text-gray-600'}`}
                >
                  {tab}
                </button>
@@ -205,199 +212,190 @@ const TreasuryPage: React.FC = () => {
         </header>
 
         {activeTab === 'overview' && (
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-             <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-12">
-                <div className="bg-emerald-500 rounded-[3rem] p-8 text-white shadow-2xl shadow-emerald-200 group overflow-hidden relative">
-                   <Wallet className="mb-6 opacity-40 group-hover:scale-110 transition-transform" size={32} />
-                   <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-80 mb-2">Net Liquidity</p>
-                   <h2 className="text-4xl font-black tabular-nums tracking-tighter italic">
-                     KES {Number(metrics?.cashBalance || 0).toLocaleString()}
+          <div className="space-y-12">
+             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div className="bg-white border border-gray-200/60 rounded-[2rem] p-10 shadow-sm relative overflow-hidden group">
+                   <div className="flex items-center justify-between mb-8">
+                      <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center border border-indigo-100">
+                         <Wallet size={20} />
+                      </div>
+                      <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Global Balance</span>
+                   </div>
+                   <h2 className="text-4xl font-display font-black text-gray-900 tracking-tighter tabular-nums leading-none">
+                     <span className="text-lg text-gray-400 font-medium mr-2">KES</span>
+                     {Number(metrics?.cashBalance || 0).toLocaleString()}
                    </h2>
+                   <div className="mt-8 flex items-center text-emerald-600 space-x-1">
+                      <ArrowUpRight size={14} />
+                      <span className="text-[10px] font-black uppercase tracking-widest">+12.4% THIS QUARTER</span>
+                   </div>
                 </div>
 
-                <div className="bg-white border border-gray-100 rounded-[3rem] p-8 shadow-sm">
-                   <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mb-6">
-                      <TrendingUp size={24} />
+                <div className="bg-white border border-gray-200/60 rounded-[2rem] p-10 shadow-sm relative overflow-hidden">
+                   <div className="flex items-center justify-between mb-8">
+                      <div className="w-12 h-12 bg-rose-50 text-rose-600 rounded-2xl flex items-center justify-center border border-rose-100">
+                         <Clock size={20} />
+                      </div>
+                      <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Uncollected Fees</span>
                    </div>
-                   <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-2">Total Revenue</p>
-                   <h2 className="text-4xl font-black tabular-nums tracking-tighter text-gray-900 italic">
-                     KES {Number(metrics?.revenue || 0).toLocaleString()}
+                   <h2 className="text-4xl font-display font-black text-gray-900 tracking-tighter tabular-nums leading-none">
+                     <span className="text-lg text-gray-400 font-medium mr-2">KES</span>
+                     {Number(metrics?.receivables || 0).toLocaleString()}
                    </h2>
+                   <div className="mt-8 flex items-center text-rose-600 space-x-1">
+                      <AlertTriangle size={14} />
+                      <span className="text-[10px] font-black uppercase tracking-widest">Requires Attention</span>
+                   </div>
                 </div>
 
-                <div className="bg-white border border-gray-100 rounded-[3rem] p-8 shadow-sm">
-                   <div className="w-12 h-12 bg-rose-50 text-rose-600 rounded-2xl flex items-center justify-center mb-6">
-                      <ArrowDownRight size={24} />
+                <div className="bg-gray-900 rounded-[2rem] p-10 text-white shadow-xl shadow-indigo-900/10 flex flex-col justify-between">
+                   <div className="flex items-center space-x-3 mb-6">
+                      <Zap className="text-indigo-400" size={20} />
+                      <span className="text-[10px] font-black uppercase tracking-widest text-indigo-400">Ledger Actions</span>
                    </div>
-                   <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-2">Receivables</p>
-                   <h2 className="text-4xl font-black tabular-nums tracking-tighter text-gray-900 italic">
-                     KES {Number(metrics?.receivables || 0).toLocaleString()}
-                   </h2>
-                </div>
-
-                <div className="bg-gray-900 rounded-[3rem] p-8 text-white shadow-2xl shadow-gray-200 flex flex-col justify-between">
-                   <div>
-                     <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-40 mb-1">Fiscal Status</p>
-                     <h3 className="text-xl font-bold italic tracking-tighter">Healthy</h3>
+                   <div className="space-y-3">
+                      <button onClick={() => setIsCreatingInvoice(true)} className="w-full bg-white/10 hover:bg-white/20 text-white py-4 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all text-center">
+                        Generate Billing
+                      </button>
+                      <button onClick={() => setIsRecordingPayment(true)} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-4 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all text-center">
+                        Post Settlement
+                      </button>
                    </div>
-                   <button className="flex items-center justify-between w-full bg-white/10 hover:bg-white/20 px-6 py-4 rounded-2xl transition-all group">
-                      <span className="text-[10px] font-black uppercase tracking-widest">Compliance Audit</span>
-                      <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
-                   </button>
                 </div>
              </div>
 
-             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                <div className="lg:col-span-2 bg-white border border-gray-100 rounded-[3.5rem] p-10 shadow-sm">
+             <div className="grid grid-cols-1 lg:grid-cols-5 gap-10">
+                <div className="lg:col-span-3 bg-white border border-gray-200/60 rounded-[2.5rem] p-10 shadow-sm">
                    <div className="flex items-center justify-between mb-12">
-                      <h3 className="text-2xl font-black tracking-tighter uppercase italic">Recent <span className="text-rose-500">Expenditure</span></h3>
-                      <button className="p-3 bg-gray-50 text-gray-400 rounded-xl hover:text-gray-900 transition-all"><Download size={18} /></button>
+                      <h3 className="text-xl font-display font-black tracking-tight uppercase italic">Recent <span className="text-indigo-600">Reconciliations</span></h3>
+                      <div className="flex space-x-2">
+                         <button className="p-3 bg-gray-50 text-gray-400 rounded-xl hover:text-gray-900 transition-all"><Printer size={18} /></button>
+                         <button className="p-3 bg-gray-50 text-gray-400 rounded-xl hover:text-gray-900 transition-all"><Download size={18} /></button>
+                      </div>
                    </div>
                    <div className="space-y-8">
                       {expenses.slice(0, 5).map(exp => (
-                        <div key={exp.id} className="flex items-center justify-between group">
+                        <div key={exp.id} className="flex items-center justify-between">
                           <div className="flex items-center space-x-6">
-                            <div className="w-12 h-12 bg-gray-50 rounded-2xl flex items-center justify-center text-gray-400 group-hover:bg-rose-500 group-hover:text-white transition-all">
-                              <ArrowDownRight size={20} />
+                            <div className="w-10 h-10 bg-gray-50 rounded-xl flex items-center justify-center text-gray-400">
+                              <ArrowDownRight size={18} />
                             </div>
                             <div>
-                               <p className="text-sm font-black uppercase tracking-tight text-gray-900">{exp.category}</p>
-                               <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{exp.description}</p>
+                               <p className="text-sm font-bold text-gray-900 uppercase tracking-tight">{exp.category}</p>
+                               <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">{exp.description}</p>
                             </div>
                           </div>
                           <div className="text-right">
-                             <p className="text-[13px] font-black text-rose-600 italic tabular-nums">-KES {Number(exp.amount).toLocaleString()}</p>
-                             <p className="text-[9px] font-bold text-gray-300 uppercase mt-1">{new Date(exp.date).toLocaleDateString()}</p>
+                             <p className="text-[14px] font-black text-gray-900 tabular-nums italic">KES {Number(exp.amount).toLocaleString()}</p>
+                             <p className="text-[9px] font-black text-rose-500 uppercase mt-1 tracking-widest">DEBIT</p>
                           </div>
                         </div>
                       ))}
+                      {expenses.length === 0 && (
+                        <div className="text-center py-12">
+                          <p className="text-gray-400 text-[10px] font-black uppercase tracking-widest">No recent transactions recorded</p>
+                        </div>
+                      )}
                    </div>
                 </div>
 
-                <div className="bg-gray-50 rounded-[3rem] p-10 flex flex-col justify-center">
-                    <PieChart className="text-emerald-500 mb-6" size={32} />
-                    <h4 className="text-xl font-black italic tracking-tighter mb-4 uppercase text-gray-900">Capital <span className="text-emerald-500">Distribution</span></h4>
-                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-relaxed mb-8">
-                      High-level breakdown of institutional asset allocation and liquidity ratios.
-                    </p>
-                    <div className="space-y-4">
-                        {[
-                          { label: 'Operational Funds', value: 45, color: 'bg-emerald-500' },
-                          { label: 'Strategic Reserve', value: 30, color: 'bg-blue-500' },
-                          { label: 'Short-term Debt', value: 25, color: 'bg-rose-500' }
-                        ].map(item => (
-                          <div key={item.label}>
-                              <div className="flex justify-between text-[10px] font-black uppercase tracking-widest mb-2">
-                                <span className="text-gray-400">{item.label}</span>
-                                <span className="text-gray-900">{item.value}%</span>
+                <div className="lg:col-span-2 space-y-8">
+                    <div className="bg-gray-50 rounded-[2.5rem] p-10">
+                        <PieChart className="text-indigo-600 mb-6" size={24} />
+                        <h4 className="text-lg font-display font-black italic tracking-tighter mb-4 uppercase text-gray-900 leading-none">ALLOCATION <br/><span className="text-indigo-600">STATISTICS</span></h4>
+                        <div className="space-y-6 mt-10">
+                            {[
+                              { label: 'Academic Supplies', value: 45, color: 'bg-indigo-600' },
+                              { label: 'Staff Payroll', value: 30, color: 'bg-gray-900' },
+                              { label: 'Infrastructure', value: 25, color: 'bg-indigo-200' }
+                            ].map(item => (
+                              <div key={item.label}>
+                                  <div className="flex justify-between text-[10px] font-black uppercase tracking-widest mb-3">
+                                    <span className="text-gray-400">{item.label}</span>
+                                    <span className="text-gray-900">{item.value}%</span>
+                                  </div>
+                                  <div className="w-full h-1.5 bg-gray-200/60 rounded-full overflow-hidden">
+                                    <div className={`h-full ${item.color} rounded-full`} style={{ width: `${item.value}%` }} />
+                                  </div>
                               </div>
-                              <div className="w-full h-1 bg-gray-200 rounded-full overflow-hidden">
-                                <div className={`h-full ${item.color} rounded-full`} style={{ width: `${item.value}%` }} />
-                              </div>
-                          </div>
-                        ))}
+                            ))}
+                        </div>
                     </div>
                 </div>
              </div>
-          </motion.div>
+          </div>
         )}
 
-        {activeTab === 'invoices' && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-8">
-            <div className="flex justify-between items-center bg-gray-900 text-white p-12 rounded-[4rem] shadow-2xl">
-              <div>
-                <h2 className="text-4xl font-black italic tracking-tighter uppercase mb-4">Billing <span className="text-blue-500">Engine</span></h2>
-                <p className="text-gray-400 text-sm max-w-md uppercase tracking-wider opacity-60">
-                   Post-ledger invoicing system for institutional student billing and reconciliation.
-                </p>
-              </div>
-              <button onClick={() => setIsCreatingInvoice(true)} className="bg-white text-gray-900 px-10 py-5 rounded-[2rem] font-black uppercase tracking-widest text-xs hover:scale-105 active:scale-95 transition-all">
-                Generate Invoice
-              </button>
-            </div>
-            <div className="bg-white border border-gray-100 rounded-[3rem] overflow-hidden shadow-sm">
-              <table className="w-full text-left">
-                <thead><tr className="bg-gray-50/50">
-                  <th className="px-10 py-6 text-[10px] font-black text-gray-400 uppercase tracking-widest">Invoice #</th>
-                  <th className="px-10 py-6 text-[10px] font-black text-gray-400 uppercase tracking-widest">Student</th>
-                  <th className="px-10 py-6 text-[10px] font-black text-gray-400 uppercase tracking-widest">Status</th>
-                  <th className="px-10 py-6 text-right text-[10px] font-black text-gray-400 uppercase tracking-widest">Total KES</th>
-                </tr></thead>
-                <tbody className="divide-y divide-gray-50">
-                  {invoices.map(inv => (
-                    <tr key={inv.id} className="hover:bg-gray-50/30 transition-all group">
-                      <td className="px-10 py-6 font-mono font-bold text-gray-400 text-xs">{inv.invoiceNumber}</td>
-                      <td className="px-10 py-6">
-                        <span className="text-sm font-black uppercase tracking-tight text-gray-900">{inv.student?.firstName} {inv.student?.lastName}</span>
-                      </td>
-                      <td className="px-10 py-6">
-                        <span className={`px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest border ${
-                          inv.status === 'paid' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-rose-50 text-rose-600 border-rose-100'
-                        }`}>{inv.status}</span>
-                      </td>
-                      <td className="px-10 py-6 text-right font-black italic tracking-tighter text-gray-900 tabular-nums">{Number(inv.amount).toLocaleString()}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </motion.div>
-        )}
-
-        {activeTab === 'revenue' && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-8">
-            <div className="flex justify-between items-center bg-emerald-500 text-white p-12 rounded-[4rem] shadow-2xl">
-              <div>
-                <h2 className="text-4xl font-black italic tracking-tighter uppercase mb-4">Revenue <span className="text-emerald-200">Centre</span></h2>
-                <p className="text-emerald-100 text-sm max-w-md uppercase tracking-wider opacity-80">
-                  Real-time reporting of settlements across all institutional channels.
-                </p>
-              </div>
-              <button 
-                onClick={() => setIsRecordingPayment(true)}
-                className="bg-white text-emerald-600 px-10 py-5 rounded-[2rem] font-black uppercase tracking-widest text-xs hover:scale-105 transition-all shadow-xl active:scale-95"
-              >
-                Post Payment
-              </button>
-            </div>
-          </motion.div>
-        )}
-
-        {activeTab === 'expenses' && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-12">
-            <div className="flex justify-between items-center bg-rose-500 text-white p-12 rounded-[4rem] shadow-2xl">
-              <div>
-                <h2 className="text-4xl font-black italic tracking-tighter uppercase mb-4">Expenditure <span className="text-rose-200">Log</span></h2>
-                <p className="text-rose-100 text-sm max-w-md uppercase tracking-wider opacity-80">
-                  Detailed operational outlays for institutional maintenance and enhancement.
-                </p>
-              </div>
-              <button 
-                onClick={() => setIsAddingExpense(true)}
-                className="bg-white text-rose-500 px-10 py-5 rounded-[2rem] font-black uppercase tracking-widest text-xs hover:scale-105 transition-all shadow-xl active:scale-95"
-              >
-                Log Outflow
-              </button>
-            </div>
-            <div className="bg-white border border-gray-100 rounded-[3rem] overflow-hidden shadow-sm">
-                <table className="w-full">
-                  <thead><tr className="bg-gray-50/50">
-                    <th className="px-10 py-6 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Category</th>
-                    <th className="px-10 py-6 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Description</th>
-                    <th className="px-10 py-6 text-right text-[10px] font-black text-gray-400 uppercase tracking-widest">Amount KES</th>
-                  </tr></thead>
-                  <tbody className="divide-y divide-gray-50">
-                    {expenses.map(exp => (
-                      <tr key={exp.id}>
-                        <td className="px-10 py-6 text-[10px] font-black uppercase text-gray-400">{exp.category}</td>
-                        <td className="px-10 py-6 text-sm font-bold text-gray-900">{exp.description}</td>
-                        <td className="px-10 py-6 text-right font-black italic text-rose-600">{Number(exp.amount).toLocaleString()}</td>
+        {activeTab !== 'overview' && (
+          <div className="bg-white border border-gray-200/60 rounded-[2.5rem] overflow-hidden shadow-sm">
+             <div className="p-10 border-b border-gray-50 flex justify-between items-center">
+                <h3 className="text-xl font-display font-black uppercase italic tracking-tight">{activeTab} <span className="text-indigo-600">Ledger</span></h3>
+                <div className="flex space-x-3">
+                   <div className="relative">
+                      <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
+                      <input type="text" placeholder="Search entries..." className="pl-10 pr-4 py-3 bg-gray-50 border-none rounded-xl text-xs font-bold w-64 focus:ring-2 focus:ring-indigo-600" />
+                   </div>
+                </div>
+             </div>
+             
+             {activeTab === 'invoices' && (
+               <div className="overflow-x-auto">
+                 <table className="w-full text-left">
+                   <thead>
+                     <tr className="bg-gray-50/50">
+                       <th className="px-10 py-6 text-[10px] font-black text-gray-400 uppercase tracking-widest">Identifier</th>
+                       <th className="px-10 py-6 text-[10px] font-black text-gray-400 uppercase tracking-widest">Beneficiary</th>
+                       <th className="px-10 py-6 text-[10px] font-black text-gray-400 uppercase tracking-widest">Audit Status</th>
+                       <th className="px-10 py-6 text-right text-[10px] font-black text-gray-400 uppercase tracking-widest">Total Value</th>
+                     </tr>
+                   </thead>
+                   <tbody className="divide-y divide-gray-50">
+                     {invoices.map(inv => (
+                       <tr key={inv.id} className="hover:bg-gray-50/30 transition-all font-medium">
+                         <td className="px-10 py-6 font-mono font-bold text-gray-400 text-xs tracking-tight">{inv.invoiceNumber}</td>
+                         <td className="px-10 py-6 font-bold text-gray-900 text-sm uppercase">{inv.student?.firstName} {inv.student?.lastName}</td>
+                         <td className="px-10 py-6">
+                           <span className={`px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest border ${
+                             inv.status === 'paid' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-rose-50 text-rose-600 border-rose-100'
+                           }`}>{inv.status}</span>
+                         </td>
+                         <td className="px-10 py-6 text-right font-black italic tracking-tighter text-gray-900 tabular-nums text-lg">
+                           <span className="text-xs text-gray-300 font-medium mr-2">KES</span>
+                           {Number(inv.amount).toLocaleString()}
+                         </td>
+                       </tr>
+                     ))}
+                   </tbody>
+                 </table>
+               </div>
+             )}
+             
+             {activeTab === 'expenses' && (
+               <div className="overflow-x-auto">
+                 <table className="w-full text-left">
+                    <thead>
+                      <tr className="bg-gray-50/50">
+                        <th className="px-10 py-6 text-[10px] font-black text-gray-400 uppercase tracking-widest">Sector</th>
+                        <th className="px-10 py-6 text-[10px] font-black text-gray-400 uppercase tracking-widest">Technical Description</th>
+                        <th className="px-10 py-6 text-right text-[10px] font-black text-gray-400 uppercase tracking-widest">Outflow Value</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-            </div>
-          </motion.div>
+                    </thead>
+                    <tbody className="divide-y divide-gray-50">
+                      {expenses.map(exp => (
+                        <tr key={exp.id}>
+                          <td className="px-10 py-6 text-[10px] font-bold uppercase text-gray-400 tracking-widest">{exp.category}</td>
+                          <td className="px-10 py-6 text-sm font-bold text-gray-900 uppercase tracking-tight">{exp.description}</td>
+                          <td className="px-10 py-6 text-right font-black italic text-rose-600 text-lg tabular-nums">
+                            <span className="text-xs text-gray-300 font-medium mr-2">KES</span>
+                            {Number(exp.amount).toLocaleString()}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                 </table>
+               </div>
+             )}
+          </div>
         )}
       </div>
 
@@ -518,8 +516,8 @@ const TreasuryPage: React.FC = () => {
           </div>
         )}
       </AnimatePresence>
-    </div>
+    </DashboardLayout>
   );
 };
 
-export default TreasuryPage;
+export default FinancePage;

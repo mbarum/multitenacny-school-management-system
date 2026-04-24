@@ -51,7 +51,7 @@ export class Application extends TenantAwareEntity {
   @Column({ type: 'text', nullable: true })
   adminNotes: string;
 
-  @Column({ type: 'json', nullable: true })
+  @Column({ type: 'simple-json', nullable: true })
   documents: any;
 
   @CreateDateColumn()

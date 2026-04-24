@@ -46,6 +46,8 @@ interface AcademicYear {
   isCurrent: boolean;
 }
 
+import DashboardLayout from '../components/DashboardLayout';
+
 const StudentsPage: React.FC = () => {
   const { user, logout } = useAuth();
   const [students, setStudents] = useState<Student[]>([]);
@@ -231,28 +233,9 @@ const StudentsPage: React.FC = () => {
       });
     } else {
       setEditingStudent(null);
-      
-      // Default to current academic year if available
       const currentYear = academicYears.find(y => y.isCurrent);
-      
       setFormData({
-        firstName: '',
-        middleName: '',
-        lastName: '',
-        registrationNumber: '',
-        classLevelId: '',
-        sectionId: '',
-        academicYearId: currentYear ? currentYear.id : '',
-        status: 'Active',
-        gender: 'Male',
-        dateOfBirth: '',
-        residence: '',
-        transportRoute: '',
-        photoUrl: '',
-        parentFirstName: '',
-        parentLastName: '',
-        parentEmail: '',
-        parentPhone: ''
+        firstName: '', middleName: '', lastName: '', registrationNumber: '', classLevelId: '', sectionId: '', academicYearId: currentYear ? currentYear.id : '', status: 'Active', gender: 'Male', dateOfBirth: '', residence: '', transportRoute: '', photoUrl: '', parentFirstName: '', parentLastName: '', parentEmail: '', parentPhone: ''
       });
     }
     setIsModalOpen(true);
@@ -312,7 +295,6 @@ const StudentsPage: React.FC = () => {
     }
   };
 
-  // Filter sections based on selected class level
   const availableSections = formData.classLevelId 
     ? sections.filter(s => s.classLevelId === formData.classLevelId)
     : sections;
@@ -326,232 +308,173 @@ const StudentsPage: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
+      <DashboardLayout>
+        <div className="h-full flex items-center justify-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+        </div>
+      </DashboardLayout>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
-      {/* Sidebar */}
-      <aside className="w-64 bg-white border-r border-gray-200 hidden md:flex flex-col">
-        <div className="p-6 border-b border-gray-200">
-          <h2 className="text-2xl font-bold text-blue-600">SaaSLink</h2>
-          <p className="text-sm text-gray-500 mt-1">School Management</p>
-        </div>
-        <nav className="flex-1 p-4 space-y-1">
-          <a href="/dashboard" className="flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 rounded-lg font-medium transition-colors">
-            <Activity className="w-5 h-5 mr-3" />
-            Dashboard
-          </a>
-          <a href="/students" className="flex items-center px-4 py-3 text-blue-600 bg-blue-50 rounded-lg font-medium">
-            <Users className="w-5 h-5 mr-3" />
-            Students
-          </a>
-          <a href="/academics/classes" className="flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 rounded-lg font-medium transition-colors">
-            <GraduationCap className="w-5 h-5 mr-3" />
-            Academics
-          </a>
-          <a href="/staff" className="flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 rounded-lg font-medium transition-colors">
-            <UserCheck className="w-5 h-5 mr-3" />
-            Staff
-          </a>
-          <a href="/attendance" className="flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 rounded-lg font-medium transition-colors">
-            <Calendar className="w-5 h-5 mr-3" />
-            Attendance
-          </a>
-          <a href="/reports" className="flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 rounded-lg font-medium transition-colors">
-            <FileText className="w-5 h-5 mr-3" />
-            Reports
-          </a>
-          <a href="/payments" className="flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 rounded-lg font-medium transition-colors">
-            <CreditCard className="w-5 h-5 mr-3" />
-            Payments
-          </a>
-          {user?.role === UserRole.SUPER_ADMIN && (
-            <a href="/super-admin" className="flex items-center px-4 py-3 text-purple-600 hover:bg-purple-50 rounded-lg font-medium transition-colors mt-4 border border-purple-100">
-              <Settings className="w-5 h-5 mr-3" />
-              Super Admin
-            </a>
-          )}
-        </nav>
-        <div className="p-4 border-t border-gray-200">
-          <button onClick={logout} className="flex items-center w-full px-4 py-3 text-red-600 hover:bg-red-50 rounded-lg font-medium transition-colors">
-            <LogOut className="w-5 h-5 mr-3" />
-            Logout
-          </button>
-        </div>
-      </aside>
-
-      {/* Main Content */}
-      <main className="flex-1 p-8 overflow-y-auto">
-        <div className="max-w-6xl mx-auto">
-          <header className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">Student Management</h1>
-              <p className="text-gray-500 mt-1">Manage student records, enrollments, and details.</p>
+    <DashboardLayout>
+      <div className="max-w-7xl mx-auto pb-20">
+        <header className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-6">
+          <div>
+            <div className="flex items-center space-x-2 text-indigo-600 mb-2">
+              <Users size={16} />
+              <span className="text-[10px] font-black uppercase tracking-[0.2em]">Census Division</span>
             </div>
-            <div className="flex w-full md:w-auto flex-col sm:flex-row items-center gap-3">
-              <div className="relative w-full sm:w-64">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Search className="h-4 w-4 text-gray-400" />
-                </div>
-                <input
-                  type="text"
-                  placeholder="Search students..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-shadow"
-                />
+            <h1 className="text-4xl font-display font-black text-gray-900 tracking-tight leading-none">STUDENT RECORDS</h1>
+            <p className="text-gray-500 font-medium mt-2 text-sm">Managing {students.length} active enrollments</p>
+          </div>
+          
+          <div className="flex items-center gap-3 w-full md:w-auto">
+            <div className="relative flex-1 md:w-80">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search index..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-11 pr-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-600 focus:border-transparent font-medium text-sm transition-all"
+              />
+            </div>
+            <button 
+              onClick={() => handleOpenModal()}
+              className="flex items-center justify-center px-6 py-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-all font-bold text-sm shadow-lg shadow-indigo-600/20 active:scale-95"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Enroll
+            </button>
+          </div>
+        </header>
+
+        {selectedStudentIds.length > 0 && (
+          <div className="bg-gray-900 rounded-2xl p-4 mb-8 flex items-center justify-between shadow-xl shadow-gray-200 border border-gray-800">
+            <div className="flex items-center space-x-4">
+              <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white font-bold text-xs">
+                {selectedStudentIds.length}
               </div>
-              <button 
-                onClick={() => handleOpenModal()}
-                className="flex items-center justify-center w-full sm:w-auto px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors whitespace-nowrap"
+              <span className="text-white font-bold text-sm">Students Selected</span>
+            </div>
+            <div className="flex space-x-3">
+              <button
+                onClick={() => setIsBulkStatusModalOpen(true)}
+                className="px-4 py-2 bg-white/10 text-white hover:bg-white/20 rounded-xl transition-all text-xs font-bold uppercase tracking-widest border border-white/10"
               >
-                <Plus className="w-5 h-5 mr-2" />
-                Add Student
+                Batch Status change
+              </button>
+              <button
+                onClick={() => setIsBulkClassModalOpen(true)}
+                className="px-4 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-all text-xs font-bold uppercase tracking-widest"
+              >
+                Batch Placement
               </button>
             </div>
-          </header>
+          </div>
+        )}
 
-          {selectedStudentIds.length > 0 && (
-            <div className="bg-indigo-50 border border-indigo-100 rounded-lg p-4 mb-6 flex items-center justify-between">
-              <span className="text-indigo-800 font-medium">{selectedStudentIds.length} student(s) selected</span>
-              <div className="flex space-x-3">
-                <button
-                  onClick={() => setIsBulkStatusModalOpen(true)}
-                  className="px-4 py-2 bg-white text-indigo-700 border border-indigo-200 rounded-lg hover:bg-indigo-100 transition-colors text-sm font-medium"
-                >
-                  Change Status
-                </button>
-                <button
-                  onClick={() => setIsBulkClassModalOpen(true)}
-                  className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm font-medium"
-                >
-                  Change Class
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Students Table */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="bg-gray-50 text-gray-500 text-sm">
-                    <th className="px-6 py-4 font-medium w-12">
-                      <input 
-                        type="checkbox" 
-                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                        checked={selectedStudentIds.length === filteredStudents.length && filteredStudents.length > 0}
-                        onChange={handleSelectAll}
-                      />
-                    </th>
-                    <th className="px-6 py-4 font-medium">Name</th>
-                    <th className="px-6 py-4 font-medium">Reg Number</th>
-                    <th className="px-6 py-4 font-medium">Class & Section</th>
-                    <th className="px-6 py-4 font-medium">Academic Year</th>
-                    <th className="px-6 py-4 font-medium">Status</th>
-                    <th className="px-6 py-4 font-medium text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {filteredStudents.length > 0 ? (
-                    filteredStudents.map((student) => (
-                      <tr key={student.id} className={`hover:bg-gray-50 transition-colors ${selectedStudentIds.includes(student.id) ? 'bg-blue-50/50' : ''}`}>
-                        <td className="px-6 py-4">
-                          <input 
-                            type="checkbox" 
-                            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                            checked={selectedStudentIds.includes(student.id)}
-                            onChange={(e) => handleSelectStudent(student.id, e.target.checked)}
-                          />
-                        </td>
-                        <td className="px-6 py-4 font-medium text-gray-900">
-                          <button 
-                            onClick={() => handleViewStudent(student)}
-                            className="flex items-center space-x-3 hover:text-blue-600 transition-colors text-left group"
-                          >
-                            <div className="w-8 h-8 rounded-lg bg-gray-100 overflow-hidden shrink-0 border border-gray-200 group-hover:border-blue-200 transition-colors">
-                              {student.photoUrl ? (
-                                <img src={student.photoUrl} alt="" className="w-full h-full object-cover" />
-                              ) : (
-                                <User className="w-full h-full p-1.5 text-gray-400" />
-                              )}
-                            </div>
-                            <span className="font-bold">{student.firstName} {student.middleName ? `${student.middleName} ` : ''}{student.lastName}</span>
-                          </button>
-                        </td>
-                        <td className="px-6 py-4 text-gray-500">{student.registrationNumber || '-'}</td>
-                        <td className="px-6 py-4 text-gray-500">
-                          {student.classLevel?.name || '-'} {student.section ? `(${student.section.name})` : ''}
-                        </td>
-                        <td className="px-6 py-4 text-gray-500">{student.academicYear?.name || '-'}</td>
-                        <td className="px-6 py-4">
-                          <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                            student.status === 'Active' ? 'bg-green-100 text-green-800' :
-                            student.status === 'Graduated' ? 'bg-blue-100 text-blue-800' :
-                            student.status === 'Suspended' ? 'bg-red-100 text-red-800' :
-                            'bg-gray-100 text-gray-800'
-                          }`}>
-                            {student.status}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 text-right flex justify-end space-x-2">
-                          <button 
-                            onClick={() => handleViewStudent(student)}
-                            className="p-2 text-gray-600 hover:bg-gray-50 rounded-lg transition-colors"
-                            title="View Details"
-                          >
-                            <Eye className="w-4 h-4" />
-                          </button>
-                          <button 
-                            onClick={() => handleOpenModal(student)}
-                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                            title="Edit"
-                          >
-                            <Edit className="w-4 h-4" />
-                          </button>
-                          <button 
-                            onClick={() => handleDelete(student.id)}
-                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                            title="Delete"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </td>
-                      </tr>
-                    ))
-                    ) : (
-                      <tr>
-                        <td colSpan={7} className="px-6 py-20 text-center">
-                          <div className="flex flex-col items-center justify-center text-center">
-                            <div className="w-20 h-20 bg-gray-50 rounded-[2rem] flex items-center justify-center mb-6 border border-gray-100 shadow-sm transition-transform hover:scale-105">
-                              <Users className="w-10 h-10 text-gray-300" />
-                            </div>
-                            <h3 className="text-xl font-bold text-gray-900 tracking-tight">No Students Registered</h3>
-                            <p className="text-sm text-gray-500 mt-2.5 max-w-xs mx-auto">
-                              Begin building your educational database by adding your school's first student directly to this class logic.
-                            </p>
-                            <button 
-                              onClick={() => handleOpenModal()}
-                              className="mt-8 px-6 py-2.5 bg-blue-600 text-white rounded-xl text-[13px] font-bold shadow-lg shadow-blue-600/10 hover:bg-blue-700 active:scale-95 transition-all flex items-center space-x-2 mx-auto"
-                            >
-                              <Plus className="w-4 h-4" />
-                              <span>Enroll New Student</span>
-                            </button>
+        <div className="bg-white rounded-3xl shadow-sm border border-gray-200/60 overflow-hidden">
+          <div className="overflow-x-auto custom-scrollbar">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-gray-50/50 border-b border-gray-100">
+                  <th className="px-6 py-5 font-bold text-[10px] text-gray-400 uppercase tracking-widest w-12">
+                    <input 
+                      type="checkbox" 
+                      className="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-600"
+                      checked={selectedStudentIds.length === filteredStudents.length && filteredStudents.length > 0}
+                      onChange={handleSelectAll}
+                    />
+                  </th>
+                  <th className="px-6 py-5 font-bold text-[10px] text-gray-400 uppercase tracking-widest">Identification / Name</th>
+                  <th className="px-6 py-5 font-bold text-[10px] text-gray-400 uppercase tracking-widest">Index Number</th>
+                  <th className="px-6 py-5 font-bold text-[10px] text-gray-400 uppercase tracking-widest">Academic Track</th>
+                  <th className="px-6 py-5 font-bold text-[10px] text-gray-400 uppercase tracking-widest">Cycle</th>
+                  <th className="px-6 py-5 font-bold text-[10px] text-gray-400 uppercase tracking-widest">Status</th>
+                  <th className="px-6 py-5 font-bold text-[10px] text-gray-400 uppercase tracking-widest text-right">Operations</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {filteredStudents.length > 0 ? (
+                  filteredStudents.map((student) => (
+                    <tr key={student.id} className={`hover:bg-gray-50/50 transition-all group ${selectedStudentIds.includes(student.id) ? 'bg-indigo-50/30' : ''}`}>
+                      <td className="px-6 py-4">
+                        <input 
+                          type="checkbox" 
+                          className="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-600"
+                          checked={selectedStudentIds.includes(student.id)}
+                          onChange={(e) => handleSelectStudent(student.id, e.target.checked)}
+                        />
+                      </td>
+                      <td className="px-6 py-4 font-medium">
+                        <div className="flex items-center space-x-4">
+                          <div className="w-10 h-10 rounded-xl bg-gray-100 overflow-hidden shrink-0 border border-gray-200 group-hover:border-indigo-200 transition-all shadow-sm">
+                            {student.photoUrl ? (
+                              <img src={student.photoUrl} alt="" className="w-full h-full object-cover" />
+                            ) : (
+                              <User className="w-full h-full p-2 text-gray-300" />
+                            )}
                           </div>
-                        </td>
-                      </tr>
-                    )}
-                </tbody>
-              </table>
-            </div>
+                          <div>
+                            <p className="font-bold text-gray-900 group-hover:text-indigo-600 transition-colors cursor-pointer" onClick={() => handleViewStudent(student)}>
+                              {student.firstName} {student.lastName}
+                            </p>
+                            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">{student.registrationNumber || 'UNASSIGNED'}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="font-mono text-xs text-gray-500 font-medium uppercase">{student.registrationNumber || '-'}</span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center space-x-2">
+                           <div className="w-1.5 h-1.5 rounded-full bg-indigo-400" />
+                           <span className="text-sm font-semibold text-gray-600">{student.classLevel?.name || 'GENERIC'}</span>
+                           {student.section && <span className="px-2 py-0.5 bg-gray-100 rounded-md text-[10px] font-black text-gray-400 uppercase tracking-tighter">{student.section.name}</span>}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="text-xs font-bold text-gray-400 uppercase tracking-widest italic">{student.academicYear?.name || '-'}</span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className={`px-3 py-1 text-[10px] font-black uppercase tracking-widest rounded-full border ${
+                          student.status === 'Active' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
+                          student.status === 'Graduated' ? 'bg-blue-50 text-blue-600 border-blue-100' :
+                          student.status === 'Suspended' ? 'bg-rose-50 text-rose-600 border-rose-100' :
+                          'bg-gray-50 text-gray-500 border-gray-100'
+                        }`}>
+                          {student.status}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <div className="flex justify-end space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button onClick={() => handleViewStudent(student)} className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all" title="Inspect"><Eye size={16} /></button>
+                          <button onClick={() => handleOpenModal(student)} className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all" title="Configure"><Edit size={16} /></button>
+                          <button onClick={() => handleDelete(student.id)} className="p-2 text-gray-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all" title="Purge"><Trash2 size={16} /></button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={7} className="px-6 py-32 text-center">
+                      <div className="flex flex-col items-center justify-center">
+                        <div className="w-24 h-24 bg-gray-50 rounded-[2.5rem] flex items-center justify-center mb-8 border border-gray-100">
+                          <Users className="w-12 h-12 text-gray-200" />
+                        </div>
+                        <h3 className="text-2xl font-display font-black text-gray-900 tracking-tight italic uppercase">Registry Empty</h3>
+                        <p className="text-gray-400 font-bold uppercase tracking-widest text-[10px] mt-2">Initialize enrollment pipeline to see records</p>
+                      </div>
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
           </div>
         </div>
-      </main>
+      </div>
 
       {/* Add/Edit Modal */}
       {isModalOpen && (
@@ -1291,7 +1214,7 @@ const StudentsPage: React.FC = () => {
           </div>
         </div>
       )}
-    </div>
+    </DashboardLayout>
   );
 };
 

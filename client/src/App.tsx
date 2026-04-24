@@ -31,7 +31,7 @@ import StudentsPage from './pages/StudentsPage';
 import PayrollPage from './pages/PayrollPage';
 import LibraryPage from './pages/LibraryPage';
 import LmsPage from './pages/LmsPage';
-import TreasuryPage from './pages/TreasuryPage';
+import FinancePage from './pages/FinancePage';
 import SchoolSettingsPage from './pages/SchoolSettingsPage';
 import { UserRole } from '../../src/common/user-role.enum';
 
@@ -148,8 +148,8 @@ const AppRoutes: React.FC = () => {
         element={renderProtectedRoute(<LmsPage />, UserRole.ADMIN)}
       />
       <Route
-        path="/treasury"
-        element={renderProtectedRoute(<TreasuryPage />, UserRole.ADMIN)}
+        path="/finance"
+        element={renderProtectedRoute(<FinancePage />, UserRole.ADMIN)}
       />
       <Route
         path="/attendance"

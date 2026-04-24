@@ -135,7 +135,7 @@ const FinancialManagementPage = () => {
               <span className="text-[10px] font-black uppercase tracking-[0.3em]">Institutional Finance</span>
             </div>
             <h1 className="text-6xl font-black tracking-tighter leading-none italic uppercase">
-              Treasury <span className="text-purple-500">Control</span>
+              Finance <span className="text-purple-500">Control</span>
             </h1>
             <p className="text-gray-400 mt-6 max-w-xl font-medium text-sm leading-relaxed opacity-80 uppercase tracking-wider">
               Centralized auditing and verification hub for all platform-wide subscription inflows and fiscal reconciliations.

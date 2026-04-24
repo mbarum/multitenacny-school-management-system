@@ -4,6 +4,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { Settings, Save, Shield, Smartphone, Award, GraduationCap } from 'lucide-react';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
+import DashboardLayout from '../components/DashboardLayout';
+import SchoolLetterhead from '../components/SchoolLetterhead';
 
 const SchoolSettingsPage: React.FC = () => {
   const { user } = useAuth();
@@ -70,7 +72,8 @@ const SchoolSettingsPage: React.FC = () => {
   }
 
   return (
-    <div className="max-w-4xl mx-auto pb-20">
+    <DashboardLayout>
+      <div className="max-w-4xl mx-auto pb-20">
       <div className="mb-8">
         <h1 className="text-2xl font-black text-gray-900 uppercase tracking-tight mb-2">School Settings</h1>
         <p className="text-gray-500 font-medium">Configure your school's identity, letterhead, and system integrations.</p>
@@ -169,30 +172,9 @@ const SchoolSettingsPage: React.FC = () => {
           </div>
 
           {/* Letterhead Preview */}
-          <div className="bg-white rounded-2xl p-8 border-2 border-dashed border-gray-100 overflow-hidden relative group">
-             <div className="absolute top-4 right-4 text-[10px] font-black uppercase text-gray-300 tracking-widest">Letterhead Preview</div>
-             <div className="flex items-start justify-between">
-                <div className="flex items-center space-x-6">
-                   {schoolData.logoUrl ? (
-                     <img src={schoolData.logoUrl} alt="Logo" className="w-20 h-20 object-contain rounded-xl bg-gray-50" />
-                   ) : (
-                     <div className="w-20 h-20 bg-gray-50 rounded-xl flex items-center justify-center border border-gray-100">
-                        <GraduationCap className="text-gray-200" size={32} />
-                     </div>
-                   )}
-                   <div>
-                      <h3 className="text-2xl font-black text-gray-900 tracking-tighter uppercase italic leading-none">{schoolData.name || 'YOUR SCHOOL NAME'}</h3>
-                      <p className="text-xs font-bold text-orange-500 mt-1 italic uppercase tracking-wider">{schoolData.motto || 'Your School Slogan Here'}</p>
-                      
-                      <div className="mt-4 flex flex-wrap gap-x-4 gap-y-1 text-[10px] font-bold text-gray-400 uppercase">
-                         {schoolData.address && <span>{schoolData.address}</span>}
-                         {schoolData.phoneNumber && <span>T: {schoolData.phoneNumber}</span>}
-                         {schoolData.contactEmail && <span>E: {schoolData.contactEmail}</span>}
-                         {schoolData.website && <span>W: {schoolData.website}</span>}
-                      </div>
-                   </div>
-                </div>
-             </div>
+          <div className="bg-white rounded-2xl border-2 border-dashed border-gray-100 overflow-hidden relative group">
+             <div className="absolute top-4 right-4 text-[10px] font-black uppercase text-gray-300 tracking-widest z-10">Letterhead Preview</div>
+             <SchoolLetterhead schoolData={schoolData} variant="full" />
           </div>
 
           {/* Grading System Selection */}
@@ -301,6 +283,7 @@ const SchoolSettingsPage: React.FC = () => {
         </div>
       </div>
     </div>
+  </DashboardLayout>
   );
 };
 

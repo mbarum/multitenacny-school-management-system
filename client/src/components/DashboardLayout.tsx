@@ -48,7 +48,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
     { icon: <UserCheck size={20} />, label: 'Staff', path: '/staff', roles: [UserRole.ADMIN] },
     { icon: <Wallet size={20} />, label: 'Payroll', path: '/payroll', roles: [UserRole.ADMIN] },
     { icon: <ShieldAlert size={20} />, label: 'Admissions', path: '/admissions', roles: [UserRole.ADMIN] },
-    { icon: <DollarSign size={20} />, label: 'Treasury', path: '/treasury', roles: [UserRole.ADMIN] },
+    { icon: <DollarSign size={20} />, label: 'Finance', path: '/finance', roles: [UserRole.ADMIN] },
     { icon: <Library size={20} />, label: 'Library', path: '/library', roles: [UserRole.ADMIN, UserRole.TEACHER] },
     { icon: <Globe size={20} />, label: 'LMS Connect', path: '/lms', roles: [UserRole.ADMIN] },
     { icon: <Calendar size={20} />, label: 'Attendance', path: isTeacher ? '/teacher/attendance' : '/attendance', roles: [UserRole.ADMIN, UserRole.TEACHER] },
@@ -62,7 +62,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
   const isRootPath = ['/dashboard', '/super-admin', '/teacher', '/parent'].includes(location.pathname);
 
   return (
-    <div className="min-h-screen bg-[#F8F9FA] flex text-[#1A1A1A]">
+    <div className="min-h-screen bg-[#F9FAFB] flex font-sans text-[#111827]">
       {/* Mobile Overlay */}
       <AnimatePresence>
         {isSidebarOpen && (
@@ -71,40 +71,39 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={() => setIsSidebarOpen(false)}
-            className="fixed inset-0 bg-black/20 backdrop-blur-sm z-[90] lg:hidden"
+            className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm z-[90] lg:hidden"
           />
         )}
       </AnimatePresence>
 
       {/* Sidebar */}
       <aside className={`
-        fixed lg:static inset-y-0 left-0 z-[100] w-72 bg-white border-r border-gray-100 flex flex-col transform transition-transform duration-300 ease-in-out
+        fixed lg:static inset-y-0 left-0 z-[100] w-72 bg-white border-r border-gray-200/60 flex flex-col transform transition-transform duration-300 ease-in-out
         ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
       `}>
-        <div className="p-8 flex items-center space-x-3 mb-4">
-          <div className="w-10 h-10 bg-brand-green rounded-xl flex items-center justify-center shadow-lg shadow-brand-green/10">
-            <span className="text-brand-sand font-black text-xl">S</span>
+        <div className="p-8 flex items-center space-x-3">
+          <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-600/20">
+            <GraduationCap className="text-white" size={24} />
           </div>
           <div>
-            <h2 className="text-lg font-black tracking-tight text-brand-green leading-none">SAASLINK</h2>
-            <div className="flex items-center mt-1">
-              <span className="text-[10px] font-bold text-brand-sand uppercase tracking-widest">{user?.role?.replace('_', ' ')}</span>
-            </div>
+            <h2 className="text-xl font-display font-black tracking-tight text-gray-900 leading-none">SAASLINK</h2>
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">Institutional OS</p>
           </div>
         </div>
 
-        <nav className="flex-1 px-6 space-y-1 overflow-y-auto">
+        <nav className="flex-1 px-4 space-y-1 overflow-y-auto custom-scrollbar pt-4">
+          <div className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] px-4 mb-4">Core Management</div>
           {filteredItems.map((item) => (
             <Link
               key={item.path}
               to={item.path}
-              className={`flex items-center px-4 py-3.5 rounded-2xl font-bold text-[13px] transition-all duration-200 group ${
+              className={`flex items-center px-4 py-3 rounded-xl font-semibold text-[13px] transition-all duration-200 group ${
                 location.pathname === item.path 
-                  ? 'bg-brand-green text-brand-sand shadow-xl shadow-brand-green/10' 
-                  : 'text-gray-500 hover:bg-gray-50 hover:text-brand-green'
+                  ? 'bg-indigo-50 text-indigo-700' 
+                  : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'
               }`}
             >
-              <span className={`mr-4 transition-transform duration-200 group-hover:scale-110 ${location.pathname === item.path ? 'text-brand-sand' : 'text-gray-400 group-hover:text-brand-green'}`}>
+              <span className={`mr-4 transition-colors duration-200 ${location.pathname === item.path ? 'text-indigo-600' : 'text-gray-400 group-hover:text-gray-900'}`}>
                 {item.icon}
               </span>
               {item.label}
