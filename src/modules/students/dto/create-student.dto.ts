@@ -2,10 +2,16 @@ import { IsString, IsOptional, IsUUID } from 'class-validator';
 
 export class CreateStudentDto {
   @IsString()
-  firstName: string;
+  @IsOptional()
+  firstName?: string;
 
   @IsString()
-  lastName: string;
+  @IsOptional()
+  middleName?: string;
+
+  @IsString()
+  @IsOptional()
+  lastName?: string;
 
   @IsOptional()
   @IsString()
@@ -42,4 +48,20 @@ export class CreateStudentDto {
   @IsOptional()
   @IsUUID()
   academicYearId?: string;
+
+  @IsOptional()
+  @IsString()
+  parentFirstName?: string;
+
+  @IsOptional()
+  @IsString()
+  parentLastName?: string;
+
+  @IsOptional()
+  @IsString()
+  parentEmail?: string;
+
+  @IsOptional()
+  @IsString()
+  parentPhone?: string;
 }

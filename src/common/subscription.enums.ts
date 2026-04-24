@@ -11,4 +11,5 @@ export enum SubscriptionStatus {
   INACTIVE = 'inactive',
   PAST_DUE = 'past_due',
   CANCELED = 'canceled',
+  PENDING_VERIFICATION = 'pending_verification',
 }

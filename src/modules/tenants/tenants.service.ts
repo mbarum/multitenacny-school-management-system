@@ -100,8 +100,19 @@ export class TenantsService {
     return savedTenant;
   }
 
-  private generateInvoicePDF(tenant: Tenant, fee: number): string {
+  private generateInvoicePDF(tenant: Tenant, feeInput: any): string {
     const doc = new jsPDF() as any;
+    
+    // Extremely defensive fee parsing
+    let fee = 0;
+    if (typeof feeInput === 'number') {
+      fee = feeInput;
+    } else if (typeof feeInput === 'string') {
+      fee = parseFloat(feeInput);
+    }
+    
+    if (isNaN(fee)) fee = 0;
+
     const vatRate = 0.16; // 16% VAT
     const vatAmount = fee * vatRate;
     const totalAmount = fee + vatAmount;
@@ -130,7 +141,7 @@ export class TenantsService {
         ['Total Paid', totalAmount.toFixed(2)],
       ],
       theme: 'grid',
-      headStyles: { fillStyle: [100, 100, 100] },
+      headStyles: { fillColor: [100, 100, 100] },
     });
 
     // Bank Details
@@ -206,7 +217,9 @@ export class TenantsService {
       return cachedTenant;
     }
 
-    const tenant = await this.tenantRepository.findOne({ where: { id } } as any);
+    const tenant = await this.tenantRepository.findOne({
+      where: { id },
+    } as any);
     if (!tenant) {
       throw new NotFoundException(`Tenant with id ${id} not found`);
     }

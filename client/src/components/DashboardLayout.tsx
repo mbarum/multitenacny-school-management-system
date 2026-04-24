@@ -17,7 +17,11 @@ import {
   Menu,
   X,
   LayoutDashboard,
-  ShieldAlert
+  ShieldAlert,
+  Book,
+  Globe,
+  Wallet,
+  Library
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { UserRole } from '../../../src/common/user-role.enum';
@@ -42,6 +46,10 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
     { icon: <Users size={20} />, label: 'Students', path: '/students', roles: [UserRole.ADMIN] },
     { icon: <GraduationCap size={20} />, label: 'Academics', path: '/academics/classes', roles: [UserRole.ADMIN, UserRole.TEACHER] },
     { icon: <UserCheck size={20} />, label: 'Staff', path: '/staff', roles: [UserRole.ADMIN] },
+    { icon: <Wallet size={20} />, label: 'Payroll', path: '/payroll', roles: [UserRole.ADMIN] },
+    { icon: <DollarSign size={20} />, label: 'Treasury', path: '/treasury', roles: [UserRole.ADMIN] },
+    { icon: <Library size={20} />, label: 'Library', path: '/library', roles: [UserRole.ADMIN, UserRole.TEACHER] },
+    { icon: <Globe size={20} />, label: 'LMS Connect', path: '/lms', roles: [UserRole.ADMIN] },
     { icon: <Calendar size={20} />, label: 'Attendance', path: isTeacher ? '/teacher/attendance' : '/attendance', roles: [UserRole.ADMIN, UserRole.TEACHER] },
     { icon: <FileText size={20} />, label: 'Reports', path: '/reports', roles: [UserRole.ADMIN, UserRole.TEACHER] },
     { icon: <CreditCard size={20} />, label: 'Payments', path: '/payments', roles: [UserRole.ADMIN, UserRole.PARENT] },

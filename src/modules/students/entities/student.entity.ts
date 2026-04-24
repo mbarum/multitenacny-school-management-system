@@ -7,10 +7,13 @@ import { AcademicYear } from 'src/modules/academics/entities/academic-year.entit
 @Entity({ name: 'students' })
 @Unique('UQ_TENANT_REG_NUMBER', ['tenantId', 'registrationNumber'])
 export class Student extends TenantAwareEntity {
-  @Column()
+  @Column({ nullable: true })
   firstName: string;
 
-  @Column()
+  @Column({ nullable: true })
+  middleName: string;
+
+  @Column({ nullable: true })
   lastName: string;
 
   @Column({ nullable: true })
@@ -54,4 +57,16 @@ export class Student extends TenantAwareEntity {
 
   @Column({ nullable: true })
   parentId: string;
+
+  @Column({ nullable: true })
+  parentFirstName: string;
+
+  @Column({ nullable: true })
+  parentLastName: string;
+
+  @Column({ nullable: true })
+  parentEmail: string;
+
+  @Column({ nullable: true })
+  parentPhone: string;
 }

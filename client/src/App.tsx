@@ -28,6 +28,10 @@ import PrivacyPage from './pages/PrivacyPage';
 import TermsPage from './pages/TermsPage';
 import ContactPage from './pages/ContactPage';
 import StudentsPage from './pages/StudentsPage';
+import PayrollPage from './pages/PayrollPage';
+import LibraryPage from './pages/LibraryPage';
+import LmsPage from './pages/LmsPage';
+import TreasuryPage from './pages/TreasuryPage';
 import SchoolSettingsPage from './pages/SchoolSettingsPage';
 import { UserRole } from '../../src/common/user-role.enum';
 
@@ -122,6 +126,22 @@ const AppRoutes: React.FC = () => {
       <Route
         path="/staff"
         element={renderProtectedRoute(<StaffManagementPage />)}
+      />
+      <Route
+        path="/payroll"
+        element={renderProtectedRoute(<PayrollPage />, UserRole.ADMIN)}
+      />
+      <Route
+        path="/library"
+        element={renderProtectedRoute(<LibraryPage />)}
+      />
+      <Route
+        path="/lms"
+        element={renderProtectedRoute(<LmsPage />, UserRole.ADMIN)}
+      />
+      <Route
+        path="/treasury"
+        element={renderProtectedRoute(<TreasuryPage />, UserRole.ADMIN)}
       />
       <Route
         path="/attendance"

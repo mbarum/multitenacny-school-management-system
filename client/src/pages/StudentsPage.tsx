@@ -8,6 +8,7 @@ import { Users, UserCheck, DollarSign, Activity, LogOut, Settings, GraduationCap
 interface Student {
   id: string;
   firstName: string;
+  middleName?: string;
   lastName: string;
   registrationNumber: string;
   status: string;
@@ -19,6 +20,10 @@ interface Student {
   dateOfBirth?: string;
   residence?: string;
   transportRoute?: string;
+  parentFirstName?: string;
+  parentLastName?: string;
+  parentEmail?: string;
+  parentPhone?: string;
   classLevel?: { id: string; name: string };
   section?: { id: string; name: string };
   academicYear?: { id: string; name: string };
@@ -56,9 +61,61 @@ const StudentsPage: React.FC = () => {
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
   const [showIdCard, setShowIdCard] = useState(false);
+  const [isCameraActive, setIsCameraActive] = useState(false);
+  const videoRef = React.useRef<HTMLVideoElement>(null);
+
+  const startCamera = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        setIsCameraActive(true);
+      }
+    } catch (err) {
+      console.error("Error accessing camera: ", err);
+      toast.error("Could not access camera. Please check permissions.");
+    }
+  };
+
+  const stopCamera = () => {
+    if (videoRef.current && videoRef.current.srcObject) {
+      const stream = videoRef.current.srcObject as MediaStream;
+      const tracks = stream.getTracks();
+      tracks.forEach(track => track.stop());
+      videoRef.current.srcObject = null;
+      setIsCameraActive(false);
+    }
+  };
+
+  const capturePhoto = () => {
+    if (videoRef.current) {
+      const canvas = document.createElement('canvas');
+      canvas.width = videoRef.current.videoWidth;
+      canvas.height = videoRef.current.videoHeight;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
+        const dataUrl = canvas.toDataURL('image/png');
+        setFormData(prev => ({ ...prev, photoUrl: dataUrl }));
+        stopCamera();
+      }
+    }
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setFormData(prev => ({ ...prev, photoUrl: reader.result as string }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   const [formData, setFormData] = useState({
     firstName: '',
+    middleName: '',
     lastName: '',
     registrationNumber: '',
     classLevelId: '',
@@ -69,7 +126,11 @@ const StudentsPage: React.FC = () => {
     dateOfBirth: '',
     residence: '',
     transportRoute: '',
-    photoUrl: ''
+    photoUrl: '',
+    parentFirstName: '',
+    parentLastName: '',
+    parentEmail: '',
+    parentPhone: ''
   });
 
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
@@ -151,6 +212,7 @@ const StudentsPage: React.FC = () => {
       setEditingStudent(student);
       setFormData({
         firstName: student.firstName,
+        middleName: student.middleName || '',
         lastName: student.lastName,
         registrationNumber: student.registrationNumber || '',
         classLevelId: student.classLevelId || '',
@@ -161,7 +223,11 @@ const StudentsPage: React.FC = () => {
         dateOfBirth: student.dateOfBirth ? new Date(student.dateOfBirth).toISOString().split('T')[0] : '',
         residence: student.residence || '',
         transportRoute: student.transportRoute || '',
-        photoUrl: student.photoUrl || ''
+        photoUrl: student.photoUrl || '',
+        parentFirstName: student.parentFirstName || '',
+        parentLastName: student.parentLastName || '',
+        parentEmail: student.parentEmail || '',
+        parentPhone: student.parentPhone || ''
       });
     } else {
       setEditingStudent(null);
@@ -171,6 +237,7 @@ const StudentsPage: React.FC = () => {
       
       setFormData({
         firstName: '',
+        middleName: '',
         lastName: '',
         registrationNumber: '',
         classLevelId: '',
@@ -181,7 +248,11 @@ const StudentsPage: React.FC = () => {
         dateOfBirth: '',
         residence: '',
         transportRoute: '',
-        photoUrl: ''
+        photoUrl: '',
+        parentFirstName: '',
+        parentLastName: '',
+        parentEmail: '',
+        parentPhone: ''
       });
     }
     setIsModalOpen(true);
@@ -248,7 +319,7 @@ const StudentsPage: React.FC = () => {
 
   const filteredStudents = students.filter(student => {
     const query = searchQuery.toLowerCase();
-    const fullName = `${student.firstName} ${student.lastName}`.toLowerCase();
+    const fullName = `${student.firstName} ${student.middleName || ''} ${student.lastName}`.toLowerCase();
     const regNum = student.registrationNumber ? student.registrationNumber.toLowerCase() : '';
     return fullName.includes(query) || regNum.includes(query);
   });
@@ -410,7 +481,7 @@ const StudentsPage: React.FC = () => {
                                 <User className="w-full h-full p-1.5 text-gray-400" />
                               )}
                             </div>
-                            <span className="font-bold">{student.firstName} {student.lastName}</span>
+                            <span className="font-bold">{student.firstName} {student.middleName ? `${student.middleName} ` : ''}{student.lastName}</span>
                           </button>
                         </td>
                         <td className="px-6 py-4 text-gray-500">{student.registrationNumber || '-'}</td>
@@ -493,7 +564,7 @@ const StudentsPage: React.FC = () => {
                   {editingStudent ? 'Update Enrollment' : 'New Student Enrollment'}
                 </h3>
                 <p className="text-xs text-gray-500 font-medium mt-0.5">
-                  Step {currentStep} of 3: {currentStep === 1 ? 'Biography' : currentStep === 2 ? 'Academic Placement' : 'Logistics'}
+                  Step {currentStep} of 4: {currentStep === 1 ? 'Biography' : currentStep === 2 ? 'Parents/Guardians' : currentStep === 3 ? 'Academic Placement' : 'Logistics'}
                 </p>
               </div>
               <button 
@@ -508,14 +579,14 @@ const StudentsPage: React.FC = () => {
             {/* Stepper Progress */}
             <div className="px-8 pt-6 shrink-0">
               <div className="flex items-center space-x-2">
-                {[1, 2, 3].map((step) => (
+                {[1, 2, 3, 4].map((step) => (
                   <React.Fragment key={step}>
                     <div className={`flex items-center justify-center w-8 h-8 rounded-full border-2 transition-all duration-300 ${
                       currentStep >= step ? 'bg-blue-600 border-blue-600 text-white shadow-md shadow-blue-200' : 'bg-white border-gray-200 text-gray-400'
                     }`}>
                       {currentStep > step ? <Check className="w-4 h-4" /> : <span className="text-xs font-bold">{step}</span>}
                     </div>
-                    {step < 3 && (
+                    {step < 4 && (
                       <div className={`flex-1 h-1 rounded-full transition-all duration-500 ${
                         currentStep > step ? 'bg-blue-600' : 'bg-gray-100'
                       }`} />
@@ -532,82 +603,183 @@ const StudentsPage: React.FC = () => {
                   <div className="space-y-6 animate-in slide-in-from-right-4 duration-300">
                     <div className="flex flex-col sm:flex-row items-center gap-8 mb-4">
                       <div className="relative group">
-                        <div className="w-32 h-32 rounded-2xl bg-gray-100 border-2 border-dashed border-gray-300 flex flex-col items-center justify-center text-gray-400 overflow-hidden hover:border-blue-400 hover:bg-blue-50 transition-all cursor-pointer">
+                        <div className="w-40 h-40 rounded-2xl bg-gray-100 border-2 border-dashed border-gray-300 flex flex-col items-center justify-center text-gray-400 overflow-hidden hover:border-blue-400 hover:bg-blue-50 transition-all cursor-pointer relative">
                           {formData.photoUrl ? (
                             <img src={formData.photoUrl} alt="Preview" className="w-full h-full object-cover" />
+                          ) : isCameraActive ? (
+                            <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover" />
                           ) : (
                             <>
                               <Camera className="w-8 h-8 mb-2" />
-                              <span className="text-[10px] font-bold uppercase tracking-wider">Add Photo</span>
+                              <span className="text-[10px] font-bold uppercase tracking-wider">Student Photo</span>
                             </>
                           )}
                         </div>
-                        <input 
-                          type="text" 
-                          placeholder="Image URL" 
-                          className="mt-2 w-full text-[10px] p-2 border rounded border-gray-200"
-                          value={formData.photoUrl}
-                          onChange={(e) => setFormData({...formData, photoUrl: e.target.value})}
-                        />
+                        <div className="flex space-x-2 mt-4">
+                          {!isCameraActive ? (
+                            <button 
+                              type="button"
+                              onClick={startCamera}
+                              className="px-3 py-1.5 bg-blue-600 text-white text-[10px] font-bold rounded-lg hover:bg-blue-700 uppercase tracking-wider"
+                            >
+                              Capture
+                            </button>
+                          ) : (
+                            <button 
+                              type="button"
+                              onClick={capturePhoto}
+                              className="px-3 py-1.5 bg-green-600 text-white text-[10px] font-bold rounded-lg hover:bg-green-700 uppercase tracking-wider"
+                            >
+                              Snap
+                            </button>
+                          )}
+                           <label className="px-3 py-1.5 bg-gray-600 text-white text-[10px] font-bold rounded-lg hover:bg-gray-700 uppercase tracking-wider cursor-pointer">
+                            Upload
+                            <input type="file" className="hidden" accept="image/*" onChange={handleFileUpload} />
+                          </label>
+                        </div>
                       </div>
                       <div className="flex-1 w-full space-y-4">
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                          <div>
-                            <label className="block text-[11px] font-black text-gray-400 uppercase tracking-widest mb-1.5">First Name</label>
-                            <input
-                              type="text"
-                              name="firstName"
-                              value={formData.firstName}
-                              onChange={handleInputChange}
-                              required
-                              placeholder="e.g. John"
-                              className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-blue-600 font-medium text-gray-900 transition-all"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-[11px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Last Name</label>
-                            <input
-                              type="text"
-                              name="lastName"
-                              value={formData.lastName}
-                              onChange={handleInputChange}
-                              required
-                              placeholder="e.g. Doe"
-                              className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-blue-600 font-medium text-gray-900 transition-all"
-                            />
-                          </div>
+                        <div>
+                          <label className="block text-[11px] font-black text-gray-400 uppercase tracking-widest mb-1.5">First Name</label>
+                          <input
+                            type="text"
+                            name="firstName"
+                            value={formData.firstName}
+                            onChange={handleInputChange}
+                            required
+                            placeholder="e.g. John"
+                            className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-blue-600 font-medium text-gray-900 transition-all"
+                          />
                         </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                          <div>
-                            <label className="block text-[11px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Gender</label>
-                            <select
-                              name="gender"
-                              value={formData.gender}
-                              onChange={handleInputChange}
-                              className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-blue-600 font-medium text-gray-900 transition-all cursor-pointer"
-                            >
-                              <option value="Male">Male</option>
-                              <option value="Female">Female</option>
-                              <option value="Other">Other</option>
-                            </select>
-                          </div>
-                          <div>
-                            <label className="block text-[11px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Date of Birth</label>
-                            <input
-                              type="date"
-                              name="dateOfBirth"
-                              value={formData.dateOfBirth}
-                              onChange={handleInputChange}
-                              className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-blue-600 font-medium text-gray-900 transition-all"
-                            />
-                          </div>
+                        <div>
+                          <label className="block text-[11px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Middle Name(s)</label>
+                          <input
+                            type="text"
+                            name="middleName"
+                            value={formData.middleName}
+                            onChange={handleInputChange}
+                            placeholder="e.g. Fitzgerald"
+                            className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-blue-600 font-medium text-gray-900 transition-all"
+                          />
                         </div>
+                         <div>
+                          <label className="block text-[11px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Last Name</label>
+                          <input
+                            type="text"
+                            name="lastName"
+                            value={formData.lastName}
+                            onChange={handleInputChange}
+                            required
+                            placeholder="e.g. Kennedy"
+                            className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-blue-600 font-medium text-gray-900 transition-all"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-[11px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Gender</label>
+                        <select
+                          name="gender"
+                          value={formData.gender}
+                          onChange={handleInputChange}
+                          className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-blue-600 font-medium text-gray-900 transition-all cursor-pointer"
+                        >
+                          <option value="Male">Male</option>
+                          <option value="Female">Female</option>
+                          <option value="Other">Other</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Date of Birth</label>
+                        <input
+                          type="date"
+                          name="dateOfBirth"
+                          value={formData.dateOfBirth}
+                          onChange={handleInputChange}
+                          className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-blue-600 font-medium text-gray-900 transition-all"
+                        />
                       </div>
                     </div>
                   </div>
                 )}
 
                 {currentStep === 2 && (
+                  <div className="space-y-6 animate-in slide-in-from-right-4 duration-300">
+                    <div className="bg-orange-50/50 p-6 rounded-2xl border border-orange-100/50">
+                      <div className="flex items-center space-x-3 mb-6">
+                        <div className="w-10 h-10 rounded-xl bg-orange-600 flex items-center justify-center text-white shadow-lg shadow-orange-200">
+                          <Users size={20} />
+                        </div>
+                        <div>
+                          <h4 className="font-bold text-gray-900">Parent / Guardian Information</h4>
+                          <p className="text-[10px] text-orange-600 font-bold uppercase tracking-wider">Contact & Portal Data</p>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                        <div>
+                          <label className="block text-[11px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Parent First Name</label>
+                          <input
+                            type="text"
+                            name="parentFirstName"
+                            value={formData.parentFirstName}
+                            onChange={handleInputChange}
+                            placeholder="First Name"
+                            className="w-full px-4 py-3 bg-white border border-gray-100 rounded-xl focus:ring-2 focus:ring-orange-600 font-medium text-gray-900 transition-all"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[11px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Parent Last Name</label>
+                          <input
+                            type="text"
+                            name="parentLastName"
+                            value={formData.parentLastName}
+                            onChange={handleInputChange}
+                            placeholder="Last Name"
+                            className="w-full px-4 py-3 bg-white border border-gray-100 rounded-xl focus:ring-2 focus:ring-orange-600 font-medium text-gray-900 transition-all"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-[11px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Parent Email (For Portal Access)</label>
+                          <div className="relative">
+                            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                            <input
+                              type="email"
+                              name="parentEmail"
+                              value={formData.parentEmail}
+                              onChange={handleInputChange}
+                              className="w-full pl-11 pr-4 py-3 bg-white border border-gray-100 rounded-xl focus:ring-2 focus:ring-orange-600 font-medium text-gray-900 transition-all"
+                              placeholder="parent@example.com"
+                            />
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-[11px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Parent Phone Number</label>
+                          <div className="relative">
+                            <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                            <input
+                              type="tel"
+                              name="parentPhone"
+                              value={formData.parentPhone}
+                              onChange={handleInputChange}
+                              className="w-full pl-11 pr-4 py-3 bg-white border border-gray-100 rounded-xl focus:ring-2 focus:ring-orange-600 font-medium text-gray-900 transition-all"
+                              placeholder="+1 234 567 890"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                      <p className="text-[10px] text-gray-400 mt-4 italic">* An account will be automatically created using this email for the parent portal.</p>
+                    </div>
+                  </div>
+                )}
+
+                {currentStep === 3 && (
                   <div className="space-y-6 animate-in slide-in-from-right-4 duration-300">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                       <div>
@@ -686,7 +858,7 @@ const StudentsPage: React.FC = () => {
                   </div>
                 )}
 
-                {currentStep === 3 && (
+                {currentStep === 4 && (
                   <div className="space-y-6 animate-in slide-in-from-right-4 duration-300">
                     <div className="bg-blue-50/50 p-6 rounded-2xl border border-blue-100/50">
                       <div className="flex items-center space-x-3 mb-6">
@@ -762,10 +934,13 @@ const StudentsPage: React.FC = () => {
                   >
                     Cancel
                   </button>
-                  {currentStep < 3 ? (
+                  {currentStep < 4 ? (
                     <button
                       type="button"
-                      onClick={() => setCurrentStep(prev => prev + 1)}
+                      onClick={() => {
+                        if (isCameraActive) stopCamera();
+                        setCurrentStep(prev => prev + 1);
+                      }}
                       className="flex items-center px-8 py-2.5 bg-blue-600 text-white rounded-xl font-bold text-sm shadow-xl shadow-blue-200 hover:bg-blue-700 transition-all active:scale-95"
                     >
                       Next

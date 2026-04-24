@@ -1,4 +1,12 @@
-import { Controller, Post, Body, Get, UseGuards, HttpCode, HttpStatus } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  Get,
+  UseGuards,
+  HttpCode,
+  HttpStatus,
+} from '@nestjs/common';
 import { SubscriptionsService } from './subscriptions.service';
 import { CreateCheckoutSessionDto } from './dto/create-checkout-session.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -16,8 +24,12 @@ export class SubscriptionsController {
   @Post('create-checkout-session')
   @Roles(UserRole.ADMIN)
   @HttpCode(HttpStatus.OK)
-  createCheckoutSession(@Body() createCheckoutSessionDto: CreateCheckoutSessionDto) {
-    return this.subscriptionsService.createCheckoutSession(createCheckoutSessionDto.priceId);
+  createCheckoutSession(
+    @Body() createCheckoutSessionDto: CreateCheckoutSessionDto,
+  ) {
+    return this.subscriptionsService.createCheckoutSession(
+      createCheckoutSessionDto.priceId,
+    );
   }
 
   @Get('billing-portal')
@@ -25,5 +37,18 @@ export class SubscriptionsController {
   @HttpCode(HttpStatus.OK)
   createBillingPortalSession() {
     return this.subscriptionsService.createBillingPortalSession();
+  }
+
+  @Post('bank-transfer')
+  @Roles(UserRole.ADMIN)
+  @HttpCode(HttpStatus.OK)
+  createBankTransferRequest(
+    @Body() body: { plan: any; billingCycle: 'monthly' | 'annual'; amount: number },
+  ) {
+    return this.subscriptionsService.createBankTransferRequest(
+      body.plan,
+      body.billingCycle,
+      body.amount,
+    );
   }
 }

@@ -65,10 +65,7 @@ export class UsersService extends TenantAwareCrudService<User> {
 
     if (userDto.password_hash) {
       const salt = await bcrypt.genSalt(12);
-      userDto.password_hash = await bcrypt.hash(
-        userDto.password_hash,
-        salt,
-      );
+      userDto.password_hash = await bcrypt.hash(userDto.password_hash, salt);
     }
 
     await this.userRepository.update(id, userDto);
@@ -91,6 +88,15 @@ export class UsersService extends TenantAwareCrudService<User> {
       .addSelect('user.password_hash')
       .where('user.username = :username', { username })
       .getOne();
+  }
+
+  async findByEmail(email: string): Promise<User | null> {
+    return this.userRepository.findOne({
+      where: {
+        email,
+        tenantId: this.tenancyService.getTenantId(),
+      },
+    });
   }
 
   async findById(id: string): Promise<User | null> {

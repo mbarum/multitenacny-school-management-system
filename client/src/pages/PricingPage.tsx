@@ -94,19 +94,41 @@ const PricingPage = () => {
   };
 
   const handleBankTransferSubscribe = async (amount: number, planName: string) => {
-    const reference = `BT-${Date.now()}`;
     try {
-      await api.post('/payments/bank-transfer', { 
-        amount, 
-        reference,
+      const response = await api.post('/subscriptions/bank-transfer', { 
+        amount: Number(amount), 
         plan: planName.toLowerCase(),
         billingCycle
       });
-      alert('Bank transfer request sent. Please check your email for payment instructions.');
+      
+      const { invoiceData, reference } = response;
+      
+      // Create a blob from the base64 data
+      const byteCharacters = atob(invoiceData);
+      const byteNumbers = new Array(byteCharacters.length);
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+      }
+      const byteArray = new Uint8Array(byteNumbers);
+      const blob = new Blob([byteArray], { type: 'application/pdf' });
+      
+      // Download the PDF
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `Invoice-${reference}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      alert(`Bank transfer request created successfully (Reference: ${reference}). An invoice has been downloaded. Please complete the bank transfer and contact support for activation.`);
       setSelectedPlan(null);
+      
+      // Optionally redirect to a success/instructions page
+      navigate('/dashboard?status=pending');
     } catch (error) {
       console.error('Error creating bank transfer request:', error);
-      alert('Failed to create bank transfer request.');
+      alert('Failed to create bank transfer request. Please try again.');
     }
   };
 

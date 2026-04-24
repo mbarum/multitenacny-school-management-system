@@ -1,6 +1,8 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { jsPDF } from 'jspdf';
+import 'jspdf-autotable';
 import { Tenant } from '../tenants/entities/tenant.entity';
 import {
   SubscriptionStatus,
@@ -9,6 +11,7 @@ import {
 import { PendingPayment } from '../payments/entities/pending-payment.entity';
 import { Student } from '../students/entities/student.entity';
 import { Attendance } from '../attendance/entities/attendance.entity';
+import { EmailService } from 'src/shared/email.service';
 
 @Injectable()
 export class SuperAdminService {
@@ -21,6 +24,7 @@ export class SuperAdminService {
     private readonly studentRepository: Repository<Student>,
     @InjectRepository(Attendance)
     private readonly attendanceRepository: Repository<Attendance>,
+    private readonly emailService: EmailService,
   ) {}
 
   async getDashboardAnalytics() {
@@ -167,7 +171,9 @@ export class SuperAdminService {
   }
 
   async getTenantById(id: string) {
-    const tenant = await this.tenantRepository.findOne({ where: { id } } as any);
+    const tenant = await this.tenantRepository.findOne({
+      where: { id },
+    } as any);
     if (!tenant) {
       throw new NotFoundException('Tenant not found');
     }
@@ -194,5 +200,200 @@ export class SuperAdminService {
       tenant.subscriptionStatus = status as SubscriptionStatus;
     }
     return this.tenantRepository.save(tenant);
+  }
+
+  async confirmPayment(paymentId: string) {
+    const payment = await this.pendingPaymentRepository.findOne({
+      where: { id: paymentId },
+      relations: ['tenant'],
+    });
+
+    if (!payment) {
+      throw new NotFoundException('Payment record not found');
+    }
+
+    if (payment.isApproved) {
+      throw new Error('Payment already approved');
+    }
+
+    // Approve payment
+    payment.isApproved = true;
+    await this.pendingPaymentRepository.save(payment);
+
+    // Update tenant
+    const tenant = payment.tenant;
+    tenant.subscriptionStatus = SubscriptionStatus.ACTIVE;
+    tenant.plan = payment.plan;
+
+    const expiryDays = payment.billingCycle === 'annual' ? 366 : 31;
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + expiryDays);
+    tenant.expiresAt = expiresAt;
+
+    await this.tenantRepository.save(tenant);
+
+    // Generate Receipt
+    const receiptBase64 = this.generateReceiptPDF(
+      tenant,
+      payment.amount,
+      payment.reference,
+      payment.plan,
+    );
+
+    // Send Receipt Email
+    await this.emailService.sendEmailWithAttachments(
+      tenant.contactEmail,
+      'Subscription Payment Confirmed - SaaSLink',
+      `Dear ${tenant.name},\n\nYour payment of KES ${payment.amount} has been confirmed. Your account is now active until ${expiresAt.toLocaleDateString()}.\n\nPlease find your receipt attached.`,
+      [
+        {
+          filename: `Receipt-${payment.reference}.pdf`,
+          content: receiptBase64,
+          encoding: 'base64',
+        },
+      ],
+    );
+
+    return { message: 'Payment confirmed and tenant activated' };
+  }
+
+  async getInvoicePDF(paymentId: string) {
+    const payment = await this.pendingPaymentRepository.findOne({
+      where: { id: paymentId },
+      relations: ['tenant'],
+    });
+    if (!payment) throw new NotFoundException('Payment record not found');
+
+    // Simple regeneration logic for invoice
+    const doc = new jsPDF() as any;
+    doc.setFontSize(22);
+    doc.text('PROFORMA INVOICE', 105, 20, { align: 'center' });
+    doc.setFontSize(10);
+    doc.text(`Reference: ${payment.reference}`, 20, 40);
+    doc.text(`Date: ${payment.createdAt.toLocaleDateString()}`, 20, 45);
+    doc.text(`School: ${payment.tenant.name}`, 20, 55);
+
+    doc.autoTable({
+      startY: 70,
+      head: [['Description', 'Amount']],
+      body: [
+        [
+          `Subscription Plan: ${payment.plan.toUpperCase()}`,
+          `KES ${payment.amount.toLocaleString()}`,
+        ],
+        ['Total Payable', `KES ${payment.amount.toLocaleString()}`],
+      ],
+      theme: 'grid',
+      headStyles: { fillColor: [41, 128, 185] },
+    });
+
+    return {
+      pdfBase64: (doc.output('datauristring') as string).split(',')[1],
+      filename: `Invoice-${payment.reference}.pdf`,
+    };
+  }
+
+  async getReceiptPDFForDownload(paymentId: string) {
+    const payment = await this.pendingPaymentRepository.findOne({
+      where: { id: paymentId },
+      relations: ['tenant'],
+    });
+    if (!payment) throw new NotFoundException('Payment record not found');
+    if (!payment.isApproved) throw new Error('Payment not yet approved');
+
+    const pdfBase64 = this.generateReceiptPDF(
+      payment.tenant,
+      payment.amount,
+      payment.reference,
+      payment.plan,
+    );
+    return {
+      pdfBase64,
+      filename: `Receipt-${payment.reference}.pdf`,
+    };
+  }
+
+  async resendReceipt(paymentId: string) {
+    const payment = await this.pendingPaymentRepository.findOne({
+      where: { id: paymentId },
+      relations: ['tenant'],
+    });
+
+    if (!payment || !payment.isApproved) {
+      throw new Error('Approved payment not found');
+    }
+
+    const receiptBase64 = this.generateReceiptPDF(
+      payment.tenant,
+      payment.amount,
+      payment.reference,
+      payment.plan,
+    );
+
+    await this.emailService.sendEmailWithAttachments(
+      payment.tenant.contactEmail,
+      'Receipt Resent - SaaSLink',
+      `Dear ${payment.tenant.name},\n\nAs requested, we are resending your receipt for the payment of KES ${payment.amount}.\n\nPlease find it attached.`,
+      [
+        {
+          filename: `Receipt-${payment.reference}.pdf`,
+          content: receiptBase64,
+          encoding: 'base64',
+        },
+      ],
+    );
+
+    return { message: 'Receipt resent successfully' };
+  }
+
+  private generateReceiptPDF(
+    tenant: Tenant,
+    fee: number,
+    reference: string,
+    plan: SubscriptionPlan,
+  ): string {
+    const doc = new jsPDF() as any;
+    const vatRate = 0.16; // 16% VAT
+    const vatAmount = fee * vatRate;
+    const totalAmount = fee + vatAmount;
+
+    // Header
+    doc.setFontSize(20);
+    doc.text('PAYMENT RECEIPT', 105, 20, { align: 'center' });
+
+    doc.setFontSize(12);
+    doc.text('Issuer: Saaslink Technologies Limited', 20, 40);
+    doc.text(`Date: ${new Date().toLocaleDateString()}`, 20, 50);
+    doc.text(`Receipt #: REC-${reference.slice(4)}`, 20, 60);
+    doc.text(`Reference: ${reference}`, 20, 70);
+
+    // Bill To
+    doc.text('Received From:', 20, 90);
+    doc.text(tenant.name, 20, 100);
+    doc.text(tenant.contactEmail || '', 20, 110);
+
+    // Table
+    doc.autoTable({
+      startY: 120,
+      head: [['Description', 'Amount (KES)']],
+      body: [
+        [`Subscription Package: ${plan.toUpperCase()}`, fee.toFixed(2)],
+        ['VAT (16%)', vatAmount.toFixed(2)],
+        ['Total Paid', totalAmount.toFixed(2)],
+      ],
+      theme: 'grid',
+      headStyles: { fillColor: [75, 181, 67] }, // Greenish for receipt
+    });
+
+    doc.setFontSize(14);
+    doc.text(
+      'Thank you for your business!',
+      105,
+      doc.lastAutoTable.finalY + 20,
+      { align: 'center' },
+    );
+
+    const output = doc.output('datauristring') as string;
+    return output.split(',')[1];
   }
 }

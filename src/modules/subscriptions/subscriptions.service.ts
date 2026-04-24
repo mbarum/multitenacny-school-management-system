@@ -3,9 +3,13 @@ import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import Stripe from 'stripe';
+import { jsPDF } from 'jspdf';
+import 'jspdf-autotable';
 import { Tenant } from '../tenants/entities/tenant.entity';
 import { TenancyService } from 'src/core/tenancy/tenancy.service';
 import { SystemConfigService } from '../config/system-config.service';
+import { PendingPayment, PaymentMethod } from '../payments/entities/pending-payment.entity';
+import { SubscriptionPlan, SubscriptionStatus } from 'src/common/subscription.enums';
 
 @Injectable()
 export class SubscriptionsService {
@@ -16,6 +20,8 @@ export class SubscriptionsService {
     private readonly systemConfigService: SystemConfigService,
     @InjectRepository(Tenant)
     private readonly tenantRepository: Repository<Tenant>,
+    @InjectRepository(PendingPayment)
+    private readonly pendingPaymentRepository: Repository<PendingPayment>,
     private readonly tenancyService: TenancyService,
   ) {}
 
@@ -88,5 +94,84 @@ export class SubscriptionsService {
     });
 
     return { url: portalSession.url };
+  }
+
+  async createBankTransferRequest(plan: SubscriptionPlan, billingCycle: 'monthly' | 'annual', amount: number): Promise<{ invoiceData: string; reference: string }> {
+    const tenantId = this.tenancyService.getTenantId();
+    const tenant = await this.tenantRepository.findOne({ where: { id: tenantId } } as any);
+
+    if (!tenant) {
+      throw new NotFoundException('Tenant not found');
+    }
+
+    const reference = `INV-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+
+    const pendingPayment = this.pendingPaymentRepository.create({
+      tenant,
+      amount,
+      method: PaymentMethod.BANK_TRANSFER,
+      reference,
+      plan,
+      billingCycle,
+      isApproved: false,
+    });
+
+    await this.pendingPaymentRepository.save(pendingPayment);
+
+    // Update tenant status
+    tenant.subscriptionStatus = SubscriptionStatus.PENDING_VERIFICATION;
+    await this.tenantRepository.save(tenant);
+
+    const invoiceData = this.generateInvoicePDF(tenant, amount, reference, plan);
+
+    return { invoiceData, reference };
+  }
+
+  private generateInvoicePDF(tenant: Tenant, fee: number, reference: string, plan: SubscriptionPlan): string {
+    const doc = new jsPDF() as any;
+    const vatRate = 0.16; // 16% VAT
+    const vatAmount = fee * vatRate;
+    const totalAmount = fee + vatAmount;
+
+    // Header
+    doc.setFontSize(20);
+    doc.text('INVOICE', 105, 20, { align: 'center' });
+
+    doc.setFontSize(12);
+    doc.text('Issuer: Saaslink Technologies Limited', 20, 40);
+    doc.text(`Date: ${new Date().toLocaleDateString()}`, 20, 50);
+    doc.text(`Invoice #: ${reference}`, 20, 60);
+
+    // Bill To
+    doc.text('Bill To:', 20, 80);
+    doc.text(tenant.name, 20, 90);
+    doc.text(tenant.contactEmail || '', 20, 100);
+
+    // Table
+    doc.autoTable({
+      startY: 110,
+      head: [['Description', 'Amount (KES)']],
+      body: [
+        [`Subscription Package: ${plan.toUpperCase()}`, fee.toFixed(2)],
+        ['VAT (16%)', vatAmount.toFixed(2)],
+        ['Total Amount', totalAmount.toFixed(2)],
+      ],
+      theme: 'grid',
+      headStyles: { fillColor: [100, 100, 100] },
+    });
+
+    // Bank Details
+    const finalY = doc.lastAutoTable.finalY + 20;
+    doc.setFontSize(14);
+    doc.text('Payment Details:', 20, finalY);
+    doc.setFontSize(10);
+    doc.text('Beneficiary: SAASLINK TECHNOLOGIES LTD', 20, finalY + 10);
+    doc.text('Bank: I&M Bank Ltd.', 20, finalY + 18);
+    doc.text('Account: 05206707336350', 20, finalY + 26);
+    doc.text('Branch: 177 Koinange', 20, finalY + 34);
+    doc.text(`Reference: ${reference}`, 20, finalY + 42);
+
+    const output = doc.output('datauristring') as string;
+    return output.split(',')[1];
   }
 }

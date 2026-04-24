@@ -478,15 +478,14 @@ const SuperAdminPage = () => {
             )}
 
             {activeTab === 'financials' && (
-               <motion.div key="financials" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-                 {/* Financial view logic - reusing analytics recent payments but expanded */}
-                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
-                    <div className="bg-white border border-gray-100 p-8 rounded-[32px] shadow-sm text-left">
-                       <h3 className="text-xl font-bold mb-6 text-gray-900 leading-none tracking-tight">Revenue Overview</h3>
+               <motion.div key="financials" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
+                    <div className="lg:col-span-1 bg-white border border-gray-100 p-8 rounded-[32px] shadow-sm text-left">
+                       <h3 className="text-xl font-bold mb-6 text-gray-900 leading-none tracking-tight">Revenue Summary</h3>
                        <div className="space-y-6">
                           <div className="flex justify-between items-center pb-4 border-b border-gray-100">
                              <span className="text-gray-500 font-medium">Total Lifetime Revenue</span>
-                             <span className="text-2xl font-black text-emerald-600 tracking-tight">KES {analytics?.totalRevenue.toLocaleString()}</span>
+                             <span className="text-2xl font-black text-emerald-600 tracking-tight">KES {analytics?.totalRevenue?.toLocaleString()}</span>
                           </div>
                           <div className="flex justify-between items-center pb-4 border-b border-gray-100">
                              <span className="text-gray-500 font-medium">Active Recurring Subscriptions</span>
@@ -497,24 +496,135 @@ const SuperAdminPage = () => {
                              <span className="text-2xl font-black text-yellow-600 tracking-tight font-mono">{analytics?.pendingApprovals}</span>
                           </div>
                        </div>
-                       <Link to="/super-admin/financials" className="mt-8 w-full block text-center py-4 bg-gray-50 text-gray-900 rounded-2xl font-bold text-xs uppercase tracking-widest transition-all hover:bg-gray-100 border border-gray-100">
-                          Complete Financial Ledger
-                       </Link>
                     </div>
                     
-                    <div className="bg-white border border-gray-100 p-8 rounded-[32px] shadow-sm text-left">
-                       <h3 className="text-xl font-bold mb-6 text-gray-900 leading-none tracking-tight">Subscription Market Share</h3>
-                       <div className="h-64">
-                         <ResponsiveContainer width="100%" height="100%">
-                            <PieChart>
-                              <Pie data={analytics?.tenantsByPlan} dataKey="value" stroke="none" innerRadius={60} outerRadius={80}>
-                                 {analytics?.tenantsByPlan.map((_: any, i: number) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-                              </Pie>
-                              <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #f1f5f9', borderRadius: '12px', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }} />
-                               <Legend />
-                            </PieChart>
-                         </ResponsiveContainer>
+                    <div className="lg:col-span-2 bg-white border border-gray-100 p-8 rounded-[32px] shadow-sm text-left">
+                       <h3 className="text-xl font-bold mb-6 text-gray-900 leading-none tracking-tight text-center">Pending Confirmations</h3>
+                       <div className="overflow-x-auto">
+                         <table className="w-full text-left border-separate border-spacing-0">
+                           <thead>
+                             <tr className="bg-gray-50 text-gray-400 text-[10px] uppercase tracking-[0.2em] font-bold">
+                               <th className="px-6 py-4">School</th>
+                               <th className="px-6 py-4">Amount</th>
+                               <th className="px-6 py-4 text-right">Action</th>
+                             </tr>
+                           </thead>
+                           <tbody className="divide-y divide-gray-100">
+                             {analytics?.recentPayments?.filter((p: any) => p.status === 'Pending').map((payment: any) => (
+                               <tr key={payment.id} className="group hover:bg-gray-50 transition-colors">
+                                 <td className="px-6 py-5">
+                                   <div className="font-bold text-gray-900 text-sm tracking-tight">{payment.tenantName}</div>
+                                 </td>
+                                 <td className="px-6 py-5 font-mono font-bold text-emerald-600 text-sm">KES {payment.amount.toLocaleString()}</td>
+                                 <td className="px-6 py-5 text-right">
+                                   <button 
+                                     onClick={async () => {
+                                       if (confirm(`Confirm payment of KES ${payment.amount} for ${payment.tenantName}?`)) {
+                                         try {
+                                           await api.post(`/super-admin/payments/${payment.id}/confirm`);
+                                           toast.success('Payment confirmed and tenant activated.');
+                                           fetchData();
+                                         } catch (error) {
+                                           toast.error('Failed to confirm payment.');
+                                         }
+                                       }
+                                     }}
+                                     className="p-2 bg-emerald-50 text-emerald-600 rounded-xl hover:bg-emerald-100 transition-colors"
+                                     title="Activate Account"
+                                   >
+                                     <CheckCircle size={18} />
+                                   </button>
+                                 </td>
+                               </tr>
+                             ))}
+                             {analytics?.recentPayments?.filter((p: any) => p.status === 'Pending').length === 0 && (
+                               <tr>
+                                 <td colSpan={3} className="px-6 py-12 text-center text-gray-400 text-xs font-medium uppercase tracking-widest italic">
+                                   No pending wire transfers found.
+                                 </td>
+                               </tr>
+                             )}
+                           </tbody>
+                         </table>
                        </div>
+                    </div>
+                 </div>
+
+                 <div className="bg-white border border-gray-100 rounded-[32px] shadow-sm overflow-hidden mb-12">
+                    <div className="p-8 border-b border-gray-100">
+                       <h3 className="text-xl font-bold text-gray-900 leading-none tracking-tight">Platform Transaction Ledger</h3>
+                    </div>
+                    <div className="overflow-x-auto">
+                       <table className="w-full text-left border-separate border-spacing-0">
+                         <thead>
+                           <tr className="bg-gray-50 text-gray-400 text-[10px] uppercase tracking-[0.2em] font-bold">
+                             <th className="px-8 py-4">Institution</th>
+                             <th className="px-8 py-4">Amount (KES)</th>
+                             <th className="px-8 py-4">Method</th>
+                             <th className="px-8 py-4">Date</th>
+                             <th className="px-8 py-4">Status</th>
+                             <th className="px-8 py-4 text-right">Actions</th>
+                           </tr>
+                         </thead>
+                         <tbody className="divide-y divide-gray-100">
+                           {analytics?.recentPayments?.map((payment: any) => (
+                             <tr key={payment.id} className="hover:bg-gray-50 transition-colors">
+                               <td className="px-8 py-5 font-bold text-gray-900 text-sm tracking-tight">{payment.tenantName}</td>
+                               <td className="px-8 py-5 font-mono font-bold text-emerald-600">{(payment.amount || 0).toLocaleString()}</td>
+                               <td className="px-8 py-5 uppercase text-[10px] font-black tracking-widest text-gray-400">{payment.method}</td>
+                               <td className="px-8 py-5 text-sm text-gray-500 font-medium">{new Date(payment.date).toLocaleDateString()}</td>
+                               <td className="px-8 py-5">
+                                 <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest ${
+                                    payment.status === 'Approved' ? 'bg-emerald-50 text-emerald-600' : 'bg-yellow-50 text-yellow-600'
+                                 }`}>
+                                   {payment.status}
+                                 </span>
+                               </td>
+                               <td className="px-8 py-5 text-right">
+                                  <div className="flex items-center justify-end space-x-2">
+                                     {payment.status === 'Approved' && (
+                                       <button 
+                                         onClick={async () => {
+                                           try {
+                                             await api.post(`/super-admin/payments/${payment.id}/resend`);
+                                             toast.success('Receipt resent to school email.');
+                                           } catch (error) {
+                                             toast.error('Failed to resend receipt');
+                                           }
+                                         }}
+                                         className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-xl transition-colors" 
+                                         title="Resend Receipt"
+                                       >
+                                          <CheckCircle size={16} />
+                                       </button>
+                                     )}
+                                     <button 
+                                       onClick={async () => {
+                                         try {
+                                           const docType = payment.status === 'Approved' ? 'receipt' : 'invoice';
+                                           const response = await api.get(`/super-admin/payments/${payment.id}/${docType}`, { responseType: 'blob' });
+                                           const url = window.URL.createObjectURL(new Blob([response.data]));
+                                           const link = document.createElement('a');
+                                           link.href = url;
+                                           link.setAttribute('download', `${docType.charAt(0).toUpperCase() + docType.slice(1)}-${payment.reference || payment.id}.pdf`);
+                                           document.body.appendChild(link);
+                                           link.click();
+                                           link.remove();
+                                         } catch (error) {
+                                           toast.error('Failed to download document');
+                                         }
+                                       }}
+                                       className="p-2 text-gray-400 hover:text-brand-green transition-colors" 
+                                       title="Download Invoice/Receipt"
+                                     >
+                                        <ArrowRight size={16} />
+                                     </button>
+                                  </div>
+                               </td>
+                             </tr>
+                           ))}
+                         </tbody>
+                       </table>
                     </div>
                  </div>
                </motion.div>
