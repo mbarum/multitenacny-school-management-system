@@ -35,7 +35,7 @@ export class PaymentsService {
     billingCycle: 'monthly' | 'annual',
   ): Promise<PendingPayment> {
     const tenantId = this.tenancyService.getTenantId();
-    const tenant = await this.tenantRepository.findOneBy({ id: tenantId });
+    const tenant = await this.tenantRepository.findOne({ where: { id: tenantId } } as any);
 
     if (!tenant) {
       throw new NotFoundException('Tenant not found');
@@ -50,7 +50,8 @@ export class PaymentsService {
       billingCycle,
     });
 
-    const savedPayment = await this.pendingPaymentRepository.save(pendingPayment);
+    const savedPayment =
+      await this.pendingPaymentRepository.save(pendingPayment);
 
     // Send email to admins
     const admins = await this.userRepository.find({

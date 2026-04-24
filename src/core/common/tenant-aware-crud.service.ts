@@ -1,5 +1,10 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { Repository, DeepPartial, FindManyOptions, FindOneOptions } from 'typeorm';
+import {
+  Repository,
+  DeepPartial,
+  FindManyOptions,
+  FindOneOptions,
+} from 'typeorm';
 import { TenancyService } from '../tenancy/tenancy.service';
 import { TenantAwareEntity } from '../tenancy/tenant-aware.entity';
 
@@ -13,21 +18,21 @@ export abstract class TenantAwareCrudService<T extends TenantAwareEntity> {
   async create(createDto: DeepPartial<T>): Promise<T> {
     const entity = this.repository.create({
       ...createDto,
-      tenantId: this.tenancyService.getTenantId() as string,
+      tenantId: this.tenancyService.getTenantId(),
     } as DeepPartial<T>);
-    return this.repository.save(entity);
+    return this.repository.save(entity as any) as Promise<T>;
   }
 
   findAll(): Promise<T[]> {
     return this.repository.find({
-      where: { tenantId: this.tenancyService.getTenantId() as string },
-    } as FindManyOptions<T>);
+      where: { tenantId: this.tenancyService.getTenantId() },
+    } as any);
   }
 
   async findOne(id: string): Promise<T> {
     const entity = await this.repository.findOne({
-      where: { id, tenantId: this.tenancyService.getTenantId() as string },
-    } as FindOneOptions<T>);
+      where: { id, tenantId: this.tenancyService.getTenantId() },
+    } as any);
     if (!entity) {
       throw new NotFoundException(`Entity with id ${id} not found`);
     }
@@ -37,7 +42,7 @@ export abstract class TenantAwareCrudService<T extends TenantAwareEntity> {
   async update(id: string, updateDto: DeepPartial<T>): Promise<T> {
     const entity = await this.findOne(id); // This already ensures tenant scope
     Object.assign(entity, updateDto);
-    return this.repository.save(entity);
+    return this.repository.save(entity as any) as Promise<T>;
   }
 
   async remove(id: string): Promise<void> {

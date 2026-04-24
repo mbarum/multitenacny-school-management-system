@@ -52,7 +52,9 @@ export class StripeWebhookController {
     let event: Stripe.Event;
 
     try {
-      const webhookSecret = await this.systemConfigService.get('STRIPE_WEBHOOK_SECRET');
+      const webhookSecret = await this.systemConfigService.get(
+        'STRIPE_WEBHOOK_SECRET',
+      );
       if (!webhookSecret) {
         throw new Error(
           'STRIPE_WEBHOOK_SECRET not found in environment variables.',
@@ -96,7 +98,9 @@ export class StripeWebhookController {
     subscription: Stripe.Subscription,
   ) {
     const stripeCustomerId = subscription.customer as string;
-    const tenant = await this.tenantRepository.findOneBy({ stripeCustomerId });
+    const tenant = await this.tenantRepository.findOne({
+      where: { stripeCustomerId },
+    } as any);
 
     if (tenant) {
       tenant.subscriptionStatus = subscription.status as SubscriptionStatus;
@@ -123,7 +127,9 @@ export class StripeWebhookController {
 
   private async handleSubscriptionCanceled(subscription: Stripe.Subscription) {
     const stripeCustomerId = subscription.customer as string;
-    const tenant = await this.tenantRepository.findOneBy({ stripeCustomerId });
+    const tenant = await this.tenantRepository.findOne({
+      where: { stripeCustomerId },
+    } as any);
 
     if (tenant) {
       tenant.subscriptionStatus = SubscriptionStatus.CANCELED;

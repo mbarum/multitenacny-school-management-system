@@ -43,8 +43,11 @@ export class MpesaService {
   ) {}
 
   private async getAccessToken(): Promise<string> {
-    const consumerKey = await this.systemConfigService.get('MPESA_CONSUMER_KEY');
-    const consumerSecret = await this.systemConfigService.get('MPESA_CONSUMER_SECRET');
+    const consumerKey =
+      await this.systemConfigService.get('MPESA_CONSUMER_KEY');
+    const consumerSecret = await this.systemConfigService.get(
+      'MPESA_CONSUMER_SECRET',
+    );
 
     if (!consumerKey || !consumerSecret) {
       throw new Error(
@@ -118,7 +121,7 @@ export class MpesaService {
         'Tenant context missing. Please ensure you are logged in and have a valid tenant ID.',
       );
     }
-    const tenant = await this.tenantRepository.findOneBy({ id: tenantId });
+    const tenant = await this.tenantRepository.findOne({ where: { id: tenantId } } as any);
 
     if (!tenant) {
       throw new NotFoundException(
@@ -135,9 +138,15 @@ export class MpesaService {
     }
 
     const accessToken = await this.getAccessToken();
-    const shortCode = (await this.systemConfigService.get('MPESA_SHORTCODE'))?.trim();
-    const passkey = (await this.systemConfigService.get('MPESA_PASSKEY'))?.trim();
-    const callbackUrl = (await this.systemConfigService.get('MPESA_CALLBACK_URL'))?.trim();
+    const shortCode = (
+      await this.systemConfigService.get('MPESA_SHORTCODE')
+    )?.trim();
+    const passkey = (
+      await this.systemConfigService.get('MPESA_PASSKEY')
+    )?.trim();
+    const callbackUrl = (
+      await this.systemConfigService.get('MPESA_CALLBACK_URL')
+    )?.trim();
 
     if (!shortCode || !passkey || !callbackUrl) {
       throw new Error(
@@ -220,7 +229,11 @@ export class MpesaService {
 
   async handleCallback(callbackData: Record<string, any>): Promise<any> {
     // Check if it's C2B Confirmation
-    if (callbackData.TransactionType && callbackData.BusinessShortCode && callbackData.BillRefNumber) {
+    if (
+      callbackData.TransactionType &&
+      callbackData.BusinessShortCode &&
+      callbackData.BillRefNumber
+    ) {
       return this.handleC2BConfirmation(callbackData);
     }
 
@@ -296,14 +309,12 @@ export class MpesaService {
   }
 
   async handleC2BConfirmation(c2bData: Record<string, any>): Promise<any> {
-    console.log('M-Pesa C2B Confirmation Received:', JSON.stringify(c2bData, null, 2));
+    console.log(
+      'M-Pesa C2B Confirmation Received:',
+      JSON.stringify(c2bData, null, 2),
+    );
 
-    const {
-      BusinessShortCode,
-      BillRefNumber,
-      TransAmount,
-      TransID,
-    } = c2bData;
+    const { BusinessShortCode, BillRefNumber, TransAmount, TransID } = c2bData;
 
     // Find Tenant by Paybill
     const tenant = await this.tenantRepository.findOne({
@@ -322,7 +333,9 @@ export class MpesaService {
         TransID,
         tenant.id,
       );
-      console.log(`Payment confirmed and reconciled for student ${BillRefNumber} in tenant ${tenant.name}`);
+      console.log(
+        `Payment confirmed and reconciled for student ${BillRefNumber} in tenant ${tenant.name}`,
+      );
       return { ResultCode: 0, ResultDesc: 'Success' };
     } catch (error) {
       console.error('Error processing C2B payment:', error.message);
@@ -331,11 +344,16 @@ export class MpesaService {
   }
 
   async handleC2BValidation(c2bData: Record<string, any>): Promise<any> {
-    console.log('M-Pesa C2B Validation Received:', JSON.stringify(c2bData, null, 2));
+    console.log(
+      'M-Pesa C2B Validation Received:',
+      JSON.stringify(c2bData, null, 2),
+    );
     // For validation, we check if student exists
     const { BusinessShortCode, BillRefNumber } = c2bData;
-    const tenant = await this.tenantRepository.findOne({ where: { mpesaPaybill: BusinessShortCode } });
-    
+    const tenant = await this.tenantRepository.findOne({
+      where: { mpesaPaybill: BusinessShortCode },
+    });
+
     if (!tenant) return { ResultCode: 'C2B00012', ResultDesc: 'Rejected' };
 
     // Simply returning success here or checking if student exists would be better

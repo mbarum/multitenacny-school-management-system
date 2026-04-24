@@ -167,7 +167,7 @@ export class SuperAdminService {
   }
 
   async getTenantById(id: string) {
-    const tenant = await this.tenantRepository.findOneBy({ id });
+    const tenant = await this.tenantRepository.findOne({ where: { id } } as any);
     if (!tenant) {
       throw new NotFoundException('Tenant not found');
     }

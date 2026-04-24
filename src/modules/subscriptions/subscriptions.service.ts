@@ -34,7 +34,9 @@ export class SubscriptionsService {
 
   async createCheckoutSession(priceId: string): Promise<{ sessionId: string }> {
     const tenantId = this.tenancyService.getTenantId();
-    const tenant = await this.tenantRepository.findOneBy({ id: tenantId });
+    const tenant = await this.tenantRepository.findOne({
+      where: { id: tenantId },
+    } as any);
 
     if (!tenant) {
       throw new NotFoundException('Tenant not found');
@@ -67,7 +69,9 @@ export class SubscriptionsService {
 
   async createBillingPortalSession(): Promise<{ url: string }> {
     const tenantId = this.tenancyService.getTenantId();
-    const tenant = await this.tenantRepository.findOneBy({ id: tenantId });
+    const tenant = await this.tenantRepository.findOne({
+      where: { id: tenantId },
+    } as any);
 
     if (!tenant) {
       throw new NotFoundException('Tenant not found');

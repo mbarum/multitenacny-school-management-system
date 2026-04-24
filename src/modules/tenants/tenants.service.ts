@@ -101,7 +101,6 @@ export class TenantsService {
   }
 
   private generateInvoicePDF(tenant: Tenant, fee: number): string {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const doc = new jsPDF() as any;
     const vatRate = 0.16; // 16% VAT
     const vatAmount = fee * vatRate;
@@ -207,7 +206,7 @@ export class TenantsService {
       return cachedTenant;
     }
 
-    const tenant = await this.tenantRepository.findOneBy({ id });
+    const tenant = await this.tenantRepository.findOne({ where: { id } } as any);
     if (!tenant) {
       throw new NotFoundException(`Tenant with id ${id} not found`);
     }
