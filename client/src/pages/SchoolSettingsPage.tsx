@@ -9,6 +9,15 @@ const SchoolSettingsPage: React.FC = () => {
   const { user } = useAuth();
   const [gradingMode, setGradingMode] = useState('TRADITIONAL');
   const [mpesaPaybill, setMpesaPaybill] = useState('');
+  const [schoolData, setSchoolData] = useState({
+    name: '',
+    logoUrl: '',
+    website: '',
+    phoneNumber: '',
+    address: '',
+    motto: '',
+    contactEmail: ''
+  });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -21,6 +30,15 @@ const SchoolSettingsPage: React.FC = () => {
       const response = await api.get('/tenants/current');
       setGradingMode(response.data.gradingMode || 'TRADITIONAL');
       setMpesaPaybill(response.data.mpesaPaybill || '');
+      setSchoolData({
+        name: response.data.name || '',
+        logoUrl: response.data.logoUrl || '',
+        website: response.data.website || '',
+        phoneNumber: response.data.phoneNumber || '',
+        address: response.data.address || '',
+        motto: response.data.motto || '',
+        contactEmail: response.data.contactEmail || ''
+      });
     } catch (error) {
       console.error('Failed to fetch school settings', error);
       toast.error('Failed to load settings');
@@ -33,6 +51,7 @@ const SchoolSettingsPage: React.FC = () => {
     setSaving(true);
     try {
       await api.patch('/tenants/current', {
+        ...schoolData,
         gradingMode,
         mpesaPaybill,
       });
@@ -51,14 +70,131 @@ const SchoolSettingsPage: React.FC = () => {
   }
 
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className="max-w-4xl mx-auto pb-20">
       <div className="mb-8">
         <h1 className="text-2xl font-black text-gray-900 uppercase tracking-tight mb-2">School Settings</h1>
-        <p className="text-gray-500 font-medium">Configure your school's grading system and payment integrations.</p>
+        <p className="text-gray-500 font-medium">Configure your school's identity, letterhead, and system integrations.</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-        <div className="md:col-span-2 space-y-6">
+        <div className="md:col-span-2 space-y-8">
+          {/* Branding & Letterhead */}
+          <div className="bg-white rounded-2xl p-8 border border-gray-100 shadow-sm">
+            <div className="flex items-center space-x-3 mb-6">
+              <div className="p-2 bg-orange-50 rounded-xl">
+                <Settings className="text-orange-600 w-5 h-5" />
+              </div>
+              <h2 className="text-lg font-bold text-gray-900">Branding & Letterhead</h2>
+            </div>
+
+            <div className="space-y-6">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="col-span-2">
+                  <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2">School Official Name</label>
+                  <input 
+                    type="text"
+                    value={schoolData.name}
+                    onChange={(e) => setSchoolData({...schoolData, name: e.target.value})}
+                    placeholder="e.g. Royal Academy of Excellence"
+                    className="w-full px-4 py-3 rounded-xl border border-gray-100 focus:outline-none focus:ring-2 focus:ring-orange-500 font-bold text-gray-900"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2">Logo URL</label>
+                  <input 
+                    type="text"
+                    value={schoolData.logoUrl}
+                    onChange={(e) => setSchoolData({...schoolData, logoUrl: e.target.value})}
+                    placeholder="https:// school.com/logo.png"
+                    className="w-full px-4 py-3 rounded-xl border border-gray-100 focus:outline-none focus:ring-2 focus:ring-orange-500 font-bold text-gray-900"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2">School Slogan / Motto</label>
+                  <input 
+                    type="text"
+                    value={schoolData.motto}
+                    onChange={(e) => setSchoolData({...schoolData, motto: e.target.value})}
+                    placeholder="e.g. Lead to Serve"
+                    className="w-full px-4 py-3 rounded-xl border border-gray-100 focus:outline-none focus:ring-2 focus:ring-orange-500 font-bold text-gray-900 italic"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2">Contact Email</label>
+                  <input 
+                    type="email"
+                    value={schoolData.contactEmail}
+                    onChange={(e) => setSchoolData({...schoolData, contactEmail: e.target.value})}
+                    placeholder="admissions@school.com"
+                    className="w-full px-4 py-3 rounded-xl border border-gray-100 focus:outline-none focus:ring-2 focus:ring-orange-500 font-bold text-gray-900"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2">Phone Number</label>
+                  <input 
+                    type="text"
+                    value={schoolData.phoneNumber}
+                    onChange={(e) => setSchoolData({...schoolData, phoneNumber: e.target.value})}
+                    placeholder="+254 700 000 000"
+                    className="w-full px-4 py-3 rounded-xl border border-gray-100 focus:outline-none focus:ring-2 focus:ring-orange-500 font-bold text-gray-900"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2">Physical Address</label>
+                <textarea 
+                  value={schoolData.address}
+                  onChange={(e) => setSchoolData({...schoolData, address: e.target.value})}
+                  rows={2}
+                  placeholder="e.g. 1st Floor, Academic Tower, Education Street, Nairobi"
+                  className="w-full px-4 py-3 rounded-xl border border-gray-100 focus:outline-none focus:ring-2 focus:ring-orange-500 font-bold text-gray-900 resize-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2">Website</label>
+                <input 
+                  type="text"
+                  value={schoolData.website}
+                  onChange={(e) => setSchoolData({...schoolData, website: e.target.value})}
+                  placeholder="www.school.com"
+                  className="w-full px-4 py-3 rounded-xl border border-gray-100 focus:outline-none focus:ring-2 focus:ring-orange-500 font-bold text-gray-900"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Letterhead Preview */}
+          <div className="bg-white rounded-2xl p-8 border-2 border-dashed border-gray-100 overflow-hidden relative group">
+             <div className="absolute top-4 right-4 text-[10px] font-black uppercase text-gray-300 tracking-widest">Letterhead Preview</div>
+             <div className="flex items-start justify-between">
+                <div className="flex items-center space-x-6">
+                   {schoolData.logoUrl ? (
+                     <img src={schoolData.logoUrl} alt="Logo" className="w-20 h-20 object-contain rounded-xl bg-gray-50" />
+                   ) : (
+                     <div className="w-20 h-20 bg-gray-50 rounded-xl flex items-center justify-center border border-gray-100">
+                        <GraduationCap className="text-gray-200" size={32} />
+                     </div>
+                   )}
+                   <div>
+                      <h3 className="text-2xl font-black text-gray-900 tracking-tighter uppercase italic leading-none">{schoolData.name || 'YOUR SCHOOL NAME'}</h3>
+                      <p className="text-xs font-bold text-orange-500 mt-1 italic uppercase tracking-wider">{schoolData.motto || 'Your School Slogan Here'}</p>
+                      
+                      <div className="mt-4 flex flex-wrap gap-x-4 gap-y-1 text-[10px] font-bold text-gray-400 uppercase">
+                         {schoolData.address && <span>{schoolData.address}</span>}
+                         {schoolData.phoneNumber && <span>T: {schoolData.phoneNumber}</span>}
+                         {schoolData.contactEmail && <span>E: {schoolData.contactEmail}</span>}
+                         {schoolData.website && <span>W: {schoolData.website}</span>}
+                      </div>
+                   </div>
+                </div>
+             </div>
+          </div>
+
           {/* Grading System Selection */}
           <div className="bg-white rounded-2xl p-8 border border-gray-100 shadow-sm">
             <div className="flex items-center space-x-3 mb-6">

@@ -102,7 +102,7 @@ export class TenantsService {
 
   private generateInvoicePDF(tenant: Tenant, feeInput: any): string {
     const doc = new jsPDF() as any;
-    
+
     // Extremely defensive fee parsing
     let fee = 0;
     if (typeof feeInput === 'number') {
@@ -110,30 +110,68 @@ export class TenantsService {
     } else if (typeof feeInput === 'string') {
       fee = parseFloat(feeInput);
     }
-    
+
     if (isNaN(fee)) fee = 0;
 
     const vatRate = 0.16; // 16% VAT
     const vatAmount = fee * vatRate;
     const totalAmount = fee + vatAmount;
 
-    // Header
-    doc.setFontSize(20);
-    doc.text('INVOICE', 105, 20, { align: 'center' });
+    // Header with Branding
+    if (tenant.logoUrl) {
+      try {
+        // logo is usually a URL, jsPDF needs base64 or image element
+        // For now we'll just put the school name if logo isn't easily embeddable server-side without a fetch lib
+        // But we can try to add the text branding at least
+      } catch (e) {
+        console.error('Failed to add logo to PDF', e);
+      }
+    }
 
-    doc.setFontSize(12);
-    doc.text('Issuer: Saaslink Technologies Limited', 20, 40);
-    doc.text(`Date: ${new Date().toLocaleDateString()}`, 20, 50);
-    doc.text(`Invoice #: INV-${tenant.id.slice(0, 8).toUpperCase()}`, 20, 60);
+    doc.setFontSize(22);
+    doc.setTextColor(44, 62, 80); // Dark Blue
+    doc.text(tenant.name.toUpperCase(), 105, 20, { align: 'center' });
+    
+    if (tenant.motto) {
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'italic');
+      doc.text(tenant.motto, 105, 28, { align: 'center' });
+    }
+
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(128, 128, 128);
+    const contactInfo = [
+      tenant.address,
+      tenant.phoneNumber ? `T: ${tenant.phoneNumber}` : null,
+      tenant.contactEmail ? `E: ${tenant.contactEmail}` : null,
+      tenant.website ? `W: ${tenant.website}` : null,
+    ].filter(Boolean).join(' | ');
+    
+    doc.text(contactInfo, 105, 35, { align: 'center' });
+    
+    doc.setDrawColor(200, 200, 200);
+    doc.line(20, 40, 190, 40);
+
+    doc.setFontSize(16);
+    doc.setTextColor(0, 0, 0);
+    doc.text('INVOICE', 105, 55, { align: 'center' });
+
+    doc.setFontSize(10);
+    doc.text(`Date: ${new Date().toLocaleDateString()}`, 20, 70);
+    doc.text(`Invoice #: INV-${tenant.id.slice(0, 8).toUpperCase()}`, 20, 78);
 
     // Bill To
-    doc.text('Bill To:', 20, 80);
-    doc.text(tenant.name, 20, 90);
-    doc.text(tenant.contactEmail || '', 20, 100);
+    doc.setFontSize(11);
+    doc.text('BILL TO:', 20, 95);
+    doc.setFontSize(10);
+    doc.text('Subscription Billing Dept.', 20, 102);
+    doc.text(tenant.name, 20, 108);
+    doc.text(tenant.contactEmail || '', 20, 114);
 
     // Table
     doc.autoTable({
-      startY: 110,
+      startY: 125,
       head: [['Description', 'Amount (KES)']],
       body: [
         [`Subscription Package: ${tenant.plan}`, fee.toFixed(2)],
@@ -226,6 +264,28 @@ export class TenantsService {
 
     await this.cacheManager.set(`tenant_${id}`, tenant);
     return tenant;
+  }
+
+  async update(id: string, updateData: Partial<Tenant>): Promise<Tenant> {
+    const tenant = await this.findOne(id);
+    
+    // Explicitly merge only allowed fields to prevent privilege escalation
+    // (though in a real app we'd use a DTO)
+    const allowedFields: (keyof Tenant)[] = [
+      'name', 'logoUrl', 'website', 'phoneNumber', 
+      'address', 'motto', 'contactEmail', 'mpesaPaybill'
+    ];
+
+    allowedFields.forEach(field => {
+      if (updateData[field] !== undefined) {
+        (tenant as any)[field] = updateData[field];
+      }
+    });
+
+    const savedTenant = await this.tenantRepository.save(tenant);
+    // Update cache
+    await this.cacheManager.set(`tenant_${id}`, savedTenant);
+    return savedTenant;
   }
 
   async updateGradingMode(id: string, gradingMode: string): Promise<Tenant> {

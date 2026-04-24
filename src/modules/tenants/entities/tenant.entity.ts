@@ -39,6 +39,21 @@ export class Tenant {
   gradingMode: string; // 'TRADITIONAL', 'CBE', 'HYBRID'
 
   @Column({ nullable: true })
+  logoUrl: string;
+
+  @Column({ nullable: true })
+  website: string;
+
+  @Column({ nullable: true })
+  phoneNumber: string;
+
+  @Column({ type: 'text', nullable: true })
+  address: string;
+
+  @Column({ nullable: true })
+  motto: string;
+
+  @Column({ nullable: true })
   contactEmail: string;
 
   @Column({ nullable: true })
