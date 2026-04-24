@@ -6,12 +6,14 @@ import { MpesaService } from './mpesa.service';
 import { Tenant } from '../tenants/entities/tenant.entity';
 import { PendingPayment } from '../payments/entities/pending-payment.entity';
 import { TenancyModule } from 'src/core/tenancy/tenancy.module';
+import { FeesModule } from '../fees/fees.module';
 
 @Module({
   imports: [
     HttpModule,
     TypeOrmModule.forFeature([Tenant, PendingPayment]),
     TenancyModule,
+    FeesModule,
   ],
   controllers: [MpesaController],
   providers: [MpesaService],

@@ -16,6 +16,21 @@ export class Student extends TenantAwareEntity {
   @Column({ nullable: true })
   registrationNumber: string;
 
+  @Column({ nullable: true })
+  photoUrl: string;
+
+  @Column({ nullable: true })
+  gender: string;
+
+  @Column({ type: 'date', nullable: true })
+  dateOfBirth: Date;
+
+  @Column({ nullable: true })
+  residence: string;
+
+  @Column({ nullable: true })
+  transportRoute: string;
+
   @ManyToOne(() => ClassLevel)
   classLevel: ClassLevel;
 

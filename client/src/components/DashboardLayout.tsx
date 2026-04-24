@@ -45,6 +45,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
     { icon: <Calendar size={20} />, label: 'Attendance', path: isTeacher ? '/teacher/attendance' : '/attendance', roles: [UserRole.ADMIN, UserRole.TEACHER] },
     { icon: <FileText size={20} />, label: 'Reports', path: '/reports', roles: [UserRole.ADMIN, UserRole.TEACHER] },
     { icon: <CreditCard size={20} />, label: 'Payments', path: '/payments', roles: [UserRole.ADMIN, UserRole.PARENT] },
+    { icon: <Settings size={20} />, label: 'Settings', path: '/settings', roles: [UserRole.ADMIN] },
   ];
 
   const filteredItems = menuItems.filter(item => item.roles.includes(user?.role as UserRole));

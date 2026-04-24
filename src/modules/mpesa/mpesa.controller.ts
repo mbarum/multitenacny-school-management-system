@@ -37,4 +37,16 @@ export class MpesaController {
   handleCallback(@Body() body: Record<string, any>) {
     return this.mpesaService.handleCallback(body);
   }
+
+  @Post('validation')
+  @HttpCode(HttpStatus.OK)
+  handleValidation(@Body() body: Record<string, any>) {
+    return this.mpesaService.handleC2BValidation(body);
+  }
+
+  @Post('confirmation')
+  @HttpCode(HttpStatus.OK)
+  handleConfirmation(@Body() body: Record<string, any>) {
+    return this.mpesaService.handleC2BConfirmation(body);
+  }
 }

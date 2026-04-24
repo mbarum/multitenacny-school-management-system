@@ -41,6 +41,9 @@ export class Tenant {
   @Column({ nullable: true })
   contactEmail: string;
 
+  @Column({ nullable: true })
+  mpesaPaybill: string;
+
   @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
   subscriptionFee: number;
 }

@@ -28,6 +28,7 @@ import PrivacyPage from './pages/PrivacyPage';
 import TermsPage from './pages/TermsPage';
 import ContactPage from './pages/ContactPage';
 import StudentsPage from './pages/StudentsPage';
+import SchoolSettingsPage from './pages/SchoolSettingsPage';
 import { UserRole } from '../../src/common/user-role.enum';
 
 import DashboardLayout from './components/DashboardLayout';
@@ -61,6 +62,10 @@ const AppRoutes: React.FC = () => {
       <Route
         path="/dashboard"
         element={renderProtectedRoute(<DashboardPage />, UserRole.ADMIN)}
+      />
+      <Route
+        path="/settings"
+        element={renderProtectedRoute(<SchoolSettingsPage />, UserRole.ADMIN)}
       />
       <Route
         path="/students"

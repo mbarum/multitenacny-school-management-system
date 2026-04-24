@@ -12,6 +12,26 @@ export class CreateStudentDto {
   registrationNumber?: string;
 
   @IsOptional()
+  @IsString()
+  photoUrl?: string;
+
+  @IsOptional()
+  @IsString()
+  gender?: string;
+
+  @IsOptional()
+  @IsString()
+  dateOfBirth?: string;
+
+  @IsOptional()
+  @IsString()
+  residence?: string;
+
+  @IsOptional()
+  @IsString()
+  transportRoute?: string;
+
+  @IsOptional()
   @IsUUID()
   classLevelId?: string;
 
