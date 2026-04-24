@@ -73,6 +73,7 @@ import { TenantThrottlerGuard } from './core/guards/tenant-throttler.guard';
             password: configService.get('REDIS_PASSWORD'),
             ttl: 300,
           }),
+          ttl: 300,
         };
       },
       inject: [ConfigService],
