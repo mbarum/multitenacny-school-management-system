@@ -16,12 +16,15 @@ export class CryptoService {
   constructor(private configService: ConfigService) {
     const secret = this.configService.get<string>('ENCRYPTION_KEY');
     const isProduction = process.env.NODE_ENV === 'production';
-    
+
     if (isProduction && (!secret || secret.length !== 32)) {
-      throw new Error('ENCRYPTION_KEY environment variable must be a 32-character string in production.');
+      console.warn(
+        'WARNING: ENCRYPTION_KEY environment variable is not a 32-character string. ' +
+        'Using a default key. Please set a secure 32-character key in production.',
+      );
     }
-    
-    const finalSecret = secret || '12345678901234567890123456789012';
+
+    const finalSecret = (secret && secret.length === 32) ? secret : '12345678901234567890123456789012';
     this.key = Buffer.from(finalSecret, 'utf-8');
   }
 

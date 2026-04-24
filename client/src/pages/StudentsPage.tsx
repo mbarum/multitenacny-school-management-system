@@ -401,9 +401,16 @@ const StudentsPage: React.FC = () => {
                         <td className="px-6 py-4 font-medium text-gray-900">
                           <button 
                             onClick={() => handleViewStudent(student)}
-                            className="hover:text-blue-600 transition-colors text-left"
+                            className="flex items-center space-x-3 hover:text-blue-600 transition-colors text-left group"
                           >
-                            {student.firstName} {student.lastName}
+                            <div className="w-8 h-8 rounded-lg bg-gray-100 overflow-hidden shrink-0 border border-gray-200 group-hover:border-blue-200 transition-colors">
+                              {student.photoUrl ? (
+                                <img src={student.photoUrl} alt="" className="w-full h-full object-cover" />
+                              ) : (
+                                <User className="w-full h-full p-1.5 text-gray-400" />
+                              )}
+                            </div>
+                            <span className="font-bold">{student.firstName} {student.lastName}</span>
                           </button>
                         </td>
                         <td className="px-6 py-4 text-gray-500">{student.registrationNumber || '-'}</td>
@@ -478,9 +485,9 @@ const StudentsPage: React.FC = () => {
       {/* Add/Edit Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[95vh] overflow-hidden flex flex-col animate-in fade-in zoom-in duration-200">
             {/* Modal Header */}
-            <div className="px-8 py-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+            <div className="px-8 py-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 shrink-0">
               <div>
                 <h3 className="text-xl font-bold text-gray-900 tracking-tight">
                   {editingStudent ? 'Update Enrollment' : 'New Student Enrollment'}
@@ -499,7 +506,7 @@ const StudentsPage: React.FC = () => {
             </div>
 
             {/* Stepper Progress */}
-            <div className="px-8 pt-6">
+            <div className="px-8 pt-6 shrink-0">
               <div className="flex items-center space-x-2">
                 {[1, 2, 3].map((step) => (
                   <React.Fragment key={step}>
@@ -518,8 +525,9 @@ const StudentsPage: React.FC = () => {
               </div>
             </div>
 
-            <form onSubmit={handleSubmit} className="p-8">
-              <div className="min-h-[320px]">
+            <div className="flex-1 overflow-y-auto custom-scrollbar">
+              <form onSubmit={handleSubmit} className="p-8">
+                <div className="min-h-[320px]">
                 {currentStep === 1 && (
                   <div className="space-y-6 animate-in slide-in-from-right-4 duration-300">
                     <div className="flex flex-col sm:flex-row items-center gap-8 mb-4">
@@ -777,7 +785,8 @@ const StudentsPage: React.FC = () => {
             </form>
           </div>
         </div>
-      )}
+      </div>
+    )}
 
       {/* Bulk Status Update Modal */}
       {isBulkStatusModalOpen && (
