@@ -14,4 +14,11 @@ export class PayrollService extends TenantAwareCrudService<Payroll> {
   ) {
     super(payrollRepository, tenancyService);
   }
+
+  findAll(): Promise<Payroll[]> {
+    return this.payrollRepository.find({
+      where: { tenantId: this.tenancyService.getTenantId() },
+      relations: ['staff'],
+    });
+  }
 }

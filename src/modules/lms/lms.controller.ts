@@ -25,7 +25,13 @@ import { UserRole } from 'src/common/user-role.enum';
 export class LmsController {
   constructor(private readonly lmsService: LmsService) {}
 
-  @Post('connect')
+  @Get('connections')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  getConnections() {
+    return this.lmsService.getConnections();
+  }
+
+  @Post('connections')
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @HttpCode(HttpStatus.OK)
   connect(@Body() connectLmsDto: ConnectLmsDto) {

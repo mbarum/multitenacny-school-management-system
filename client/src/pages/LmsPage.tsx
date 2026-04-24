@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../services/api';
 import { motion } from 'framer-motion';
-import { Globe, Settings, ExternalLink, ShieldCheck, Zap, RefreshCw, X, Check, ArrowRight, BookOpen, Layers, Cloud, Lock, Key } from 'lucide-react';
+import { Globe, Settings, ExternalLink, ShieldCheck, Zap, RefreshCw, X, Check, ArrowRight, BookOpen, Layers, Cloud, Lock, Key, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface LmsConnection {

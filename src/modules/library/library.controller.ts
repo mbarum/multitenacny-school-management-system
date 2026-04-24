@@ -1,4 +1,13 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  UseGuards,
+} from '@nestjs/common';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { UserRole } from 'src/common/user-role.enum';
@@ -39,5 +48,23 @@ export class LibraryController {
   @Roles(UserRole.ADMIN)
   remove(@Param('id') id: string) {
     return this.libraryService.remove(id);
+  }
+
+  @Post('lend')
+  @Roles(UserRole.ADMIN, UserRole.LIBRARIAN)
+  lend(@Body() body: { bookId: string; studentId: string; dueDate?: string }) {
+    const dueDate = body.dueDate ? new Date(body.dueDate) : undefined;
+    return this.libraryService.lendBook(body.bookId, body.studentId, dueDate);
+  }
+
+  @Post('return/:id')
+  @Roles(UserRole.ADMIN, UserRole.LIBRARIAN)
+  returnBook(@Param('id') id: string) {
+    return this.libraryService.returnBook(id);
+  }
+
+  @Get('lendings/active')
+  getActiveLendings() {
+    return this.libraryService.getActiveLendings();
   }
 }

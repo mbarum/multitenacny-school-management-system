@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../services/api';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Book, Library, Search, Plus, Filter, Download, Printer, BookOpen, Clock, User, Bookmark, ChevronRight, X, Edit, Trash2, Check, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -19,6 +19,9 @@ const LibraryPage: React.FC = () => {
   const [books, setBooks] = useState<BookType[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isLendModalOpen, setIsLendModalOpen] = useState(false);
+  const [selectedBook, setSelectedBook] = useState<BookType | null>(null);
+  const [lendData, setLendData] = useState({ studentId: '', dueDate: '' });
   const [searchQuery, setSearchQuery] = useState('');
   const [formData, setFormData] = useState({
     title: '',
@@ -61,6 +64,24 @@ const LibraryPage: React.FC = () => {
       fetchBooks();
     } catch (error) {
       toast.error('Failed to add book');
+    }
+  };
+
+  const handleLendBook = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedBook) return;
+    try {
+      await api.post('/library/lend', {
+        bookId: selectedBook.id,
+        studentId: lendData.studentId,
+        dueDate: lendData.dueDate || undefined
+      });
+      toast.success('Book successfully lent');
+      setIsLendModalOpen(false);
+      setLendData({ studentId: '', dueDate: '' });
+      fetchBooks();
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Failed to lend book');
     }
   };
 
@@ -163,7 +184,13 @@ const LibraryPage: React.FC = () => {
                             {book.availableQuantity} <span className="text-gray-300 font-bold">/ {book.quantity}</span>
                           </p>
                         </div>
-                        <button className="p-2.5 bg-gray-900 text-white rounded-xl hover:bg-rose-600 transition-all transform hover:scale-110 active:scale-95 shadow-lg shadow-gray-200 group-hover:shadow-rose-200">
+                        <button 
+                          onClick={() => {
+                            setSelectedBook(book);
+                            setIsLendModalOpen(true);
+                          }}
+                          className="p-2.5 bg-gray-900 text-white rounded-xl hover:bg-rose-600 transition-all transform hover:scale-110 active:scale-95 shadow-lg shadow-gray-200 group-hover:shadow-rose-200"
+                        >
                           <Bookmark size={14} />
                         </button>
                       </div>
@@ -225,13 +252,15 @@ const LibraryPage: React.FC = () => {
       </div>
 
       {/* Modal Add Book */}
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center z-[100] p-4">
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="bg-white rounded-[2.5rem] w-full max-w-xl overflow-hidden shadow-2xl"
-            >
+      <AnimatePresence>
+        {isModalOpen && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center z-[100] p-4">
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="bg-white rounded-[2.5rem] w-full max-w-xl overflow-hidden shadow-2xl"
+              >
                <div className="p-8 border-b border-gray-50 flex justify-between items-center bg-rose-50/30">
                   <div>
                     <h3 className="text-2xl font-black text-gray-900 tracking-tighter uppercase italic">Register <span className="text-rose-600">Material</span></h3>
@@ -313,6 +342,62 @@ const LibraryPage: React.FC = () => {
             </motion.div>
         </div>
       )}
+      </AnimatePresence>
+
+      {/* Modal Lend Book */}
+      <AnimatePresence>
+        {isLendModalOpen && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center z-[100] p-4">
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="bg-white rounded-[2.5rem] w-full max-w-lg overflow-hidden shadow-2xl"
+              >
+                  <div className="p-8 border-b border-gray-50 flex justify-between items-center bg-rose-50/30">
+                    <div>
+                      <h3 className="text-2xl font-black text-gray-900 tracking-tighter uppercase italic">Lend <span className="text-rose-600">Material</span></h3>
+                      <p className="text-[10px] font-bold text-rose-600 uppercase tracking-widest mt-1">{selectedBook?.title}</p>
+                    </div>
+                    <button onClick={() => setIsLendModalOpen(false)} className="p-3 hover:bg-rose-100 text-rose-400 rounded-2xl transition-all">
+                      <X size={20} />
+                    </button>
+                  </div>
+                  
+                  <form onSubmit={handleLendBook} className="p-10 space-y-6">
+                    <div className="space-y-4">
+                       <div>
+                          <label className="block text-[11px] font-black text-gray-400 uppercase tracking-widest mb-2">Student ID / Full ID</label>
+                          <input 
+                            required
+                            type="text"
+                            value={lendData.studentId}
+                            onChange={(e) => setLendData({...lendData, studentId: e.target.value})}
+                            className="w-full bg-gray-50 border-none rounded-2xl px-6 py-4 focus:ring-2 focus:ring-rose-600 font-bold text-gray-900 transition-all font-mono"
+                            placeholder="STU-001..."
+                          />
+                       </div>
+                       <div>
+                          <label className="block text-[11px] font-black text-gray-400 uppercase tracking-widest mb-2">Return Due Date</label>
+                          <input 
+                            type="date"
+                            value={lendData.dueDate}
+                            onChange={(e) => setLendData({...lendData, dueDate: e.target.value})}
+                            className="w-full bg-gray-50 border-none rounded-2xl px-6 py-4 focus:ring-2 focus:ring-rose-600 font-bold text-gray-900 transition-all"
+                          />
+                       </div>
+                    </div>
+                    
+                    <div className="pt-6">
+                      <button type="submit" className="w-full bg-gray-900 text-white py-5 rounded-[2rem] font-black uppercase tracking-widest text-xs shadow-xl shadow-gray-200 hover:scale-[1.02] active:scale-95 transition-all">
+                        Confirm Check-out
+                      </button>
+                    </div>
+                  </form>
+              </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

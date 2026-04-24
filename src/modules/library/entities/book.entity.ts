@@ -12,6 +12,12 @@ export class Book extends TenantAwareEntity {
   @Column({ nullable: true })
   isbn: string;
 
+  @Column({ default: 1 })
+  quantity: number;
+
+  @Column({ default: 1 })
+  availableQuantity: number;
+
   @Column({ default: 'available' })
   status: 'available' | 'borrowed';
 }

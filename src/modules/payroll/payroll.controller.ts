@@ -1,4 +1,13 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  UseGuards,
+} from '@nestjs/common';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { UserRole } from 'src/common/user-role.enum';
@@ -9,7 +18,7 @@ import { CreatePayrollDto } from './dto/create-payroll.dto';
 import { UpdatePayrollDto } from './dto/update-payroll.dto';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Controller('payroll')
+@Controller('payrolls')
 export class PayrollController {
   constructor(private readonly payrollService: PayrollService) {}
 

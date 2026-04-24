@@ -1,7 +1,10 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { LmsConnection, LmsProviderType } from './entities/lms-connection.entity';
+import {
+  LmsConnection,
+  LmsProviderType,
+} from './entities/lms-connection.entity';
 import { TenancyService } from 'src/core/tenancy/tenancy.service';
 import { CryptoService } from 'src/shared/crypto.service';
 import { ConnectLmsDto } from './dto/connect-lms.dto';
@@ -29,15 +32,20 @@ export class LmsService {
     const tenantId = this.tenancyService.getTenantId();
 
     const newConnection = this.lmsConnectionRepository.create({
-      tenantId: tenantId as string,
+      tenantId: tenantId,
       provider: connectLmsDto.provider,
       apiUrl: connectLmsDto.apiUrl,
-      encryptedCredential1: this.cryptoService.encrypt(connectLmsDto.credential1),
-      encryptedCredential2: connectLmsDto.credential2 ? this.cryptoService.encrypt(connectLmsDto.credential2) : undefined,
+      encryptedCredential1: this.cryptoService.encrypt(
+        connectLmsDto.credential1,
+      ),
+      encryptedCredential2: connectLmsDto.credential2
+        ? this.cryptoService.encrypt(connectLmsDto.credential2)
+        : undefined,
       isConnected: false, // Will be set to true after successful authentication
     });
 
-    const savedConnection = await this.lmsConnectionRepository.save(newConnection);
+    const savedConnection =
+      await this.lmsConnectionRepository.save(newConnection);
 
     // Eagerly test the connection
     const provider = this.getProvider(savedConnection);
@@ -46,6 +54,13 @@ export class LmsService {
     // Mark as connected and save again
     savedConnection.isConnected = true;
     return this.lmsConnectionRepository.save(savedConnection);
+  }
+
+  async getConnections(): Promise<LmsConnection[]> {
+    const tenantId = this.tenancyService.getTenantId();
+    return this.lmsConnectionRepository.find({
+      where: { tenantId },
+    });
   }
 
   async syncStudents() {
@@ -69,7 +84,9 @@ export class LmsService {
    */
   private async getCurrentProvider(): Promise<LmsProvider> {
     const tenantId = this.tenancyService.getTenantId();
-    const connection = await this.lmsConnectionRepository.findOne({ where: { tenantId } });
+    const connection = await this.lmsConnectionRepository.findOne({
+      where: { tenantId },
+    });
 
     if (!connection) {
       throw new NotFoundException('No LMS connection found for this tenant.');
@@ -86,7 +103,11 @@ export class LmsService {
       case LmsProviderType.MOODLE:
         return new MoodleProvider(connection, this.cryptoService);
       case LmsProviderType.GOOGLE_CLASSROOM:
-        return new GoogleClassroomProvider(connection, this.cryptoService, this.configService);
+        return new GoogleClassroomProvider(
+          connection,
+          this.cryptoService,
+          this.configService,
+        );
       case LmsProviderType.CANVAS:
         return new CanvasProvider();
       default:

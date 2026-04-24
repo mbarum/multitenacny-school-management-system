@@ -21,17 +21,31 @@ export class FeesService extends TenantAwareCrudService<Fee> {
     super(feeRepository, tenancyService);
   }
 
-  async processMpesaPayment(registrationNumber: string, amount: number, reference: string, tenantId: string): Promise<FeePayment> {
+  findAll(): Promise<Fee[]> {
+    return this.feeRepository.find({
+      where: { tenantId: this.tenancyService.getTenantId() },
+      relations: ['student'],
+    });
+  }
+
+  async processMpesaPayment(
+    registrationNumber: string,
+    amount: number,
+    reference: string,
+    tenantId: string,
+  ): Promise<FeePayment> {
     // We manually set the tenant context because M-Pesa callback is external and non-authenticated in some contexts
     // But since we are inside a tenant-aware service, we should be careful.
     // However, the BillRefNumber (Admission Number) should be unique per school (tenant).
-    
+
     const student = await this.studentRepository.findOne({
       where: { registrationNumber, tenantId },
     });
 
     if (!student) {
-      throw new NotFoundException(`Student with admission number ${registrationNumber} not found.`);
+      throw new NotFoundException(
+        `Student with admission number ${registrationNumber} not found.`,
+      );
     }
 
     // Create Payment Record
@@ -52,14 +66,18 @@ export class FeesService extends TenantAwareCrudService<Fee> {
     return savedPayment;
   }
 
-  private async reconcileFees(studentId: string, paidAmount: number, tenantId: string) {
+  private async reconcileFees(
+    studentId: string,
+    paidAmount: number,
+    tenantId: string,
+  ) {
     // Find all unpaid or overdue fees for the student, ordered by due date
     const unpaidFees = await this.feeRepository.find({
       where: [
         { studentId, status: 'unpaid', tenantId },
-        { studentId, status: 'overdue', tenantId }
+        { studentId, status: 'overdue', tenantId },
       ],
-      order: { dueDate: 'ASC' }
+      order: { dueDate: 'ASC' },
     });
 
     let remainingAmount = paidAmount;
@@ -67,10 +85,10 @@ export class FeesService extends TenantAwareCrudService<Fee> {
     for (const fee of unpaidFees) {
       if (remainingAmount <= 0) break;
 
-      // In a real system, we might have 'balance' field on Fee. 
+      // In a real system, we might have 'balance' field on Fee.
       // For this implementation, we'll assume a payment either covers a fee or we mark it paid.
       // Ideally, we'd check if remainingAmount >= fee.amount.
-      
+
       if (remainingAmount >= Number(fee.amount)) {
         remainingAmount -= Number(fee.amount);
         fee.status = 'paid';
