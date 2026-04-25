@@ -1,6 +1,6 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
-import { InjectRepository, InjectDataSource } from '@nestjs/typeorm';
-import { Repository, DataSource } from 'typeorm';
+import { InjectRepository, InjectEntityManager } from '@nestjs/typeorm';
+import { Repository, EntityManager } from 'typeorm';
 import { Account, AccountType } from './entities/account.entity';
 import { JournalEntry, LedgerLine } from './entities/journal-entry.entity';
 import { Invoice } from './entities/invoice.entity';
@@ -16,8 +16,8 @@ export class FinanceService {
     @InjectRepository(Invoice)
     private readonly invoiceRepository: Repository<Invoice>,
     private readonly tenancyService: TenancyService,
-    @InjectDataSource()
-    private readonly dataSource: DataSource,
+    @InjectEntityManager()
+    private readonly entityManager: EntityManager,
   ) {}
 
   async seedDefaultAccounts(tenantId: string) {
@@ -62,7 +62,7 @@ export class FinanceService {
       );
     }
 
-    return await this.dataSource.transaction(async (manager) => {
+    return await this.entityManager.transaction(async (manager) => {
       const entry = manager.create(JournalEntry, {
         tenantId,
         reference: data.reference,
