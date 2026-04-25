@@ -318,155 +318,149 @@ const StudentsPage: React.FC = () => {
 
   return (
     <DashboardLayout>
-      <div className="max-w-7xl mx-auto pb-20">
-        <header className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-6">
+      <div className="max-w-full px-6 py-8">
+        <header className="mb-8 border-b border-gray-200 pb-6 flex justify-between items-end">
           <div>
-            <div className="flex items-center space-x-2 text-indigo-600 mb-2">
-              <Users size={16} />
-              <span className="text-[10px] font-black uppercase tracking-[0.2em]">Census Division</span>
-            </div>
-            <h1 className="text-4xl font-display font-black text-gray-900 tracking-tight leading-none">STUDENT RECORDS</h1>
-            <p className="text-gray-500 font-medium mt-2 text-sm">Managing {students.length} active enrollments</p>
+            <nav className="flex mb-2 text-[10px] font-mono text-gray-400 uppercase tracking-widest">
+              <span>Registry</span>
+              <span className="mx-2">/</span>
+              <span className="text-gray-900 font-bold">Students</span>
+            </nav>
+            <h1 className="text-3xl font-serif italic font-medium text-gray-900 leading-tight">Student Enrollment Data</h1>
+            <p className="text-gray-500 font-sans mt-1 text-sm">Comprehensive listing of all registered students and their status.</p>
           </div>
           
-          <div className="flex items-center gap-3 w-full md:w-auto">
-            <div className="relative flex-1 md:w-80">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <div className="flex items-center gap-2">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
               <input
                 type="text"
                 placeholder="Search index..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-11 pr-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-600 focus:border-transparent font-medium text-sm transition-all"
+                className="pl-9 pr-4 py-2 bg-white border border-gray-200 rounded text-xs focus:ring-1 focus:ring-gray-900 font-sans w-64"
               />
             </div>
             <button 
               onClick={() => handleOpenModal()}
-              className="flex items-center justify-center px-6 py-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-all font-bold text-sm shadow-lg shadow-indigo-600/20 active:scale-95"
+              className="flex items-center justify-center px-4 py-2 bg-gray-900 text-white rounded hover:bg-gray-800 transition-all font-medium text-xs shadow-sm"
             >
-              <Plus className="w-4 h-4 mr-2" />
-              Enroll
+              <Plus className="w-3.5 h-3.5 mr-2" />
+              Add Student
             </button>
           </div>
         </header>
 
         {selectedStudentIds.length > 0 && (
-          <div className="bg-gray-900 rounded-2xl p-4 mb-8 flex items-center justify-between shadow-xl shadow-gray-200 border border-gray-800">
-            <div className="flex items-center space-x-4">
-              <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white font-bold text-xs">
+          <div className="bg-gray-50 border border-gray-200 p-3 mb-6 flex items-center justify-between rounded-sm">
+            <div className="flex items-center space-x-3">
+              <span className="text-[10px] font-mono font-bold bg-gray-900 text-white px-2 py-0.5 rounded-sm">
                 {selectedStudentIds.length}
-              </div>
-              <span className="text-white font-bold text-sm">Students Selected</span>
+              </span>
+              <span className="text-gray-600 font-medium text-xs uppercase tracking-wider">Entries Selected</span>
             </div>
-            <div className="flex space-x-3">
+            <div className="flex space-x-2">
               <button
                 onClick={() => setIsBulkStatusModalOpen(true)}
-                className="px-4 py-2 bg-white/10 text-white hover:bg-white/20 rounded-xl transition-all text-xs font-bold uppercase tracking-widest border border-white/10"
+                className="px-3 py-1.5 text-gray-600 hover:text-gray-900 transition-all text-[10px] font-bold uppercase tracking-widest border border-gray-200 bg-white"
               >
-                Batch Status change
+                Change Status
               </button>
               <button
                 onClick={() => setIsBulkClassModalOpen(true)}
-                className="px-4 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-all text-xs font-bold uppercase tracking-widest"
+                className="px-3 py-1.5 text-gray-600 hover:text-gray-900 transition-all text-[10px] font-bold uppercase tracking-widest border border-gray-200 bg-white"
               >
-                Batch Placement
+                Move Class
               </button>
             </div>
           </div>
         )}
 
-        <div className="bg-white rounded-3xl shadow-sm border border-gray-200/60 overflow-hidden">
-          <div className="overflow-x-auto custom-scrollbar">
+        <div className="bg-white border border-gray-200 overflow-hidden shadow-sm">
+          <div className="overflow-x-auto text-xs">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="bg-gray-50/50 border-b border-gray-100">
-                  <th className="px-6 py-5 font-bold text-[10px] text-gray-400 uppercase tracking-widest w-12">
+                <tr className="bg-gray-50 border-b border-gray-200">
+                  <th className="px-5 py-4 font-bold text-[10px] text-gray-400 font-mono uppercase tracking-widest w-12">
                     <input 
                       type="checkbox" 
-                      className="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-600"
+                      className="w-3 h-3 rounded border-gray-300 text-gray-900 focus:ring-gray-900"
                       checked={selectedStudentIds.length === filteredStudents.length && filteredStudents.length > 0}
                       onChange={handleSelectAll}
                     />
                   </th>
-                  <th className="px-6 py-5 font-bold text-[10px] text-gray-400 uppercase tracking-widest">Identification / Name</th>
-                  <th className="px-6 py-5 font-bold text-[10px] text-gray-400 uppercase tracking-widest">Index Number</th>
-                  <th className="px-6 py-5 font-bold text-[10px] text-gray-400 uppercase tracking-widest">Academic Track</th>
-                  <th className="px-6 py-5 font-bold text-[10px] text-gray-400 uppercase tracking-widest">Cycle</th>
-                  <th className="px-6 py-5 font-bold text-[10px] text-gray-400 uppercase tracking-widest">Status</th>
-                  <th className="px-6 py-5 font-bold text-[10px] text-gray-400 uppercase tracking-widest text-right">Operations</th>
+                  <th className="px-5 py-4 font-bold text-[10px] text-gray-400 font-mono uppercase tracking-widest">Identifier / Name</th>
+                  <th className="px-5 py-4 font-bold text-[10px] text-gray-400 font-mono uppercase tracking-widest">Index Number</th>
+                  <th className="px-5 py-4 font-bold text-[10px] text-gray-400 font-mono uppercase tracking-widest">Placement</th>
+                  <th className="px-5 py-4 font-bold text-[10px] text-gray-400 font-mono uppercase tracking-widest">Academic Year</th>
+                  <th className="px-5 py-4 font-bold text-[10px] text-gray-400 font-mono uppercase tracking-widest">Status</th>
+                  <th className="px-5 py-4 font-bold text-[10px] text-gray-400 font-mono uppercase tracking-widest text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-50">
+              <tbody className="divide-y divide-gray-100 italic-serif-headers">
                 {filteredStudents.length > 0 ? (
                   filteredStudents.map((student) => (
-                    <tr key={student.id} className={`hover:bg-gray-50/50 transition-all group ${selectedStudentIds.includes(student.id) ? 'bg-indigo-50/30' : ''}`}>
-                      <td className="px-6 py-4">
+                    <tr key={student.id} className={`hover:bg-gray-50 transition-colors group ${selectedStudentIds.includes(student.id) ? 'bg-gray-50' : ''}`}>
+                      <td className="px-5 py-3">
                         <input 
                           type="checkbox" 
-                          className="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-600"
+                          className="w-3 h-3 rounded border-gray-300 text-gray-900 focus:ring-gray-900"
                           checked={selectedStudentIds.includes(student.id)}
                           onChange={(e) => handleSelectStudent(student.id, e.target.checked)}
                         />
                       </td>
-                      <td className="px-6 py-4 font-medium">
-                        <div className="flex items-center space-x-4">
-                          <div className="w-10 h-10 rounded-xl bg-gray-100 overflow-hidden shrink-0 border border-gray-200 group-hover:border-indigo-200 transition-all shadow-sm">
+                      <td className="px-5 py-3">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-8 h-8 rounded shrink-0 border border-gray-100 flex items-center justify-center bg-gray-50">
                             {student.photoUrl ? (
-                              <img src={student.photoUrl} alt="" className="w-full h-full object-cover" />
+                              <img src={student.photoUrl} alt="" className="w-full h-full object-cover rounded shadow-sm" />
                             ) : (
-                              <User className="w-full h-full p-2 text-gray-300" />
+                              <User className="w-4 h-4 text-gray-300" />
                             )}
                           </div>
                           <div>
-                            <p className="font-bold text-gray-900 group-hover:text-indigo-600 transition-colors cursor-pointer" onClick={() => handleViewStudent(student)}>
-                              {student.firstName} {student.lastName}
-                            </p>
-                            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">{student.registrationNumber || 'UNASSIGNED'}</p>
+                            <p className="font-serif italic text-gray-900 text-sm">{student.firstName} {student.lastName}</p>
+                            <p className="font-mono text-[9px] text-gray-400 uppercase tracking-tight">{student.registrationNumber || 'N/A'}</p>
                           </div>
                         </div>
                       </td>
-                      <td className="px-6 py-4">
-                        <span className="font-mono text-xs text-gray-500 font-medium uppercase">{student.registrationNumber || '-'}</span>
+                      <td className="px-5 py-3 font-mono text-gray-500 tabular-nums">
+                        {student.registrationNumber || '-'}
                       </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center space-x-2">
-                           <div className="w-1.5 h-1.5 rounded-full bg-indigo-400" />
-                           <span className="text-sm font-semibold text-gray-600">{student.classLevel?.name || 'GENERIC'}</span>
-                           {student.section && <span className="px-2 py-0.5 bg-gray-100 rounded-md text-[10px] font-black text-gray-400 uppercase tracking-tighter">{student.section.name}</span>}
+                      <td className="px-5 py-3">
+                        <div className="flex items-center space-x-1.5">
+                           <span className="font-medium text-gray-700">{student.classLevel?.name || '-'}</span>
+                           {student.section && (
+                             <span className="text-[10px] text-gray-400 bg-gray-50 border border-gray-100 px-1.5 py-0.5 rounded-sm font-mono uppercase">{student.section.name}</span>
+                           )}
                         </div>
                       </td>
-                      <td className="px-6 py-4">
-                        <span className="text-xs font-bold text-gray-400 uppercase tracking-widest italic">{student.academicYear?.name || '-'}</span>
+                      <td className="px-5 py-3 font-mono text-gray-400 tabular-nums">
+                        {student.academicYear?.name || '-'}
                       </td>
-                      <td className="px-6 py-4">
-                        <span className={`px-3 py-1 text-[10px] font-black uppercase tracking-widest rounded-full border ${
-                          student.status === 'Active' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
-                          student.status === 'Graduated' ? 'bg-blue-50 text-blue-600 border-blue-100' :
-                          student.status === 'Suspended' ? 'bg-rose-50 text-rose-600 border-rose-100' :
-                          'bg-gray-50 text-gray-500 border-gray-100'
+                      <td className="px-5 py-3">
+                        <span className={`px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest rounded-sm border ${
+                          student.status === 'Active' ? 'bg-green-50 text-green-700 border-green-100' :
+                          student.status === 'Graduated' ? 'bg-blue-50 text-blue-700 border-blue-100' :
+                          student.status === 'Suspended' ? 'bg-red-50 text-red-700 border-red-100' :
+                          'bg-gray-50 text-gray-500 border-gray-200'
                         }`}>
                           {student.status}
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-right">
-                        <div className="flex justify-end space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button onClick={() => handleViewStudent(student)} className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all" title="Inspect"><Eye size={16} /></button>
-                          <button onClick={() => handleOpenModal(student)} className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all" title="Configure"><Edit size={16} /></button>
-                          <button onClick={() => handleDelete(student.id)} className="p-2 text-gray-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all" title="Purge"><Trash2 size={16} /></button>
+                      <td className="px-5 py-3 text-right">
+                        <div className="flex justify-end space-x-1">
+                          <button onClick={() => handleViewStudent(student)} className="p-1.5 text-gray-400 hover:text-gray-900 transition-all shadow-sm active:scale-95" title="View Detail"><Eye size={14} /></button>
+                          <button onClick={() => handleOpenModal(student)} className="p-1.5 text-gray-400 hover:text-gray-900 transition-all shadow-sm active:scale-95" title="Edit Entry"><Edit size={14} /></button>
+                          <button onClick={() => handleDelete(student.id)} className="p-1.5 text-gray-400 hover:text-red-600 transition-all shadow-sm active:scale-95" title="Delete Entry"><Trash2 size={14} /></button>
                         </div>
                       </td>
                     </tr>
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={7} className="px-6 py-32 text-center">
-                      <div className="flex flex-col items-center justify-center">
-                        <div className="w-24 h-24 bg-gray-50 rounded-[2.5rem] flex items-center justify-center mb-8 border border-gray-100">
-                          <Users className="w-12 h-12 text-gray-200" />
-                        </div>
-                        <h3 className="text-2xl font-display font-black text-gray-900 tracking-tight italic uppercase">Registry Empty</h3>
-                        <p className="text-gray-400 font-bold uppercase tracking-widest text-[10px] mt-2">Initialize enrollment pipeline to see records</p>
-                      </div>
+                    <td colSpan={7} className="px-5 py-24 text-center">
+                      <p className="text-gray-300 font-mono text-[10px] uppercase tracking-[0.2em]">No records found in registry</p>
                     </td>
                   </tr>
                 )}

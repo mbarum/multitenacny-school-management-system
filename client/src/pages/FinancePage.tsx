@@ -66,7 +66,7 @@ const FinancePage: React.FC = () => {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'overview' | 'invoices' | 'revenue' | 'expenses'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'invoices' | 'revenue' | 'expenses'>('invoices');
   
   const [isAddingExpense, setIsAddingExpense] = useState(false);
   const [isCreatingInvoice, setIsCreatingInvoice] = useState(false);
@@ -186,24 +186,24 @@ const FinancePage: React.FC = () => {
 
   return (
     <DashboardLayout>
-      <div className="max-w-7xl mx-auto pb-20">
-        <header className="flex flex-col md:flex-row md:items-center justify-between gap-8 mb-12">
+      <div className="max-w-full px-6 py-8">
+        <header className="mb-8 border-b border-gray-200 pb-6 flex justify-between items-end">
           <div>
-            <div className="flex items-center space-x-2 text-indigo-600 mb-2">
-              <Building2 size={16} />
-              <span className="text-[10px] font-black uppercase tracking-[0.2em]">Fiscal Intelligence</span>
-            </div>
-            <h1 className="text-4xl font-display font-black text-gray-900 tracking-tight leading-none uppercase italic">
-              FINANCE <span className="text-indigo-600">COMMAND</span>
-            </h1>
+            <nav className="flex mb-2 text-[10px] font-mono text-gray-400 uppercase tracking-widest">
+              <span>Financials</span>
+              <span className="mx-2">/</span>
+              <span className="text-gray-900 font-bold uppercase tracking-widest">{activeTab}</span>
+            </nav>
+            <h1 className="text-3xl font-serif italic font-medium text-gray-900 leading-tight capitalize">Finance & Ledger Management</h1>
+            <p className="text-gray-500 font-sans mt-1 text-sm">Reviewing institutional cash flow and outstanding receivables.</p>
           </div>
           
-          <div className="flex bg-white p-1.5 rounded-2xl border border-gray-200/60 shadow-sm">
+          <div className="flex bg-gray-50 p-1 border border-gray-200 rounded shrink-0">
              {['overview', 'invoices', 'revenue', 'expenses'].map(tab => (
                <button
                 key={tab}
                 onClick={() => setActiveTab(tab as any)}
-                className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === tab ? 'bg-gray-900 text-white shadow-lg' : 'text-gray-400 hover:text-gray-600'}`}
+                className={`px-4 py-1.5 rounded-sm text-[10px] font-bold uppercase tracking-widest transition-all ${activeTab === tab ? 'bg-gray-900 text-white shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
                >
                  {tab}
                </button>
@@ -212,114 +212,99 @@ const FinancePage: React.FC = () => {
         </header>
 
         {activeTab === 'overview' && (
-          <div className="space-y-12">
-             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                <div className="bg-white border border-gray-200/60 rounded-[2rem] p-10 shadow-sm relative overflow-hidden group">
-                   <div className="flex items-center justify-between mb-8">
-                      <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center border border-indigo-100">
-                         <Wallet size={20} />
+          <div className="space-y-8 animate-in fade-in duration-300">
+             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="bg-white border border-gray-200 p-8 shadow-sm">
+                   <div className="flex items-center justify-between mb-4">
+                      <div className="w-10 h-10 bg-gray-50 text-gray-400 rounded flex items-center justify-center border border-gray-100">
+                         <Wallet size={18} />
                       </div>
-                      <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Global Balance</span>
+                      <span className="text-[9px] font-mono font-bold text-gray-400 uppercase tracking-widest leading-none">Net Balance</span>
                    </div>
-                   <h2 className="text-4xl font-display font-black text-gray-900 tracking-tighter tabular-nums leading-none">
-                     <span className="text-lg text-gray-400 font-medium mr-2">KES</span>
+                   <h2 className="text-3xl font-serif italic text-gray-900 tabular-nums leading-none">
+                     <span className="text-sm text-gray-400 font-sans not-italic mr-1">KES</span>
                      {Number(metrics?.cashBalance || 0).toLocaleString()}
                    </h2>
-                   <div className="mt-8 flex items-center text-emerald-600 space-x-1">
-                      <ArrowUpRight size={14} />
-                      <span className="text-[10px] font-black uppercase tracking-widest">+12.4% THIS QUARTER</span>
-                   </div>
                 </div>
 
-                <div className="bg-white border border-gray-200/60 rounded-[2rem] p-10 shadow-sm relative overflow-hidden">
-                   <div className="flex items-center justify-between mb-8">
-                      <div className="w-12 h-12 bg-rose-50 text-rose-600 rounded-2xl flex items-center justify-center border border-rose-100">
-                         <Clock size={20} />
+                <div className="bg-white border border-gray-200 p-8 shadow-sm">
+                   <div className="flex items-center justify-between mb-4">
+                      <div className="w-10 h-10 bg-gray-50 text-gray-400 rounded flex items-center justify-center border border-gray-100">
+                         <Clock size={18} />
                       </div>
-                      <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Uncollected Fees</span>
+                      <span className="text-[9px] font-mono font-bold text-gray-400 uppercase tracking-widest leading-none">Total Receivables</span>
                    </div>
-                   <h2 className="text-4xl font-display font-black text-gray-900 tracking-tighter tabular-nums leading-none">
-                     <span className="text-lg text-gray-400 font-medium mr-2">KES</span>
+                   <h2 className="text-3xl font-serif italic text-gray-900 tabular-nums leading-none">
+                     <span className="text-sm text-gray-400 font-sans not-italic mr-1">KES</span>
                      {Number(metrics?.receivables || 0).toLocaleString()}
                    </h2>
-                   <div className="mt-8 flex items-center text-rose-600 space-x-1">
-                      <AlertTriangle size={14} />
-                      <span className="text-[10px] font-black uppercase tracking-widest">Requires Attention</span>
-                   </div>
                 </div>
 
-                <div className="bg-gray-900 rounded-[2rem] p-10 text-white shadow-xl shadow-indigo-900/10 flex flex-col justify-between">
-                   <div className="flex items-center space-x-3 mb-6">
-                      <Zap className="text-indigo-400" size={20} />
-                      <span className="text-[10px] font-black uppercase tracking-widest text-indigo-400">Ledger Actions</span>
-                   </div>
-                   <div className="space-y-3">
-                      <button onClick={() => setIsCreatingInvoice(true)} className="w-full bg-white/10 hover:bg-white/20 text-white py-4 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all text-center">
-                        Generate Billing
+                <div className="bg-gray-900 p-8 text-white shadow-lg flex flex-col justify-center">
+                   <div className="space-y-2">
+                      <button onClick={() => setIsCreatingInvoice(true)} className="w-full bg-white/10 hover:bg-white/20 text-white py-2.5 rounded text-[10px] font-bold uppercase tracking-widest transition-all">
+                        New Invoice
                       </button>
-                      <button onClick={() => setIsRecordingPayment(true)} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-4 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all text-center">
-                        Post Settlement
+                      <button onClick={() => setIsRecordingPayment(true)} className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded text-[10px] font-bold uppercase tracking-widest transition-all">
+                        Log Payment
                       </button>
                    </div>
                 </div>
              </div>
 
-             <div className="grid grid-cols-1 lg:grid-cols-5 gap-10">
-                <div className="lg:col-span-3 bg-white border border-gray-200/60 rounded-[2.5rem] p-10 shadow-sm">
-                   <div className="flex items-center justify-between mb-12">
-                      <h3 className="text-xl font-display font-black tracking-tight uppercase italic">Recent <span className="text-indigo-600">Reconciliations</span></h3>
-                      <div className="flex space-x-2">
-                         <button className="p-3 bg-gray-50 text-gray-400 rounded-xl hover:text-gray-900 transition-all"><Printer size={18} /></button>
-                         <button className="p-3 bg-gray-50 text-gray-400 rounded-xl hover:text-gray-900 transition-all"><Download size={18} /></button>
+             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div className="lg:col-span-2 bg-white border border-gray-200 p-8 shadow-sm">
+                   <div className="flex items-center justify-between mb-8 border-b border-gray-50 pb-4">
+                      <h3 className="text-lg font-serif italic text-gray-900 leading-none">Recent Activity</h3>
+                      <div className="flex space-x-1">
+                         <button className="p-2 text-gray-400 hover:text-gray-900 transition-all"><Printer size={16} /></button>
+                         <button className="p-2 text-gray-400 hover:text-gray-900 transition-all"><Download size={16} /></button>
                       </div>
                    </div>
-                   <div className="space-y-8">
+                   <div className="space-y-4">
                       {expenses.slice(0, 5).map(exp => (
-                        <div key={exp.id} className="flex items-center justify-between">
-                          <div className="flex items-center space-x-6">
-                            <div className="w-10 h-10 bg-gray-50 rounded-xl flex items-center justify-center text-gray-400">
-                              <ArrowDownRight size={18} />
+                        <div key={exp.id} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0 hover:bg-gray-50/50 px-2 -mx-2 transition-colors">
+                          <div className="flex items-center space-x-4">
+                            <div className="w-8 h-8 bg-gray-50 rounded flex items-center justify-center text-gray-300">
+                               <ArrowDownRight size={14} />
                             </div>
                             <div>
-                               <p className="text-sm font-bold text-gray-900 uppercase tracking-tight">{exp.category}</p>
-                               <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">{exp.description}</p>
+                               <p className="text-xs font-bold text-gray-900 uppercase tracking-tight">{exp.category}</p>
+                               <p className="text-[10px] font-mono text-gray-400 lowercase mt-0.5">{exp.description}</p>
                             </div>
                           </div>
                           <div className="text-right">
-                             <p className="text-[14px] font-black text-gray-900 tabular-nums italic">KES {Number(exp.amount).toLocaleString()}</p>
-                             <p className="text-[9px] font-black text-rose-500 uppercase mt-1 tracking-widest">DEBIT</p>
+                             <p className="text-sm font-mono font-bold text-gray-900 tabular-nums">-{Number(exp.amount).toLocaleString()}</p>
+                             <p className="text-[9px] font-bold text-red-500 uppercase mt-0.5 tracking-widest">DR</p>
                           </div>
                         </div>
                       ))}
                       {expenses.length === 0 && (
-                        <div className="text-center py-12">
-                          <p className="text-gray-400 text-[10px] font-black uppercase tracking-widest">No recent transactions recorded</p>
+                        <div className="text-center py-8">
+                          <p className="text-gray-300 font-mono text-[9px] uppercase tracking-widest">No recent transactions</p>
                         </div>
                       )}
                    </div>
                 </div>
 
-                <div className="lg:col-span-2 space-y-8">
-                    <div className="bg-gray-50 rounded-[2.5rem] p-10">
-                        <PieChart className="text-indigo-600 mb-6" size={24} />
-                        <h4 className="text-lg font-display font-black italic tracking-tighter mb-4 uppercase text-gray-900 leading-none">ALLOCATION <br/><span className="text-indigo-600">STATISTICS</span></h4>
-                        <div className="space-y-6 mt-10">
-                            {[
-                              { label: 'Academic Supplies', value: 45, color: 'bg-indigo-600' },
-                              { label: 'Staff Payroll', value: 30, color: 'bg-gray-900' },
-                              { label: 'Infrastructure', value: 25, color: 'bg-indigo-200' }
-                            ].map(item => (
-                              <div key={item.label}>
-                                  <div className="flex justify-between text-[10px] font-black uppercase tracking-widest mb-3">
-                                    <span className="text-gray-400">{item.label}</span>
-                                    <span className="text-gray-900">{item.value}%</span>
-                                  </div>
-                                  <div className="w-full h-1.5 bg-gray-200/60 rounded-full overflow-hidden">
-                                    <div className={`h-full ${item.color} rounded-full`} style={{ width: `${item.value}%` }} />
-                                  </div>
+                <div className="bg-white border border-gray-200 p-8 shadow-sm">
+                    <h4 className="text-xs font-mono font-bold uppercase tracking-widest text-gray-400 mb-6">Allocation Summary</h4>
+                    <div className="space-y-6">
+                        {[
+                          { label: 'Operations', value: 45, color: 'bg-gray-900' },
+                          { label: 'Payroll', value: 30, color: 'bg-gray-600' },
+                          { label: 'Supplies', value: 25, color: 'bg-gray-300' }
+                        ].map(item => (
+                          <div key={item.label}>
+                              <div className="flex justify-between text-[10px] font-bold uppercase tracking-widest mb-2">
+                                <span className="text-gray-500">{item.label}</span>
+                                <span className="text-gray-900">{item.value}%</span>
                               </div>
-                            ))}
-                        </div>
+                              <div className="w-full h-1 bg-gray-100 rounded-full overflow-hidden">
+                                <div className={`h-full ${item.color} rounded-sm`} style={{ width: `${item.value}%` }} />
+                              </div>
+                          </div>
+                        ))}
                     </div>
                 </div>
              </div>
@@ -327,13 +312,13 @@ const FinancePage: React.FC = () => {
         )}
 
         {activeTab !== 'overview' && (
-          <div className="bg-white border border-gray-200/60 rounded-[2.5rem] overflow-hidden shadow-sm">
-             <div className="p-10 border-b border-gray-50 flex justify-between items-center">
-                <h3 className="text-xl font-display font-black uppercase italic tracking-tight">{activeTab} <span className="text-indigo-600">Ledger</span></h3>
-                <div className="flex space-x-3">
+          <div className="bg-white border border-gray-200 shadow-sm overflow-hidden animate-in fade-in duration-300">
+             <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+                <h3 className="text-sm font-serif italic text-gray-900 capitalize">{activeTab} Ledger Records</h3>
+                <div className="flex space-x-2">
                    <div className="relative">
-                      <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
-                      <input type="text" placeholder="Search entries..." className="pl-10 pr-4 py-3 bg-gray-50 border-none rounded-xl text-xs font-bold w-64 focus:ring-2 focus:ring-indigo-600" />
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={12} />
+                      <input type="text" placeholder="Filter index..." className="pl-8 pr-4 py-1.5 bg-white border border-gray-200 rounded text-[10px] w-48 focus:ring-1 focus:ring-gray-900 font-mono" />
                    </div>
                 </div>
              </div>

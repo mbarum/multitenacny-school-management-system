@@ -74,21 +74,21 @@ const AdmissionsPage: React.FC = () => {
 
   return (
     <DashboardLayout>
-      <div className="max-w-7xl mx-auto pb-20">
-        <header className="flex flex-col md:flex-row justify-between items-end mb-12 gap-8">
+      <div className="max-w-full px-6 py-8">
+        <header className="mb-8 border-b border-gray-200 pb-6 flex justify-between items-end">
           <div>
-            <div className="flex items-center space-x-2 text-orange-600 mb-2">
-              <UserPlus size={16} />
-              <span className="text-[10px] font-black uppercase tracking-[0.2em]">Intake Pipeline</span>
-            </div>
-            <h1 className="text-4xl font-display font-black text-gray-900 tracking-tight leading-none uppercase italic">
-              ADMISSION <span className="text-orange-500">CONTROL</span>
-            </h1>
+            <nav className="flex mb-2 text-[10px] font-mono text-gray-400 uppercase tracking-widest">
+              <span>Admissions</span>
+              <span className="mx-2">/</span>
+              <span className="text-gray-900 font-bold uppercase tracking-widest">Candidates</span>
+            </nav>
+            <h1 className="text-3xl font-serif italic font-medium text-gray-900 leading-tight">Student Intake Registry</h1>
+            <p className="text-gray-500 font-sans mt-1 text-sm">Managing prospective enrollment applications and processing approvals.</p>
           </div>
           
-          <div className="flex bg-white p-1.5 rounded-2xl border border-gray-200/60 shadow-sm">
+          <div className="flex bg-gray-50 p-1 border border-gray-200 rounded shrink-0">
              {['pending', 'approved', 'rejected'].map(tab => (
-               <button key={tab} className="px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-gray-900 transition-all capitalize">
+               <button key={tab} className="px-4 py-1.5 rounded-sm text-[10px] font-bold uppercase tracking-widest transition-all text-gray-400 hover:text-gray-600 capitalize">
                  {tab}
                </button>
              ))}
@@ -96,88 +96,107 @@ const AdmissionsPage: React.FC = () => {
         </header>
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-10">
-           <div className="lg:col-span-3 space-y-8">
-              {applications.length === 0 ? (
-                <div className="bg-white rounded-[2rem] p-24 text-center border border-dashed border-gray-200">
-                   <Clock className="mx-auto text-gray-100 mb-6" size={48} />
-                   <h3 className="text-xl font-display font-black text-gray-900 tracking-tight uppercase italic">No active applications</h3>
-                   <p className="text-gray-400 text-[10px] font-black uppercase tracking-widest mt-2 leading-relaxed">The digital intake terminal is currently silent</p>
+           <div className="lg:col-span-3">
+              <div className="bg-white border border-gray-200 shadow-sm overflow-hidden animate-in fade-in duration-500">
+                <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+                  <h3 className="text-xs font-mono font-bold uppercase tracking-widest text-gray-400">Application Queue</h3>
+                  <div className="flex space-x-2">
+                     <div className="relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={12} />
+                        <input type="text" placeholder="Search applicant..." className="pl-8 pr-4 py-1.5 bg-white border border-gray-200 rounded text-[10px] w-48 focus:ring-1 focus:ring-gray-900 font-mono" />
+                     </div>
+                  </div>
                 </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                   {applications.map(app => (
-                     <motion.div 
-                      layoutId={app.id}
-                      key={app.id} 
-                      className="bg-white rounded-[2rem] p-8 shadow-sm border border-gray-200/60 hover:shadow-xl hover:shadow-orange-500/5 transition-all group relative overflow-hidden flex flex-col"
-                     >
-                        <div className="flex items-center space-x-5 mb-8">
-                           <div className="w-14 h-14 bg-orange-50 text-orange-600 rounded-2xl flex items-center justify-center font-black text-lg italic border border-orange-100">
-                             {app.firstName[0]}
-                           </div>
-                           <div>
-                              <h3 className="text-xl font-display font-black text-gray-900 uppercase tracking-tighter italic leading-none">{app.firstName} {app.lastName}</h3>
-                              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-2">{new Date(app.createdAt).toLocaleDateString()}</p>
-                           </div>
-                        </div>
 
-                        <div className="grid grid-cols-1 gap-3 mb-8 flex-grow">
-                           <div className="px-5 py-4 bg-gray-50 rounded-2xl flex items-center justify-between">
-                              <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Contact</span>
-                              <span className="text-xs font-bold text-gray-900 truncate ml-4 font-mono">{app.parentEmail}</span>
-                           </div>
-                           <div className="px-5 py-4 bg-gray-50 rounded-2xl flex items-center justify-between">
-                              <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Status</span>
-                              <span className={`text-[9px] font-black uppercase tracking-widest px-3 py-1 rounded-full border ${
-                                app.status === 'pending' ? 'bg-orange-50 text-orange-600 border-orange-100' : 
-                                app.status === 'approved' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-rose-50 text-rose-600 border-rose-100'
+                {applications.length === 0 ? (
+                  <div className="py-24 text-center">
+                     <Clock className="mx-auto text-gray-200 mb-4" size={32} />
+                     <p className="text-gray-400 font-mono text-[9px] uppercase tracking-widest">No pending applications in queue</p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto text-[11px]">
+                    <table className="w-full text-left">
+                      <thead>
+                        <tr className="bg-transparent border-b border-gray-100">
+                          <th className="px-6 py-4 font-mono font-bold text-gray-400 uppercase tracking-widest">Candidate</th>
+                          <th className="px-6 py-4 font-mono font-bold text-gray-400 uppercase tracking-widest">Parent / Contact</th>
+                          <th className="px-6 py-4 font-mono font-bold text-gray-400 uppercase tracking-widest">Status</th>
+                          <th className="px-6 py-4 font-mono font-bold text-gray-400 uppercase tracking-widest text-right">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-50">
+                        {applications.map(app => (
+                          <tr key={app.id} className="hover:bg-gray-50/50 transition-colors">
+                            <td className="px-6 py-4">
+                              <div className="flex items-center space-x-3">
+                                <div className="w-8 h-8 bg-gray-50 border border-gray-100 rounded flex items-center justify-center font-serif italic text-gray-400">
+                                  {app.firstName[0]}
+                                </div>
+                                <div>
+                                  <p className="font-serif italic text-gray-900 text-sm tracking-tight">{app.firstName} {app.lastName}</p>
+                                  <p className="text-[10px] font-mono text-gray-400 mt-0.5 lowercase tracking-tight">{new Date(app.createdAt).toLocaleDateString()}</p>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 text-gray-600 font-sans tracking-tight">
+                              <div className="flex flex-col">
+                                <span>{app.parentEmail}</span>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4">
+                              <span className={`px-2 py-0.5 rounded-sm text-[9px] font-bold uppercase tracking-widest border ${
+                                app.status === 'pending' ? 'bg-orange-50 text-orange-700 border-orange-100' : 
+                                app.status === 'approved' ? 'bg-green-50 text-green-700 border-green-100' : 'bg-red-50 text-red-700 border-red-100'
                               }`}>{app.status}</span>
-                           </div>
-                        </div>
-
-                        <div className="flex space-x-3 pt-6 border-t border-gray-50">
-                           {app.status === 'pending' && (
-                             <button 
-                              onClick={() => { setSelectedApp(app); setIsProcessModalOpen(true); }}
-                              className="flex-grow bg-gray-900 text-white py-4 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-orange-600 transition-all active:scale-95"
-                             >
-                               Evaluate
-                             </button>
-                           )}
-                           <button className="p-4 bg-gray-50 text-gray-400 rounded-xl hover:bg-gray-900 hover:text-white transition-all">
-                              <Eye size={18} />
-                           </button>
-                        </div>
-                     </motion.div>
-                   ))}
-                </div>
-              )}
+                            </td>
+                            <td className="px-6 py-4 text-right">
+                              <div className="flex justify-end space-x-2">
+                                {app.status === 'pending' && (
+                                  <button 
+                                    onClick={() => { setSelectedApp(app); setIsProcessModalOpen(true); }}
+                                    className="px-3 py-1 bg-gray-900 text-white rounded-sm text-[9px] font-bold uppercase tracking-widest hover:bg-gray-800 transition-colors"
+                                  >
+                                    Review
+                                  </button>
+                                )}
+                                <button className="p-1 text-gray-300 hover:text-gray-900 transition-colors">
+                                   <Eye size={14} />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
            </div>
 
-           <div className="space-y-8">
-              <div className="bg-gray-900 rounded-[2.5rem] p-10 text-white shadow-2xl relative overflow-hidden group">
-                 <FileText className="absolute right-0 bottom-0 text-white/5 -mb-6 -mr-6 transition-transform group-hover:scale-110" size={160} />
-                 <h3 className="text-2xl font-display font-black italic tracking-tighter uppercase mb-2">Public <span className="text-orange-500">Portal</span></h3>
-                 <p className="text-[10px] font-bold uppercase tracking-widest text-white/40 mb-8 leading-relaxed">
-                   External link for prospective candidate submissions.
+           <div className="space-y-6">
+              <div className="bg-gray-900 p-8 text-white shadow-lg relative overflow-hidden group">
+                 <FileText className="absolute -right-4 -bottom-4 text-white/5 transition-transform group-hover:scale-110" size={120} />
+                 <h3 className="text-xl font-serif italic text-white mb-2">Public Intake URL</h3>
+                 <p className="text-[10px] font-sans text-white/40 mb-6 leading-relaxed">
+                   Link provided to guardians for prospective submissions.
                  </p>
-                 <div className="bg-white/5 p-4 rounded-xl mb-6 border border-white/5">
+                 <div className="bg-white/5 p-3 rounded border border-white/5 mb-6">
                     <p className="text-[10px] font-mono text-white/60 truncate italic">/apply/royal-academy</p>
                  </div>
-                 <button className="w-full bg-white text-gray-900 py-4 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-orange-500 hover:text-white transition-all active:scale-95 shadow-lg">
-                   Copy Intake URL
+                 <button className="w-full bg-white text-gray-900 py-3 rounded text-[10px] font-bold uppercase tracking-widest hover:bg-gray-100 transition-all active:scale-95 shadow-lg">
+                   Copy link
                  </button>
               </div>
 
-              <div className="bg-white border border-gray-200/60 rounded-[2.5rem] p-10 shadow-sm relative overflow-hidden">
-                 <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center mb-6 border border-emerald-100">
-                    <CheckCircle2 size={24} />
+              <div className="bg-white border border-gray-200 p-8 shadow-sm">
+                 <div className="w-10 h-10 bg-gray-50 text-gray-400 rounded flex items-center justify-center mb-4 border border-gray-100">
+                    <UserPlus size={18} />
                  </div>
-                 <h4 className="text-lg font-display font-black uppercase italic tracking-tighter text-gray-900">Direct <span className="text-emerald-600">Entry</span></h4>
-                 <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-3 leading-relaxed mb-8">
-                   Immediate placement for walk-in enrollments.
+                 <h4 className="text-lg font-serif italic text-gray-900">Direct Entry</h4>
+                 <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-2 leading-relaxed mb-6">
+                   Immediate institutional placement.
                  </p>
-                 <button className="w-full border-2 border-gray-100 text-gray-900 py-4 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-gray-50 transition-all font-display">
+                 <button className="w-full bg-gray-50 border border-gray-200 text-gray-900 py-3 rounded text-[10px] font-bold uppercase tracking-widest hover:bg-gray-100 transition-all">
                    Manual Admission
                  </button>
               </div>
