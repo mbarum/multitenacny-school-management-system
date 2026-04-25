@@ -68,28 +68,29 @@ async function bootstrap() {
   );
 
   const configService = app.get(ConfigService);
-  const port = configService.get<number>('PORT') || 3000;
+  const port = process.env.PORT || configService.get<number>('PORT') || 3000;
   const frontendUrl = configService.get<string>('FRONTEND_URL');
 
   app.enableCors({
-    origin: frontendUrl,
+    origin: frontendUrl || true,
     credentials: true,
   });
 
   app.setGlobalPrefix('api');
 
-  // Serve the React frontend in production
-  if (process.env.NODE_ENV === 'production') {
-    let clientDistPath = join(process.cwd(), 'client-dist');
+  // Serve the React frontend
+  const clientDistPath = join(process.cwd(), 'client-dist');
+  const fallbackClientDistPath = join(__dirname, '..', 'client-dist');
+  
+  const finalClientDistPath = fs.existsSync(clientDistPath) 
+    ? clientDistPath 
+    : fs.existsSync(fallbackClientDistPath) 
+      ? fallbackClientDistPath 
+      : null;
 
-    // Check possible locations if cwd doesn't work
-    if (!fs.existsSync(clientDistPath)) {
-      clientDistPath = join(__dirname, '..', 'client-dist');
-    }
-
-    console.log(`[Static] Final frontend path: ${clientDistPath}`);
-
-    app.use(express.static(clientDistPath));
+  if (finalClientDistPath) {
+    console.log(`[Static] Serving frontend from: ${finalClientDistPath}`);
+    app.use(express.static(finalClientDistPath));
     app.use(
       (
         req: express.Request,
@@ -100,25 +101,20 @@ async function bootstrap() {
           return next();
         }
 
-        const indexPath = join(clientDistPath, 'index.html');
+        const indexPath = join(finalClientDistPath, 'index.html');
         if (fs.existsSync(indexPath)) {
           res.sendFile(indexPath);
         } else {
-          console.error(
-            `[Static] Critical Error: index.html not found at ${indexPath}`,
-          );
-          res
-            .status(404)
-            .send(
-              'Application Frontend is missing. Please run "npm run build" to generate it.',
-            );
+          next();
         }
       },
     );
+  } else {
+    console.error('[Static] Critical Error: client-dist folder not found. Frontend will not be served.');
   }
 
   await app.listen(port, '0.0.0.0');
-  console.log(`Application is running on: ${await app.getUrl()}`);
+  console.log(`Application is running on: http://0.0.0.0:${port}`);
 }
 bootstrap().catch((err) => {
   console.error('Error during bootstrap', err);

@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Settings2, User, Calendar as CalendarIcon, MapPin, X, Save, Edit3, Trash2 } from 'lucide-react';
+import { Plus, Settings2, User, Calendar as CalendarIcon, MapPin, X, Save, Edit3, Trash2, Users } from 'lucide-react';
 
 interface AcademicYear {
   id: string;
@@ -37,6 +38,7 @@ interface ClassLevel {
 }
 
 const ClassManagementPage: React.FC = () => {
+  const navigate = useNavigate();
   const [academicYears, setAcademicYears] = useState<AcademicYear[]>([]);
   const [classLevels, setClassLevels] = useState<ClassLevel[]>([]);
   const [staff, setStaff] = useState<Staff[]>([]);
@@ -67,6 +69,13 @@ const ClassManagementPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleViewStudents = (classLevelId: string, sectionId: string) => {
+    // In our student page, we should handle these filters if passed via URL or state
+    // But since StudentsPage.tsx is currently simple, we can just navigate
+    // Actually, I should update StudentsPage.tsx to handle query params if I want this to work perfectly.
+    navigate(`/students?classLevelId=${classLevelId}&sectionId=${sectionId}`);
   };
 
   const handleAddYear = async (e: React.FormEvent) => {
@@ -267,7 +276,19 @@ const ClassManagementPage: React.FC = () => {
                       >
                         <div className="flex justify-between items-center">
                           <span className="font-bold text-gray-700">{section.name}</span>
-                          <Edit3 className="w-3 h-3 text-gray-300 group-hover:text-purple-500 transition-colors" />
+                          <div className="flex items-center space-x-1">
+                            <button 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleViewStudents(level.id, section.id);
+                              }}
+                              className="p-1 hover:bg-gray-100 rounded text-gray-400 hover:text-blue-600 transition-colors"
+                              title="View Students"
+                            >
+                              <Users className="w-3 h-3" />
+                            </button>
+                            <Edit3 className="w-3 h-3 text-gray-300 group-hover:text-purple-500 transition-colors" />
+                          </div>
                         </div>
                         <div className="mt-2 space-y-1">
                           <div className="flex items-center text-[10px] text-gray-500">

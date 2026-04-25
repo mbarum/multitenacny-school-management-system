@@ -7,8 +7,8 @@
   --font-serif: ui-serif, Georgia, serif;
   --font-mono: ui-monospace, SFMono-Regular, monospace;
 
-  --color-primary: #2563EB;
-  --color-primary-dark: #1E40AF;
+  --color-primary: #3C716C;
+  --color-primary-dark: #2D5551;
   --color-secondary: #64748B;
   
   --color-canvas: var(--canvas-bg);
@@ -26,7 +26,7 @@
     --surface-text: #0F172A;
     --canvas-text: #334155;
     --border-color: #E2E8F0;
-    --accent-color: #2563EB;
+    --accent-color: #3C716C;
   }
 
   .dark {
@@ -35,7 +35,7 @@
     --surface-text: #F8FAFC;
     --canvas-text: #E2E8F0;
     --border-color: #334155;
-    --accent-color: #3B82F6;
+    --accent-color: #4D8F88;
   }
 
   body {

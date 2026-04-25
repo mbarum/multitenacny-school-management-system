@@ -37,7 +37,7 @@ const LandingPage: React.FC = () => {
           <div className="hidden lg:flex items-center space-x-10 text-sm font-medium text-slate-600">
             <a href="#features" className="hover:text-primary transition-colors">Features</a>
             <a href="#solutions" className="hover:text-primary transition-colors">Solutions</a>
-            <a href="#pricing" className="hover:text-primary transition-colors">Pricing</a>
+            <Link to="/pricing" className="hover:text-primary transition-colors">Pricing</Link>
             <a href="#about" className="hover:text-primary transition-colors">About</a>
           </div>
 
@@ -254,6 +254,39 @@ const LandingPage: React.FC = () => {
         </div>
       </section>
 
+      {/* About Section */}
+      <section id="about" className="py-32 bg-white">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-20 items-center">
+            <div className="relative">
+              <div className="absolute -inset-4 bg-primary/5 blur-3xl rounded-[40px] -z-10" />
+              <img 
+                src="https://images.unsplash.com/photo-1524178232363-1fb2b075b655?q=80&w=2070&auto=format&fit=crop" 
+                alt="About EduStream" 
+                className="rounded-[2.5rem] shadow-2xl"
+              />
+            </div>
+            <div>
+              <h2 className="text-base font-bold text-primary uppercase tracking-widest mb-6">Our Mission</h2>
+              <h3 className="text-4xl font-extrabold text-slate-900 mb-8 tracking-tight">Pioneering the future of <span className="text-primary italic">academic infrastructure.</span></h3>
+              <p className="text-lg text-slate-600 leading-relaxed mb-8">
+                EduStream was born out of a simple observation: educational institutions were being held back by fragmented, legacy softeware. We built a unified ecosystem that puts data-driven decision making in the hands of educators.
+              </p>
+              <div className="grid grid-cols-2 gap-8">
+                <div>
+                  <h4 className="text-3xl font-bold text-slate-900 mb-2">10M+</h4>
+                  <p className="text-sm text-slate-500 font-medium italic">Student Records Managed</p>
+                </div>
+                <div>
+                  <h4 className="text-3xl font-bold text-slate-900 mb-2">15+</h4>
+                  <p className="text-sm text-slate-500 font-medium italic">Countries Impacted</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Footer */}
       <footer className="bg-white pt-24 pb-12 border-t border-slate-100">
         <div className="max-w-7xl mx-auto px-6">
@@ -278,8 +311,8 @@ const LandingPage: React.FC = () => {
             <div>
               <h5 className="font-bold text-slate-900 mb-8 uppercase text-sm tracking-widest">Platform</h5>
               <ul className="space-y-4 text-slate-500 font-medium">
-                <li><Link to="/features" className="hover:text-primary transition-colors">Features</Link></li>
-                <li><Link to="/solutions" className="hover:text-primary transition-colors">Solutions</Link></li>
+                <li><a href="#features" className="hover:text-primary transition-colors">Features</a></li>
+                <li><a href="#solutions" className="hover:text-primary transition-colors">Solutions</a></li>
                 <li><Link to="/pricing" className="hover:text-primary transition-colors">Pricing</Link></li>
               </ul>
             </div>
@@ -287,7 +320,7 @@ const LandingPage: React.FC = () => {
             <div>
               <h5 className="font-bold text-slate-900 mb-8 uppercase text-sm tracking-widest">Company</h5>
               <ul className="space-y-4 text-slate-500 font-medium">
-                <li><Link to="/about" className="hover:text-primary transition-colors">About Us</Link></li>
+                <li><a href="#about" className="hover:text-primary transition-colors">About Us</a></li>
                 <li><Link to="/contact" className="hover:text-primary transition-colors">Contact</Link></li>
                 <li><Link to="/privacy" className="hover:text-primary transition-colors">Privacy Policy</Link></li>
               </ul>
@@ -312,8 +345,8 @@ const LandingPage: React.FC = () => {
           <div className="border-t border-slate-100 pt-12 flex flex-col md:flex-row justify-between items-center text-slate-500 text-sm font-medium">
             <p>© 2026 EduStream Management Systems. All rights reserved.</p>
             <div className="flex space-x-8 mt-6 md:mt-0">
-               <a href="#" className="hover:text-primary">Terms of Service</a>
-               <a href="#" className="hover:text-primary">Cookie Settings</a>
+               <Link to="/terms" className="hover:text-primary">Terms of Service</Link>
+               <Link to="/privacy" className="hover:text-primary">Cookie Settings</Link>
             </div>
           </div>
         </div>

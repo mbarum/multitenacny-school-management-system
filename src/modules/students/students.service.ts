@@ -25,9 +25,17 @@ export class StudentsService extends TenantAwareCrudService<Student> {
     super(studentRepository, tenancyService);
   }
 
-  findAll(): Promise<Student[]> {
+  async findAll(query?: any): Promise<Student[]> {
+    const tenantId = this.tenancyService.getTenantId();
+    const where: any = { tenantId };
+
+    if (query?.classLevelId) where.classLevelId = query.classLevelId;
+    if (query?.sectionId) where.sectionId = query.sectionId;
+    if (query?.academicYearId) where.academicYearId = query.academicYearId;
+    if (query?.status) where.status = query.status;
+
     return this.studentRepository.find({
-      where: { tenantId: this.tenancyService.getTenantId() },
+      where,
       relations: ['classLevel', 'section', 'academicYear'],
     });
   }

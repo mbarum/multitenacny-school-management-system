@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../services/api';
 import { toast } from 'sonner';
@@ -50,6 +51,10 @@ import DashboardLayout from '../components/DashboardLayout';
 
 const StudentsPage: React.FC = () => {
   const { user, logout } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialClassId = searchParams.get('classLevelId') || '';
+  const initialSectionId = searchParams.get('sectionId') || '';
+
   const [students, setStudents] = useState<Student[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [classLevels, setClassLevels] = useState<ClassLevel[]>([]);
@@ -65,6 +70,10 @@ const StudentsPage: React.FC = () => {
   const [showIdCard, setShowIdCard] = useState(false);
   const [isCameraActive, setIsCameraActive] = useState(false);
   const videoRef = React.useRef<HTMLVideoElement>(null);
+
+  // Filters state
+  const [filterClassId, setFilterClassId] = useState(initialClassId);
+  const [filterSectionId, setFilterSectionId] = useState(initialSectionId);
 
   const startCamera = async () => {
     try {
@@ -143,13 +152,22 @@ const StudentsPage: React.FC = () => {
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [filterClassId, filterSectionId]);
 
   const fetchData = async () => {
     setLoading(true);
     try {
+      let studentsUrl = '/students';
+      const params = new URLSearchParams();
+      if (filterClassId) params.append('classLevelId', filterClassId);
+      if (filterSectionId) params.append('sectionId', filterSectionId);
+      
+      if (params.toString()) {
+        studentsUrl += `?${params.toString()}`;
+      }
+
       const [studentsRes, classLevelsRes, sectionsRes, academicYearsRes] = await Promise.all([
-        api.get('/students'),
+        api.get(studentsUrl),
         api.get('/academics/class-levels'),
         api.get('/academics/sections'),
         api.get('/academics/academic-years')
@@ -329,6 +347,44 @@ const StudentsPage: React.FC = () => {
           </div>
           
           <div className="flex items-center gap-2">
+            <div className="flex items-center space-x-2 mr-4 border-r border-border-muted pr-4">
+              <select 
+                value={filterClassId}
+                onChange={(e) => {
+                  setFilterClassId(e.target.value);
+                  setFilterSectionId('');
+                }}
+                className="bg-surface border border-border-muted rounded text-[10px] font-bold uppercase tracking-wider px-2 py-2 outline-none focus:ring-1 focus:ring-on-surface"
+              >
+                <option value="">All Classes</option>
+                {classLevels.map(cl => (
+                  <option key={cl.id} value={cl.id}>{cl.name}</option>
+                ))}
+              </select>
+              <select 
+                value={filterSectionId}
+                onChange={(e) => setFilterSectionId(e.target.value)}
+                disabled={!filterClassId}
+                className="bg-surface border border-border-muted rounded text-[10px] font-bold uppercase tracking-wider px-2 py-2 outline-none focus:ring-1 focus:ring-on-surface disabled:opacity-50"
+              >
+                <option value="">All Streams</option>
+                {sections.filter(s => s.classLevelId === filterClassId).map(sec => (
+                  <option key={sec.id} value={sec.id}>{sec.name}</option>
+                ))}
+              </select>
+              {(filterClassId || filterSectionId) && (
+                <button 
+                  onClick={() => {
+                    setFilterClassId('');
+                    setFilterSectionId('');
+                  }}
+                  className="p-2 text-gray-400 hover:text-red-500 transition-colors"
+                  title="Clear Filters"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
               <input
