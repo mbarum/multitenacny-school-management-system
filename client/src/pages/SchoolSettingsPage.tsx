@@ -107,14 +107,34 @@ const SchoolSettingsPage: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2">Logo URL</label>
-                  <input 
-                    type="text"
-                    value={schoolData.logoUrl}
-                    onChange={(e) => setSchoolData({...schoolData, logoUrl: e.target.value})}
-                    placeholder="https:// school.com/logo.png"
-                    className="w-full px-4 py-3 rounded-xl border border-gray-100 focus:outline-none focus:ring-2 focus:ring-orange-500 font-bold text-gray-900"
-                  />
+                  <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2">Logo</label>
+                  <div className="flex items-center space-x-4">
+                    <div className="w-16 h-16 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-center overflow-hidden">
+                      {schoolData.logoUrl ? (
+                        <img src={schoolData.logoUrl} alt="Logo" className="w-full h-full object-cover" />
+                      ) : (
+                        <Settings className="text-gray-300 w-6 h-6" />
+                      )}
+                    </div>
+                    <label className="cursor-pointer px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-xs font-bold text-gray-600 transition-colors">
+                      Upload Logo
+                      <input 
+                        type="file" 
+                        accept="image/*" 
+                        className="hidden" 
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            const reader = new FileReader();
+                            reader.onloadend = () => {
+                              setSchoolData({ ...schoolData, logoUrl: reader.result as string });
+                            };
+                            reader.readAsDataURL(file);
+                          }
+                        }}
+                      />
+                    </label>
+                  </div>
                 </div>
                 <div>
                   <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2">School Slogan / Motto</label>

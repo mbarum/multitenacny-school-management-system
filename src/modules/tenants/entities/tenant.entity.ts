@@ -38,7 +38,7 @@ export class Tenant {
   @Column({ default: 'TRADITIONAL' })
   gradingMode: string; // 'TRADITIONAL', 'CBE', 'HYBRID'
 
-  @Column({ nullable: true })
+  @Column({ type: 'text', nullable: true })
   logoUrl: string;
 
   @Column({ nullable: true })

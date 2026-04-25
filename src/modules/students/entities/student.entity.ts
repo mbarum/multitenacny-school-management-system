@@ -19,7 +19,7 @@ export class Student extends TenantAwareEntity {
   @Column({ nullable: true })
   registrationNumber: string;
 
-  @Column({ nullable: true })
+  @Column({ type: 'text', nullable: true })
   photoUrl: string;
 
   @Column({ nullable: true })

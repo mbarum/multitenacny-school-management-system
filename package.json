@@ -69,6 +69,7 @@
     "jwt-decode": "^4.0.0",
     "lucide-react": "^0.575.0",
     "module-alias": "^2.3.4",
+    "motion": "^12.38.0",
     "mysql2": "^3.18.0",
     "nodemailer": "^8.0.1",
     "passport": "^0.7.0",

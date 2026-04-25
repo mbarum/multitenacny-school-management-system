@@ -15,7 +15,7 @@ import {
   ShieldCheck,
   Globe
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { getStripe } from '../services/stripe';
 import api from '../services/api';

@@ -27,13 +27,13 @@ const StaffManagementPage: React.FC = () => {
   });
 
   const [isCameraActive, setIsCameraActive] = useState(false);
+  const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
-  const streamRef = useRef<MediaStream | null>(null);
 
   const startCamera = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-      streamRef.current = stream;
+      setCameraStream(stream);
       setIsCameraActive(true);
     } catch (err) {
       console.error("Error accessing camera: ", err);
@@ -42,15 +42,15 @@ const StaffManagementPage: React.FC = () => {
   };
 
   useEffect(() => {
-    if (isCameraActive && videoRef.current && streamRef.current) {
-      videoRef.current.srcObject = streamRef.current;
+    if (isCameraActive && videoRef.current && cameraStream) {
+      videoRef.current.srcObject = cameraStream;
     }
-  }, [isCameraActive]);
+  }, [isCameraActive, cameraStream]);
 
   const stopCamera = () => {
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop());
-      streamRef.current = null;
+    if (cameraStream) {
+      cameraStream.getTracks().forEach(track => track.stop());
+      setCameraStream(null);
     }
     if (videoRef.current) {
       videoRef.current.srcObject = null;

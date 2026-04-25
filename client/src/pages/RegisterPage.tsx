@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
 import { 
   Lock, 
@@ -12,7 +12,12 @@ import {
   Smartphone,
   School,
   Globe,
-  Activity
+  Activity,
+  GraduationCap,
+  CreditCard,
+  Banknote,
+  ChevronRight,
+  Star
 } from 'lucide-react';
 import api from '../services/api';
 
@@ -24,10 +29,10 @@ const steps = [
 ];
 
 const plans = [
-  { id: 'free', name: 'Standard', monthlyPrice: 0, annualPrice: 0, desc: 'Entry level academic ledger.' },
-  { id: 'basic', name: 'Institutional', monthlyPrice: 1000, annualPrice: 10000, desc: 'Full campus orchestration.' },
-  { id: 'standard', name: 'Enterprise', monthlyPrice: 2000, annualPrice: 20000, desc: 'Multi-campus synchronization.' },
-  { id: 'premium', name: 'Apex', monthlyPrice: 3500, annualPrice: 35000, desc: 'Full-stack academic matrix.' }
+  { id: 'free', name: 'Free', monthlyPrice: 0, annualPrice: 0, desc: 'Entry level academic ledger.' },
+  { id: 'basic', name: 'Basic', monthlyPrice: 1000, annualPrice: 10000, desc: 'Full campus orchestration.' },
+  { id: 'standard', name: 'Standard', monthlyPrice: 2000, annualPrice: 20000, desc: 'Multi-campus synchronization.' },
+  { id: 'premium', name: 'Premium', monthlyPrice: 3500, annualPrice: 35000, desc: 'Full-stack academic matrix.' }
 ];
 
 const RegisterPage: React.FC = () => {
@@ -42,7 +47,8 @@ const RegisterPage: React.FC = () => {
     adminPassword: '',
     plan: 'free',
     billingCycle: 'monthly' as 'monthly' | 'annual',
-    phone: ''
+    phone: '',
+    paymentMethod: 'mpesa' as 'mpesa' | 'stripe' | 'bank'
   });
 
   useEffect(() => {
@@ -74,20 +80,46 @@ const RegisterPage: React.FC = () => {
 
       localStorage.setItem('token', data.access_token);
       
-      if (formData.plan !== 'free' && formData.phone) {
+      if (formData.plan !== 'free') {
         try {
           const selectedPlan = plans.find(p => p.id === formData.plan);
           const amount = formData.billingCycle === 'monthly' ? selectedPlan?.monthlyPrice : selectedPlan?.annualPrice;
-          
-          await api.post('/mpesa/stk-push', {
-            phone: formData.phone,
-            amount: amount || 0,
-            plan: formData.plan,
-            billingCycle: formData.billingCycle
-          });
-          toast.success('System Provisioning: Authorizing STK Push...');
+          const amountVal = amount || 0;
+
+          if (formData.paymentMethod === 'mpesa') {
+            await api.post('/mpesa/stk-push', {
+              phone: formData.phone,
+              amount: amountVal,
+              plan: formData.plan,
+              billingCycle: formData.billingCycle
+            });
+            toast.success('System Provisioning: Authorizing STK Push...');
+          } else if (formData.paymentMethod === 'stripe') {
+            // For stripe, we usually need to redirect to checkout
+            // But since this is part of registration, we might want to handle it differently
+            // For now, let's just trigger a redirect if possible or log it
+            const { sessionId } = await api.post('/subscriptions/create-checkout-session', { 
+               priceId: formData.plan === 'basic' ? 'price_basic' : (formData.plan === 'standard' ? 'price_standard' : 'price_premium')
+            });
+            // This logic is simplified; real prod would need matching priceIds
+            toast.info('Redirecting to secure card payment...');
+            const { getStripe } = await import('../services/stripe');
+            const stripe = await getStripe();
+            if (stripe) {
+              await stripe.redirectToCheckout({ sessionId });
+              return; // Stop here
+            }
+          } else if (formData.paymentMethod === 'bank') {
+            const response = await api.post('/subscriptions/bank-transfer', { 
+              amount: Number(amountVal), 
+              plan: formData.plan,
+              billingCycle: formData.billingCycle
+            });
+            toast.success('Invoice Generated. Please check your dashboard for details.');
+          }
         } catch (payErr) {
           console.error('Payment initiation failed', payErr);
+          toast.error('Payment initiation encountered an error.');
         }
       }
 
@@ -276,40 +308,97 @@ const RegisterPage: React.FC = () => {
           )}
 
           {currentStep === 4 && (
-            <div className="max-w-md mx-auto space-y-10">
+            <div className="max-w-2xl mx-auto space-y-10">
               <div className="text-center">
-                <h2 className="text-3xl font-bold text-slate-900 mb-2 tracking-tight">Review & Deploy</h2>
-                <p className="text-slate-500 text-sm font-medium">Verify your configuration before activation.</p>
+                <h2 className="text-3xl font-bold text-slate-900 mb-2 tracking-tight">Review & Activate</h2>
+                <p className="text-slate-500 text-sm font-medium">Verify your configuration and select a payment method.</p>
               </div>
-              <div className="bg-slate-50 border border-slate-100 p-8 rounded-2xl space-y-6">
-                <div className="flex justify-between items-center border-b border-slate-200 pb-4">
-                  <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">School</span>
-                  <span className="text-sm font-bold text-slate-900">{formData.schoolName}</span>
-                </div>
-                <div className="flex justify-between items-center border-b border-slate-200 pb-4">
-                  <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Plan</span>
-                  <span className="text-xs font-bold text-primary uppercase tracking-widest">
-                    {formData.plan} ({formData.billingCycle})
-                  </span>
-                </div>
-                {formData.plan !== 'free' && (
-                  <div className="space-y-4 pt-2">
-                    <div className="space-y-2">
-                      <label className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">M-PESA Phone Number</label>
-                      <div className="relative">
-                        <Smartphone className="absolute left-6 top-1/2 -translate-y-1/2 w-4 h-4 text-primary" />
-                        <input
-                          type="text"
-                          className="w-full pl-14 pr-6 py-4 bg-white border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:border-primary transition-all font-medium text-sm placeholder:text-slate-400"
-                          placeholder="2547XXXXXXXX"
-                          value={formData.phone}
-                          onChange={(e) => setFormData({...formData, phone: e.target.value})}
-                        />
-                      </div>
-                      <p className="text-[10px] text-slate-500 font-medium italic">Payment prompt will be sent to this number.</p>
-                    </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className="bg-slate-50 border border-slate-100 p-8 rounded-2xl space-y-6 self-start">
+                  <div className="flex justify-between items-center border-b border-slate-200 pb-4">
+                    <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">School</span>
+                    <span className="text-sm font-bold text-slate-900">{formData.schoolName}</span>
                   </div>
-                )}
+                  <div className="flex justify-between items-center border-b border-slate-200 pb-4">
+                    <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Plan</span>
+                    <span className="text-xs font-bold text-primary uppercase tracking-widest">
+                      {formData.plan} ({formData.billingCycle})
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Cost</span>
+                    <span className="text-sm font-bold text-slate-900">
+                      KES {formData.billingCycle === 'monthly' ? plans.find(p => p.id === formData.plan)?.monthlyPrice?.toLocaleString() : plans.find(p => p.id === formData.plan)?.annualPrice?.toLocaleString()}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="space-y-6">
+                  {formData.plan !== 'free' ? (
+                    <div className="space-y-4">
+                      <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">Payment Method</h3>
+                      <div className="space-y-3">
+                        <button
+                          onClick={() => setFormData({ ...formData, paymentMethod: 'mpesa' })}
+                          className={`w-full flex items-center justify-between p-4 rounded-xl border transition-all ${formData.paymentMethod === 'mpesa' ? 'bg-primary/5 border-primary ring-1 ring-primary' : 'bg-white border-slate-200 hover:border-slate-300'}`}
+                        >
+                          <div className="flex items-center space-x-3">
+                            <Smartphone className={formData.paymentMethod === 'mpesa' ? 'text-primary' : 'text-slate-400'} size={18} />
+                            <span className={`text-sm font-bold ${formData.paymentMethod === 'mpesa' ? 'text-slate-900' : 'text-slate-600'}`}>M-Pesa STK Push</span>
+                          </div>
+                          {formData.paymentMethod === 'mpesa' && <CheckCircle2 size={16} className="text-primary" />}
+                        </button>
+
+                        {formData.paymentMethod === 'mpesa' && (
+                          <motion.div 
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: 'auto' }}
+                            className="px-2 py-2"
+                          >
+                            <input
+                              type="text"
+                              className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg text-slate-900 focus:outline-none focus:border-primary transition-all font-bold text-sm placeholder:text-slate-400"
+                              placeholder="2547XXXXXXXX"
+                              value={formData.phone}
+                              onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                            />
+                            <p className="text-[9px] text-slate-500 font-medium italic mt-2">System will trigger a prompt to your handset.</p>
+                          </motion.div>
+                        )}
+
+                        <button
+                          onClick={() => setFormData({ ...formData, paymentMethod: 'stripe' })}
+                          className={`w-full flex items-center justify-between p-4 rounded-xl border transition-all ${formData.paymentMethod === 'stripe' ? 'bg-primary/5 border-primary ring-1 ring-primary' : 'bg-white border-slate-200 hover:border-slate-300'}`}
+                        >
+                          <div className="flex items-center space-x-3">
+                            <CreditCard className={formData.paymentMethod === 'stripe' ? 'text-primary' : 'text-slate-400'} size={18} />
+                            <span className={`text-sm font-bold ${formData.paymentMethod === 'stripe' ? 'text-slate-900' : 'text-slate-600'}`}>Card (Secure Stripe)</span>
+                          </div>
+                          {formData.paymentMethod === 'stripe' && <CheckCircle2 size={16} className="text-primary" />}
+                        </button>
+
+                        <button
+                          onClick={() => setFormData({ ...formData, paymentMethod: 'bank' })}
+                          className={`w-full flex items-center justify-between p-4 rounded-xl border transition-all ${formData.paymentMethod === 'bank' ? 'bg-primary/5 border-primary ring-1 ring-primary' : 'bg-white border-slate-200 hover:border-slate-300'}`}
+                        >
+                          <div className="flex items-center space-x-3">
+                            <Banknote className={formData.paymentMethod === 'bank' ? 'text-primary' : 'text-slate-400'} size={18} />
+                            <span className={`text-sm font-bold ${formData.paymentMethod === 'bank' ? 'text-slate-900' : 'text-slate-600'}`}>Direct Bank Transfer</span>
+                          </div>
+                          {formData.paymentMethod === 'bank' && <CheckCircle2 size={16} className="text-primary" />}
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="p-8 bg-emerald-50 border border-emerald-100 rounded-2xl text-center">
+                      <CheckCircle2 className="text-emerald-500 mx-auto mb-4" size={32} />
+                      <h4 className="text-emerald-800 font-bold mb-1">Free Tier Selected</h4>
+                      <p className="text-emerald-700/60 text-[11px] font-medium leading-relaxed italic">
+                        "Start building your academic digital twin instantly - no credit card required."
+                      </p>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           )}

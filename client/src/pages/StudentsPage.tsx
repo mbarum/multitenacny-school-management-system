@@ -69,19 +69,24 @@ const StudentsPage: React.FC = () => {
   const [currentStep, setCurrentStep] = useState(1);
   const [showIdCard, setShowIdCard] = useState(false);
   const [isCameraActive, setIsCameraActive] = useState(false);
+  const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
   const videoRef = React.useRef<HTMLVideoElement>(null);
 
   // Filters state
   const [filterClassId, setFilterClassId] = useState(initialClassId);
   const [filterSectionId, setFilterSectionId] = useState(initialSectionId);
 
+  useEffect(() => {
+    if (isCameraActive && videoRef.current && cameraStream) {
+      videoRef.current.srcObject = cameraStream;
+    }
+  }, [isCameraActive, cameraStream]);
+
   const startCamera = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        setIsCameraActive(true);
-      }
+      setCameraStream(stream);
+      setIsCameraActive(true);
     } catch (err) {
       console.error("Error accessing camera: ", err);
       toast.error("Could not access camera. Please check permissions.");
@@ -89,12 +94,13 @@ const StudentsPage: React.FC = () => {
   };
 
   const stopCamera = () => {
-    if (videoRef.current && videoRef.current.srcObject) {
-      const stream = videoRef.current.srcObject as MediaStream;
-      const tracks = stream.getTracks();
-      tracks.forEach(track => track.stop());
-      videoRef.current.srcObject = null;
+    if (cameraStream) {
+      cameraStream.getTracks().forEach(track => track.stop());
+      setCameraStream(null);
       setIsCameraActive(false);
+    }
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
     }
   };
 
@@ -260,6 +266,7 @@ const StudentsPage: React.FC = () => {
   };
 
   const handleCloseModal = () => {
+    stopCamera();
     setIsModalOpen(false);
     setEditingStudent(null);
     setCurrentStep(1);

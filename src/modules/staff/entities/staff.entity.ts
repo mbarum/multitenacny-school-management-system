@@ -18,7 +18,7 @@ export class Staff extends TenantAwareEntity {
   @Column({ nullable: true })
   employeeId: string;
 
-  @Column({ nullable: true })
+  @Column({ type: 'text', nullable: true })
   photoUrl: string;
 
   @Column({ nullable: true })
