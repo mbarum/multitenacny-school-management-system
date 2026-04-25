@@ -19,13 +19,17 @@ async function bootstrap() {
     cors: true,
   });
 
+  app.use(express.json({ limit: '100mb' }));
+  app.use(express.urlencoded({ limit: '100mb', extended: true }));
+
   app.useGlobalPipes(
     new ValidationPipe({
-      whitelist: true, // Strip away properties that do not have any decorators
-      forbidNonWhitelisted: true, // Throw an error if non-whitelisted values are provided
-      transform: true, // Automatically transform payloads to be objects typed according to their DTO classes
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true,
     }),
   );
+
   app.use(
     helmet({
       crossOriginEmbedderPolicy: false,
@@ -68,9 +72,6 @@ async function bootstrap() {
     },
   );
 
-  app.use(express.json({ limit: '50mb' }));
-  app.use(express.urlencoded({ limit: '50mb', extended: true }));
-
   const configService = app.get(ConfigService);
   const port = process.env.PORT || configService.get<number>('PORT') || 3000;
   const frontendUrl = configService.get<string>('FRONTEND_URL');
@@ -85,11 +86,11 @@ async function bootstrap() {
   // Serve the React frontend
   const clientDistPath = join(process.cwd(), 'client-dist');
   const fallbackClientDistPath = join(__dirname, '..', 'client-dist');
-  
-  const finalClientDistPath = fs.existsSync(clientDistPath) 
-    ? clientDistPath 
-    : fs.existsSync(fallbackClientDistPath) 
-      ? fallbackClientDistPath 
+
+  const finalClientDistPath = fs.existsSync(clientDistPath)
+    ? clientDistPath
+    : fs.existsSync(fallbackClientDistPath)
+      ? fallbackClientDistPath
       : null;
 
   if (finalClientDistPath) {
@@ -114,7 +115,9 @@ async function bootstrap() {
       },
     );
   } else {
-    console.error('[Static] Critical Error: client-dist folder not found. Frontend will not be served.');
+    console.error(
+      '[Static] Critical Error: client-dist folder not found. Frontend will not be served.',
+    );
   }
 
   await app.listen(port, '0.0.0.0');

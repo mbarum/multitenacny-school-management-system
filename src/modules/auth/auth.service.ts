@@ -4,7 +4,7 @@ import * as bcrypt from 'bcrypt';
 import { UsersService } from '../users/users.service';
 import { User } from '../users/entities/user.entity';
 import { EmailService } from '../../shared/email.service';
-import { v4 as uuidv4 } from 'uuid';
+import * as crypto from 'crypto';
 import { RegisterSchoolDto } from './dto/register-school.dto';
 import { TenantsService } from '../tenants/tenants.service';
 import {
@@ -77,7 +77,7 @@ export class AuthService {
       return;
     }
 
-    const token = uuidv4();
+    const token = crypto.randomUUID();
     const expires = new Date(Date.now() + 3600000); // 1 hour
 
     await this.usersService.setPasswordResetToken(user.id, token, expires);
