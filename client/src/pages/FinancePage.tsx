@@ -176,16 +176,14 @@ const FinancePage: React.FC = () => {
 
   if (loading) {
      return (
-       <DashboardLayout>
-         <div className="h-full flex items-center justify-center">
-            <RefreshCw className="animate-spin text-indigo-600" size={32} />
-         </div>
-       </DashboardLayout>
+       <div className="h-full flex items-center justify-center">
+          <RefreshCw className="animate-spin text-gray-400" size={32} />
+       </div>
      );
   }
 
   return (
-    <DashboardLayout>
+    <>
       <div className="max-w-full px-6 py-8">
         <header className="mb-8 border-b border-gray-200 pb-6 flex justify-between items-end">
           <div>
@@ -501,7 +499,7 @@ const FinancePage: React.FC = () => {
           </div>
         )}
       </AnimatePresence>
-    </DashboardLayout>
+    </>
   );
 };
 

@@ -24,27 +24,20 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import api from '../services/api';
 
 const StatCard = ({ icon, label, value, color, tooltip }: { icon: React.ReactNode, label: string, value: string | number, color: string, tooltip?: string }) => {
-  const colorMap: Record<string, string> = {
-    blue: 'bg-blue-50 text-blue-600 border-blue-100',
-    green: 'bg-green-50 text-green-600 border-green-100',
-    purple: 'bg-purple-50 text-purple-600 border-purple-100',
-    indigo: 'bg-indigo-50 text-indigo-600 border-indigo-100',
-    emerald: 'bg-emerald-50 text-emerald-600 border-emerald-100',
-    yellow: 'bg-yellow-50 text-yellow-600 border-yellow-100',
-  };
-
   return (
     <motion.div
-      className="bg-white p-5 rounded-3xl flex items-center space-x-3 border border-gray-100 shadow-sm min-w-0 group relative cursor-help"
-      whileHover={{ y: -5, scale: 1.02 }}
+      className="bg-white p-6 border border-gray-200 flex items-center space-x-3 group relative cursor-help"
+      whileHover={{ y: -2 }}
     >
-      <div className={`p-3 rounded-2xl shrink-0 ${colorMap[color] || 'bg-gray-50 text-gray-400 border-gray-100'} border`}>{icon}</div>
+      <div className="p-2 bg-gray-50 border border-gray-100 text-gray-400 group-hover:bg-gray-900 group-hover:text-white transition-all duration-300">
+        {icon}
+      </div>
       <div className="min-w-0">
-        <p className="text-gray-400 text-[9px] font-bold uppercase tracking-wider truncate">{label}</p>
-        <p className="text-xl font-black text-gray-900 mt-0.5 truncate">{value}</p>
+        <p className="text-gray-400 text-[9px] font-mono font-bold uppercase tracking-widest truncate">{label}</p>
+        <p className="text-xl font-serif italic text-gray-900 mt-1 truncate">{value}</p>
       </div>
       {tooltip && (
-        <div className="absolute -top-12 left-1/2 -translate-x-1/2 px-3 py-2 bg-gray-900 text-white text-[10px] rounded-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
+        <div className="absolute -top-10 left-1/2 -translate-x-1/2 px-3 py-1.5 bg-gray-900 text-white text-[9px] font-bold uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
           {tooltip}
         </div>
       )}
@@ -52,7 +45,7 @@ const StatCard = ({ icon, label, value, color, tooltip }: { icon: React.ReactNod
   );
 };
 
-const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4'];
+const COLORS = ['#111827', '#4b5563', '#9ca3af', '#6b7280', '#374151', '#d1d5db'];
 
 const SuperAdminPage = () => {
   const [activeTab, setActiveTab] = useState<'overview' | 'schools' | 'financials' | 'settings'>('overview');
@@ -177,20 +170,20 @@ const SuperAdminPage = () => {
   return (
     <div className="max-w-7xl mx-auto">
       {/* Internal Navigation Tabs */}
-      <div className="flex space-x-1 bg-white p-1 rounded-2xl border border-gray-100 mb-10 w-fit">
+      <div className="flex space-x-1 bg-gray-100 p-1 rounded-sm border border-gray-200 mb-10 w-fit">
         {[
-          { id: 'overview', label: 'Overview', icon: <BarChart3 size={16} /> },
-          { id: 'schools', label: 'Institutions', icon: <Building size={16} /> },
-          { id: 'financials', label: 'Financials', icon: <Wallet size={16} /> },
-          { id: 'settings', label: 'Logic & Config', icon: <Settings size={16} /> },
+          { id: 'overview', label: 'Overview', icon: <BarChart3 size={14} /> },
+          { id: 'schools', label: 'Institutions', icon: <Building size={14} /> },
+          { id: 'financials', label: 'Fiscal Ledger', icon: <Wallet size={14} /> },
+          { id: 'settings', label: 'Logic Config', icon: <Settings size={14} /> },
         ].map(tab => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id as any)}
-            className={`px-6 py-2.5 rounded-xl text-[13px] font-bold flex items-center space-x-2 transition-all ${
+            className={`px-5 py-2 rounded-sm text-[10px] font-bold uppercase tracking-widest flex items-center space-x-2 transition-all ${
               activeTab === tab.id 
-                ? 'bg-brand-green text-brand-sand shadow-lg shadow-brand-green/10' 
-                : 'text-gray-500 hover:text-brand-green'
+                ? 'bg-gray-900 text-white shadow-xl' 
+                : 'text-gray-400 hover:text-gray-900 hover:bg-gray-200/50'
             }`}
           >
             {tab.icon}
@@ -202,17 +195,17 @@ const SuperAdminPage = () => {
       {/* Header Context */}
       <header className="mb-12 flex flex-col md:flex-row md:items-end justify-between gap-6">
         <div>
-          <div className="flex items-center space-x-2 text-brand-sand uppercase tracking-[0.3em] text-[10px] font-black mb-3">
-            <Globe size={12} />
-            <span>Infrastructure Dashboard</span>
+          <div className="flex items-center space-x-2 text-gray-400 uppercase tracking-widest text-[9px] font-mono font-bold mb-3">
+            <Globe size={12} className="text-emerald-500" />
+            <span>Platform_Global_Node_001</span>
           </div>
-          <h1 className="text-4xl md:text-5xl font-black tracking-tighter text-gray-900 leading-none">
+          <h1 className="text-5xl font-serif italic tracking-tight text-gray-900 leading-none">
             {activeTab === 'overview' && 'System Analytics'}
             {activeTab === 'schools' && 'Managed Schools'}
             {activeTab === 'financials' && 'Revenue Vectors'}
             {activeTab === 'settings' && 'Platform Logic'}
           </h1>
-          <p className="text-gray-400 mt-4 font-medium max-w-xl">
+          <p className="text-gray-500 mt-4 font-sans text-sm max-w-xl leading-relaxed">
             {activeTab === 'overview' && 'Comprehensive real-time instrumentation across all provisioned platform nodes and educational clusters.'}
             {activeTab === 'schools' && 'Direct management and state control for all high-value educational institutions within the SaaSLink network.'}
             {activeTab === 'financials' && 'Centralized ledger for all subscription revenue, manual bank reconciliation, and fiscal health tracking.'}
@@ -223,17 +216,17 @@ const SuperAdminPage = () => {
             <div className="flex items-center space-x-3">
               <button 
                 onClick={fetchData}
-                className="px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-sm font-bold hover:bg-white/10 transition-all active:scale-95"
+                className="px-4 py-2 bg-white border border-gray-200 rounded-sm text-[10px] uppercase font-bold tracking-widest hover:bg-gray-50 transition-all active:scale-95"
               >
-                Refresh Data
+                Sync_Stream
               </button>
               {activeTab === 'schools' && (
                 <button 
                   onClick={() => setShowEnrollModal(true)}
-                  className="px-5 py-2 bg-brand-sand text-brand-dark rounded-xl text-sm font-bold flex items-center shadow-lg shadow-brand-sand/10 active:scale-95"
+                  className="px-5 py-2 bg-gray-900 text-white rounded-sm text-[10px] uppercase font-bold tracking-widest flex items-center shadow-lg active:scale-95"
                 >
-                  <Plus size={16} className="mr-2" />
-                  Direct Enrollment
+                  <Plus size={14} className="mr-2" />
+                  Enroll_Entity
                 </button>
               )}
             </div>
@@ -259,12 +252,12 @@ const SuperAdminPage = () => {
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
                   {/* Revenue Chart */}
-                  <div className="lg:col-span-2 bg-white border border-gray-100 p-8 rounded-[32px] shadow-sm">
+                  <div className="lg:col-span-2 bg-white border border-gray-200 p-10 rounded-sm">
                     <div className="flex items-center justify-between mb-8">
-                      <h3 className="text-xl font-bold tracking-tight text-gray-900">Growth & Revenue</h3>
-                      <div className="flex items-center space-x-1 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                        <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                        <span>Monthly KES</span>
+                      <h3 className="text-lg font-serif italic text-gray-900">Growth & Fiscal Inflow</h3>
+                      <div className="flex items-center space-x-1 text-[9px] font-mono font-bold text-gray-400 uppercase tracking-widest">
+                        <span className="w-2 h-2 rounded-full bg-gray-900 border border-white shadow-[0_0_8px_rgba(0,0,0,0.1)]"></span>
+                        <span>Monthly_Kes</span>
                       </div>
                     </div>
                     <div className="h-[300px]">
@@ -272,26 +265,27 @@ const SuperAdminPage = () => {
                         <AreaChart data={analytics.revenueOverTime}>
                           <defs>
                             <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="5%" stopColor="#10b981" stopOpacity={0.1}/>
-                              <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                              <stop offset="5%" stopColor="#111827" stopOpacity={0.05}/>
+                              <stop offset="95%" stopColor="#111827" stopOpacity={0}/>
                             </linearGradient>
                           </defs>
                           <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                          <XAxis dataKey="month" stroke="#94a3b8" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 600 }} />
-                          <YAxis stroke="#94a3b8" axisLine={false} tickLine={false} tickFormatter={(v) => `${v/1000}k`} tick={{ fontSize: 10, fontWeight: 600 }} />
+                          <XAxis dataKey="month" stroke="#94a3b8" axisLine={false} tickLine={false} tick={{ fontSize: 9, fontWeight: 700, fontStyle: 'italic' }} />
+                          <YAxis stroke="#94a3b8" axisLine={false} tickLine={false} tickFormatter={(v) => `${v/1000}k`} tick={{ fontSize: 9, fontWeight: 700, fontStyle: 'italic' }} />
                           <Tooltip 
-                            contentStyle={{ backgroundColor: '#fff', border: '1px solid #f1f5f9', borderRadius: '16px', color: '#111', fontSize: '12px', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
-                            itemStyle={{ color: '#10b981' }}
+                            contentStyle={{ backgroundColor: '#111827', border: 'none', borderRadius: '4px', color: '#fff', fontSize: '10px', fontWeight: 'bold' }}
+                            itemStyle={{ color: '#fff' }}
+                            cursor={{ stroke: '#111827', strokeWidth: 1 }}
                           />
-                          <Area type="monotone" dataKey="revenue" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorRevenue)" />
+                          <Area type="monotone" dataKey="revenue" stroke="#111827" strokeWidth={2} fillOpacity={1} fill="url(#colorRevenue)" dot={{ fill: '#111827', r: 3 }} activeDot={{ r: 5, strokeWidth: 0 }} />
                         </AreaChart>
                       </ResponsiveContainer>
                     </div>
                   </div>
 
                   {/* Market Share */}
-                  <div className="bg-white border border-gray-100 p-8 rounded-[32px] shadow-sm">
-                    <h3 className="text-xl font-bold tracking-tight text-gray-900 mb-8">Plan Distribution</h3>
+                  <div className="bg-white border border-gray-200 p-10 rounded-sm">
+                    <h3 className="text-lg font-serif italic text-gray-900 mb-8 text-center">Plan Distribution</h3>
                     <div className="h-[300px]">
                       <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
@@ -299,9 +293,9 @@ const SuperAdminPage = () => {
                             data={analytics.tenantsByPlan}
                             cx="50%"
                             cy="50%"
-                            innerRadius={70}
-                            outerRadius={100}
-                            paddingAngle={8}
+                            innerRadius={60}
+                            outerRadius={90}
+                            paddingAngle={4}
                             dataKey="value"
                             stroke="none"
                           >
@@ -310,9 +304,9 @@ const SuperAdminPage = () => {
                             ))}
                           </Pie>
                           <Tooltip 
-                            contentStyle={{ backgroundColor: '#fff', border: '1px solid #f1f5f9', borderRadius: '16px', color: '#111', fontSize: '12px', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                            contentStyle={{ backgroundColor: '#111827', border: 'none', borderRadius: '4px', color: '#fff', fontSize: '10px', fontWeight: 'bold' }}
                           />
-                          <Legend verticalAlign="bottom" height={36} iconType="circle" />
+                          <Legend verticalAlign="bottom" height={36} iconType="square" wrapperStyle={{ fontSize: '9px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.1em' }} />
                         </PieChart>
                       </ResponsiveContainer>
                     </div>

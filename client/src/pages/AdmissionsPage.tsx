@@ -73,9 +73,9 @@ const AdmissionsPage: React.FC = () => {
   };
 
   return (
-    <DashboardLayout>
+    <>
       <div className="max-w-full px-6 py-8">
-        <header className="mb-8 border-b border-gray-200 pb-6 flex justify-between items-end">
+      <header className="mb-8 border-b border-gray-200 pb-6 flex justify-between items-end">
           <div>
             <nav className="flex mb-2 text-[10px] font-mono text-gray-400 uppercase tracking-widest">
               <span>Admissions</span>
@@ -284,7 +284,7 @@ const AdmissionsPage: React.FC = () => {
           </div>
         )}
       </AnimatePresence>
-    </DashboardLayout>
+    </>
   );
 };
 

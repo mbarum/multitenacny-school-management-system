@@ -308,16 +308,14 @@ const StudentsPage: React.FC = () => {
 
   if (loading) {
     return (
-      <DashboardLayout>
-        <div className="h-full flex items-center justify-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
-        </div>
-      </DashboardLayout>
+      <div className="h-full flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-400"></div>
+      </div>
     );
   }
 
   return (
-    <DashboardLayout>
+    <>
       <div className="max-w-full px-6 py-8">
         <header className="mb-8 border-b border-gray-200 pb-6 flex justify-between items-end">
           <div>
@@ -1208,7 +1206,7 @@ const StudentsPage: React.FC = () => {
           </div>
         </div>
       )}
-    </DashboardLayout>
+    </>
   );
 };
 

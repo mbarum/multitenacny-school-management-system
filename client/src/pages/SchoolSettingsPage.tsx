@@ -72,11 +72,15 @@ const SchoolSettingsPage: React.FC = () => {
   }
 
   return (
-    <DashboardLayout>
-      <div className="max-w-4xl mx-auto pb-20">
+    <div className="max-w-4xl mx-auto pb-20 px-6 py-8">
       <div className="mb-8">
-        <h1 className="text-2xl font-black text-gray-900 uppercase tracking-tight mb-2">School Settings</h1>
-        <p className="text-gray-500 font-medium">Configure your school's identity, letterhead, and system integrations.</p>
+        <nav className="flex mb-2 text-[10px] font-mono text-gray-400 uppercase tracking-widest">
+          <span>System</span>
+          <span className="mx-2">/</span>
+          <span className="text-gray-900 font-bold uppercase tracking-widest">School Settings</span>
+        </nav>
+        <h1 className="text-3xl font-serif italic text-gray-900 leading-tight">Institutional Configuration</h1>
+        <p className="text-gray-500 font-sans mt-2 text-sm">Configure your school's identity, letterhead, and system integrations.</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -283,7 +287,6 @@ const SchoolSettingsPage: React.FC = () => {
         </div>
       </div>
     </div>
-  </DashboardLayout>
   );
 };
 
