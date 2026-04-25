@@ -62,15 +62,15 @@ const ReportingPage: React.FC = () => {
   ] : [];
 
   return (
-    <div className="max-w-full px-6 py-8">
-      <header className="mb-8 border-b border-gray-200 pb-6 flex justify-between items-end">
+    <div className="max-w-full px-6 py-8 bg-canvas min-h-full">
+      <header className="mb-8 border-b border-border-muted pb-6 flex justify-between items-end">
           <div>
             <nav className="flex mb-2 text-[10px] font-mono text-gray-400 uppercase tracking-widest">
               <span>Insights</span>
               <span className="mx-2">/</span>
-              <span className="text-gray-900 font-bold uppercase tracking-widest">Financial Reports</span>
+              <span className="text-on-surface font-bold uppercase tracking-widest">Financial Reports</span>
             </nav>
-            <h1 className="text-3xl font-serif italic font-medium text-gray-900 leading-tight">Institutional Performance Ledger</h1>
+            <h1 className="text-3xl font-serif italic font-medium text-on-surface leading-tight">Institutional Performance Ledger</h1>
             <p className="text-gray-500 font-sans mt-1 text-sm">Synthesizing operational data into verifiable financial intelligence.</p>
           </div>
           
@@ -78,20 +78,20 @@ const ReportingPage: React.FC = () => {
              <button
                 onClick={downloadExcel}
                 disabled={!reportData}
-                className="bg-white border border-gray-200 text-gray-900 px-4 py-1.5 rounded-sm font-bold uppercase tracking-widest text-[10px] hover:bg-gray-50 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                className="bg-surface border border-border-muted text-on-surface px-4 py-1.5 rounded-sm font-bold uppercase tracking-widest text-[10px] hover:bg-canvas transition-all disabled:opacity-30 disabled:cursor-not-allowed"
               >
                 Export Index
               </button>
           </div>
         </header>
 
-        <div className="bg-white border border-gray-200 p-6 shadow-sm mb-10">
+        <div className="bg-surface border border-border-muted p-6 shadow-sm mb-10">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 items-end">
             <div className="md:col-span-1">
               <label className="text-[10px] font-mono font-bold uppercase tracking-widest text-gray-400 mb-2 block">Period Start</label>
               <input
                 type="date"
-                className="w-full border border-gray-200 rounded px-4 py-2 outline-none focus:ring-1 focus:ring-gray-900 font-mono text-xs text-gray-900"
+                className="w-full border border-border-muted rounded px-4 py-2 outline-none focus:ring-1 focus:ring-on-surface bg-canvas font-mono text-xs text-on-surface"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
               />
@@ -100,7 +100,7 @@ const ReportingPage: React.FC = () => {
               <label className="text-[10px] font-mono font-bold uppercase tracking-widest text-gray-400 mb-2 block">Period End</label>
               <input
                 type="date"
-                className="w-full border border-gray-200 rounded px-4 py-2 outline-none focus:ring-1 focus:ring-gray-900 font-mono text-xs text-gray-900"
+                className="w-full border border-border-muted rounded px-4 py-2 outline-none focus:ring-1 focus:ring-on-surface bg-canvas font-mono text-xs text-on-surface"
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
               />
@@ -109,7 +109,7 @@ const ReportingPage: React.FC = () => {
               <button
                 onClick={fetchReport}
                 disabled={loading}
-                className="w-full bg-gray-900 text-white px-6 py-2 rounded-sm font-bold uppercase tracking-widest text-[10px] hover:bg-gray-800 transition-all disabled:opacity-50"
+                className="w-full bg-on-surface text-surface px-6 py-2 rounded-sm font-bold uppercase tracking-widest text-[10px] hover:bg-opacity-90 transition-all disabled:opacity-50"
               >
                 {loading ? 'Synthesizing Data...' : 'Generate Performance Report'}
               </button>
@@ -127,12 +127,12 @@ const ReportingPage: React.FC = () => {
                {schoolInfo && <SchoolLetterhead schoolData={schoolInfo} variant="full" />}
                
                <div className="p-12">
-                  <div className="flex items-center justify-between mb-16 border-b border-gray-50 pb-8">
+                  <div className="flex items-center justify-between mb-16 border-b border-canvas pb-8">
                      <div>
-                        <h2 className="text-2xl font-serif italic text-gray-900 leading-none">Fiscal Audit & Flow Summary</h2>
+                        <h2 className="text-2xl font-serif italic text-on-surface leading-none">Fiscal Audit & Flow Summary</h2>
                         <p className="text-[10px] font-mono font-bold text-gray-400 uppercase tracking-widest mt-3">Temporal Index: {startDate} — {endDate}</p>
                      </div>
-                     <div className="px-3 py-1 bg-gray-50 rounded-sm border border-gray-200">
+                     <div className="px-3 py-1 bg-canvas rounded-sm border border-border-muted">
                         <span className="text-[9px] font-mono font-bold text-gray-500 uppercase tracking-widest">Status: Verified Ledger</span>
                      </div>
                   </div>
@@ -183,20 +183,20 @@ const ReportingPage: React.FC = () => {
 
                     <div className="space-y-6">
                       {[
-                        { label: 'Total Receipts', value: reportData.totalIncome, color: 'text-gray-900' },
-                        { label: 'Verified Debits', value: reportData.totalExpenses, color: 'text-red-800' },
-                        { label: 'Net Operating Margin', value: reportData.netProfit, color: 'text-gray-900', highlight: true },
+                        { label: 'Total Receipts', value: reportData.totalIncome, color: 'text-on-surface' },
+                        { label: 'Verified Debits', value: reportData.totalExpenses, color: 'text-red-500' },
+                        { label: 'Net Operating Margin', value: reportData.netProfit, color: 'text-on-surface', highlight: true },
                       ].map((stat, i) => (
                         <motion.div
                           key={stat.label}
                           initial={{ opacity: 0, x: 20 }}
                           animate={{ opacity: 1, x: 0 }}
                           transition={{ delay: i * 0.1 }}
-                          className={`${stat.highlight ? 'bg-gray-50 border-gray-900' : 'bg-white border-gray-100'} p-6 border shadow-sm flex flex-col justify-center min-h-[120px]`}
+                          className={`${stat.highlight ? 'bg-canvas border-on-surface' : 'bg-surface border-border-muted'} p-6 border shadow-sm flex flex-col justify-center min-h-[120px]`}
                         >
                           <p className="text-[9px] font-mono font-bold uppercase tracking-widest text-gray-400 mb-3">{stat.label}</p>
                           <p className={`text-2xl font-serif italic ${stat.color} tabular-nums leading-none`}>
-                            <span className="text-xs font-sans not-italic mr-1 text-gray-300 font-normal">KES</span>
+                            <span className="text-xs font-sans not-italic mr-1 text-gray-400 font-normal">KES</span>
                             {stat.value.toLocaleString()}
                           </p>
                         </motion.div>
@@ -204,15 +204,15 @@ const ReportingPage: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="mt-24 pt-12 border-t border-gray-50">
+                  <div className="mt-24 pt-12 border-t border-canvas">
                      <div className="flex flex-col md:flex-row justify-between items-end gap-8">
                         <div className="text-left">
-                           <p className="text-[9px] font-mono font-bold text-gray-300 uppercase tracking-widest mb-6">Internal Authorization</p>
-                           <div className="w-64 h-1 border-b border-gray-200 mb-2"></div>
-                           <p className="text-[10px] font-serif italic text-gray-400 uppercase tracking-tight">Finance Controller Signature</p>
+                           <p className="text-[9px] font-mono font-bold text-gray-400 uppercase tracking-widest mb-6">Internal Authorization</p>
+                           <div className="w-64 h-1 border-b border-border-muted mb-2"></div>
+                           <p className="text-[10px] font-serif italic text-gray-500 uppercase tracking-tight">Finance Controller Signature</p>
                         </div>
                         <div className="text-right max-w-sm">
-                           <p className="text-[9px] font-mono font-bold text-gray-300 uppercase tracking-widest leading-loose">
+                           <p className="text-[9px] font-mono font-bold text-gray-400 uppercase tracking-widest leading-loose">
                               This document represents a digital synthesis of institutional ledgers and is considered final for the selected period.
                            </p>
                         </div>

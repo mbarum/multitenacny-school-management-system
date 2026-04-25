@@ -170,14 +170,18 @@ const AppRoutes: React.FC = () => {
   );
 };
 
+import { ThemeProvider } from './context/ThemeContext';
+
 const App: React.FC = () => {
   return (
-    <AuthProvider>
-      <Toaster position="top-right" expand={true} richColors />
-      <Router>
-        <AppRoutes />
-      </Router>
-    </AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <Toaster position="top-right" expand={true} richColors />
+        <Router>
+          <AppRoutes />
+        </Router>
+      </AuthProvider>
+    </ThemeProvider>
   );
 };
 

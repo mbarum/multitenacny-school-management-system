@@ -15,16 +15,17 @@ import {
   Zap,
   ChevronLeft,
   Menu,
-  X,
   LayoutDashboard,
   ShieldAlert,
-  Book,
   Globe,
   Wallet,
-  Library
+  Library,
+  Moon,
+  Sun
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { UserRole } from '../../../src/common/user-role.enum';
+import { useTheme } from '../context/ThemeContext';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -32,6 +33,7 @@ interface DashboardLayoutProps {
 
 const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
   const { user, logout } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -62,7 +64,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
   const isRootPath = ['/dashboard', '/super-admin', '/teacher', '/parent'].includes(location.pathname);
 
   return (
-    <div className="min-h-screen bg-[#F0F0F0] flex font-sans text-gray-900 selection:bg-gray-900 selection:text-white">
+    <div className="min-h-screen bg-canvas flex font-sans text-on-canvas selection:bg-brand-accent selection:text-surface transition-colors duration-200">
       {/* Mobile Overlay */}
       <AnimatePresence>
         {isSidebarOpen && (
@@ -71,23 +73,23 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={() => setIsSidebarOpen(false)}
-            className="fixed inset-0 bg-gray-900/10 backdrop-blur-sm z-[90] lg:hidden"
+            className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm z-[90] lg:hidden"
           />
         )}
       </AnimatePresence>
 
       {/* Sidebar */}
       <aside className={`
-        fixed lg:static inset-y-0 left-0 z-[100] w-64 bg-[#F0F0F0] border-r border-gray-200 flex flex-col transform transition-transform duration-300 ease-in-out
+        fixed lg:static inset-y-0 left-0 z-[100] w-64 bg-canvas border-r border-border-muted flex flex-col transform transition-transform duration-300 ease-in-out
         ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
       `}>
         <div className="p-8 pb-12 flex items-center space-x-3">
-          <div className="w-8 h-8 bg-gray-900 rounded-sm flex items-center justify-center">
-            <Activity className="text-white" size={16} />
+          <div className="w-8 h-8 rounded-sm flex items-center justify-center bg-accent-color transition-colors">
+            <Activity className="text-surface" size={16} />
           </div>
           <div>
-            <h2 className="text-sm font-bold tracking-widest text-gray-900 leading-none uppercase italic">Saaslink</h2>
-            <div className="h-[1px] w-full bg-gray-900 mt-0.5" />
+            <h2 className="text-sm font-bold tracking-widest text-on-canvas leading-none uppercase italic">Saaslink</h2>
+            <div className="h-[1px] w-full bg-brand-gold mt-1 shadow-sm" />
           </div>
         </div>
 
@@ -99,11 +101,11 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
               to={item.path}
               className={`flex items-center px-4 py-2 rounded-sm text-[11px] font-bold tracking-tight uppercase transition-all duration-150 group ${
                 location.pathname === item.path 
-                  ? 'bg-gray-900 text-white shadow-xl' 
-                  : 'text-gray-400 hover:text-gray-900 hover:bg-gray-200/50'
+                  ? 'bg-accent-color text-surface shadow-xl' 
+                  : 'text-gray-400 hover:text-on-canvas hover:bg-surface'
               }`}
             >
-              <span className={`mr-4 transition-colors duration-200 ${location.pathname === item.path ? 'text-white' : 'text-gray-300 group-hover:text-gray-900'}`}>
+              <span className={`mr-4 transition-colors duration-200 ${location.pathname === item.path ? 'text-surface' : 'text-gray-300 group-hover:text-on-canvas'}`}>
                 {item.icon}
               </span>
               {item.label}
@@ -111,37 +113,37 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
           ))}
 
           {isSuperAdmin && (
-            <div className="mt-8 pt-8 border-t border-gray-200">
+            <div className="mt-8 pt-8 border-t border-border-muted">
                <div className="text-[10px] font-mono font-bold text-gray-400 uppercase tracking-widest px-4 mb-4">Platform</div>
                <Link
                 to="/super-admin/tenants"
                 className={`flex items-center px-4 py-2 rounded-sm text-[11px] font-bold tracking-tight uppercase transition-all duration-150 group ${
                   location.pathname.includes('/super-admin/tenants') 
-                    ? 'bg-gray-900 text-white shadow-xl' 
-                    : 'text-gray-400 hover:text-gray-900 hover:bg-gray-200/50'
+                    ? 'bg-on-canvas text-surface shadow-xl' 
+                    : 'text-gray-400 hover:text-on-canvas hover:bg-surface'
                 }`}
               >
                 <ShieldAlert size={18} className="mr-4" />
                 Index Mapping
-              </Link>
+               </Link>
             </div>
           )}
         </nav>
 
         <div className="p-6 mt-auto">
-          <div className="border-t border-gray-200 pt-6">
+          <div className="border-t border-border-muted pt-6">
             <div className="flex items-center space-x-3 mb-6 px-2">
-              <div className="w-8 h-8 rounded-sm bg-gray-200 flex items-center justify-center text-gray-600 font-serif italic text-sm border border-gray-300">
+              <div className="w-8 h-8 rounded-sm bg-surface border border-border-muted flex items-center justify-center text-on-surface font-serif italic text-sm">
                 {user?.username?.charAt(0).toUpperCase()}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-[10px] font-bold text-gray-900 truncate uppercase tracking-tight">{user?.username}</p>
+                <p className="text-[10px] font-bold text-on-canvas truncate uppercase tracking-tight">{user?.username}</p>
                 <p className="text-[9px] text-gray-400 font-mono truncate lowercase">{user?.email}</p>
               </div>
             </div>
             <button 
               onClick={logout} 
-              className="flex items-center w-full px-4 py-2 text-gray-400 hover:border-gray-900 hover:text-gray-900 border border-transparent rounded-sm text-[10px] font-bold uppercase tracking-widest transition-all"
+              className="flex items-center w-full px-4 py-2 text-gray-400 hover:border-on-canvas hover:text-on-canvas border border-transparent rounded-sm text-[10px] font-bold uppercase tracking-widest transition-all"
             >
               <LogOut size={14} className="mr-3" />
               Terminate
@@ -151,13 +153,13 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
       </aside>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col min-w-0 bg-[#F5F5F5]">
+      <div className="flex-1 flex flex-col min-w-0 bg-canvas">
         {/* Header */}
-        <header className="h-16 bg-[#F5F5F5] border-b border-gray-200 flex items-center justify-between px-8 sticky top-0 z-40">
+        <header className="h-16 bg-canvas border-b border-border-muted flex items-center justify-between px-8 sticky top-0 z-40 transition-colors duration-200">
           <div className="flex items-center">
             <button 
                onClick={() => setIsSidebarOpen(true)}
-               className="lg:hidden p-2 rounded-sm bg-gray-100 text-gray-600 mr-4"
+               className="lg:hidden p-2 rounded-sm bg-surface text-on-surface mr-4 border border-border-muted"
             >
                <Menu size={18} />
             </button>
@@ -165,14 +167,14 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
             {!isRootPath && (
               <button 
                 onClick={() => navigate(-1)}
-                className="flex items-center text-[10px] font-bold text-gray-400 hover:text-gray-900 transition-colors group mr-6 uppercase tracking-widest"
+                className="flex items-center text-[10px] font-bold text-gray-400 hover:text-on-canvas transition-colors group mr-6 uppercase tracking-widest"
               >
                 <ChevronLeft size={14} className="mr-1" />
                 <span>Return</span>
               </button>
             )}
             
-            <div className="h-4 w-[1px] bg-gray-200 mr-6 hidden sm:block" />
+            <div className="h-4 w-[1px] bg-border-muted mr-6 hidden sm:block" />
             
             <h1 className="text-[9px] font-mono font-bold uppercase tracking-widest text-gray-400 hidden sm:block">
               {location.pathname.split('/').filter(Boolean).pop()?.replace('-', ' ') || 'Matrix Overview'}
@@ -180,13 +182,21 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
           </div>
 
           <div className="flex items-center space-x-6">
+             <button 
+               onClick={toggleTheme}
+               className="p-2 rounded-sm bg-surface border border-border-muted text-gray-400 hover:text-on-canvas transition-all"
+               title={theme === 'light' ? 'Switch to Dark Mode' : 'Switch to Light Mode'}
+             >
+               {theme === 'light' ? <Moon size={16} /> : <Sun size={16} />}
+             </button>
+
              {isAdmin && (
-               <Link to="/pricing" className="hidden md:flex items-center space-x-2 text-gray-400 hover:text-gray-900 transition-colors uppercase">
+               <Link to="/pricing" className="hidden md:flex items-center space-x-2 text-gray-400 hover:text-on-canvas transition-colors uppercase">
                   <Zap size={14} />
                   <span className="text-[9px] font-bold tracking-widest">Upgrade Index</span>
                </Link>
              )}
-             <div className="w-8 h-8 rounded-sm bg-gray-50 border border-gray-200 shadow-inner" />
+             <div className="w-8 h-8 rounded-sm bg-surface border border-border-muted shadow-inner" />
           </div>
         </header>
 

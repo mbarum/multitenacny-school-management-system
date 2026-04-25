@@ -308,7 +308,7 @@ const StudentsPage: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="h-full flex items-center justify-center">
+      <div className="h-full flex items-center justify-center bg-canvas">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-400"></div>
       </div>
     );
@@ -317,14 +317,14 @@ const StudentsPage: React.FC = () => {
   return (
     <>
       <div className="max-w-full px-6 py-8">
-        <header className="mb-8 border-b border-gray-200 pb-6 flex justify-between items-end">
+        <header className="mb-8 border-b border-border-muted pb-6 flex justify-between items-end">
           <div>
             <nav className="flex mb-2 text-[10px] font-mono text-gray-400 uppercase tracking-widest">
               <span>Registry</span>
               <span className="mx-2">/</span>
-              <span className="text-gray-900 font-bold">Students</span>
+              <span className="text-on-surface font-bold">Students</span>
             </nav>
-            <h1 className="text-3xl font-serif italic font-medium text-gray-900 leading-tight">Student Enrollment Data</h1>
+            <h1 className="text-3xl font-serif italic font-medium text-on-surface leading-tight">Student Enrollment Data</h1>
             <p className="text-gray-500 font-sans mt-1 text-sm">Comprehensive listing of all registered students and their status.</p>
           </div>
           
@@ -336,12 +336,12 @@ const StudentsPage: React.FC = () => {
                 placeholder="Search index..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9 pr-4 py-2 bg-white border border-gray-200 rounded text-xs focus:ring-1 focus:ring-gray-900 font-sans w-64"
+                className="pl-9 pr-4 py-2 bg-surface border border-border-muted rounded text-xs focus:ring-1 focus:ring-on-surface font-sans w-64"
               />
             </div>
             <button 
               onClick={() => handleOpenModal()}
-              className="flex items-center justify-center px-4 py-2 bg-gray-900 text-white rounded hover:bg-gray-800 transition-all font-medium text-xs shadow-sm"
+              className="flex items-center justify-center px-4 py-2 bg-on-surface text-surface rounded hover:bg-opacity-90 transition-all font-medium text-xs shadow-sm"
             >
               <Plus className="w-3.5 h-3.5 mr-2" />
               Add Student
@@ -350,9 +350,9 @@ const StudentsPage: React.FC = () => {
         </header>
 
         {selectedStudentIds.length > 0 && (
-          <div className="bg-gray-50 border border-gray-200 p-3 mb-6 flex items-center justify-between rounded-sm">
+          <div className="bg-canvas border border-border-muted p-3 mb-6 flex items-center justify-between rounded-sm">
             <div className="flex items-center space-x-3">
-              <span className="text-[10px] font-mono font-bold bg-gray-900 text-white px-2 py-0.5 rounded-sm">
+              <span className="text-[10px] font-mono font-bold bg-on-surface text-surface px-2 py-0.5 rounded-sm">
                 {selectedStudentIds.length}
               </span>
               <span className="text-gray-600 font-medium text-xs uppercase tracking-wider">Entries Selected</span>
@@ -360,13 +360,13 @@ const StudentsPage: React.FC = () => {
             <div className="flex space-x-2">
               <button
                 onClick={() => setIsBulkStatusModalOpen(true)}
-                className="px-3 py-1.5 text-gray-600 hover:text-gray-900 transition-all text-[10px] font-bold uppercase tracking-widest border border-gray-200 bg-white"
+                className="px-3 py-1.5 text-gray-600 hover:text-on-surface transition-all text-[10px] font-bold uppercase tracking-widest border border-border-muted bg-surface"
               >
                 Change Status
               </button>
               <button
                 onClick={() => setIsBulkClassModalOpen(true)}
-                className="px-3 py-1.5 text-gray-600 hover:text-gray-900 transition-all text-[10px] font-bold uppercase tracking-widest border border-gray-200 bg-white"
+                className="px-3 py-1.5 text-gray-600 hover:text-on-surface transition-all text-[10px] font-bold uppercase tracking-widest border border-border-muted bg-surface"
               >
                 Move Class
               </button>
@@ -374,15 +374,15 @@ const StudentsPage: React.FC = () => {
           </div>
         )}
 
-        <div className="bg-white border border-gray-200 overflow-hidden shadow-sm">
+        <div className="bg-surface border border-border-muted overflow-hidden shadow-sm">
           <div className="overflow-x-auto text-xs">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="bg-gray-50 border-b border-gray-200">
+                <tr className="bg-canvas border-b border-border-muted">
                   <th className="px-5 py-4 font-bold text-[10px] text-gray-400 font-mono uppercase tracking-widest w-12">
                     <input 
                       type="checkbox" 
-                      className="w-3 h-3 rounded border-gray-300 text-gray-900 focus:ring-gray-900"
+                      className="w-3 h-3 rounded border-border-muted text-on-surface focus:ring-on-surface"
                       checked={selectedStudentIds.length === filteredStudents.length && filteredStudents.length > 0}
                       onChange={handleSelectAll}
                     />
@@ -395,21 +395,21 @@ const StudentsPage: React.FC = () => {
                   <th className="px-5 py-4 font-bold text-[10px] text-gray-400 font-mono uppercase tracking-widest text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100 italic-serif-headers">
+              <tbody className="divide-y divide-border-muted italic-serif-headers">
                 {filteredStudents.length > 0 ? (
                   filteredStudents.map((student) => (
-                    <tr key={student.id} className={`hover:bg-gray-50 transition-colors group ${selectedStudentIds.includes(student.id) ? 'bg-gray-50' : ''}`}>
+                    <tr key={student.id} className={`hover:bg-canvas transition-colors group ${selectedStudentIds.includes(student.id) ? 'bg-canvas' : ''}`}>
                       <td className="px-5 py-3">
                         <input 
                           type="checkbox" 
-                          className="w-3 h-3 rounded border-gray-300 text-gray-900 focus:ring-gray-900"
+                          className="w-3 h-3 rounded border-border-muted text-on-surface focus:ring-on-surface"
                           checked={selectedStudentIds.includes(student.id)}
                           onChange={(e) => handleSelectStudent(student.id, e.target.checked)}
                         />
                       </td>
                       <td className="px-5 py-3">
                         <div className="flex items-center space-x-3">
-                          <div className="w-8 h-8 rounded shrink-0 border border-gray-100 flex items-center justify-center bg-gray-50">
+                          <div className="w-8 h-8 rounded shrink-0 border border-border-muted flex items-center justify-center bg-canvas">
                             {student.photoUrl ? (
                               <img src={student.photoUrl} alt="" className="w-full h-full object-cover rounded shadow-sm" />
                             ) : (
@@ -417,7 +417,7 @@ const StudentsPage: React.FC = () => {
                             )}
                           </div>
                           <div>
-                            <p className="font-serif italic text-gray-900 text-sm">{student.firstName} {student.lastName}</p>
+                            <p className="font-serif italic text-on-surface text-sm">{student.firstName} {student.lastName}</p>
                             <p className="font-mono text-[9px] text-gray-400 uppercase tracking-tight">{student.registrationNumber || 'N/A'}</p>
                           </div>
                         </div>
@@ -427,9 +427,9 @@ const StudentsPage: React.FC = () => {
                       </td>
                       <td className="px-5 py-3">
                         <div className="flex items-center space-x-1.5">
-                           <span className="font-medium text-gray-700">{student.classLevel?.name || '-'}</span>
+                           <span className="font-medium text-on-surface">{student.classLevel?.name || '-'}</span>
                            {student.section && (
-                             <span className="text-[10px] text-gray-400 bg-gray-50 border border-gray-100 px-1.5 py-0.5 rounded-sm font-mono uppercase">{student.section.name}</span>
+                             <span className="text-[10px] text-gray-400 bg-canvas border border-border-muted px-1.5 py-0.5 rounded-sm font-mono uppercase">{student.section.name}</span>
                            )}
                         </div>
                       </td>
@@ -438,19 +438,19 @@ const StudentsPage: React.FC = () => {
                       </td>
                       <td className="px-5 py-3">
                         <span className={`px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest rounded-sm border ${
-                          student.status === 'Active' ? 'bg-green-50 text-green-700 border-green-100' :
-                          student.status === 'Graduated' ? 'bg-blue-50 text-blue-700 border-blue-100' :
-                          student.status === 'Suspended' ? 'bg-red-50 text-red-700 border-red-100' :
-                          'bg-gray-50 text-gray-500 border-gray-200'
+                          student.status === 'Active' ? 'bg-green-500/10 text-green-500 border-green-500/20' :
+                          student.status === 'Graduated' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' :
+                          student.status === 'Suspended' ? 'bg-red-500/10 text-red-500 border-red-500/20' :
+                          'bg-gray-500/10 text-gray-500 border-gray-500/20'
                         }`}>
                           {student.status}
                         </span>
                       </td>
                       <td className="px-5 py-3 text-right">
                         <div className="flex justify-end space-x-1">
-                          <button onClick={() => handleViewStudent(student)} className="p-1.5 text-gray-400 hover:text-gray-900 transition-all shadow-sm active:scale-95" title="View Detail"><Eye size={14} /></button>
-                          <button onClick={() => handleOpenModal(student)} className="p-1.5 text-gray-400 hover:text-gray-900 transition-all shadow-sm active:scale-95" title="Edit Entry"><Edit size={14} /></button>
-                          <button onClick={() => handleDelete(student.id)} className="p-1.5 text-gray-400 hover:text-red-600 transition-all shadow-sm active:scale-95" title="Delete Entry"><Trash2 size={14} /></button>
+                          <button onClick={() => handleViewStudent(student)} className="p-1.5 text-gray-400 hover:text-on-surface transition-all shadow-sm active:scale-95" title="View Detail"><Eye size={14} /></button>
+                          <button onClick={() => handleOpenModal(student)} className="p-1.5 text-gray-400 hover:text-on-surface transition-all shadow-sm active:scale-95" title="Edit Entry"><Edit size={14} /></button>
+                          <button onClick={() => handleDelete(student.id)} className="p-1.5 text-gray-400 hover:text-red-500 transition-all shadow-sm active:scale-95" title="Delete Entry"><Trash2 size={14} /></button>
                         </div>
                       </td>
                     </tr>
@@ -467,6 +467,7 @@ const StudentsPage: React.FC = () => {
           </div>
         </div>
       </div>
+
 
       {/* Add/Edit Modal */}
       {isModalOpen && (

@@ -7,19 +7,40 @@
   --font-serif: "Playfair Display", serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
 
-  --color-brand-green: #2D5A4C;
-  --color-brand-sand: #D9B470;
-  --color-brand-green-light: #3A6B5C;
-  --color-brand-white: #FDFDFC;
-  --color-brand-dark: #1A342C;
+  --color-brand-primary: var(--canvas-color);
+  --color-brand-accent: var(--accent-color);
   
-  --color-indigo-600: #4F46E5;
-  --color-indigo-700: #4338CA;
+  --color-canvas: var(--canvas-bg);
+  --color-surface: var(--surface-bg);
+  --color-on-surface: var(--surface-text);
+  --color-on-canvas: var(--canvas-text);
+  --color-border-muted: var(--border-color);
+  --color-brand-gold: var(--gold-accent);
 }
 
 @layer base {
+  :root {
+    --canvas-bg: #F5F7FA;
+    --surface-bg: #FFFFFF;
+    --surface-text: #1A202C;
+    --canvas-text: #2D3748;
+    --border-color: #E2E8F0;
+    --accent-color: #002B5B; /* Institutional Blue */
+    --gold-accent: #C5A059; /* Matrix Gold */
+  }
+
+  .dark {
+    --canvas-bg: #0F172A;
+    --surface-bg: #1E293B;
+    --surface-text: #F8FAFC;
+    --canvas-text: #E2E8F0;
+    --border-color: #334155;
+    --accent-color: #38BDF8; /* Brighter Blue for Dark Mode */
+    --gold-accent: #EAB308; /* Brighter Gold for Dark Mode */
+  }
+
   body {
-    @apply antialiased text-[#111827] bg-[#F9FAFB];
+    @apply antialiased text-on-canvas bg-canvas transition-colors duration-200;
   }
 }
 
