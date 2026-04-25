@@ -1,9 +1,9 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
+import { InjectRepository, InjectDataSource } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
 import { Account, AccountType } from './entities/account.entity';
 import { JournalEntry, LedgerLine } from './entities/journal-entry.entity';
-import { Invoice, InvoiceItem } from './entities/invoice.entity';
+import { Invoice } from './entities/invoice.entity';
 import { TenancyService } from 'src/core/tenancy/tenancy.service';
 
 @Injectable()
@@ -16,6 +16,7 @@ export class FinanceService {
     @InjectRepository(Invoice)
     private readonly invoiceRepository: Repository<Invoice>,
     private readonly tenancyService: TenancyService,
+    @InjectDataSource()
     private readonly dataSource: DataSource,
   ) {}
 
@@ -30,9 +31,13 @@ export class FinanceService {
     ];
 
     for (const acc of defaults) {
-      const exists = await this.accountRepository.findOne({ where: { tenantId, code: acc.code } });
+      const exists = await this.accountRepository.findOne({
+        where: { tenantId, code: acc.code },
+      });
       if (!exists) {
-        await this.accountRepository.save(this.accountRepository.create({ ...acc, tenantId }));
+        await this.accountRepository.save(
+          this.accountRepository.create({ ...acc, tenantId }),
+        );
       }
     }
   }
@@ -46,13 +51,15 @@ export class FinanceService {
     lines: { accountCode: string; debit: number; credit: number }[];
   }) {
     const tenantId = this.tenancyService.getTenantId();
-    
+
     // Validate balance
     const totalDebit = data.lines.reduce((sum, l) => sum + l.debit, 0);
     const totalCredit = data.lines.reduce((sum, l) => sum + l.credit, 0);
-    
+
     if (Math.abs(totalDebit - totalCredit) > 0.001) {
-      throw new BadRequestException('Journal entry must be balanced (Debits must equal Credits)');
+      throw new BadRequestException(
+        'Journal entry must be balanced (Debits must equal Credits)',
+      );
     }
 
     return await this.dataSource.transaction(async (manager) => {
@@ -67,8 +74,13 @@ export class FinanceService {
 
       const ledgerLines: LedgerLine[] = [];
       for (const line of data.lines) {
-        const account = await manager.findOne(Account, { where: { tenantId, code: line.accountCode } });
-        if (!account) throw new BadRequestException(`Account with code ${line.accountCode} not found`);
+        const account = await manager.findOne(Account, {
+          where: { tenantId, code: line.accountCode },
+        });
+        if (!account)
+          throw new BadRequestException(
+            `Account with code ${line.accountCode} not found`,
+          );
 
         const lLine = manager.create(LedgerLine, {
           accountId: account.id,
@@ -80,8 +92,13 @@ export class FinanceService {
         // Update account balance
         // Assets/Expenses: +Debit -Credit
         // Liability/Equity/Revenue: -Debit +Credit
-        const multiplier = [AccountType.ASSET, AccountType.EXPENSE].includes(account.type) ? 1 : -1;
-        account.balance = Number(account.balance) + (line.debit - line.credit) * multiplier;
+        const multiplier = [AccountType.ASSET, AccountType.EXPENSE].includes(
+          account.type,
+        )
+          ? 1
+          : -1;
+        account.balance =
+          Number(account.balance) + (line.debit - line.credit) * multiplier;
         await manager.save(account);
       }
 
@@ -99,14 +116,16 @@ export class FinanceService {
     const totalAmount = data.items.reduce((sum, i) => sum + i.amount, 0);
     const invoiceNumber = `INV-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 
-    const invoice = await this.invoiceRepository.save(this.invoiceRepository.create({
-      tenantId,
-      invoiceNumber,
-      studentId: data.studentId,
-      dueDate: data.dueDate,
-      amount: totalAmount,
-      items: data.items,
-    }));
+    const invoice = await this.invoiceRepository.save(
+      this.invoiceRepository.create({
+        tenantId,
+        invoiceNumber,
+        studentId: data.studentId,
+        dueDate: data.dueDate,
+        amount: totalAmount,
+        items: data.items,
+      }),
+    );
 
     // Post to Ledger
     // Debit: Accounts Receivable (1100)
@@ -120,7 +139,7 @@ export class FinanceService {
       lines: [
         { accountCode: '1100', debit: totalAmount, credit: 0 },
         { accountCode: '4001', debit: 0, credit: totalAmount },
-      ]
+      ],
     });
 
     return invoice;
@@ -133,7 +152,9 @@ export class FinanceService {
     reference: string;
   }) {
     const tenantId = this.tenancyService.getTenantId();
-    const invoice = await this.invoiceRepository.findOne({ where: { id: data.invoiceId, tenantId } });
+    const invoice = await this.invoiceRepository.findOne({
+      where: { id: data.invoiceId, tenantId },
+    });
     if (!invoice) throw new BadRequestException('Invoice not found');
 
     const amount = Number(data.amount);
@@ -158,7 +179,7 @@ export class FinanceService {
       lines: [
         { accountCode: bankAccount, debit: amount, credit: 0 },
         { accountCode: '1100', debit: 0, credit: amount },
-      ]
+      ],
     });
 
     return invoice;
@@ -167,21 +188,25 @@ export class FinanceService {
   async getDashboardMetrics() {
     const tenantId = this.tenancyService.getTenantId();
     const accounts = await this.accountRepository.find({ where: { tenantId } });
-    
+
     return {
-      cashBalance: accounts.find(a => a.code === '1001' || a.code === '1002')?.balance || 0,
-      receivables: accounts.find(a => a.code === '1100')?.balance || 0,
-      revenue: accounts.find(a => a.code === '4001')?.balance || 0,
-      expenses: accounts.find(a => a.code === '5001' || a.code === '5100')?.balance || 0,
+      cashBalance:
+        accounts.find((a) => a.code === '1001' || a.code === '1002')?.balance ||
+        0,
+      receivables: accounts.find((a) => a.code === '1100')?.balance || 0,
+      revenue: accounts.find((a) => a.code === '4001')?.balance || 0,
+      expenses:
+        accounts.find((a) => a.code === '5001' || a.code === '5100')?.balance ||
+        0,
     };
   }
 
   async getInvoices() {
     const tenantId = this.tenancyService.getTenantId();
-    return this.invoiceRepository.find({ 
+    return this.invoiceRepository.find({
       where: { tenantId },
       relations: ['student'],
-      order: { createdAt: 'DESC' }
+      order: { createdAt: 'DESC' },
     });
   }
 }
