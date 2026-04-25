@@ -13,7 +13,8 @@ import {
   Users,
   GraduationCap,
   Clock,
-  BookOpen
+  BookOpen,
+  Activity
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useTheme } from '../context/ThemeContext';
