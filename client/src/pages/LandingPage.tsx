@@ -11,6 +11,7 @@ import {
   Sun,
   Layout,
   Users,
+  Wallet,
   GraduationCap,
   Clock,
   BookOpen,
@@ -84,7 +85,7 @@ const LandingPage: React.FC = () => {
               
               <p className="text-lg text-slate-600 mb-12 leading-relaxed max-w-xl">
                 The most intuitive platform for school administrators, teachers, and parents. 
-                Streamline admissions, finances, and learning management in one unified space.
+                Streamline academics, finances, and learning management in one unified space.
               </p>
 
               <div className="flex flex-col sm:flex-row gap-4">
@@ -159,9 +160,9 @@ const LandingPage: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
             {[
               {
-                icon: <Users className="text-primary" size={32} />,
-                title: "Student Admissions",
-                text: "Automated end-to-end registration and document management for all applicants."
+                icon: <Wallet className="text-primary" size={32} />,
+                title: "Simplified Payroll",
+                text: "Manage staff salaries, benefits, and statutory deductions with automated disbursements."
               },
               {
                 icon: <BarChart3 className="text-primary" size={32} />,

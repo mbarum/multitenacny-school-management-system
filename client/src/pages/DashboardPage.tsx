@@ -54,7 +54,6 @@ const DashboardPage: React.FC = () => {
     { title: 'Students', description: 'Manage records and enrollment.', icon: <Users size={20} />, path: '/students', color: 'bg-blue-50 text-blue-600' },
     { title: 'Finance', description: 'Fee collection and invoicing.', icon: <DollarSign size={20} />, path: '/finance', color: 'bg-emerald-50 text-emerald-600' },
     { title: 'Academics', description: 'Classes, subjects, and exams.', icon: <GraduationCap size={20} />, path: '/academics/classes', color: 'bg-purple-50 text-purple-600' },
-    { title: 'Admissions', description: 'Application pipeline management.', icon: <FileText size={20} />, path: '/admissions', color: 'bg-amber-50 text-amber-600' },
     { title: 'Attendance', description: 'Staff and student tracking.', icon: <Clock size={20} />, path: '/attendance', color: 'bg-rose-50 text-rose-600' },
     { title: 'Settings', description: 'Configure school profile.', icon: <Settings size={20} />, path: '/settings', color: 'bg-slate-50 text-slate-600' },
   ];

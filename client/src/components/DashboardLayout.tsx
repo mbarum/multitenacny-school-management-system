@@ -50,7 +50,6 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
     { icon: <GraduationCap size={20} />, label: 'Academics', path: '/academics/classes', roles: [UserRole.ADMIN, UserRole.TEACHER] },
     { icon: <UserCheck size={20} />, label: 'Staff Management', path: '/staff', roles: [UserRole.ADMIN] },
     { icon: <Wallet size={20} />, label: 'Payroll', path: '/payroll', roles: [UserRole.ADMIN] },
-    { icon: <ShieldAlert size={20} />, label: 'Admissions', path: '/admissions', roles: [UserRole.ADMIN] },
     { icon: <DollarSign size={20} />, label: 'Finance', path: '/finance', roles: [UserRole.ADMIN] },
     { icon: <Library size={20} />, label: 'Library', path: '/library', roles: [UserRole.ADMIN, UserRole.TEACHER] },
     { icon: <Globe size={20} />, label: 'LMS Connect', path: '/lms', roles: [UserRole.ADMIN] },

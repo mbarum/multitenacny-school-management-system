@@ -29,7 +29,6 @@ import { AuthModule } from './modules/auth/auth.module';
 import { PaymentsModule } from './modules/payments/payments.module';
 import { AppConfigModule } from './modules/config/config.module';
 import { FinanceModule } from './modules/finance/finance.module';
-import { AdmissionsModule } from './modules/admissions/admissions.module';
 
 import { JwtModule } from '@nestjs/jwt';
 import { BullModule } from '@nestjs/bullmq';
@@ -194,7 +193,6 @@ import { TenantThrottlerGuard } from './core/guards/tenant-throttler.guard';
     // Payments
     PaymentsModule,
     FinanceModule,
-    AdmissionsModule,
 
     // Config
     AppConfigModule,

@@ -155,7 +155,7 @@ const SchoolSettingsPage: React.FC = () => {
                     type="email"
                     value={schoolData.contactEmail}
                     onChange={(e) => setSchoolData({...schoolData, contactEmail: e.target.value})}
-                    placeholder="admissions@school.com"
+                    placeholder="info@school.com"
                     className="w-full px-4 py-3 rounded-xl border border-gray-100 focus:outline-none focus:ring-2 focus:ring-orange-500 font-bold text-gray-900"
                   />
                 </div>
