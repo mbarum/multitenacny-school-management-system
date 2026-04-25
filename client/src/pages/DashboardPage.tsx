@@ -17,7 +17,8 @@ import {
   Clock,
   Calendar,
   Settings,
-  Bell
+  Bell,
+  TrendingUp
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
