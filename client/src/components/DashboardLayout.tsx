@@ -21,7 +21,9 @@ import {
   Wallet,
   Library,
   Moon,
-  Sun
+  Sun,
+  Bell,
+  Search
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { UserRole } from '../../../src/common/user-role.enum';
@@ -38,33 +40,30 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
   const location = useLocation();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-  const isAdmin = user?.role === UserRole.ADMIN;
   const isSuperAdmin = user?.role === UserRole.SUPER_ADMIN;
   const isTeacher = user?.role === UserRole.TEACHER;
   const isParent = user?.role === UserRole.PARENT;
 
   const menuItems = [
-    { icon: <LayoutDashboard size={18} />, label: 'Overview', path: isSuperAdmin ? '/super-admin' : (isTeacher ? '/teacher' : (isParent ? '/parent' : '/dashboard')), roles: [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.TEACHER, UserRole.PARENT] },
-    { icon: <Users size={18} />, label: 'Registry', path: '/students', roles: [UserRole.ADMIN] },
-    { icon: <GraduationCap size={18} />, label: 'Academics', path: '/academics/classes', roles: [UserRole.ADMIN, UserRole.TEACHER] },
-    { icon: <UserCheck size={18} />, label: 'Staffing', path: '/staff', roles: [UserRole.ADMIN] },
-    { icon: <Wallet size={18} />, label: 'Payroll', path: '/payroll', roles: [UserRole.ADMIN] },
-    { icon: <ShieldAlert size={18} />, label: 'Intake', path: '/admissions', roles: [UserRole.ADMIN] },
-    { icon: <DollarSign size={18} />, label: 'Fiscal Ledger', path: '/finance', roles: [UserRole.ADMIN] },
-    { icon: <Library size={18} />, label: 'Library', path: '/library', roles: [UserRole.ADMIN, UserRole.TEACHER] },
-    { icon: <Globe size={18} />, label: 'LMS Connect', path: '/lms', roles: [UserRole.ADMIN] },
-    { icon: <Calendar size={18} />, label: 'Attendance', path: isTeacher ? '/teacher/attendance' : '/attendance', roles: [UserRole.ADMIN, UserRole.TEACHER] },
-    { icon: <FileText size={18} />, label: 'Analytics', path: '/reports', roles: [UserRole.ADMIN, UserRole.TEACHER] },
-    { icon: <CreditCard size={18} />, label: 'Payments', path: '/payments', roles: [UserRole.ADMIN, UserRole.PARENT] },
-    { icon: <Settings size={18} />, label: 'Configuration', path: '/settings', roles: [UserRole.ADMIN] },
+    { icon: <LayoutDashboard size={20} />, label: 'Dashboard', path: isSuperAdmin ? '/super-admin' : (isTeacher ? '/teacher' : (isParent ? '/parent' : '/dashboard')), roles: [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.TEACHER, UserRole.PARENT] },
+    { icon: <Users size={20} />, label: 'Students', path: '/students', roles: [UserRole.ADMIN] },
+    { icon: <GraduationCap size={20} />, label: 'Academics', path: '/academics/classes', roles: [UserRole.ADMIN, UserRole.TEACHER] },
+    { icon: <UserCheck size={20} />, label: 'Staff Management', path: '/staff', roles: [UserRole.ADMIN] },
+    { icon: <Wallet size={20} />, label: 'Payroll', path: '/payroll', roles: [UserRole.ADMIN] },
+    { icon: <ShieldAlert size={20} />, label: 'Admissions', path: '/admissions', roles: [UserRole.ADMIN] },
+    { icon: <DollarSign size={20} />, label: 'Finance', path: '/finance', roles: [UserRole.ADMIN] },
+    { icon: <Library size={20} />, label: 'Library', path: '/library', roles: [UserRole.ADMIN, UserRole.TEACHER] },
+    { icon: <Globe size={20} />, label: 'LMS Connect', path: '/lms', roles: [UserRole.ADMIN] },
+    { icon: <Calendar size={20} />, label: 'Attendance', path: isTeacher ? '/teacher/attendance' : '/attendance', roles: [UserRole.ADMIN, UserRole.TEACHER] },
+    { icon: <FileText size={20} />, label: 'Reporting', path: '/reports', roles: [UserRole.ADMIN, UserRole.TEACHER] },
+    { icon: <CreditCard size={20} />, label: 'Payments', path: '/payments', roles: [UserRole.ADMIN, UserRole.PARENT] },
+    { icon: <Settings size={20} />, label: 'School Settings', path: '/settings', roles: [UserRole.ADMIN] },
   ];
 
   const filteredItems = menuItems.filter(item => item.roles.includes(user?.role as UserRole));
 
-  const isRootPath = ['/dashboard', '/super-admin', '/teacher', '/parent'].includes(location.pathname);
-
   return (
-    <div className="min-h-screen bg-canvas flex font-sans text-on-canvas selection:bg-brand-accent selection:text-surface transition-colors duration-200">
+    <div className="min-h-screen bg-slate-50 flex font-sans text-slate-900 selection:bg-primary/20 transition-colors duration-200">
       {/* Mobile Overlay */}
       <AnimatePresence>
         {isSidebarOpen && (
@@ -73,134 +72,139 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={() => setIsSidebarOpen(false)}
-            className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm z-[90] lg:hidden"
+            className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[90] lg:hidden"
           />
         )}
       </AnimatePresence>
 
       {/* Sidebar */}
       <aside className={`
-        fixed lg:static inset-y-0 left-0 z-[100] w-64 bg-canvas border-r border-border-muted flex flex-col transform transition-transform duration-300 ease-in-out
+        fixed lg:static inset-y-0 left-0 z-[100] w-72 bg-white border-r border-slate-200 flex flex-col transform transition-transform duration-300 ease-in-out
         ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
       `}>
-        <div className="p-8 pb-12 flex items-center space-x-3">
-          <div className="w-8 h-8 rounded-sm flex items-center justify-center bg-accent-color transition-colors">
-            <Activity className="text-surface" size={16} />
-          </div>
-          <div>
-            <h2 className="text-sm font-bold tracking-widest text-on-canvas leading-none uppercase italic">Saaslink</h2>
-            <div className="h-[1px] w-full bg-brand-gold mt-1 shadow-sm" />
-          </div>
+        <div className="p-8 pb-12">
+          <Link to="/" className="flex items-center space-x-3 group">
+            <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center shadow-lg shadow-primary/20">
+               <GraduationCap className="text-white" size={24} />
+            </div>
+            <span className="text-xl font-bold tracking-tight text-slate-900">EduStream</span>
+          </Link>
         </div>
 
-        <nav className="flex-1 px-4 space-y-0.5 overflow-y-auto pt-4 scrollbar-hide">
-          <div className="text-[10px] font-mono font-bold text-gray-400 uppercase tracking-widest px-4 mb-6">Operations</div>
-          {filteredItems.map((item) => (
-            <Link
-              key={item.path}
-              to={item.path}
-              className={`flex items-center px-4 py-2 rounded-sm text-[11px] font-bold tracking-tight uppercase transition-all duration-150 group ${
-                location.pathname === item.path 
-                  ? 'bg-accent-color text-surface shadow-xl' 
-                  : 'text-gray-400 hover:text-on-canvas hover:bg-surface'
-              }`}
-            >
-              <span className={`mr-4 transition-colors duration-200 ${location.pathname === item.path ? 'text-surface' : 'text-gray-300 group-hover:text-on-canvas'}`}>
-                {item.icon}
-              </span>
-              {item.label}
-            </Link>
-          ))}
-
-          {isSuperAdmin && (
-            <div className="mt-8 pt-8 border-t border-border-muted">
-               <div className="text-[10px] font-mono font-bold text-gray-400 uppercase tracking-widest px-4 mb-4">Platform</div>
-               <Link
-                to="/super-admin/tenants"
-                className={`flex items-center px-4 py-2 rounded-sm text-[11px] font-bold tracking-tight uppercase transition-all duration-150 group ${
-                  location.pathname.includes('/super-admin/tenants') 
-                    ? 'bg-on-canvas text-surface shadow-xl' 
-                    : 'text-gray-400 hover:text-on-canvas hover:bg-surface'
+        <nav className="flex-1 px-4 space-y-1 overflow-y-auto pt-2 custom-scrollbar">
+          <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-4 mb-4 italic">Management</div>
+          {filteredItems.map((item) => {
+            const isActive = location.pathname === item.path;
+            return (
+              <Link
+                key={item.path}
+                to={item.path}
+                className={`flex items-center px-4 py-3.5 rounded-xl text-sm font-bold transition-all group ${
+                  isActive 
+                    ? 'bg-slate-900 text-white shadow-xl shadow-slate-200' 
+                    : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50'
                 }`}
               >
-                <ShieldAlert size={18} className="mr-4" />
-                Index Mapping
+                <span className={`mr-4 transition-colors ${isActive ? 'text-primary' : 'text-slate-400 group-hover:text-slate-600'}`}>
+                  {item.icon}
+                </span>
+                {item.label}
+              </Link>
+            );
+          })}
+
+          {isSuperAdmin && (
+            <div className="mt-8 pt-8 border-t border-slate-100">
+               <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-4 mb-4 italic">Platform</div>
+               <Link
+                to="/super-admin/tenants"
+                className={`flex items-center px-4 py-3.5 rounded-xl text-sm font-bold transition-all group ${
+                  location.pathname.includes('/super-admin/tenants') 
+                    ? 'bg-slate-900 text-white shadow-xl' 
+                    : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50'
+                }`}
+              >
+                <ShieldAlert size={20} className="mr-4 text-slate-400" />
+                Institutions
                </Link>
             </div>
           )}
         </nav>
 
         <div className="p-6 mt-auto">
-          <div className="border-t border-border-muted pt-6">
-            <div className="flex items-center space-x-3 mb-6 px-2">
-              <div className="w-8 h-8 rounded-sm bg-surface border border-border-muted flex items-center justify-center text-on-surface font-serif italic text-sm">
-                {user?.username?.charAt(0).toUpperCase()}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-[10px] font-bold text-on-canvas truncate uppercase tracking-tight">{user?.username}</p>
-                <p className="text-[9px] text-gray-400 font-mono truncate lowercase">{user?.email}</p>
-              </div>
-            </div>
-            <button 
+          <div className="bg-slate-50 rounded-2xl p-6 border border-slate-100 shadow-inner">
+             <div className="flex items-center space-x-3 mb-6">
+                <div className="w-10 h-10 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-slate-900 font-bold text-lg shadow-sm">
+                   {user?.username?.charAt(0).toUpperCase()}
+                </div>
+                <div className="flex-1 min-w-0">
+                   <p className="text-xs font-bold text-slate-900 truncate">{user?.username}</p>
+                   <p className="text-[10px] text-slate-400 font-medium truncate lowercase italic">{user?.email}</p>
+                </div>
+             </div>
+             <button 
               onClick={logout} 
-              className="flex items-center w-full px-4 py-2 text-gray-400 hover:border-on-canvas hover:text-on-canvas border border-transparent rounded-sm text-[10px] font-bold uppercase tracking-widest transition-all"
-            >
-              <LogOut size={14} className="mr-3" />
-              Terminate
-            </button>
+              className="flex items-center w-full px-4 py-2.5 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-xl text-xs font-bold transition-all group"
+             >
+                <LogOut size={16} className="mr-3" />
+                Sign Out
+             </button>
           </div>
         </div>
       </aside>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col min-w-0 bg-canvas">
-        {/* Header */}
-        <header className="h-16 bg-canvas border-b border-border-muted flex items-center justify-between px-8 sticky top-0 z-40 transition-colors duration-200">
-          <div className="flex items-center">
+      <div className="flex-1 flex flex-col min-w-0">
+        {/* Top Header */}
+        <header className="h-20 bg-white/80 backdrop-blur-md border-b border-slate-200 flex items-center justify-between px-8 sticky top-0 z-40">
+          <div className="flex items-center flex-1">
             <button 
                onClick={() => setIsSidebarOpen(true)}
-               className="lg:hidden p-2 rounded-sm bg-surface text-on-surface mr-4 border border-border-muted"
+               className="lg:hidden p-2 rounded-xl bg-slate-50 text-slate-600 mr-4 border border-slate-200 shadow-sm"
             >
-               <Menu size={18} />
+               <Menu size={20} />
             </button>
             
-            {!isRootPath && (
-              <button 
-                onClick={() => navigate(-1)}
-                className="flex items-center text-[10px] font-bold text-gray-400 hover:text-on-canvas transition-colors group mr-6 uppercase tracking-widest"
-              >
-                <ChevronLeft size={14} className="mr-1" />
-                <span>Return</span>
-              </button>
-            )}
-            
-            <div className="h-4 w-[1px] bg-border-muted mr-6 hidden sm:block" />
-            
-            <h1 className="text-[9px] font-mono font-bold uppercase tracking-widest text-gray-400 hidden sm:block">
-              {location.pathname.split('/').filter(Boolean).pop()?.replace('-', ' ') || 'Matrix Overview'}
-            </h1>
+            <div className="relative max-w-md w-full hidden md:block">
+               <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+               <input 
+                type="text" 
+                placeholder="Search students, staff, reports..." 
+                className="w-full pl-12 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-primary transition-all shadow-inner"
+               />
+            </div>
           </div>
 
           <div className="flex items-center space-x-6">
              <button 
                onClick={toggleTheme}
-               className="p-2 rounded-sm bg-surface border border-border-muted text-gray-400 hover:text-on-canvas transition-all"
-               title={theme === 'light' ? 'Switch to Dark Mode' : 'Switch to Light Mode'}
+               className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-400 hover:text-primary transition-all shadow-sm"
              >
-               {theme === 'light' ? <Moon size={16} /> : <Sun size={16} />}
+               {theme === 'light' ? <Moon size={18} /> : <Sun size={18} />}
              </button>
 
-             {isAdmin && (
-               <Link to="/pricing" className="hidden md:flex items-center space-x-2 text-gray-400 hover:text-on-canvas transition-colors uppercase">
-                  <Zap size={14} />
-                  <span className="text-[9px] font-bold tracking-widest">Upgrade Index</span>
-               </Link>
-             )}
-             <div className="w-8 h-8 rounded-sm bg-surface border border-border-muted shadow-inner" />
+             <button className="relative p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-400 hover:text-primary transition-all shadow-sm">
+                <Bell size={18} />
+                <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white" />
+             </button>
+             
+             <div className="h-8 w-[1px] bg-slate-200 mx-2" />
+             
+             <div className="flex items-center space-x-3 cursor-pointer group">
+                <div className="hidden sm:block text-right">
+                   <p className="text-xs font-bold text-slate-900 leading-none mb-1 group-hover:text-primary transition-colors">{user?.username}</p>
+                   <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{user?.role}</p>
+                </div>
+                <div className="w-10 h-10 rounded-xl border-2 border-slate-100 group-hover:border-primary transition-all p-0.5">
+                   <div className="w-full h-full bg-slate-200 rounded-lg flex items-center justify-center text-slate-500 font-bold shadow-inner">
+                      {user?.username?.charAt(0).toUpperCase()}
+                   </div>
+                </div>
+             </div>
           </div>
         </header>
 
-        <main className="flex-1 p-0 overflow-y-auto">
+        <main className="flex-1 overflow-y-auto">
           {children}
         </main>
       </div>

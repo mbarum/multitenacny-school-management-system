@@ -5,13 +5,15 @@ import {
   Smartphone, 
   Banknote, 
   Zap, 
-  Shield, 
-  Star, 
-  Globe, 
   ArrowRight, 
   AlertTriangle, 
   LogOut,
-  Activity
+  GraduationCap,
+  ChevronRight,
+  Star,
+  Users,
+  ShieldCheck,
+  Globe
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
@@ -22,34 +24,37 @@ import { useAuth } from '../contexts/AuthContext';
 const plans = [
   {
     name: 'Basic',
-    icon: <Zap className="w-6 h-6" />,
+    icon: <Users className="w-6 h-6" />,
     monthlyPrice: 1000,
     annualPrice: 10000,
     interval: 'KES',
     monthlyPriceId: 'price_basic_monthly',
     annualPriceId: 'price_basic_annual',
-    features: ['Student Records', 'Fee Management', 'Basic Reporting', 'Attendance Tracking'],
+    features: ['Up to 100 Students', 'Core Admissions', 'Basic Fee Collection', 'Attendance Tracking'],
+    desc: 'For small learning centers.'
   },
   {
     name: 'Standard',
-    icon: <Shield className="w-6 h-6" />,
+    icon: <GraduationCap className="w-6 h-6" />,
     monthlyPrice: 2000,
     annualPrice: 20000,
     interval: 'KES',
     monthlyPriceId: 'price_standard_monthly',
     annualPriceId: 'price_standard_annual',
-    features: ['All Basic Features', 'LMS Integration', 'Parent Portal', 'SMS Notifications'],
+    features: ['Up to 500 Students', 'Full LMS Integration', 'Parent Portal', 'SMS Notifications'],
+    desc: 'Perfect for established schools.',
+    popular: true
   },
   {
     name: 'Premium',
-    icon: <Star className="w-6 h-6" />,
+    icon: <ShieldCheck className="w-6 h-6" />,
     monthlyPrice: 3500,
     annualPrice: 35000,
     interval: 'KES',
     monthlyPriceId: 'price_premium_monthly',
     annualPriceId: 'price_premium_annual',
-    features: ['All Standard Features', 'Advanced Analytics', 'Custom Timetabling', 'Priority Support'],
-    popular: true
+    features: ['Unlimited Students', 'Advanced Analytics', 'Budgeting & P&L', 'Priority Support'],
+    desc: 'Comprehensive campus management.'
   },
   {
     name: 'Enterprise',
@@ -57,7 +62,8 @@ const plans = [
     monthlyPrice: 'Custom',
     annualPrice: 'Custom',
     interval: 'Contact Sales',
-    features: ['Unlimited Students', 'Multi-Campus Management', 'Dedicated Account Manager', 'Custom Integrations'],
+    features: ['Multi-Campus Sync', 'White-labeled App', 'Dedicated Support', 'Custom API Access'],
+    desc: 'For educational groups.',
     isEnterprise: true
   },
 ];
@@ -97,11 +103,11 @@ const PricingPage: React.FC = () => {
           plan: planName.toLowerCase(),
           billingCycle
         });
-        alert('STK Push sent to your phone. Please complete the transaction.');
+        alert('Payment prompt sent to your phone. Please confirm.');
         setSelectedPlan(null);
       } catch (error) {
         console.error('Error initiating M-Pesa payment:', error);
-        alert('Failed to initiate M-Pesa payment.');
+        alert('Payment initiation failed.');
       }
     }
   };
@@ -132,50 +138,49 @@ const PricingPage: React.FC = () => {
       link.click();
       document.body.removeChild(link);
       
-      alert(`Bank transfer request created successfully (Reference: ${reference}). An invoice has been downloaded. Please complete the bank transfer and contact support for activation.`);
+      alert(`Invoice generated (Ref: ${reference}). Please transfer the funds and share the receipt with support.`);
       setSelectedPlan(null);
       
       navigate('/dashboard?status=pending');
     } catch (error) {
-      console.error('Error creating bank transfer request:', error);
-      alert('Failed to create bank transfer request. Please try again.');
+      console.error('Error in bank transfer:', error);
+      alert('Failed to process bank transfer request.');
     }
   };
 
   return (
-    <div className="min-h-screen bg-canvas text-on-canvas font-sans selection:bg-brand-gold selection:text-surface transition-colors duration-500">
-      {/* Navigation - Minimal */}
-      <nav className="fixed top-0 w-full z-50 bg-canvas/80 backdrop-blur-xl border-b border-border-muted h-20 flex items-center">
-        <div className="max-w-7xl mx-auto w-full px-6 md:px-12 flex justify-between items-center">
-          <Link to="/" className="flex items-center space-x-3 group">
-            <div className="w-8 h-8 rounded-sm flex items-center justify-center bg-accent-color transition-transform group-hover:rotate-12">
-              <Activity className="text-surface" size={16} />
+    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans selection:bg-primary/20 transition-colors duration-500">
+      {/* Nav */}
+      <nav className="fixed top-0 w-full z-50 bg-white/80 backdrop-blur-md border-b border-slate-100 h-20 flex items-center">
+        <div className="max-w-7xl mx-auto w-full px-6 flex justify-between items-center">
+          <Link to="/" className="flex items-center space-x-2 group">
+            <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center shadow-md">
+              <GraduationCap className="text-white" size={24} />
             </div>
-            <div className="flex flex-col">
-              <span className="text-sm font-bold tracking-widest uppercase italic leading-none">Saaslink</span>
-              <div className="h-[2px] w-full bg-brand-gold mt-1 shadow-sm" />
-            </div>
+            <span className="text-xl font-bold tracking-tight text-slate-900">EduStream</span>
           </Link>
 
           <div className="flex items-center space-x-6">
-            <Link to="/login" className="text-[10px] font-bold uppercase tracking-widest text-gray-400 hover:text-on-canvas transition-colors">Access_Portal</Link>
-            <Link to="/register" className="bg-on-canvas text-surface px-6 py-2.5 text-[10px] font-bold uppercase tracking-[0.2em] rounded-sm hover:opacity-90 transition-all">Begin_Setup</Link>
+            <Link to="/login" className="text-sm font-semibold text-slate-600 hover:text-primary transition-colors italic">Portal Login</Link>
+            <Link to="/register" className="bg-slate-900 text-white px-6 py-2.5 text-sm font-bold rounded-lg hover:bg-slate-800 transition-all shadow-lg">Start Free</Link>
           </div>
         </div>
       </nav>
 
-      <div className="pt-40 pb-24 max-w-7xl mx-auto px-6 lg:px-8">
+      <div className="pt-40 pb-32 max-w-7xl mx-auto px-6">
         {isLocked && (
           <motion.div 
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="mb-16 bg-red-500/5 border border-red-500/20 p-8 flex flex-col md:flex-row items-center gap-8 justify-between"
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-16 bg-red-50 border border-red-100 p-8 rounded-2xl flex flex-col md:flex-row items-center gap-8 justify-between shadow-sm"
           >
             <div className="flex items-center space-x-6">
-              <AlertTriangle className="w-8 h-8 text-red-500 flex-shrink-0" />
+              <div className="w-12 h-12 bg-red-100 text-red-600 rounded-xl flex items-center justify-center">
+                <AlertTriangle size={24} />
+              </div>
               <div>
-                <h3 className="text-red-500 font-serif italic text-xl mb-1 tracking-tight">System_Lock_Active</h3>
-                <p className="text-gray-500 text-xs font-mono uppercase tracking-widest">Authorize subscription to restore node access.</p>
+                <h3 className="text-red-700 font-bold text-lg">Subscription Required</h3>
+                <p className="text-red-600/70 text-sm font-medium italic">Please renew your plan to restore institutional access.</p>
               </div>
             </div>
             {isLoggedIn && (
@@ -184,103 +189,99 @@ const PricingPage: React.FC = () => {
                   logout();
                   navigate('/login');
                 }}
-                className="flex items-center space-x-3 px-6 py-3 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-sm transition-all text-[10px] font-mono font-bold uppercase tracking-widest"
+                className="flex items-center space-x-2 px-6 py-3 bg-red-600 text-white rounded-xl font-bold text-sm hover:bg-red-700 transition-all shadow-lg shadow-red-200"
               >
-                <LogOut className="w-4 h-4" />
-                <span>TERMINATE_SESSION</span>
+                <LogOut size={16} />
+                <span>Log Out</span>
               </button>
             )}
           </motion.div>
         )}
 
-        <div className="text-center max-w-3xl mx-auto mb-24">
+        <div className="text-center max-w-3xl mx-auto mb-20">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
           >
-            <div className="flex items-center justify-center space-x-4 mb-8">
-               <span className="h-px w-12 bg-brand-gold" />
-               <span className="text-brand-gold text-[10px] font-mono font-bold uppercase tracking-[0.4em]">Protocol Selection</span>
-            </div>
-            <h1 className="text-6xl md:text-8xl font-serif italic text-on-canvas tracking-tighter mb-10 leading-[0.85]">
-              Modular <br />
-              <span className="opacity-20">Investment Scale.</span>
+            <h1 className="text-5xl md:text-6xl font-extrabold text-slate-900 tracking-tight mb-8">
+              Choose your <span className="text-primary">growth plan</span>.
             </h1>
-            <p className="text-lg text-gray-500 font-sans italic leading-relaxed font-medium">
-              Choose the architectural tier that matches your institutional density. 
-              Optimize your budget with annual synchronization.
+            <p className="text-lg text-slate-600 italic font-medium leading-relaxed">
+              Transparent pricing tailored for institutions of all sizes. 
+              Save 20% with an annual commitment.
             </p>
           </motion.div>
 
-          <div className="mt-16 flex items-center justify-center space-x-6">
-            <span className={`text-[10px] font-mono font-bold uppercase tracking-widest transition-opacity ${billingCycle === 'monthly' ? 'text-on-canvas' : 'text-gray-400 opacity-40'}`}>MONTHLY_STREAM</span>
+          <div className="mt-12 flex items-center justify-center space-x-4">
+            <span className={`text-sm font-bold transition-colors ${billingCycle === 'monthly' ? 'text-slate-900' : 'text-slate-400'}`}>Monthly</span>
             <button 
               onClick={() => setBillingCycle(billingCycle === 'monthly' ? 'annual' : 'monthly')}
-              className="w-16 h-8 bg-surface border border-border-muted rounded-full relative p-1 transition-all hover:border-gray-400"
+              className="w-14 h-8 bg-slate-200 rounded-full relative p-1 transition-all"
             >
               <motion.div 
-                animate={{ x: billingCycle === 'monthly' ? 0 : 32 }}
-                className="w-6 h-6 bg-accent-color rounded-full shadow-lg"
+                animate={{ x: billingCycle === 'monthly' ? 0 : 24 }}
+                className="w-6 h-6 bg-primary rounded-full shadow-md"
               />
             </button>
-            <span className={`text-[10px] font-mono font-bold uppercase tracking-widest transition-opacity ${billingCycle === 'annual' ? 'text-on-canvas' : 'text-gray-400 opacity-40'}`}>
-              ANNUAL_RESERVE <span className="text-brand-gold ml-2">(SAV_20%)</span>
+            <span className={`text-sm font-bold transition-colors ${billingCycle === 'annual' ? 'text-slate-900' : 'text-slate-400'}`}>
+              Annual <span className="text-emerald-500 ml-1 text-xs">(-20%)</span>
             </span>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {plans.map((plan) => (
             <motion.div
               key={plan.name}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              whileHover={{ y: -8 }}
-              className={`relative rounded-sm p-10 bg-surface border transition-all flex flex-col min-h-[500px] ${plan.popular ? 'border-accent-color shadow-[0_32px_64px_-16px_rgba(0,0,0,0.1)]' : 'border-border-muted'}`}
+              className={`relative rounded-3xl p-8 bg-white border transition-all flex flex-col ${plan.popular ? 'border-primary shadow-2xl shadow-primary/10 ring-4 ring-primary/5' : 'border-slate-100 shadow-sm'}`}
             >
               {plan.popular && (
-                <div className="absolute top-0 left-10 -translate-y-1/2 bg-accent-color text-surface px-6 py-1.5 text-[10px] font-mono font-black uppercase tracking-[0.3em]">
-                  Apex_Choice
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-primary text-white px-4 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest">
+                  Most Popular
                 </div>
               )}
               
-              <div className="w-12 h-12 bg-canvas border border-border-muted flex items-center justify-center mb-10 group transition-all group-hover:rotate-12">
-                <div className="text-brand-gold">{plan.icon}</div>
+              <div className="w-12 h-12 bg-slate-50 text-primary rounded-xl flex items-center justify-center mb-8">
+                {plan.icon}
               </div>
 
-              <h2 className="text-2xl font-serif italic text-on-canvas mb-4">{plan.name}_Node</h2>
-              <div className="flex items-baseline space-x-3 mb-12">
-                <span className="text-4xl font-serif italic tracking-tighter text-on-canvas">
+              <h2 className="text-xl font-bold text-slate-900 mb-2">{plan.name} Plan</h2>
+              <p className="text-xs text-slate-500 font-medium mb-8 italic">{plan.desc}</p>
+              
+              <div className="flex items-baseline space-x-2 mb-10">
+                <span className="text-4xl font-extrabold text-slate-900">
                   {plan.isEnterprise ? 'Custom' : (billingCycle === 'monthly' ? plan.monthlyPrice.toLocaleString() : plan.annualPrice.toLocaleString())}
                 </span>
-                <span className="text-gray-400 text-[10px] font-mono font-bold uppercase tracking-widest">
-                  {plan.interval} {!plan.isEnterprise && `/${billingCycle}`}
+                <span className="text-slate-400 text-xs font-bold uppercase tracking-widest">
+                  {plan.isEnterprise ? '' : `${plan.interval} / ${billingCycle}`}
                 </span>
               </div>
 
               <button
                 onClick={() => {
                   if (plan.isEnterprise) {
-                    window.location.href = 'mailto:sales@saaslink.tech?subject=Enterprise Plan Inquiry';
+                    window.location.href = 'mailto:hello@edustream.io';
                   } else if (!isLoggedIn) {
                     navigate(`/register?plan=${plan.name.toLowerCase()}`);
                   } else {
                     setSelectedPlan(plan);
                   }
                 }}
-                className={`w-full py-5 text-[11px] font-black uppercase tracking-[0.3em] transition-all active:scale-95 mb-10 ${plan.popular ? 'bg-on-canvas text-surface shadow-xl' : 'bg-canvas border border-border-muted text-on-canvas hover:bg-surface'}`}
+                className={`w-full py-4 rounded-xl font-bold text-sm transition-all active:scale-95 mb-10 ${plan.popular ? 'bg-primary text-white shadow-xl shadow-primary/20' : 'bg-slate-50 text-slate-700 hover:bg-slate-100'}`}
               >
-                {plan.isEnterprise ? 'CONTACT_UNIT' : (isLoggedIn ? `CONFIGURE_${plan.name}` : `GENERATE_NODE`)}
+                {plan.isEnterprise ? 'Contact Sales' : (isLoggedIn ? `Select ${plan.name}` : `Get Started`)}
               </button>
 
-              <ul className="space-y-6 pt-10 border-t border-border-muted">
+              <div className="space-y-4 pt-8 border-t border-slate-50 flex-grow">
                 {plan.features.map((feature) => (
-                  <li key={feature} className="flex items-start text-xs font-medium text-gray-500 italic">
-                    <CheckCircle className="h-4 w-4 text-brand-gold mr-4 flex-shrink-0" />
+                  <div key={feature} className="flex items-start text-xs font-medium text-slate-600 italic">
+                    <CheckCircle className="h-4 w-4 text-emerald-500 mr-3 flex-shrink-0" />
                     <span>{feature}</span>
-                  </li>
+                  </div>
                 ))}
-              </ul>
+              </div>
             </motion.div>
           ))}
         </div>
@@ -293,78 +294,77 @@ const PricingPage: React.FC = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-canvas/90 backdrop-blur-md flex items-center justify-center z-[100] p-6"
+            className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[200] p-6"
             onClick={() => setSelectedPlan(null)}
           >
             <motion.div
-              initial={{ y: 50, scale: 0.95 }}
-              animate={{ y: 0, scale: 1 }}
-              exit={{ y: 50, scale: 0.95 }}
-              className="bg-surface border border-border-muted rounded-sm p-12 w-full max-w-lg shadow-2xl relative"
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white rounded-3xl p-10 w-full max-w-md shadow-2xl relative"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="flex items-center space-x-6 mb-12">
-                <div className="w-14 h-14 bg-accent-color flex items-center justify-center shadow-xl">
-                  <Activity className="w-8 h-8 text-surface" />
+              <div className="flex items-center space-x-4 mb-10">
+                <div className="w-12 h-12 bg-primary rounded-xl flex items-center justify-center text-white">
+                  <Star size={24} />
                 </div>
                 <div>
-                  <h2 className="text-2xl font-serif italic text-on-canvas tracking-tight">Authorization_Portal</h2>
-                  <p className="text-xs font-mono font-bold uppercase tracking-widest text-gray-400">Node_Tier: {selectedPlan.name} ({billingCycle})</p>
+                  <h2 className="text-2xl font-bold text-slate-900">Activate Plan</h2>
+                  <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">{selectedPlan.name} • {billingCycle}</p>
                 </div>
               </div>
 
-              <div className="space-y-6">
+              <div className="space-y-4">
                 {[
-                  { id: 'stripe', name: 'Credit/Debit Card', icon: <CreditCard className="text-brand-gold" /> },
-                  { id: 'mpesa', name: 'M-Pesa Ledger Sync', icon: <Smartphone className="text-brand-gold" /> },
-                  { id: 'bank', name: 'Direct Bank Transfer', icon: <Banknote className="text-brand-gold" /> }
+                  { id: 'mpesa', name: 'Pay via M-Pesa', icon: <Smartphone className="text-primary" /> },
+                  { id: 'stripe', name: 'Credit/Debit Card', icon: <CreditCard className="text-primary" /> },
+                  { id: 'bank', name: 'Direct Bank Transfer', icon: <Banknote className="text-primary" /> }
                 ].map((method) => (
                   <button
                     key={method.id}
                     onClick={() => {
-                       if (method.id === 'stripe') handleStripeSubscribe(billingCycle === 'monthly' ? selectedPlan.monthlyPriceId : selectedPlan.annualPriceId);
                        if (method.id === 'mpesa') handleMpesaSubscribe(billingCycle === 'monthly' ? selectedPlan.monthlyPrice : selectedPlan.annualPrice, selectedPlan.name);
+                       if (method.id === 'stripe') handleStripeSubscribe(billingCycle === 'monthly' ? selectedPlan.monthlyPriceId : selectedPlan.annualPriceId);
                        if (method.id === 'bank') handleBankTransferSubscribe(billingCycle === 'monthly' ? selectedPlan.monthlyPrice : selectedPlan.annualPrice, selectedPlan.name);
                     }}
-                    className="w-full flex items-center justify-between p-6 bg-canvas border border-border-muted hover:border-on-canvas transition-all group"
+                    className="w-full flex items-center justify-between p-5 bg-slate-50 border border-slate-100 rounded-2xl hover:bg-white hover:border-primary transition-all group shadow-sm"
                   >
                     <div className="flex items-center">
-                      <div className="mr-6 transform group-hover:scale-110 transition-transform">{method.icon}</div>
-                      <span className="font-mono font-bold uppercase tracking-[0.2em] text-[10px] text-on-canvas">{method.name}</span>
+                      <div className="mr-5 transform group-hover:scale-110 transition-transform">{method.icon}</div>
+                      <span className="font-bold text-sm text-slate-900">{method.name}</span>
                     </div>
-                    <ArrowRight className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-all text-brand-gold" />
+                    <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-primary transition-all" />
                   </button>
                 ))}
               </div>
 
               <button 
                 onClick={() => setSelectedPlan(null)}
-                className="mt-12 w-full text-center text-[10px] font-mono font-bold uppercase tracking-[0.4em] text-gray-400 hover:text-on-canvas transition-colors"
+                className="mt-10 w-full text-center text-xs font-bold uppercase tracking-widest text-slate-400 hover:text-slate-900 transition-colors"
               >
-                ABORT_SEQUENCE
+                Cancel Sequence
               </button>
             </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Footer - Consistent with Landing */}
-      <footer className="py-24 bg-surface border-t border-border-muted">
-        <div className="max-w-7xl mx-auto px-6 lg:px-8">
-          <div className="flex flex-col md:flex-row justify-between items-center gap-12 text-[10px] font-mono font-bold uppercase tracking-[0.4em] text-gray-400">
-            <Link to="/" className="flex items-center space-x-3 group">
-              <div className="w-8 h-8 rounded-sm bg-on-canvas flex items-center justify-center">
-                <Activity className="text-surface" size={16} />
+      <footer className="py-20 bg-white border-t border-slate-100">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="flex flex-col md:flex-row justify-between items-center gap-10 text-xs font-bold uppercase tracking-widest text-slate-400">
+            <Link to="/" className="flex items-center space-x-2">
+              <div className="w-8 h-8 rounded-lg bg-slate-900 flex items-center justify-center">
+                <GraduationCap className="text-white" size={18} />
               </div>
-              <span className="text-on-canvas font-bold tracking-widest italic group-hover:text-brand-gold transition-colors">Saaslink</span>
+              <span className="text-slate-900 font-extrabold italic">EduStream</span>
             </Link>
-            <div className="flex space-x-12">
-              <Link to="/privacy" className="hover:text-on-canvas transition-colors italic">Privacy</Link>
-              <Link to="/terms" className="hover:text-on-canvas transition-colors italic">Terms</Link>
-              <Link to="/contact" className="hover:text-on-canvas transition-colors italic">Contact</Link>
+            <div className="flex space-x-10">
+              <Link to="/privacy" className="hover:text-primary transition-colors">Privacy</Link>
+              <Link to="/terms" className="hover:text-primary transition-colors">Terms</Link>
+              <Link to="/contact" className="hover:text-primary transition-colors">Contact</Link>
             </div>
             <div className="opacity-60">
-              © 2026 SAASLINK_STUDIO
+              © 2026 EduStream Systems
             </div>
           </div>
         </div>

@@ -1,8 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../services/api';
-import { Users, BookOpen, Calendar, CheckSquare, Clock, LogOut, Bell, MessageSquare, Award } from 'lucide-react';
+import { 
+  Users, 
+  BookOpen, 
+  Calendar, 
+  CheckSquare, 
+  Clock, 
+  Activity, 
+  Plus, 
+  Bell, 
+  MessageSquare, 
+  Award,
+  ChevronRight,
+  MapPin,
+  FileText
+} from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
 
 interface TeacherStats {
   totalStudents: number;
@@ -23,7 +38,7 @@ interface TeacherStats {
 }
 
 const TeacherDashboardPage: React.FC = () => {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const [stats, setStats] = useState<TeacherStats | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -44,184 +59,181 @@ const TeacherDashboardPage: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="h-full flex items-center justify-center bg-[#F5F5F5]">
+      <div className="h-screen flex items-center justify-center bg-white">
         <div className="flex flex-col items-center">
-            <Activity className="animate-pulse text-gray-400 mb-4" size={40} />
-            <p className="text-[10px] font-mono font-bold text-gray-400 uppercase tracking-widest">Hydrating Faculty Data...</p>
+            <Activity className="animate-spin text-primary mb-4" size={48} />
+            <p className="text-sm font-bold text-slate-400 uppercase tracking-widest italic">Preparing your classroom...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="max-w-6xl mx-auto p-12">
-      <header className="flex justify-between items-end mb-16 border-b border-gray-200 pb-8">
-        <div>
-          <nav className="flex mb-4 text-[10px] font-mono text-gray-400 uppercase tracking-widest">
-            <span>Faculty</span>
-            <span className="mx-2">/</span>
-            <span className="text-gray-900 font-bold">Session_Overview</span>
-          </nav>
-          <h1 className="text-5xl font-serif italic text-gray-900 leading-none tracking-tight">
-            Academic <span className="opacity-40">Command</span>
-          </h1>
-        </div>
-        <div className="text-right">
-          <p className="text-[9px] font-mono font-bold text-gray-400 uppercase tracking-widest mb-1">Session Identity</p>
-          <p className="text-sm font-bold text-gray-900 uppercase italic tracking-tight">{user?.username}</p>
+    <div className="min-h-screen bg-slate-50/50 pb-20">
+      <header className="bg-white border-b border-slate-200 px-8 py-10">
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div>
+            <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight mb-2">Teacher Workspace</h1>
+            <p className="text-slate-500 font-medium italic">Welcome back, {user?.username}. Here is your academic overview for today.</p>
+          </div>
+          <div className="flex items-center space-x-4">
+             <button className="p-3 bg-white border border-slate-200 rounded-xl text-slate-400 hover:text-primary transition-colors shadow-sm relative">
+                <Bell size={20} />
+                <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white" />
+             </button>
+             <button className="bg-slate-900 text-white px-6 py-3 rounded-xl font-bold text-sm shadow-lg flex items-center transition-transform active:scale-95">
+                <Plus size={18} className="mr-2" />
+                New Lesson
+             </button>
+          </div>
         </div>
       </header>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-0 border border-gray-200 mb-12">
-        <div className="bg-white p-8 border-r border-gray-200 flex flex-col justify-between">
-          <div className="flex justify-between items-start mb-10">
-            <div className="w-10 h-10 bg-gray-50 border border-gray-100 flex items-center justify-center text-gray-400">
-              <Users size={18} />
+      <main className="max-w-7xl mx-auto px-8 pt-12">
+        {/* Stats Summary */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
+          <motion.div whileHover={{ y: -5 }} className="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm flex items-center space-x-6">
+            <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center">
+              <Users size={32} />
             </div>
-          </div>
-          <div>
-            <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-4">Total Registry</h3>
-            <p className="text-5xl font-serif italic text-gray-900 leading-none tracking-tighter">
-              {stats?.totalStudents || 0}
-            </p>
-            <p className="text-[10px] font-bold text-gray-300 uppercase mt-2 tracking-widest italic">Assigned Students</p>
-          </div>
+            <div>
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">My Students</p>
+              <h3 className="text-4xl font-extrabold text-slate-900 tracking-tight">{stats?.totalStudents || 0}</h3>
+              <p className="text-[10px] text-slate-400 font-bold mt-1 italic">Active Learners</p>
+            </div>
+          </motion.div>
+
+          <motion.div whileHover={{ y: -5 }} className="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm flex items-center space-x-6">
+            <div className="w-16 h-16 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center">
+              <BookOpen size={32} />
+            </div>
+            <div>
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Total Classes</p>
+              <h3 className="text-4xl font-extrabold text-slate-900 tracking-tight">{stats?.totalClasses || 0}</h3>
+              <p className="text-[10px] text-slate-400 font-bold mt-1 italic">Assigned Subjects</p>
+            </div>
+          </motion.div>
+
+          <motion.div whileHover={{ y: -5 }} className="bg-slate-900 p-8 rounded-3xl shadow-xl shadow-slate-200 flex items-center space-x-6">
+            <div className="w-16 h-16 bg-white/10 text-white rounded-2xl flex items-center justify-center">
+              <CheckSquare size={32} />
+            </div>
+            <div>
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Assignments to Grade</p>
+              <h3 className="text-4xl font-extrabold text-white tracking-tight">{stats?.pendingTasks?.length || 0}</h3>
+              <p className="text-[10px] text-red-400 font-bold mt-1 uppercase tracking-widest">Action Needed</p>
+            </div>
+          </motion.div>
         </div>
 
-        <div className="bg-white p-8 border-r border-gray-200 flex flex-col justify-between">
-          <div className="flex justify-between items-start mb-10">
-            <div className="w-10 h-10 bg-gray-50 border border-gray-100 flex items-center justify-center text-gray-400">
-              <BookOpen size={18} />
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
+          {/* Schedule */}
+          <div className="lg:col-span-2">
+            <div className="flex items-center justify-between mb-8">
+              <h2 className="text-xl font-bold text-slate-900 tracking-tight flex items-center">
+                <Calendar className="mr-3 text-primary" size={24} />
+                Today's Schedule
+              </h2>
+              <span className="px-4 py-1.5 bg-slate-900 text-white rounded-full text-[10px] font-bold uppercase tracking-[0.2em]">
+                {new Date().toLocaleDateString('en-US', { day: 'numeric', month: 'short' })}
+              </span>
             </div>
-          </div>
-          <div>
-            <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-4">Curriculum Load</h3>
-            <p className="text-5xl font-serif italic text-gray-900 leading-none tracking-tighter">
-              {stats?.totalClasses || 0}
-            </p>
-            <p className="text-[10px] font-bold text-gray-300 uppercase mt-2 tracking-widest italic">Active Classes</p>
-          </div>
-        </div>
 
-        <div className="bg-gray-950 p-8 text-white flex flex-col justify-between">
-          <div className="flex justify-between items-start mb-10">
-            <div className="w-10 h-10 bg-white/5 border border-white/10 flex items-center justify-center text-white/40">
-              <CheckSquare size={18} />
-            </div>
-            <span className="text-[9px] font-mono font-bold text-white/40 uppercase tracking-widest">Urgent</span>
-          </div>
-          <div>
-            <h3 className="text-[10px] font-bold text-white/40 uppercase tracking-widest mb-4">Pending Tasks</h3>
-            <p className="text-5xl font-serif italic text-white leading-none tracking-tighter">
-              {stats?.pendingTasks?.length || 0}
-            </p>
-            <p className="text-[10px] font-bold text-white/20 uppercase mt-2 tracking-widest italic">Action Required</p>
-          </div>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
-        {/* Today's Schedule */}
-        <div className="lg:col-span-2 bg-white border border-gray-200 rounded-sm">
-          <div className="px-8 py-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
-            <h2 className="text-sm font-bold text-gray-900 uppercase tracking-widest flex items-center italic">
-              <Clock className="w-4 h-4 mr-3 text-gray-400" />
-              Temporal Schedule
-            </h2>
-            <span className="text-[10px] font-mono font-bold text-gray-400 uppercase tracking-widest">
-              {new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
-            </span>
-          </div>
-          <div className="p-8">
             <div className="space-y-6">
-              {stats?.todaysSchedule?.map((session, index) => (
-                <div key={session.id} className="flex group">
-                  <div className="mr-8 flex flex-col items-center">
-                    <div className="text-[10px] font-mono font-bold text-gray-300 group-hover:text-gray-900 transition-colors uppercase tracking-tighter">
-                      {String(index + 1).padStart(2, '0')}
-                    </div>
-                    <div className="w-[1px] flex-1 bg-gray-100 my-2 group-hover:bg-gray-900 transition-colors"></div>
+              {stats?.todaysSchedule?.map((session, i) => (
+                <div key={session.id} className="group relative flex items-start space-x-8">
+                  <div className="flex flex-col items-center pt-2">
+                    <div className="w-2.5 h-2.5 rounded-full bg-slate-200 group-hover:bg-primary transition-colors ring-4 ring-white shadow-sm" />
+                    <div className="w-0.5 h-32 bg-slate-100 group-hover:bg-primary/20 transition-colors mt-2" />
                   </div>
-                  
-                  <div className="flex-1 bg-[#F9F9F9] border border-gray-200 p-6 rounded-sm hover:border-gray-900 transition-all">
-                    <div className="flex justify-between items-start mb-4">
-                      <div>
-                        <h3 className="text-sm font-bold text-gray-900 uppercase italic tracking-tight">{session.subject}</h3>
-                        <p className="text-[9px] font-mono text-gray-400 uppercase tracking-widest mt-1">{session.time}</p>
-                      </div>
-                      <span className="text-[10px] font-bold text-gray-400 group-hover:text-gray-900 transition-colors uppercase tracking-widest italic">{session.room}</span>
-                    </div>
-                    <div className="flex items-center text-[10px] font-bold text-gray-500 uppercase tracking-widest space-x-4">
-                      <span className="flex items-center">
-                        <Users className="w-3 h-3 mr-2 text-gray-300" />
-                        {session.class}
-                      </span>
-                    </div>
-                    <div className="mt-6 flex space-x-3">
-                      <button className="text-[9px] font-bold px-4 py-2 bg-gray-900 text-white rounded-sm uppercase tracking-widest hover:bg-gray-800 transition-all">
-                        Registry
-                      </button>
-                      <button className="text-[9px] font-bold px-4 py-2 bg-white border border-gray-200 rounded-sm uppercase tracking-widest hover:border-gray-900 transition-all">
-                        Lesson_Notes
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-              {(!stats?.todaysSchedule || stats.todaysSchedule.length === 0) && (
-                <div className="text-center py-20 border-2 border-dashed border-gray-50">
-                  <p className="text-[10px] font-mono font-bold text-gray-300 uppercase tracking-widest italic">Awaiting Signal...</p>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
 
-        {/* Pending Tasks */}
-        <div className="bg-white border border-gray-200 rounded-sm">
-          <div className="px-8 py-6 border-b border-gray-100 bg-gray-50/50">
-            <h2 className="text-sm font-bold text-gray-900 uppercase tracking-widest flex items-center italic">
-              <CheckSquare className="w-4 h-4 mr-3 text-gray-400" />
-              Action Ledger
-            </h2>
-          </div>
-          <div className="p-0">
-            <ul className="divide-y divide-gray-100">
-              {stats?.pendingTasks?.map((task) => (
-                <li key={task.id} className="p-6 hover:bg-gray-50 transition-all cursor-pointer group">
-                  <div className="flex items-start">
-                    <div className="flex-shrink-0 mt-1">
-                      <div className="w-3 h-3 border border-gray-300 rounded-sm group-hover:border-gray-900 transition-colors" />
-                    </div>
-                    <div className="ml-4 flex-1">
-                      <p className="text-xs font-bold text-gray-900 uppercase italic leading-none mb-2">{task.title}</p>
-                      <div className="flex items-center justify-between">
-                        <span className={`text-[9px] font-mono font-bold uppercase tracking-widest ${
-                          task.due === 'Today' ? 'text-red-500' : 'text-gray-400'
-                        }`}>
-                          Due: {task.due}
+                  <div className="flex-1 bg-white border border-slate-100 p-8 rounded-3xl shadow-sm hover:shadow-xl transition-all group-hover:-translate-y-1">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+                      <div>
+                        <span className="text-[10px] font-bold text-primary uppercase tracking-widest bg-primary/5 px-2 py-1 rounded-md mb-2 inline-block">
+                           {session.time}
                         </span>
-                        <span className="text-[8px] font-mono font-bold text-gray-300 uppercase tracking-widest">{task.type}</span>
+                        <h4 className="text-xl font-bold text-slate-900">{session.subject}</h4>
+                      </div>
+                      <div className="flex items-center text-slate-400 text-xs font-bold uppercase tracking-widest italic">
+                        <MapPin size={14} className="mr-2" />
+                        Room {session.room}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between pt-6 border-t border-slate-50">
+                      <div className="flex items-center space-x-2 text-slate-500 font-bold text-xs uppercase tracking-tight">
+                        <Users size={16} className="text-slate-300" />
+                        <span>Class {session.class}</span>
+                      </div>
+                      <div className="flex space-x-2">
+                        <button className="px-4 py-2 bg-slate-50 text-slate-600 rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-slate-100 transition-colors">
+                          Attendance
+                        </button>
+                        <button className="px-4 py-2 bg-primary/10 text-primary rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-primary/20 transition-colors">
+                          Lesson Plan
+                        </button>
                       </div>
                     </div>
                   </div>
-                </li>
+                </div>
               ))}
-              {(!stats?.pendingTasks || stats.pendingTasks.length === 0) && (
-                <li className="p-20 text-center text-gray-300 font-mono text-[10px] uppercase tracking-widest italic">
-                  All systems clear.
-                </li>
+              {!stats?.todaysSchedule?.length && (
+                <div className="py-24 bg-white border border-slate-100 rounded-3xl flex flex-col items-center shadow-sm">
+                   <Clock className="text-slate-100 mb-4" size={64} />
+                   <p className="text-sm font-bold text-slate-300 uppercase tracking-widest italic">No classes scheduled for today.</p>
+                </div>
               )}
-            </ul>
-            <div className="p-6 border-t border-gray-100 bg-[#FAFAFA]">
-              <button className="w-full text-[10px] font-bold text-gray-400 hover:text-gray-900 transition-colors uppercase tracking-widest flex items-center justify-center gap-2">
-                + Append Task
-              </button>
+            </div>
+          </div>
+
+          {/* Pending Tasks */}
+          <div>
+            <h2 className="text-xl font-bold text-slate-900 tracking-tight mb-8">Grading Queue</h2>
+            <div className="bg-white border border-slate-100 rounded-3xl shadow-sm overflow-hidden">
+               <div className="divide-y divide-slate-50">
+                  {stats?.pendingTasks?.map((task) => (
+                    <div key={task.id} className="p-6 hover:bg-slate-50/50 transition-colors group cursor-pointer">
+                       <div className="flex items-start justify-between mb-2">
+                          <h5 className="text-sm font-bold text-slate-900 flex items-center group-hover:text-primary transition-colors">
+                             {task.title}
+                             <ChevronRight size={14} className="ml-1 opacity-0 group-hover:opacity-100 transition-all group-hover:translate-x-1" />
+                          </h5>
+                       </div>
+                       <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-2">
+                             <span className={`text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-md ${
+                               task.due === 'Today' ? 'bg-red-50 text-red-600' : 'bg-slate-50 text-slate-400'
+                             }`}>
+                                Due {task.due}
+                             </span>
+                          </div>
+                          <span className="text-[9px] font-bold text-slate-300 uppercase tracking-tight">{task.type}</span>
+                       </div>
+                    </div>
+                  ))}
+                  {!stats?.pendingTasks?.length && (
+                    <div className="p-20 text-center">
+                       <p className="text-xs font-bold text-slate-300 uppercase tracking-widest italic">All clear!</p>
+                    </div>
+                  )}
+               </div>
+               <button className="w-full py-5 bg-slate-50 text-slate-400 hover:text-slate-900 hover:bg-slate-100 transition-all text-[10px] font-bold uppercase tracking-widest flex items-center justify-center space-x-2 border-t border-slate-50">
+                  <Plus size={14} />
+                  <span>Manual Task</span>
+               </button>
+            </div>
+
+            {/* Quick Tips or Insights */}
+            <div className="mt-12 bg-indigo-900 p-8 rounded-3xl text-white relative overflow-hidden">
+               <Award className="absolute -right-4 -bottom-4 text-white/5" size={100} />
+               <h4 className="text-sm font-bold mb-4 relative z-10">Class Performance</h4>
+               <p className="text-3xl font-extrabold tracking-tight mb-2 relative z-10">88%</p>
+               <p className="text-xs text-white/60 font-medium italic relative z-10">Average quiz score for Grade 10-A</p>
             </div>
           </div>
         </div>
-      </div>
+      </main>
     </div>
   );
 };
