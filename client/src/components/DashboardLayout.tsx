@@ -48,12 +48,14 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
     { icon: <LayoutDashboard size={20} />, label: 'Dashboard', path: isSuperAdmin ? '/super-admin' : (isTeacher ? '/teacher' : (isParent ? '/parent' : '/dashboard')), roles: [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.TEACHER, UserRole.PARENT] },
     { icon: <Users size={20} />, label: 'Students', path: '/students', roles: [UserRole.ADMIN] },
     { icon: <GraduationCap size={20} />, label: 'Academics', path: '/academics/classes', roles: [UserRole.ADMIN, UserRole.TEACHER] },
+    { icon: <Activity size={20} />, label: 'Timetable', path: '/timetable', roles: [UserRole.ADMIN, UserRole.TEACHER] },
+    { icon: <Calendar size={20} />, label: 'Calendar', path: '/calendar', roles: [UserRole.ADMIN, UserRole.TEACHER, UserRole.PARENT] },
     { icon: <UserCheck size={20} />, label: 'Staff Management', path: '/staff', roles: [UserRole.ADMIN] },
     { icon: <Wallet size={20} />, label: 'Payroll', path: '/payroll', roles: [UserRole.ADMIN] },
     { icon: <DollarSign size={20} />, label: 'Finance', path: '/finance', roles: [UserRole.ADMIN] },
     { icon: <Library size={20} />, label: 'Library', path: '/library', roles: [UserRole.ADMIN, UserRole.TEACHER] },
     { icon: <Globe size={20} />, label: 'LMS Connect', path: '/lms', roles: [UserRole.ADMIN] },
-    { icon: <Calendar size={20} />, label: 'Attendance', path: isTeacher ? '/teacher/attendance' : '/attendance', roles: [UserRole.ADMIN, UserRole.TEACHER] },
+    { icon: <Activity size={20} />, label: 'Attendance', path: isTeacher ? '/teacher/attendance' : '/attendance', roles: [UserRole.ADMIN, UserRole.TEACHER] },
     { icon: <FileText size={20} />, label: 'Reporting', path: '/reports', roles: [UserRole.ADMIN, UserRole.TEACHER] },
     { icon: <CreditCard size={20} />, label: 'Payments', path: '/payments', roles: [UserRole.ADMIN, UserRole.PARENT] },
     { icon: <Settings size={20} />, label: 'School Settings', path: '/settings', roles: [UserRole.ADMIN] },
@@ -86,7 +88,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
             <div className="w-9 h-9 rounded-lg bg-primary flex items-center justify-center shadow-lg shadow-primary/20">
                <GraduationCap className="text-white" size={20} />
             </div>
-            <span className="text-lg font-bold tracking-tight text-on-surface">EduStream</span>
+            <span className="text-lg font-bold tracking-tight text-on-surface">SaaSLink</span>
           </Link>
         </div>
 

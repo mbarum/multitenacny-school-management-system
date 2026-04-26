@@ -20,6 +20,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { getStripe } from '../services/stripe';
 import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import SEO from '../components/SEO';
 
 const plans = [
   {
@@ -150,6 +151,7 @@ const PricingPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans selection:bg-primary/20 transition-colors duration-500">
+      <SEO title="Pricing Plans" description="Choose the perfect plan for your school. Transparent pricing for institutions of all sizes." />
       {/* Nav */}
       <nav className="fixed top-0 w-full z-50 bg-white/80 backdrop-blur-md border-b border-slate-100 h-20 flex items-center">
         <div className="max-w-7xl mx-auto w-full px-6 flex justify-between items-center">
@@ -157,7 +159,7 @@ const PricingPage: React.FC = () => {
             <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center shadow-md">
               <GraduationCap className="text-white" size={24} />
             </div>
-            <span className="text-xl font-bold tracking-tight text-slate-900">EduStream</span>
+            <span className="text-xl font-bold tracking-tight text-slate-900">SaaSLink</span>
           </Link>
 
           <div className="flex items-center space-x-6">
@@ -356,7 +358,7 @@ const PricingPage: React.FC = () => {
               <div className="w-8 h-8 rounded-lg bg-slate-900 flex items-center justify-center">
                 <GraduationCap className="text-white" size={18} />
               </div>
-              <span className="text-slate-900 font-extrabold italic">EduStream</span>
+              <span className="text-slate-900 font-extrabold italic">SaaSLink</span>
             </Link>
             <div className="flex space-x-10">
               <Link to="/privacy" className="hover:text-primary transition-colors">Privacy</Link>
@@ -364,7 +366,7 @@ const PricingPage: React.FC = () => {
               <Link to="/contact" className="hover:text-primary transition-colors">Contact</Link>
             </div>
             <div className="opacity-60">
-              © 2026 EduStream Systems
+              © 2026 SaaSLink Systems
             </div>
           </div>
         </div>

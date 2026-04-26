@@ -9,5 +9,6 @@ import { TenancyModule } from 'src/core/tenancy/tenancy.module';
   imports: [TypeOrmModule.forFeature([Staff]), TenancyModule],
   controllers: [StaffController],
   providers: [StaffService],
+  exports: [StaffService, TypeOrmModule],
 })
 export class StaffModule {}

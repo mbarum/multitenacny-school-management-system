@@ -168,17 +168,20 @@ const AppRoutes: React.FC = () => {
 };
 
 import { ThemeProvider } from './context/ThemeContext';
+import { HelmetProvider } from 'react-helmet-async';
 
 const App: React.FC = () => {
   return (
-    <ThemeProvider>
-      <AuthProvider>
-        <Toaster position="top-right" expand={true} richColors />
-        <Router>
-          <AppRoutes />
-        </Router>
-      </AuthProvider>
-    </ThemeProvider>
+    <HelmetProvider>
+      <ThemeProvider>
+        <AuthProvider>
+          <Toaster position="top-right" expand={true} richColors />
+          <Router>
+            <AppRoutes />
+          </Router>
+        </AuthProvider>
+      </ThemeProvider>
+    </HelmetProvider>
   );
 };
 

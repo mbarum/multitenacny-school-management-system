@@ -5,6 +5,7 @@ import { Lock, User, ArrowRight, Activity } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import api from '../services/api';
+import SEO from '../components/SEO';
 
 const LoginPage: React.FC = () => {
   const [username, setUsername] = useState('');
@@ -28,6 +29,7 @@ const LoginPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-canvas flex items-center justify-center p-6 font-sans selection:bg-brand-gold selection:text-surface transition-colors duration-500">
+      <SEO title="Safe Login" description="Sign in to your SaaSLink staff portal to manage your school." />
       {/* Decorative Pattern Background */}
       <div className="absolute inset-0 z-0 opacity-[0.03] pointer-events-none">
         <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_center,var(--color-on-canvas)_1px,transparent_1px)] [background-size:24px_24px]" />

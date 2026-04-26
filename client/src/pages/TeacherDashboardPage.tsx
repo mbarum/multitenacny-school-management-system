@@ -92,38 +92,44 @@ const TeacherDashboardPage: React.FC = () => {
       <main className="max-w-7xl mx-auto px-8 pt-12">
         {/* Stats Summary */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
-          <motion.div whileHover={{ y: -5 }} className="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm flex items-center space-x-6">
-            <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center">
-              <Users size={32} />
-            </div>
-            <div>
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">My Students</p>
-              <h3 className="text-4xl font-extrabold text-slate-900 tracking-tight">{stats?.totalStudents || 0}</h3>
-              <p className="text-[10px] text-slate-400 font-bold mt-1 italic">Active Learners</p>
-            </div>
-          </motion.div>
+          <Link to="/students">
+            <motion.div whileHover={{ y: -5 }} className="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm flex items-center space-x-6 cursor-pointer">
+              <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center">
+                <Users size={32} />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">My Students</p>
+                <h3 className="text-4xl font-extrabold text-slate-900 tracking-tight">{stats?.totalStudents || 0}</h3>
+                <p className="text-[10px] text-slate-400 font-bold mt-1 italic">Active Learners</p>
+              </div>
+            </motion.div>
+          </Link>
 
-          <motion.div whileHover={{ y: -5 }} className="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm flex items-center space-x-6">
-            <div className="w-16 h-16 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center">
-              <BookOpen size={32} />
-            </div>
-            <div>
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Total Classes</p>
-              <h3 className="text-4xl font-extrabold text-slate-900 tracking-tight">{stats?.totalClasses || 0}</h3>
-              <p className="text-[10px] text-slate-400 font-bold mt-1 italic">Assigned Subjects</p>
-            </div>
-          </motion.div>
+          <Link to="/academics/classes">
+            <motion.div whileHover={{ y: -5 }} className="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm flex items-center space-x-6 cursor-pointer">
+              <div className="w-16 h-16 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center">
+                <BookOpen size={32} />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Total Classes</p>
+                <h3 className="text-4xl font-extrabold text-slate-900 tracking-tight">{stats?.totalClasses || 0}</h3>
+                <p className="text-[10px] text-slate-400 font-bold mt-1 italic">Assigned Subjects</p>
+              </div>
+            </motion.div>
+          </Link>
 
-          <motion.div whileHover={{ y: -5 }} className="bg-slate-900 p-8 rounded-3xl shadow-xl shadow-slate-200 flex items-center space-x-6">
-            <div className="w-16 h-16 bg-white/10 text-white rounded-2xl flex items-center justify-center">
-              <CheckSquare size={32} />
-            </div>
-            <div>
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Assignments to Grade</p>
-              <h3 className="text-4xl font-extrabold text-white tracking-tight">{stats?.pendingTasks?.length || 0}</h3>
-              <p className="text-[10px] text-red-400 font-bold mt-1 uppercase tracking-widest">Action Needed</p>
-            </div>
-          </motion.div>
+          <Link to="/reports">
+            <motion.div whileHover={{ y: -5 }} className="bg-slate-900 p-8 rounded-3xl shadow-xl shadow-slate-200 flex items-center space-x-6 cursor-pointer">
+              <div className="w-16 h-16 bg-white/10 text-white rounded-2xl flex items-center justify-center">
+                <CheckSquare size={32} />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Assignments to Grade</p>
+                <h3 className="text-4xl font-extrabold text-white tracking-tight">{stats?.pendingTasks?.length || 0}</h3>
+                <p className="text-[10px] text-red-400 font-bold mt-1 uppercase tracking-widest">Action Needed</p>
+              </div>
+            </motion.div>
+          </Link>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">

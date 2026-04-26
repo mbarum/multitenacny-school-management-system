@@ -19,12 +19,17 @@ import {
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useTheme } from '../context/ThemeContext';
+import SEO from '../components/SEO';
 
 const LandingPage: React.FC = () => {
   const { theme, toggleTheme } = useTheme();
 
   return (
     <div className="min-h-screen bg-canvas text-on-surface transition-colors duration-700 font-sans selection:bg-primary/20 selection:text-primary">
+      <SEO 
+        title="SaaSLink | Modern School Management ERP" 
+        description="SaaSLink is a next-generation school management system with unified student records, finance, staff payroll, and communication for schools worldwide."
+      />
       {/* Navigation Layer */}
       <nav className="fixed top-0 w-full z-[100] bg-canvas/80 backdrop-blur-xl border-b border-border-muted h-24 flex items-center">
         <div className="max-w-7xl mx-auto w-full px-8 flex justify-between items-center text-sm">
@@ -39,16 +44,23 @@ const LandingPage: React.FC = () => {
           </div>
 
           <div className="hidden lg:flex items-center space-x-12 font-bold text-slate-500 dark:text-slate-400">
-            {['Features', 'Solutions', 'Services', 'Pricing'].map((item) => (
+            {['Features', 'Solutions', 'Services'].map((item) => (
               <a 
                 key={item} 
                 href={`#${item.toLowerCase()}`} 
-                className="hover:text-primary transition-all relative group py-2"
+                className="hover:text-primary transition-all relative group py-2 font-black uppercase text-[10px] tracking-widest"
               >
                 {item}
                 <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-primary transition-all duration-300 group-hover:w-full" />
               </a>
             ))}
+            <Link 
+              to="/pricing" 
+              className="hover:text-primary transition-all relative group py-2 font-black uppercase text-[10px] tracking-widest"
+            >
+              Pricing
+              <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-primary transition-all duration-300 group-hover:w-full" />
+            </Link>
           </div>
 
           <div className="flex items-center space-x-6">
@@ -192,7 +204,7 @@ const LandingPage: React.FC = () => {
         </div>
       </section>
 
-      {/* Feature Grid: Operational Excellence */}
+      {/* Operational Excellence / Features */}
       <section id="features" className="py-44 bg-surface/30">
         <div className="max-w-7xl mx-auto px-8">
           <div className="max-w-3xl mb-32">
@@ -265,8 +277,8 @@ const LandingPage: React.FC = () => {
         </div>
       </section>
 
-      {/* Services Layer */}
-      <section id="services" className="py-44 bg-slate-950 relative overflow-hidden">
+      {/* Services Layer / Solutions */}
+      <section id="solutions" className="py-44 bg-slate-950 relative overflow-hidden">
         {/* Animated grid background */}
         <div className="absolute inset-0 opacity-[0.05]" style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px)', backgroundSize: '60px 60px' }} />
 
@@ -305,6 +317,7 @@ const LandingPage: React.FC = () => {
             </div>
             
             <motion.div 
+              id="services"
               initial={{ opacity: 0, scale: 0.9 }}
               whileInView={{ opacity: 1, scale: 1 }}
               viewport={{ once: true }}
@@ -359,18 +372,20 @@ const LandingPage: React.FC = () => {
             <div className="md:col-span-2">
               <h5 className="font-black text-on-surface mb-10 uppercase text-[10px] tracking-[0.3em]">Services</h5>
               <ul className="space-y-5 text-slate-500 font-bold text-sm tracking-tight">
-                {['Analytics', 'Solutions', 'Pricing', 'Documentation'].map(item => (
-                   <li key={item}><a href="#" className="hover:text-primary transition-all">{item}</a></li>
-                ))}
+                <li><a href="#solutions" className="hover:text-primary transition-all">Analytics</a></li>
+                <li><a href="#solutions" className="hover:text-primary transition-all">Solutions</a></li>
+                <li><Link to="/pricing" className="hover:text-primary transition-all">Pricing</Link></li>
+                <li><a href="#" className="hover:text-primary transition-all">Documentation</a></li>
               </ul>
             </div>
 
             <div className="md:col-span-2">
               <h5 className="font-black text-on-surface mb-10 uppercase text-[10px] tracking-[0.3em]">School Center</h5>
               <ul className="space-y-5 text-slate-500 font-bold text-sm tracking-tight">
-                {['News', 'Support', 'Security', 'Features'].map(item => (
-                   <li key={item}><a href="#" className="hover:text-primary transition-all">{item}</a></li>
-                ))}
+                <li><a href="#" className="hover:text-primary transition-all">News</a></li>
+                <li><a href="#" className="hover:text-primary transition-all">Support</a></li>
+                <li><a href="#" className="hover:text-primary transition-all">Security</a></li>
+                <li><a href="#features" className="hover:text-primary transition-all">Features</a></li>
               </ul>
             </div>
 

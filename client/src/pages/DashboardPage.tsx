@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
+import SEO from '../components/SEO';
 
 interface DashboardStats {
   totalStudents: number;
@@ -96,6 +97,7 @@ const DashboardPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-canvas pb-24 font-sans selection:bg-primary/10 selection:text-primary">
+      <SEO title="Admin Dashboard" />
       {/* Announcement Ticker */}
       {announcements.length > 0 && (
         <div className="bg-slate-900 text-white overflow-hidden py-3 border-b border-white/5 relative z-[60]">
