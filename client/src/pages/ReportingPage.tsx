@@ -34,6 +34,25 @@ const ReportingPage: React.FC = () => {
   const [classLevels, setClassLevels] = useState<{ id: string; name: string }[]>([]);
   const [data, setData] = useState<any>(null);
 
+  const handleCloudExport = async () => {
+    const toastId = toast.loading('Exporting financial report to cloud...');
+    try {
+      const response = await api.get(`/reporting/financials/cloud-export?startDate=${filters.startDate}&endDate=${filters.endDate}`);
+      const { url } = response.data;
+      toast.success('Report exported to cloud storage', {
+        id: toastId,
+        duration: 10000,
+        action: {
+          label: 'Open Link',
+          onClick: () => window.open(url, '_blank')
+        }
+      });
+    } catch (error) {
+      console.error('Export failed', error);
+      toast.error('Failed to export to cloud', { id: toastId });
+    }
+  };
+
   useEffect(() => {
     fetchClassLevels();
   }, []);
@@ -348,6 +367,15 @@ const ReportingPage: React.FC = () => {
                 <Filter size={14} />
                 Filter
               </button>
+              {activeTab === 'financial' && (
+                <button 
+                  onClick={handleCloudExport}
+                  className="bg-emerald-600 text-white h-10 px-6 rounded-xl font-black uppercase text-[9px] tracking-widest flex items-center gap-2 hover:bg-emerald-700 active:scale-95 transition-all shadow-xl shadow-emerald-900/10"
+                >
+                  <Download size={14} />
+                  Export to Cloud
+                </button>
+              )}
            </div>
         </header>
 

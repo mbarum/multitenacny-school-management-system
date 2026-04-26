@@ -11,7 +11,7 @@ export class Course extends TenantAwareEntity {
   @Column({ type: 'text', nullable: true })
   description: string;
 
-  @Column({ nullable: true })
+  @Column({ type: 'text', nullable: true })
   thumbnailUrl: string;
 
   @Column()

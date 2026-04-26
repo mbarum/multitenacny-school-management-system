@@ -10,10 +10,10 @@ export class Lesson extends TenantAwareEntity {
   @Column({ type: 'text', nullable: true })
   content: string;
 
-  @Column({ nullable: true })
+  @Column({ type: 'text', nullable: true })
   videoUrl: string;
 
-  @Column({ nullable: true })
+  @Column({ type: 'text', nullable: true })
   attachmentUrl: string;
 
   @Column()
