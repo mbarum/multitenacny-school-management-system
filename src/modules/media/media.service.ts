@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Storage } from '@google-cloud/storage';
-import { v4 as uuidv4 } from 'uuid';
+import { randomUUID } from 'crypto';
 import * as path from 'path';
 
 /**
@@ -48,7 +48,7 @@ export class MediaService {
     }
 
     const bucket = this.storage.bucket(this.bucketName);
-    const fileName = `${folder}/${uuidv4()}${path.extname(file.originalname)}`;
+    const fileName = `${folder}/${randomUUID()}${path.extname(file.originalname)}`;
     const blob = bucket.file(fileName);
 
     const blobStream = blob.createWriteStream({
@@ -86,7 +86,7 @@ export class MediaService {
     }
 
     const bucket = this.storage.bucket(this.bucketName);
-    const fullPath = `${folder}/${uuidv4()}_${fileName}`;
+    const fullPath = `${folder}/${randomUUID()}_${fileName}`;
     const blob = bucket.file(fullPath);
 
     await blob.save(buffer, {
