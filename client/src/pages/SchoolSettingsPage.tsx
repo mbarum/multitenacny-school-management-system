@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
-import { Settings, Save, Shield, Smartphone, Award, GraduationCap } from 'lucide-react';
+import { Settings, Save, Shield, Smartphone, Award, GraduationCap, Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
 import DashboardLayout from '../components/DashboardLayout';
@@ -143,6 +143,7 @@ const SchoolSettingsPage: React.FC = () => {
                 <div className="col-span-2">
                   <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2">School Official Name</label>
                   <input 
+                    id="school-name-input"
                     type="text"
                     value={schoolData.name}
                     onChange={(e) => setSchoolData({...schoolData, name: e.target.value})}
@@ -183,6 +184,7 @@ const SchoolSettingsPage: React.FC = () => {
                 <div>
                   <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2">School Slogan / Motto</label>
                   <input 
+                    id="school-motto-input"
                     type="text"
                     value={schoolData.motto}
                     onChange={(e) => setSchoolData({...schoolData, motto: e.target.value})}
@@ -196,6 +198,7 @@ const SchoolSettingsPage: React.FC = () => {
                 <div>
                   <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2">Contact Email</label>
                   <input 
+                    id="school-email-input"
                     type="email"
                     value={schoolData.contactEmail}
                     onChange={(e) => setSchoolData({...schoolData, contactEmail: e.target.value})}
@@ -206,7 +209,8 @@ const SchoolSettingsPage: React.FC = () => {
                 <div>
                   <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2">Phone Number</label>
                   <input 
-                    type="text"
+                    id="school-phone-input"
+                    type="tel"
                     value={schoolData.phoneNumber}
                     onChange={(e) => setSchoolData({...schoolData, phoneNumber: e.target.value})}
                     placeholder="+254 700 000 000"

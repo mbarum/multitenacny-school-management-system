@@ -1,9 +1,11 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import { jwtDecode } from 'jwt-decode';
+import storage from '../services/storage';
 import { UserRole } from '../../../src/common/user-role.enum';
 
 interface User {
   username: string;
+  email?: string;
   role: UserRole;
   tenantId?: string;
   plan?: string;
@@ -24,11 +26,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
+    const token = storage.getItem('token');
     if (token) {
       try {
         const decoded: { 
           username: string; 
+          email: string;
           role: UserRole; 
           tenantId: string;
           plan: string;
@@ -37,6 +40,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         
         setUser({ 
           username: decoded.username, 
+          email: decoded.email,
           role: decoded.role,
           tenantId: decoded.tenantId,
           plan: decoded.plan,
@@ -45,15 +49,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setIsAuthenticated(true);
       } catch (e) {
         console.error('Failed to decode token', e);
-        localStorage.removeItem('token');
+        storage.removeItem('token');
       }
     }
   }, []);
 
   const login = (token: string) => {
-    localStorage.setItem('token', token);
+    storage.setItem('token', token);
     const decoded: { 
       username: string; 
+      email: string;
       role: UserRole; 
       tenantId: string;
       plan: string;
@@ -62,6 +67,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     setUser({ 
       username: decoded.username, 
+      email: decoded.email,
       role: decoded.role,
       tenantId: decoded.tenantId,
       plan: decoded.plan,
@@ -71,7 +77,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const logout = () => {
-    localStorage.removeItem('token');
+    storage.removeItem('token');
     setIsAuthenticated(false);
     setUser(null);
   };

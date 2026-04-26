@@ -8,9 +8,16 @@ import { StaffPayrollItem } from './entities/staff-payroll-item.entity';
 import { TenancyModule } from 'src/core/tenancy/tenancy.module';
 import { StaffModule } from '../staff/staff.module';
 
+import { Staff } from '../staff/entities/staff.entity';
+
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Payroll, PayrollItemDefinition, StaffPayrollItem]),
+    TypeOrmModule.forFeature([
+      Payroll,
+      PayrollItemDefinition,
+      StaffPayrollItem,
+      Staff,
+    ]),
     TenancyModule,
     StaffModule,
   ],
