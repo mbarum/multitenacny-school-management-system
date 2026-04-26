@@ -5,6 +5,7 @@ import {
   Body,
   Patch,
   Param,
+  Delete,
   UseGuards,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -111,5 +112,11 @@ export class AcademicsController {
   @Get('grading-scales')
   findAllGradingScales() {
     return this.gradingService.findAll();
+  }
+
+  @Delete('grading-scales/:id')
+  @Roles(UserRole.ADMIN)
+  removeGradingScale(@Param('id') id: string) {
+    return this.gradingService.remove(id);
   }
 }

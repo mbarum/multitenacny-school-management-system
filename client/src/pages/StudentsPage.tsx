@@ -4,7 +4,46 @@ import { useAuth } from '../contexts/AuthContext';
 import api from '../services/api';
 import { toast } from 'sonner';
 import { UserRole } from '../../../src/common/user-role.enum';
-import { Users, UserCheck, DollarSign, Activity, LogOut, Settings, GraduationCap, Calendar, FileText, CreditCard, Plus, Edit, Trash2, X, Search, Eye, User, Mail, Phone, ShieldCheck, Award, Info, MapPin, Truck, Camera, Check, ChevronLeft, ChevronRight, Printer } from 'lucide-react';
+import { 
+  Users, 
+  UserCheck, 
+  DollarSign, 
+  Activity, 
+  LogOut, 
+  Settings, 
+  GraduationCap, 
+  Calendar, 
+  FileText, 
+  CreditCard, 
+  Plus, 
+  Edit, 
+  Trash2, 
+  X, 
+  Search, 
+  Eye, 
+  User, 
+  Mail, 
+  Phone, 
+  ShieldCheck, 
+  Award, 
+  Info, 
+  MapPin, 
+  Truck, 
+  Camera, 
+  Check, 
+  ChevronLeft, 
+  ChevronRight, 
+  Printer,
+  RefreshCw,
+  Filter,
+  MoreVertical,
+  ExternalLink,
+  Shield,
+  Download,
+  AlertTriangle
+} from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Link } from 'react-router-dom';
 
 interface Student {
   id: string;
@@ -66,6 +105,10 @@ const StudentsPage: React.FC = () => {
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
   const [viewingStudent, setViewingStudent] = useState<Student | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [activeDetailTab, setActiveDetailTab] = useState<'info' | 'behavior'>('info');
+  const [behaviorRecords, setBehaviorRecords] = useState<any[]>([]);
+  const [behaviorLoading, setBehaviorLoading] = useState(false);
+  const [behaviorSummary, setBehaviorSummary] = useState({ merits: 0, demerits: 0, net: 0 });
   const [currentStep, setCurrentStep] = useState(1);
   const [showIdCard, setShowIdCard] = useState(false);
   const [isCameraActive, setIsCameraActive] = useState(false);
@@ -230,6 +273,24 @@ const StudentsPage: React.FC = () => {
   const handleViewStudent = (student: Student) => {
     setViewingStudent(student);
     setIsDetailModalOpen(true);
+    setActiveDetailTab('info');
+    fetchBehaviorData(student.id);
+  };
+
+  const fetchBehaviorData = async (studentId: string) => {
+    setBehaviorLoading(true);
+    try {
+      const [recordsRes, summaryRes] = await Promise.all([
+        api.get(`/students/${studentId}/behavior`),
+        api.get(`/students/${studentId}/behavior/summary`)
+      ]);
+      setBehaviorRecords(recordsRes.data);
+      setBehaviorSummary(summaryRes.data);
+    } catch (error) {
+      console.error('Failed to fetch behavior data', error);
+    } finally {
+      setBehaviorLoading(false);
+    }
   };
 
   const handleOpenModal = (student?: Student) => {
@@ -340,188 +401,298 @@ const StudentsPage: React.FC = () => {
   }
 
   return (
-    <>
-      <div className="max-w-full px-6 py-8">
-        <header className="mb-8 border-b border-border-muted pb-6 flex justify-between items-end">
-          <div>
-            <nav className="flex mb-2 text-[10px] font-mono text-gray-400 uppercase tracking-widest">
-              <span>Registry</span>
-              <span className="mx-2">/</span>
-              <span className="text-on-surface font-bold">Students</span>
-            </nav>
-            <h1 className="text-3xl font-serif italic font-medium text-on-surface leading-tight">Student Enrollment Data</h1>
-            <p className="text-gray-500 font-sans mt-1 text-sm">Comprehensive listing of all registered students and their status.</p>
-          </div>
-          
-          <div className="flex items-center gap-2">
-            <div className="flex items-center space-x-2 mr-4 border-r border-border-muted pr-4">
-              <select 
-                value={filterClassId}
-                onChange={(e) => {
-                  setFilterClassId(e.target.value);
-                  setFilterSectionId('');
-                }}
-                className="bg-surface border border-border-muted rounded text-[10px] font-bold uppercase tracking-wider px-2 py-2 outline-none focus:ring-1 focus:ring-on-surface"
-              >
-                <option value="">All Classes</option>
-                {classLevels.map(cl => (
-                  <option key={cl.id} value={cl.id}>{cl.name}</option>
-                ))}
-              </select>
-              <select 
-                value={filterSectionId}
-                onChange={(e) => setFilterSectionId(e.target.value)}
-                disabled={!filterClassId}
-                className="bg-surface border border-border-muted rounded text-[10px] font-bold uppercase tracking-wider px-2 py-2 outline-none focus:ring-1 focus:ring-on-surface disabled:opacity-50"
-              >
-                <option value="">All Streams</option>
-                {sections.filter(s => s.classLevelId === filterClassId).map(sec => (
-                  <option key={sec.id} value={sec.id}>{sec.name}</option>
-                ))}
-              </select>
-              {(filterClassId || filterSectionId) && (
-                <button 
-                  onClick={() => {
-                    setFilterClassId('');
-                    setFilterSectionId('');
-                  }}
-                  className="p-2 text-gray-400 hover:text-red-500 transition-colors"
-                  title="Clear Filters"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              )}
+    <div className="min-h-screen bg-canvas pb-20 font-sans selection:bg-primary/10 selection:text-primary">
+      {/* Top Navigation / Breadcrumbs */}
+      <div className="bg-surface border-b border-border-muted relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-1/4 h-full bg-gradient-to-l from-primary/5 to-transparent pointer-events-none" />
+        <div className="max-w-[1600px] mx-auto px-8 py-12 relative z-10">
+          <div className="flex flex-col md:flex-row justify-between items-end gap-8">
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.6 }}
+            >
+              <div className="inline-flex items-center space-x-2 text-[10px] font-black text-primary uppercase tracking-[0.4em] mb-4">
+                 <Shield size={10} className="text-primary" />
+                 <span>Student Information System</span>
+              </div>
+              <h1 className="text-4xl md:text-5xl font-black text-on-surface tracking-tighter leading-none mb-4 uppercase italic">
+                Student <span className="text-slate-300 dark:text-slate-700 block md:inline font-normal underline decoration-primary decoration-4 underline-offset-8">Registry</span>
+              </h1>
+              <p className="text-slate-500 text-sm font-bold tracking-tight max-w-xl">
+                Securely managing student records and academic data. Monitoring institutional enrollment and placement.
+              </p>
+            </motion.div>
+            
+            <div className="flex items-center gap-4">
+               <div className="flex -space-x-3 items-center mr-4">
+                  {[1,2,3].map(i => (
+                    <div key={i} className="w-10 h-10 rounded-full border-4 border-surface bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-[10px] font-black text-slate-400 uppercase italic">
+                      {String.fromCharCode(64 + i)}
+                    </div>
+                  ))}
+                  <div className="w-10 h-10 rounded-full border-4 border-surface bg-primary text-white flex items-center justify-center text-[10px] font-black italic shadow-lg z-10">
+                    +{students.length}
+                  </div>
+               </div>
+               <motion.button 
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => handleOpenModal()}
+                className="bg-slate-900 dark:bg-primary text-white h-16 px-10 rounded-2xl font-black uppercase text-[10px] tracking-[0.3em] shadow-2xl flex items-center hover:shadow-primary/30 transition-all group relative overflow-hidden"
+               >
+                  <Plus size={18} className="mr-3 group-hover:rotate-90 transition-transform duration-500" />
+                  New Registration
+               </motion.button>
             </div>
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-[1600px] mx-auto px-8 pt-12">
+
+        {/* Advanced Data Filters */}
+        <div className="bg-surface border border-border-muted rounded-[2rem] p-4 flex flex-wrap lg:flex-nowrap items-center gap-4 mb-10 shadow-[0_20px_50px_-20px_rgba(0,0,0,0.05)] relative z-20">
+           <div className="relative group w-full lg:w-96">
+              <Search className="absolute left-5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 transition-colors group-focus-within:text-primary" />
               <input
                 type="text"
-                placeholder="Search index..."
+                placeholder="Search by student name or ID..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9 pr-4 py-2 bg-surface border border-border-muted rounded text-xs focus:ring-1 focus:ring-on-surface font-sans w-64"
+                className="pl-14 pr-6 py-4 bg-slate-50 dark:bg-slate-900/50 border border-border-muted rounded-2xl text-[11px] font-black uppercase tracking-wider focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all w-full italic"
               />
-            </div>
-            <button 
-              onClick={() => handleOpenModal()}
-              className="flex items-center justify-center px-4 py-2 bg-on-surface text-surface rounded hover:bg-opacity-90 transition-all font-medium text-xs shadow-sm"
-            >
-              <Plus className="w-3.5 h-3.5 mr-2" />
-              Add Student
-            </button>
-          </div>
-        </header>
+           </div>
 
+           <div className="h-10 w-px bg-border-muted hidden lg:block" />
+
+           <div className="flex items-center space-x-2 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-border-muted p-1">
+              <div className="flex items-center px-4 py-3 space-x-3">
+                 <GraduationCap size={16} className="text-slate-400" />
+                 <select 
+                   value={filterClassId}
+                   onChange={(e) => {
+                     setFilterClassId(e.target.value);
+                     setFilterSectionId('');
+                   }}
+                   className="bg-transparent text-[10px] font-black uppercase tracking-widest outline-none focus:ring-0 cursor-pointer text-on-surface hover:text-primary transition-colors appearance-none min-w-[160px]"
+                 >
+                   <option value="">Grade Levels (All)</option>
+                   {classLevels.map(cl => (
+                     <option key={cl.id} value={cl.id}>{cl.name}</option>
+                   ))}
+                 </select>
+              </div>
+              <div className="w-px h-6 bg-border-muted" />
+              <div className="flex items-center px-4 py-3 space-x-3">
+                 <Activity size={16} className="text-slate-400" />
+                 <select 
+                   value={filterSectionId}
+                   onChange={(e) => setFilterSectionId(e.target.value)}
+                   disabled={!filterClassId}
+                   className="bg-transparent text-[10px] font-black uppercase tracking-widest outline-none focus:ring-0 cursor-pointer text-on-surface hover:text-primary transition-colors appearance-none min-w-[160px] disabled:opacity-30"
+                 >
+                   <option value="">Streams / Sections (All)</option>
+                   {sections.filter(s => s.classLevelId === filterClassId).map(sec => (
+                     <option key={sec.id} value={sec.id}>{sec.name}</option>
+                   ))}
+                 </select>
+              </div>
+           </div>
+
+           {(filterClassId || filterSectionId || searchQuery) && (
+             <motion.button 
+               whileHover={{ x: 5 }}
+               onClick={() => {
+                 setFilterClassId('');
+                 setFilterSectionId('');
+                 setSearchQuery('');
+               }}
+               className="px-6 py-4 text-[10px] font-black text-rose-500 hover:text-rose-600 uppercase tracking-widest flex items-center gap-3 transition-colors ml-auto group"
+             >
+               <RefreshCw size={12} className="group-hover:rotate-180 transition-transform duration-500" />
+               Reset Filters
+             </motion.button>
+           )}
+           
+           {!filterClassId && !filterSectionId && !searchQuery && (
+              <div className="ml-auto flex items-center space-x-6 pr-4">
+                 <div className="flex flex-col items-end">
+                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] italic">System Status</span>
+                    <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">Active</span>
+                 </div>
+                 <div className="w-px h-10 bg-border-muted" />
+                 <Filter size={18} className="text-slate-300" />
+              </div>
+           )}
+        </div>
+
+        <AnimatePresence mode="wait">
         {selectedStudentIds.length > 0 && (
-          <div className="bg-canvas border border-border-muted p-3 mb-6 flex items-center justify-between rounded-sm">
-            <div className="flex items-center space-x-3">
-              <span className="text-[10px] font-mono font-bold bg-on-surface text-surface px-2 py-0.5 rounded-sm">
-                {selectedStudentIds.length}
-              </span>
-              <span className="text-gray-600 font-medium text-xs uppercase tracking-wider">Entries Selected</span>
+          <motion.div 
+            initial={{ opacity: 0, height: 0, marginBottom: 0 }}
+            animate={{ opacity: 1, height: 'auto', marginBottom: 24 }}
+            exit={{ opacity: 0, height: 0, marginBottom: 0 }}
+            className="overflow-hidden"
+          >
+            <div className="bg-slate-900 p-6 flex items-center justify-between rounded-[2rem] shadow-2xl border border-slate-800 relative z-10">
+              <div className="flex items-center space-x-6 px-4">
+                <div className="w-12 h-12 bg-primary rounded-2xl text-white font-black text-lg flex items-center justify-center shadow-lg transform rotate-3">
+                  {selectedStudentIds.length}
+                </div>
+                <div>
+                  <p className="text-white text-[11px] font-black uppercase tracking-[0.2em] italic">Records Selected for Bulk Action</p>
+                  <p className="text-slate-400 text-[9px] uppercase font-bold tracking-[0.3em] mt-1">Authorized for status update or class promotion</p>
+                </div>
+              </div>
+              <div className="flex gap-4">
+                <button
+                  onClick={() => setIsBulkStatusModalOpen(true)}
+                  className="px-8 py-4 bg-slate-800 text-white hover:bg-indigo-600 transition-all text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl flex items-center gap-3 shadow-lg group"
+                >
+                  <ShieldCheck size={16} className="group-hover:scale-110 transition-transform" />
+                  Update Status
+                </button>
+                <button
+                  onClick={() => setIsBulkClassModalOpen(true)}
+                  className="px-8 py-4 bg-slate-800 text-white hover:bg-violet-600 transition-all text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl flex items-center gap-3 shadow-lg group"
+                >
+                  <RefreshCw size={16} className="group-hover:rotate-180 transition-transform duration-700" />
+                  Promote Class Level
+                </button>
+                <button
+                  onClick={() => setSelectedStudentIds([])}
+                  className="px-6 py-4 text-[10px] font-black text-slate-500 hover:text-white uppercase tracking-[0.2em] transition-colors"
+                >
+                  Clear Selection
+                </button>
+              </div>
             </div>
-            <div className="flex space-x-2">
-              <button
-                onClick={() => setIsBulkStatusModalOpen(true)}
-                className="px-3 py-1.5 text-gray-600 hover:text-on-surface transition-all text-[10px] font-bold uppercase tracking-widest border border-border-muted bg-surface"
-              >
-                Change Status
-              </button>
-              <button
-                onClick={() => setIsBulkClassModalOpen(true)}
-                className="px-3 py-1.5 text-gray-600 hover:text-on-surface transition-all text-[10px] font-bold uppercase tracking-widest border border-border-muted bg-surface"
-              >
-                Move Class
-              </button>
-            </div>
-          </div>
+          </motion.div>
         )}
+        </AnimatePresence>
 
-        <div className="bg-surface border border-border-muted overflow-hidden shadow-sm">
-          <div className="overflow-x-auto text-xs">
+        <div className="card-premium p-0 overflow-hidden shadow-[0_40px_100px_-30px_rgba(0,0,0,0.1)] border-0 mb-20 rounded-[2.5rem]">
+          <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="bg-canvas border-b border-border-muted">
-                  <th className="px-5 py-4 font-bold text-[10px] text-gray-400 font-mono uppercase tracking-widest w-12">
-                    <input 
-                      type="checkbox" 
-                      className="w-3 h-3 rounded border-border-muted text-on-surface focus:ring-on-surface"
-                      checked={selectedStudentIds.length === filteredStudents.length && filteredStudents.length > 0}
-                      onChange={handleSelectAll}
-                    />
+                <tr className="bg-slate-50 dark:bg-slate-900 border-b border-border-muted">
+                  <th className="px-10 py-8 text-[11px] font-black text-slate-400 uppercase tracking-[0.3em] w-16 italic">
+                    <div className="flex justify-center">
+                      <input 
+                        type="checkbox" 
+                        className="w-5 h-5 rounded-lg border-border-muted text-primary focus:ring-primary/20 transition-all cursor-pointer bg-surface"
+                        checked={selectedStudentIds.length === filteredStudents.length && filteredStudents.length > 0}
+                        onChange={handleSelectAll}
+                      />
+                    </div>
                   </th>
-                  <th className="px-5 py-4 font-bold text-[10px] text-gray-400 font-mono uppercase tracking-widest">Identifier / Name</th>
-                  <th className="px-5 py-4 font-bold text-[10px] text-gray-400 font-mono uppercase tracking-widest">Index Number</th>
-                  <th className="px-5 py-4 font-bold text-[10px] text-gray-400 font-mono uppercase tracking-widest">Placement</th>
-                  <th className="px-5 py-4 font-bold text-[10px] text-gray-400 font-mono uppercase tracking-widest">Academic Year</th>
-                  <th className="px-5 py-4 font-bold text-[10px] text-gray-400 font-mono uppercase tracking-widest">Status</th>
-                  <th className="px-5 py-4 font-bold text-[10px] text-gray-400 font-mono uppercase tracking-widest text-right">Actions</th>
+                  <th className="px-6 py-8 text-[11px] font-black text-slate-400 uppercase tracking-[0.3em] italic">Student Name</th>
+                  <th className="px-6 py-8 text-[11px] font-black text-slate-400 uppercase tracking-[0.3em] italic text-center">Registration ID</th>
+                  <th className="px-6 py-8 text-[11px] font-black text-slate-400 uppercase tracking-[0.3em] italic">Grade / Level</th>
+                  <th className="px-6 py-8 text-[11px] font-black text-slate-400 uppercase tracking-[0.3em] italic">Current Status</th>
+                  <th className="px-10 py-8 text-right text-[11px] font-black text-slate-400 uppercase tracking-[0.3em] italic">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border-muted italic-serif-headers">
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800/50">
                 {filteredStudents.length > 0 ? (
-                  filteredStudents.map((student) => (
-                    <tr key={student.id} className={`hover:bg-canvas transition-colors group ${selectedStudentIds.includes(student.id) ? 'bg-canvas' : ''}`}>
-                      <td className="px-5 py-3">
-                        <input 
-                          type="checkbox" 
-                          className="w-3 h-3 rounded border-border-muted text-on-surface focus:ring-on-surface"
-                          checked={selectedStudentIds.includes(student.id)}
-                          onChange={(e) => handleSelectStudent(student.id, e.target.checked)}
-                        />
+                  filteredStudents.map((student, index) => (
+                    <motion.tr 
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: index * 0.03 }}
+                      key={student.id} 
+                      className={`hover:bg-slate-50 dark:hover:bg-slate-900 transition-all group relative ${selectedStudentIds.includes(student.id) ? 'bg-primary/[0.03]' : ''}`}
+                    >
+                      <td className="px-10 py-6">
+                        <div className="flex justify-center">
+                          <input 
+                            type="checkbox" 
+                            className="w-5 h-5 rounded-lg border-border-muted text-primary focus:ring-primary/20 transition-all cursor-pointer bg-surface"
+                            checked={selectedStudentIds.includes(student.id)}
+                            onChange={(e) => handleSelectStudent(student.id, e.target.checked)}
+                          />
+                        </div>
                       </td>
-                      <td className="px-5 py-3">
-                        <div className="flex items-center space-x-3">
-                          <div className="w-8 h-8 rounded shrink-0 border border-border-muted flex items-center justify-center bg-canvas">
+                      <td className="px-6 py-6 font-sans">
+                        <div className="flex items-center space-x-6">
+                          <div className="w-14 h-14 rounded-2xl shrink-0 border-2 border-border-muted flex items-center justify-center bg-surface overflow-hidden group-hover:border-primary transition-colors shadow-sm relative">
                             {student.photoUrl ? (
-                              <img src={student.photoUrl} alt="" className="w-full h-full object-cover rounded shadow-sm" />
+                              <img src={student.photoUrl} alt="" className="w-full h-full object-cover" />
                             ) : (
-                              <User className="w-4 h-4 text-gray-300" />
+                              <User className="w-6 h-6 text-slate-200" />
                             )}
+                            <div className="absolute inset-0 bg-primary/0 group-hover:bg-primary/5 transition-colors" />
                           </div>
                           <div>
-                            <p className="font-serif italic text-on-surface text-sm">{student.firstName} {student.lastName}</p>
-                            <p className="font-mono text-[9px] text-gray-400 uppercase tracking-tight">{student.registrationNumber || 'N/A'}</p>
+                            <p className="text-lg font-black text-on-surface tracking-tight leading-none mb-1 group-hover:text-primary transition-colors">{student.firstName} {student.lastName}</p>
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] flex items-center">
+                               {student.gender === 'Male' ? <Shield size={10} className="mr-1.5 text-blue-400" /> : <Award size={10} className="mr-1.5 text-rose-400" />}
+                               {student.gender || 'Classified'}
+                            </p>
                           </div>
                         </div>
                       </td>
-                      <td className="px-5 py-3 font-mono text-gray-500 tabular-nums">
-                        {student.registrationNumber || '-'}
+                      <td className="px-6 py-6 text-center">
+                        <span className="font-sans font-black text-slate-500 text-[10px] bg-slate-100 dark:bg-slate-900 px-4 py-2 rounded-xl border border-border-muted tracking-[0.2em]">
+                          {student.registrationNumber || 'X-PENDING'}
+                        </span>
                       </td>
-                      <td className="px-5 py-3">
-                        <div className="flex items-center space-x-1.5">
-                           <span className="font-medium text-on-surface">{student.classLevel?.name || '-'}</span>
+                      <td className="px-6 py-6">
+                        <div className="flex flex-col">
+                           <span className="font-black text-on-surface text-xs uppercase tracking-widest mb-1 italic">{student.classLevel?.name || 'Unassigned'}</span>
                            {student.section && (
-                             <span className="text-[10px] text-gray-400 bg-canvas border border-border-muted px-1.5 py-0.5 rounded-sm font-mono uppercase">{student.section.name}</span>
+                             <div className="flex items-center space-x-2">
+                               <div className="w-1.5 h-1.5 rounded-full bg-primary/40 animate-pulse" />
+                               <span className="text-[10px] text-slate-400 font-bold uppercase tracking-[0.1em]">{student.section.name} Stream</span>
+                             </div>
                            )}
                         </div>
                       </td>
-                      <td className="px-5 py-3 font-mono text-gray-400 tabular-nums">
-                        {student.academicYear?.name || '-'}
-                      </td>
-                      <td className="px-5 py-3">
-                        <span className={`px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest rounded-sm border ${
-                          student.status === 'Active' ? 'bg-green-500/10 text-green-500 border-green-500/20' :
-                          student.status === 'Graduated' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' :
-                          student.status === 'Suspended' ? 'bg-red-500/10 text-red-500 border-red-500/20' :
-                          'bg-gray-500/10 text-gray-500 border-gray-500/20'
+                      <td className="px-6 py-6">
+                        <span className={`inline-flex items-center px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-[0.2em] border-2 transition-all shadow-sm ${
+                          student.status === 'Active' ? 'bg-emerald-500/5 text-emerald-500 border-emerald-500/20' :
+                          student.status === 'Graduated' ? 'bg-blue-500/5 text-blue-500 border-blue-500/20' :
+                          student.status === 'Suspended' ? 'bg-rose-500/5 text-rose-500 border-rose-500/20' :
+                          'bg-slate-500/5 text-slate-500 border-slate-500/20'
                         }`}>
+                          <div className={`w-1.5 h-1.5 rounded-full mr-2.5 ${
+                            student.status === 'Active' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' :
+                            student.status === 'Graduated' ? 'bg-blue-500' :
+                            student.status === 'Suspended' ? 'bg-rose-500' :
+                            'bg-slate-500'
+                          }`} />
                           {student.status}
                         </span>
                       </td>
-                      <td className="px-5 py-3 text-right">
-                        <div className="flex justify-end space-x-1">
-                          <button onClick={() => handleViewStudent(student)} className="p-1.5 text-gray-400 hover:text-on-surface transition-all shadow-sm active:scale-95" title="View Detail"><Eye size={14} /></button>
-                          <button onClick={() => handleOpenModal(student)} className="p-1.5 text-gray-400 hover:text-on-surface transition-all shadow-sm active:scale-95" title="Edit Entry"><Edit size={14} /></button>
-                          <button onClick={() => handleDelete(student.id)} className="p-1.5 text-gray-400 hover:text-red-500 transition-all shadow-sm active:scale-95" title="Delete Entry"><Trash2 size={14} /></button>
+                      <td className="px-10 py-6 text-right">
+                        <div className="flex justify-end items-center space-x-2 opacity-0 group-hover:opacity-100 translate-x-4 group-hover:translate-x-0 transition-all duration-300">
+                          <button onClick={() => handleViewStudent(student)} className="w-10 h-10 flex items-center justify-center bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl hover:scale-110 active:scale-95 transition-all shadow-lg" title="View Student Profile"><Eye size={16} /></button>
+                          <button onClick={() => handleOpenModal(student)} className="w-10 h-10 flex items-center justify-center bg-surface border border-border-muted text-slate-400 hover:text-indigo-600 hover:border-indigo-600 hover:bg-indigo-50 rounded-xl active:scale-95 transition-all shadow-sm" title="Edit Record"><Edit size={16} /></button>
+                          <button onClick={() => handleDelete(student.id)} className="w-10 h-10 flex items-center justify-center bg-surface border border-border-muted text-slate-400 hover:text-rose-600 hover:border-rose-600 hover:bg-rose-50 rounded-xl active:scale-95 transition-all shadow-sm" title="Delete Record"><Trash2 size={16} /></button>
                         </div>
+                        {/* More Menu for small screens could go here */}
                       </td>
-                    </tr>
+                    </motion.tr>
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={7} className="px-5 py-24 text-center">
-                      <p className="text-gray-300 font-mono text-[10px] uppercase tracking-[0.2em]">No records found in registry</p>
+                    <td colSpan={6} className="px-8 py-48 text-center">
+                      <div className="flex flex-col items-center">
+                        <div className="w-24 h-24 bg-slate-50 dark:bg-slate-900 rounded-full flex items-center justify-center mb-8 border border-border-muted animate-pulse">
+                          <Users className="text-slate-200 dark:text-slate-800" size={40} />
+                        </div>
+                        <p className="text-xl font-black text-slate-300 uppercase tracking-[0.4em] italic mb-4">No Students Found</p>
+                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-[0.2em] max-w-xs leading-loose">
+                           The student registry is currently empty. Add students to the registry to get started.
+                        </p>
+                        <button 
+                          onClick={() => handleOpenModal()} 
+                          className="mt-8 px-8 py-3 bg-primary text-white text-[10px] font-black uppercase tracking-[0.3em] rounded-xl shadow-2xl hover:shadow-primary/40 transition-all"
+                        >
+                          Add Student
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 )}
@@ -533,22 +704,33 @@ const StudentsPage: React.FC = () => {
 
 
       {/* Add/Edit Modal */}
+      <AnimatePresence>
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[95vh] overflow-hidden flex flex-col animate-in fade-in zoom-in duration-200">
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+            className="bg-surface rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col border border-border-muted"
+          >
             {/* Modal Header */}
-            <div className="px-8 py-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 shrink-0">
-              <div>
-                <h3 className="text-xl font-bold text-gray-900 tracking-tight">
-                  {editingStudent ? 'Update Enrollment' : 'New Student Enrollment'}
-                </h3>
-                <p className="text-xs text-gray-500 font-medium mt-0.5">
-                  Step {currentStep} of 4: {currentStep === 1 ? 'Biography' : currentStep === 2 ? 'Parents/Guardians' : currentStep === 3 ? 'Academic Placement' : 'Logistics'}
-                </p>
+            <div className="px-8 py-6 border-b border-border-muted flex justify-between items-center bg-slate-50/50 dark:bg-slate-900/50 shrink-0">
+              <div className="flex items-center space-x-4">
+                 <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center text-primary border border-primary/20">
+                    <UserCheck size={22} />
+                 </div>
+                 <div>
+                    <h3 className="text-xl font-bold text-on-surface tracking-tight">
+                      {editingStudent ? 'Edit Student Details' : 'Student Registration'}
+                    </h3>
+                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-[0.2em] mt-0.5">
+                      Step {currentStep} of 4: <span className="text-primary italic">{currentStep === 1 ? 'Personal Details' : currentStep === 2 ? 'Parent/Guardian Info' : currentStep === 3 ? 'Academic Placement' : 'Other Details'}</span>
+                    </p>
+                 </div>
               </div>
               <button 
                 onClick={handleCloseModal} 
-                className="p-2 hover:bg-gray-100 rounded-xl text-gray-400 hover:text-gray-600 transition-colors"
+                className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl text-slate-400 hover:text-on-surface transition-all"
                 type="button"
               >
                 <X className="w-5 h-5" />
@@ -556,19 +738,19 @@ const StudentsPage: React.FC = () => {
             </div>
 
             {/* Stepper Progress */}
-            <div className="px-8 pt-6 shrink-0">
+            <div className="px-10 pt-8 shrink-0">
               <div className="flex items-center space-x-2">
                 {[1, 2, 3, 4].map((step) => (
                   <React.Fragment key={step}>
-                    <div className={`flex items-center justify-center w-8 h-8 rounded-full border-2 transition-all duration-300 ${
-                      currentStep >= step ? 'bg-blue-600 border-blue-600 text-white shadow-md shadow-blue-200' : 'bg-white border-gray-200 text-gray-400'
+                    <div className={`flex items-center justify-center w-10 h-10 rounded-xl border-2 transition-all duration-300 font-bold text-xs ${
+                      currentStep >= step ? 'bg-primary border-primary text-white shadow-lg shadow-primary/20' : 'bg-surface border-border-muted text-slate-400'
                     }`}>
-                      {currentStep > step ? <Check className="w-4 h-4" /> : <span className="text-xs font-bold">{step}</span>}
+                      {currentStep > step ? <Check className="w-5 h-5" /> : step}
                     </div>
                     {step < 4 && (
-                      <div className={`flex-1 h-1 rounded-full transition-all duration-500 ${
-                        currentStep > step ? 'bg-blue-600' : 'bg-gray-100'
-                      }`} />
+                      <div className={`flex-1 h-1.5 rounded-full transition-all duration-500 overflow-hidden bg-slate-100 dark:bg-slate-800`}>
+                         <div className={`h-full bg-primary transition-all duration-500 ${currentStep > step ? 'w-full' : 'w-0'}`} />
+                      </div>
                     )}
                   </React.Fragment>
                 ))}
@@ -576,108 +758,108 @@ const StudentsPage: React.FC = () => {
             </div>
 
             <div className="flex-1 overflow-y-auto custom-scrollbar">
-              <form onSubmit={handleSubmit} className="p-8">
-                <div className="min-h-[320px]">
+              <form onSubmit={handleSubmit} className="p-10">
+                <div className="min-h-[340px]">
                 {currentStep === 1 && (
-                  <div className="space-y-6 animate-in slide-in-from-right-4 duration-300">
-                    <div className="flex flex-col sm:flex-row items-center gap-8 mb-4">
+                  <div className="space-y-8 animate-in slide-in-from-right-4 duration-300">
+                    <div className="flex flex-col sm:flex-row items-start gap-10">
                       <div className="relative group">
-                        <div className="w-40 h-40 rounded-2xl bg-gray-100 border-2 border-dashed border-gray-300 flex flex-col items-center justify-center text-gray-400 overflow-hidden hover:border-blue-400 hover:bg-blue-50 transition-all cursor-pointer relative">
+                        <div className="w-44 h-44 rounded-[2rem] bg-slate-50 dark:bg-slate-900 border-2 border-dashed border-border-muted flex flex-col items-center justify-center text-slate-400 overflow-hidden hover:border-primary hover:bg-primary/5 transition-all cursor-pointer relative shadow-inner">
                           {formData.photoUrl ? (
                             <img src={formData.photoUrl} alt="Preview" className="w-full h-full object-cover" />
                           ) : isCameraActive ? (
                             <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover" />
                           ) : (
-                            <>
-                              <Camera className="w-8 h-8 mb-2" />
-                              <span className="text-[10px] font-bold uppercase tracking-wider">Student Photo</span>
-                            </>
+                            <div className="text-center p-4">
+                              <Camera className="w-10 h-10 mb-3 mx-auto text-slate-300" />
+                              <span className="text-[10px] font-bold uppercase tracking-widest leading-relaxed">Take Photo</span>
+                            </div>
                           )}
                         </div>
-                        <div className="flex space-x-2 mt-4">
+                        <div className="flex flex-wrap gap-2 mt-5">
                           {!isCameraActive ? (
                             <button 
                               type="button"
                               onClick={startCamera}
-                              className="px-3 py-1.5 bg-blue-600 text-white text-[10px] font-bold rounded-lg hover:bg-blue-700 uppercase tracking-wider"
+                              className="px-4 py-2 bg-slate-800 text-white text-[10px] font-bold rounded-xl hover:bg-primary uppercase tracking-[0.15em] transition-all"
                             >
-                              Capture
+                              Lens
                             </button>
                           ) : (
                             <button 
                               type="button"
                               onClick={capturePhoto}
-                              className="px-3 py-1.5 bg-green-600 text-white text-[10px] font-bold rounded-lg hover:bg-green-700 uppercase tracking-wider"
+                              className="px-4 py-2 bg-emerald-600 text-white text-[10px] font-bold rounded-xl hover:bg-emerald-700 uppercase tracking-[0.15em] transition-all"
                             >
                               Snap
                             </button>
                           )}
-                           <label className="px-3 py-1.5 bg-gray-600 text-white text-[10px] font-bold rounded-lg hover:bg-gray-700 uppercase tracking-wider cursor-pointer">
-                            Upload
+                           <label className="px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-[10px] font-bold rounded-xl hover:bg-slate-200 dark:hover:bg-slate-700 uppercase tracking-[0.15em] cursor-pointer transition-all border border-border-muted">
+                            Import
                             <input type="file" className="hidden" accept="image/*" onChange={handleFileUpload} />
                           </label>
                         </div>
                       </div>
-                      <div className="flex-1 w-full space-y-4">
-                        <div>
-                          <label className="block text-[11px] font-black text-gray-400 uppercase tracking-widest mb-1.5">First Name</label>
+                      <div className="flex-1 w-full space-y-5">
+                        <div className="space-y-2">
+                          <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">First Name</label>
                           <input
                             type="text"
                             name="firstName"
                             value={formData.firstName}
                             onChange={handleInputChange}
                             required
-                            placeholder="e.g. John"
-                            className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-blue-600 font-medium text-gray-900 transition-all"
+                            placeholder="John"
+                            className="w-full px-5 py-3.5 bg-slate-50/50 dark:bg-slate-900/50 border border-border-muted rounded-2xl focus:ring-1 focus:ring-primary focus:border-primary outline-none font-bold text-sm transition-all"
                           />
                         </div>
-                        <div>
-                          <label className="block text-[11px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Middle Name(s)</label>
+                        <div className="space-y-2">
+                          <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Middle Name</label>
                           <input
                             type="text"
                             name="middleName"
                             value={formData.middleName}
                             onChange={handleInputChange}
-                            placeholder="e.g. Fitzgerald"
-                            className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-blue-600 font-medium text-gray-900 transition-all"
+                            placeholder="Fitzgerald"
+                            className="w-full px-5 py-3.5 bg-slate-50/50 dark:bg-slate-900/50 border border-border-muted rounded-2xl focus:ring-1 focus:ring-primary focus:border-primary outline-none font-bold text-sm transition-all"
                           />
                         </div>
-                         <div>
-                          <label className="block text-[11px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Last Name</label>
+                         <div className="space-y-2">
+                          <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Last Name / Surname</label>
                           <input
                             type="text"
                             name="lastName"
                             value={formData.lastName}
                             onChange={handleInputChange}
                             required
-                            placeholder="e.g. Kennedy"
-                            className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-blue-600 font-medium text-gray-900 transition-all"
+                            placeholder="Kennedy"
+                            className="w-full px-5 py-3.5 bg-slate-50/50 dark:bg-slate-900/50 border border-border-muted rounded-2xl focus:ring-1 focus:ring-primary focus:border-primary outline-none font-bold text-sm transition-all"
                           />
                         </div>
                       </div>
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-[11px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Gender</label>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                      <div className="space-y-2">
+                        <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Gender</label>
                         <select
                           name="gender"
                           value={formData.gender}
                           onChange={handleInputChange}
-                          className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-blue-600 font-medium text-gray-900 transition-all cursor-pointer"
+                          className="w-full px-5 py-3.5 bg-slate-50/50 dark:bg-slate-900/50 border border-border-muted rounded-2xl focus:ring-1 focus:ring-primary focus:border-primary outline-none font-bold text-[11px] uppercase tracking-wider transition-all cursor-pointer"
                         >
                           <option value="Male">Male</option>
                           <option value="Female">Female</option>
                           <option value="Other">Other</option>
                         </select>
                       </div>
-                      <div>
-                        <label className="block text-[11px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Date of Birth</label>
+                      <div className="space-y-2">
+                        <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Date of Birth</label>
                         <input
                           type="date"
                           name="dateOfBirth"
                           value={formData.dateOfBirth}
                           onChange={handleInputChange}
-                          className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-blue-600 font-medium text-gray-900 transition-all"
+                          className="w-full px-5 py-3.5 bg-slate-50/50 dark:bg-slate-900/50 border border-border-muted rounded-2xl focus:ring-1 focus:ring-primary focus:border-primary outline-none font-bold text-sm transition-all"
                         />
                       </div>
                     </div>
@@ -686,116 +868,121 @@ const StudentsPage: React.FC = () => {
 
                 {currentStep === 2 && (
                   <div className="space-y-6 animate-in slide-in-from-right-4 duration-300">
-                    <div className="bg-orange-50/50 p-6 rounded-2xl border border-orange-100/50">
-                      <div className="flex items-center space-x-3 mb-6">
-                        <div className="w-10 h-10 rounded-xl bg-orange-600 flex items-center justify-center text-white shadow-lg shadow-orange-200">
-                          <Users size={20} />
+                    <div className="bg-indigo-50/30 dark:bg-indigo-900/10 p-8 rounded-[2rem] border border-indigo-100 dark:border-indigo-500/10 shadow-inner">
+                      <div className="flex items-center space-x-4 mb-8">
+                        <div className="w-12 h-12 rounded-2xl bg-indigo-600 flex items-center justify-center text-white shadow-xl shadow-indigo-500/20">
+                          <Users size={24} />
                         </div>
                         <div>
-                          <h4 className="font-bold text-gray-900">Parent / Guardian Information</h4>
-                          <p className="text-[10px] text-orange-600 font-bold uppercase tracking-wider">Contact & Portal Data</p>
+                          <h4 className="font-bold text-on-surface text-lg tracking-tight">Parent / Guardian Details</h4>
+                          <p className="text-[10px] text-indigo-500 font-bold uppercase tracking-[0.2em] mt-0.5">Primary Contact Person</p>
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-                        <div>
-                          <label className="block text-[11px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Parent First Name</label>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-6">
+                        <div className="space-y-2">
+                          <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Parent First Name</label>
                           <input
                             type="text"
                             name="parentFirstName"
                             value={formData.parentFirstName}
                             onChange={handleInputChange}
-                            placeholder="First Name"
-                            className="w-full px-4 py-3 bg-white border border-gray-100 rounded-xl focus:ring-2 focus:ring-orange-600 font-medium text-gray-900 transition-all"
+                            placeholder="Primary Contact First Name"
+                            className="w-full px-5 py-3.5 bg-surface border border-border-muted rounded-2xl focus:ring-1 focus:ring-indigo-500 outline-none font-bold text-sm transition-all shadow-sm"
                           />
                         </div>
-                        <div>
-                          <label className="block text-[11px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Parent Last Name</label>
+                        <div className="space-y-2">
+                          <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Parent Last Name</label>
                           <input
                             type="text"
                             name="parentLastName"
                             value={formData.parentLastName}
                             onChange={handleInputChange}
-                            placeholder="Last Name"
-                            className="w-full px-4 py-3 bg-white border border-gray-100 rounded-xl focus:ring-2 focus:ring-orange-600 font-medium text-gray-900 transition-all"
+                            placeholder="Primary Contact Last Name"
+                            className="w-full px-5 py-3.5 bg-surface border border-border-muted rounded-2xl focus:ring-1 focus:ring-indigo-500 outline-none font-bold text-sm transition-all shadow-sm"
                           />
                         </div>
                       </div>
 
-                      <div className="space-y-4">
-                        <div>
-                          <label className="block text-[11px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Parent Email (For Portal Access)</label>
+                      <div className="space-y-5">
+                        <div className="space-y-2">
+                          <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Email Address</label>
                           <div className="relative">
-                            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                            <Mail className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 font-bold" />
                             <input
                               type="email"
                               name="parentEmail"
                               value={formData.parentEmail}
                               onChange={handleInputChange}
-                              className="w-full pl-11 pr-4 py-3 bg-white border border-gray-100 rounded-xl focus:ring-2 focus:ring-orange-600 font-medium text-gray-900 transition-all"
+                              className="w-full pl-12 pr-5 py-3.5 bg-surface border border-border-muted rounded-2xl focus:ring-1 focus:ring-indigo-500 outline-none font-bold text-sm transition-all shadow-sm"
                               placeholder="parent@example.com"
                             />
                           </div>
                         </div>
 
-                        <div>
-                          <label className="block text-[11px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Parent Phone Number</label>
+                        <div className="space-y-2">
+                          <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Phone Number</label>
                           <div className="relative">
-                            <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                            <Phone className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 font-bold" />
                             <input
                               type="tel"
                               name="parentPhone"
                               value={formData.parentPhone}
                               onChange={handleInputChange}
-                              className="w-full pl-11 pr-4 py-3 bg-white border border-gray-100 rounded-xl focus:ring-2 focus:ring-orange-600 font-medium text-gray-900 transition-all"
-                              placeholder="+1 234 567 890"
+                              className="w-full pl-12 pr-5 py-3.5 bg-surface border border-border-muted rounded-2xl focus:ring-1 focus:ring-indigo-500 outline-none font-bold text-sm transition-all shadow-sm"
+                              placeholder="+254 XXX XXX XXX"
                             />
                           </div>
                         </div>
                       </div>
-                      <p className="text-[10px] text-gray-400 mt-4 italic">* An account will be automatically created using this email for the parent portal.</p>
+                      <div className="mt-6 flex items-start space-x-3 bg-indigo-50 dark:bg-indigo-900/20 p-4 rounded-xl border border-indigo-100 dark:border-indigo-500/10">
+                         <Info size={16} className="text-indigo-600 mt-0.5 shrink-0" />
+                         <p className="text-[10px] text-indigo-700 dark:text-indigo-400 font-medium leading-relaxed italic">
+                           System automated: A secure access profile will be provisioned using the provided email for the parent portal.
+                         </p>
+                      </div>
                     </div>
                   </div>
                 )}
 
                 {currentStep === 3 && (
-                  <div className="space-y-6 animate-in slide-in-from-right-4 duration-300">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                      <div>
-                        <label className="block text-[11px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Registration ID</label>
+                  <div className="space-y-8 animate-in slide-in-from-right-4 duration-300">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
+                      <div className="space-y-2">
+                        <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Admission / ID Number</label>
                         <input
                           type="text"
                           name="registrationNumber"
                           value={formData.registrationNumber}
                           onChange={handleInputChange}
-                          className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-blue-600 font-medium text-gray-900 transition-all"
-                          placeholder="e.g. ADM-2026-001"
+                          className="w-full px-5 py-3.5 bg-slate-50/50 dark:bg-slate-900/50 border border-border-muted rounded-2xl focus:ring-1 focus:ring-primary outline-none font-bold text-sm transition-all focus:border-primary shadow-inner"
+                          placeholder="ADM-2026-XXXX"
                         />
                       </div>
-                      <div>
-                        <label className="block text-[11px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Enrollment Status</label>
+                      <div className="space-y-2">
+                        <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Student Status</label>
                         <select
                           name="status"
                           value={formData.status}
                           onChange={handleInputChange}
-                          className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-blue-600 font-medium text-gray-900 transition-all cursor-pointer"
+                          className="w-full px-5 py-3.5 bg-slate-50/50 dark:bg-slate-900/50 border border-border-muted rounded-2xl focus:ring-1 focus:ring-primary outline-none font-bold text-[11px] uppercase tracking-wider transition-all cursor-pointer shadow-inner"
                         >
-                          <option value="Active">Active Student</option>
+                          <option value="Active">Operational Status: Active</option>
                           <option value="Graduated">Graduated</option>
-                          <option value="Transferred">Transferred Out</option>
+                          <option value="Transferred">Transferred</option>
                           <option value="Suspended">Suspended</option>
                         </select>
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                      <div>
-                        <label className="block text-[11px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Class Level</label>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
+                      <div className="space-y-2">
+                        <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Grade Level / Class</label>
                         <select
                           name="classLevelId"
                           value={formData.classLevelId}
                           onChange={handleInputChange}
-                          className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-blue-600 font-medium text-gray-900 transition-all cursor-pointer"
+                          className="w-full px-5 py-3.5 bg-slate-50/50 dark:bg-slate-900/50 border border-border-muted rounded-2xl focus:ring-1 focus:ring-primary outline-none font-bold text-[11px] uppercase tracking-wider transition-all cursor-pointer shadow-inner"
                         >
                           <option value="">Select Level</option>
                           {classLevels.map(cl => (
@@ -803,16 +990,16 @@ const StudentsPage: React.FC = () => {
                           ))}
                         </select>
                       </div>
-                      <div>
-                        <label className="block text-[11px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Class Section</label>
+                      <div className="space-y-2">
+                        <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Section / Stream</label>
                         <select
                           name="sectionId"
                           value={formData.sectionId}
                           onChange={handleInputChange}
                           disabled={!formData.classLevelId}
-                          className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-blue-600 font-medium text-gray-900 transition-all cursor-pointer disabled:opacity-50"
+                          className="w-full px-5 py-3.5 bg-slate-50/50 dark:bg-slate-900/50 border border-border-muted rounded-2xl focus:ring-1 focus:ring-primary outline-none font-bold text-[11px] uppercase tracking-wider transition-all cursor-pointer disabled:opacity-30 shadow-inner"
                         >
-                          <option value="">Select Section</option>
+                          <option value="">Select Stream</option>
                           {availableSections.map(sec => (
                             <option key={sec.id} value={sec.id}>{sec.name}</option>
                           ))}
@@ -820,17 +1007,17 @@ const StudentsPage: React.FC = () => {
                       </div>
                     </div>
 
-                    <div>
-                      <label className="block text-[11px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Academic Intake Year</label>
+                    <div className="space-y-2">
+                      <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Academic Year</label>
                       <select
                         name="academicYearId"
                         value={formData.academicYearId}
                         onChange={handleInputChange}
-                        className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-blue-600 font-medium text-gray-900 transition-all cursor-pointer"
+                        className="w-full px-5 py-3.5 bg-slate-50/50 dark:bg-slate-900/50 border border-border-muted rounded-2xl focus:ring-1 focus:ring-primary outline-none font-bold text-[11px] uppercase tracking-wider transition-all cursor-pointer shadow-inner"
                       >
                         <option value="">Select Year</option>
                         {academicYears.map(ay => (
-                          <option key={ay.id} value={ay.id}>{ay.name} {ay.isCurrent ? '(Current)' : ''}</option>
+                          <option key={ay.id} value={ay.id}>{ay.name} {ay.isCurrent ? '(Current Year)' : ''}</option>
                         ))}
                       </select>
                     </div>
@@ -839,42 +1026,42 @@ const StudentsPage: React.FC = () => {
 
                 {currentStep === 4 && (
                   <div className="space-y-6 animate-in slide-in-from-right-4 duration-300">
-                    <div className="bg-blue-50/50 p-6 rounded-2xl border border-blue-100/50">
-                      <div className="flex items-center space-x-3 mb-6">
-                        <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white shadow-lg shadow-blue-200">
-                          <MapPin size={20} />
+                    <div className="bg-slate-50 dark:bg-slate-900/50 p-8 rounded-[2rem] border border-border-muted shadow-inner">
+                      <div className="flex items-center space-x-4 mb-8">
+                        <div className="w-12 h-12 rounded-2xl bg-slate-800 flex items-center justify-center text-white shadow-xl">
+                          <MapPin size={24} />
                         </div>
                         <div>
-                          <h4 className="font-bold text-gray-900">Residence & Transport</h4>
-                          <p className="text-[10px] text-blue-600 font-bold uppercase tracking-wider">Logistics Planning</p>
+                          <h4 className="font-bold text-on-surface text-lg tracking-tight">Residence & Transport</h4>
+                          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-[0.2em] mt-0.5">Contact Details & Logistics</p>
                         </div>
                       </div>
 
-                      <div className="space-y-5">
-                        <div>
-                          <label className="block text-[11px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Permanent Residence (Place/Estate)</label>
+                      <div className="space-y-6">
+                        <div className="space-y-2">
+                          <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Home Address / Residence</label>
                           <div className="relative">
-                            <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                            <MapPin className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 font-bold" />
                             <input
                               type="text"
                               name="residence"
                               value={formData.residence}
                               onChange={handleInputChange}
-                              className="w-full pl-11 pr-4 py-3 bg-white border border-gray-100 rounded-xl focus:ring-2 focus:ring-blue-600 font-medium text-gray-900 transition-all"
-                              placeholder="e.g. Sunset Estate, Block A"
+                              className="w-full pl-12 pr-5 py-3.5 bg-surface border border-border-muted rounded-2xl focus:ring-1 focus:ring-on-surface outline-none font-bold text-sm transition-all shadow-sm"
+                              placeholder="City, Area, Street"
                             />
                           </div>
                         </div>
 
-                        <div>
-                          <label className="block text-[11px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Transportation Route</label>
+                        <div className="space-y-2">
+                          <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Transport Route</label>
                           <div className="relative">
-                            <Truck className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                            <Truck className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 font-bold" />
                             <select
                               name="transportRoute"
                               value={formData.transportRoute}
                               onChange={handleInputChange}
-                              className="w-full pl-11 pr-4 py-3 bg-white border border-gray-100 rounded-xl focus:ring-2 focus:ring-blue-600 font-medium text-gray-900 transition-all cursor-pointer"
+                              className="w-full pl-12 pr-5 py-3.5 bg-surface border border-border-muted rounded-2xl focus:ring-1 focus:ring-on-surface outline-none font-bold text-[11px] uppercase tracking-wider transition-all cursor-pointer shadow-sm"
                             >
                               <option value="">No Transport Required</option>
                               <option value="Route A (North)">Route A (North)</option>
@@ -883,7 +1070,11 @@ const StudentsPage: React.FC = () => {
                               <option value="Route D (West)">Route D (West)</option>
                             </select>
                           </div>
-                          <p className="text-[10px] text-gray-400 mt-2 italic">* This information will be used for student ID cards and bus scheduling.</p>
+                        </div>
+                        <div className="bg-primary/5 p-4 rounded-xl border border-primary/10 mt-4">
+                           <p className="text-[10px] text-primary font-bold uppercase tracking-widest leading-loose text-center">
+                             Please confirm transport details for student ID card generation.
+                           </p>
                         </div>
                       </div>
                     </div>
@@ -892,24 +1083,24 @@ const StudentsPage: React.FC = () => {
               </div>
 
               {/* Action Buttons */}
-              <div className="mt-8 pt-6 border-t border-gray-50 flex items-center justify-between">
+              <div className="mt-10 pt-8 border-t border-border-muted flex items-center justify-between">
                 <div>
                   {currentStep > 1 && (
                     <button
                       type="button"
                       onClick={() => setCurrentStep(prev => prev - 1)}
-                      className="flex items-center px-5 py-2.5 text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-xl font-bold text-sm transition-all active:scale-95"
+                      className="flex items-center px-6 py-3 text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl font-bold uppercase tracking-widest text-[10px] transition-all active:scale-95 border border-border-muted shadow-sm"
                     >
                       <ChevronLeft className="w-4 h-4 mr-2" />
-                      Back
+                      Previous
                     </button>
                   )}
                 </div>
-                <div className="flex space-x-3">
+                <div className="flex items-center space-x-4">
                   <button
                     type="button"
                     onClick={handleCloseModal}
-                    className="px-5 py-2.5 text-gray-500 hover:text-gray-700 font-bold text-sm"
+                    className="px-6 py-3 text-slate-400 hover:text-rose-500 font-bold uppercase tracking-widest text-[10px] transition-colors"
                   >
                     Cancel
                   </button>
@@ -920,357 +1111,527 @@ const StudentsPage: React.FC = () => {
                         if (isCameraActive) stopCamera();
                         setCurrentStep(prev => prev + 1);
                       }}
-                      className="flex items-center px-8 py-2.5 bg-blue-600 text-white rounded-xl font-bold text-sm shadow-xl shadow-blue-200 hover:bg-blue-700 transition-all active:scale-95"
+                      className="flex items-center px-10 py-4 bg-slate-900 border border-slate-800 text-white rounded-2xl font-bold uppercase tracking-[0.2em] text-[10px] shadow-xl hover:bg-primary transition-all active:scale-95"
                     >
-                      Next
+                      Next Step
                       <ChevronRight className="w-4 h-4 ml-2" />
                     </button>
                   ) : (
                     <button
                       type="submit"
-                      className="flex items-center px-10 py-2.5 bg-green-600 text-white rounded-xl font-bold text-sm shadow-xl shadow-green-200 hover:bg-green-700 transition-all active:scale-95"
+                      className="flex items-center px-12 py-4 bg-primary text-white rounded-2xl font-bold uppercase tracking-[0.25em] text-[10px] shadow-2xl shadow-primary/30 hover:bg-primary/90 transition-all active:scale-95"
                     >
                       <Check className="w-4 h-4 mr-2" />
-                      {editingStudent ? 'Complete Update' : 'Finalize Enrollment'}
+                      {editingStudent ? 'Save Changes' : 'Register Student'}
                     </button>
                   )}
                 </div>
               </div>
             </form>
-          </div>
+            </div>
+          </motion.div>
         </div>
-      </div>
-    )}
+      )}
+      </AnimatePresence>
 
       {/* Bulk Status Update Modal */}
+      <AnimatePresence>
       {isBulkStatusModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-sm overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-indigo-50">
-              <h3 className="text-lg font-bold text-indigo-900">Change Status</h3>
-              <button onClick={() => setIsBulkStatusModalOpen(false)} className="text-indigo-400 hover:text-indigo-600">
-                <X className="w-5 h-5" />
-              </button>
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-[110] p-4">
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+            className="bg-surface rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden border border-border-muted"
+          >
+            <div className="px-8 py-6 border-b border-border-muted flex justify-between items-center bg-indigo-50/50 dark:bg-indigo-900/50">
+               <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 bg-indigo-600/10 rounded-xl flex items-center justify-center text-indigo-600 border border-indigo-200 dark:border-indigo-500/20">
+                     <ShieldCheck size={20} />
+                  </div>
+                  <div>
+                     <h3 className="text-lg font-bold text-on-surface tracking-tight">Update Status</h3>
+                     <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Bulk Status Management</p>
+                  </div>
+               </div>
+               <button onClick={() => setIsBulkStatusModalOpen(false)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 rounded-lg transition-all"><X size={18} /></button>
             </div>
-            <div className="p-6">
-              <label className="block text-sm font-medium text-gray-700 mb-2">New Status for {selectedStudentIds.length} student(s)</label>
-              <select
-                value={bulkStatus}
-                onChange={(e) => setBulkStatus(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-600 focus:border-transparent mb-6"
-              >
-                <option value="Active">Active</option>
-                <option value="Graduated">Graduated</option>
-                <option value="Transferred">Transferred</option>
-                <option value="Suspended">Suspended</option>
-              </select>
-              <div className="flex justify-end space-x-3">
+            <div className="p-8">
+              <div className="bg-indigo-50/30 dark:bg-indigo-900/10 p-5 rounded-2xl border border-indigo-100 dark:border-indigo-500/10 mb-6">
+                 <p className="text-xs font-bold text-indigo-700 dark:text-indigo-400 uppercase tracking-widest text-center">Updating status for {selectedStudentIds.length} Students</p>
+              </div>
+              <div className="space-y-4">
+                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">New Operational State</label>
+                <select
+                  value={bulkStatus}
+                  onChange={(e) => setBulkStatus(e.target.value)}
+                  className="w-full px-5 py-3.5 bg-slate-50/50 dark:bg-slate-900/50 border border-border-muted rounded-2xl focus:ring-1 focus:ring-indigo-500 outline-none font-bold text-[11px] uppercase tracking-wider transition-all cursor-pointer shadow-inner mb-6"
+                >
+                  <option value="Active">Active / Operational</option>
+                  <option value="Graduated">Graduated / Alumnus</option>
+                  <option value="Transferred">Sector / Outbound</option>
+                  <option value="Suspended">Restricted / Holding</option>
+                </select>
+              </div>
+              <div className="flex gap-3 mt-4">
                 <button
                   onClick={() => setIsBulkStatusModalOpen(false)}
-                  className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg font-medium transition-colors"
+                  className="flex-1 py-3.5 text-slate-400 hover:text-on-surface font-bold uppercase tracking-widest text-[10px] transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={() => handleBulkUpdate('status')}
-                  className="px-4 py-2 text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg font-medium transition-colors"
+                  className="flex-1 py-3.5 bg-indigo-600 text-white rounded-xl font-bold uppercase tracking-[0.2em] text-[10px] shadow-xl shadow-indigo-500/20 hover:bg-indigo-700 transition-all active:scale-95"
                 >
-                  Apply Status
+                  Apply State
                 </button>
               </div>
             </div>
-          </div>
+          </motion.div>
         </div>
       )}
+      </AnimatePresence>
 
        {/* Bulk Class Update Modal */}
+       <AnimatePresence>
        {isBulkClassModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-sm overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-indigo-50">
-              <h3 className="text-lg font-bold text-indigo-900">Change Class</h3>
-              <button onClick={() => setIsBulkClassModalOpen(false)} className="text-indigo-400 hover:text-indigo-600">
-                <X className="w-5 h-5" />
-              </button>
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-[110] p-4">
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+            className="bg-surface rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden border border-border-muted"
+          >
+            <div className="px-8 py-6 border-b border-border-muted flex justify-between items-center bg-primary/5">
+               <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary border border-primary/20">
+                     <RefreshCw size={20} />
+                  </div>
+                  <div>
+                     <h3 className="text-lg font-bold text-on-surface tracking-tight">Level Re-assignment</h3>
+                     <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Academic Grade Update</p>
+                  </div>
+               </div>
+               <button onClick={() => setIsBulkClassModalOpen(false)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 rounded-lg transition-all"><X size={18} /></button>
             </div>
-            <div className="p-6 space-y-4">
-              <p className="text-sm text-gray-600">Updating class for {selectedStudentIds.length} student(s).</p>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">New Class Level</label>
-                <select
-                  value={bulkClassData.classLevelId}
-                  onChange={(e) => setBulkClassData({ ...bulkClassData, classLevelId: e.target.value, sectionId: '' })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-600 focus:border-transparent"
-                >
-                  <option value="">Select Class Level</option>
-                  {classLevels.map(cl => (
-                    <option key={cl.id} value={cl.id}>{cl.name}</option>
-                  ))}
-                </select>
+            <div className="p-8 space-y-6">
+              <div className="bg-primary/5 p-4 rounded-2xl border border-primary/10 mb-2">
+                 <p className="text-[10px] font-bold text-primary uppercase tracking-widest text-center">Batch Update: {selectedStudentIds.length} Students</p>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">New Section</label>
-                <select
-                  value={bulkClassData.sectionId}
-                  onChange={(e) => setBulkClassData({ ...bulkClassData, sectionId: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-600 focus:border-transparent"
-                  disabled={!bulkClassData.classLevelId}
-                >
-                  <option value="">Select Section</option>
-                  {bulkClassData.classLevelId && sections
-                    .filter(s => s.classLevelId === bulkClassData.classLevelId)
-                    .map(sec => (
-                    <option key={sec.id} value={sec.id}>{sec.name}</option>
-                  ))}
-                </select>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Target Academic Level</label>
+                  <select
+                    value={bulkClassData.classLevelId}
+                    onChange={(e) => setBulkClassData({ ...bulkClassData, classLevelId: e.target.value, sectionId: '' })}
+                    className="w-full px-5 py-3.5 bg-slate-50/50 dark:bg-slate-900/50 border border-border-muted rounded-2xl focus:ring-1 focus:ring-primary outline-none font-bold text-[11px] uppercase tracking-wider transition-all cursor-pointer shadow-inner"
+                  >
+                    <option value="">Select Target Level</option>
+                    {classLevels.map(cl => (
+                      <option key={cl.id} value={cl.id}>{cl.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Target Spectral Stream</label>
+                  <select
+                    value={bulkClassData.sectionId}
+                    onChange={(e) => setBulkClassData({ ...bulkClassData, sectionId: e.target.value })}
+                    className="w-full px-5 py-3.5 bg-slate-50/50 dark:bg-slate-900/50 border border-border-muted rounded-2xl focus:ring-1 focus:ring-primary outline-none font-bold text-[11px] uppercase tracking-wider transition-all cursor-pointer shadow-inner disabled:opacity-30"
+                    disabled={!bulkClassData.classLevelId}
+                  >
+                    <option value="">Select Target Stream</option>
+                    {bulkClassData.classLevelId && sections
+                      .filter(s => s.classLevelId === bulkClassData.classLevelId)
+                      .map(sec => (
+                      <option key={sec.id} value={sec.id}>{sec.name}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
               
-              <div className="pt-4 flex justify-end space-x-3">
+              <div className="pt-4 flex gap-3">
                 <button
                   onClick={() => setIsBulkClassModalOpen(false)}
-                  className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg font-medium transition-colors"
+                  className="flex-1 py-3.5 text-slate-400 hover:text-on-surface font-bold uppercase tracking-widest text-[10px] transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={() => handleBulkUpdate('class')}
                   disabled={!bulkClassData.classLevelId}
-                  className="px-4 py-2 text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg font-medium transition-colors disabled:opacity-50"
+                  className="flex-1 py-3.5 bg-primary text-white rounded-xl font-bold uppercase tracking-[0.2em] text-[10px] shadow-xl shadow-primary/20 hover:bg-primary/90 transition-all active:scale-95 disabled:opacity-30 disabled:shadow-none"
                 >
-                  Apply Class
+                  Commit Relocation
                 </button>
               </div>
             </div>
-          </div>
+          </motion.div>
         </div>
       )}
+      </AnimatePresence>
 
       {/* Student Detail Modal */}
+      <AnimatePresence>
       {isDetailModalOpen && viewingStudent && (
-        <div className="fixed inset-0 bg-black/60 bg-opacity-50 flex items-center justify-center z-50 p-4 backdrop-blur-md">
-          <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-3xl overflow-hidden border border-gray-100 flex flex-col max-h-[90vh] animate-in fade-in zoom-in duration-300">
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-md flex items-center justify-center z-[120] p-4">
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+            className="bg-surface rounded-3xl shadow-2xl w-full max-w-3xl overflow-hidden border border-border-muted flex flex-col max-h-[90vh]"
+          >
             {/* Header / Banner */}
-            <div className={`h-32 relative transition-all duration-500 ${showIdCard ? 'bg-gray-900' : 'bg-gradient-to-tr from-blue-600 via-blue-500 to-indigo-600'}`}>
-              <div className="absolute top-6 right-6 flex items-center space-x-2">
+            <div className={`h-40 relative transition-all duration-700 ease-in-out ${showIdCard ? 'bg-slate-950' : 'bg-gradient-to-tr from-primary via-primary/90 to-indigo-700'}`}>
+              {/* Decorative elements for the header */}
+              <div className="absolute inset-0 overflow-hidden opacity-20">
+                <div className="absolute -top-10 -right-10 w-64 h-64 bg-white/20 rounded-full blur-3xl animate-pulse" />
+                <div className="absolute top-20 -left-10 w-48 h-48 bg-white/10 rounded-full blur-2xl" />
+              </div>
+
+              <div className="absolute top-8 right-8 flex items-center space-x-3 z-20">
                 <button 
                   onClick={() => setShowIdCard(!showIdCard)}
-                  className={`px-4 py-2 rounded-xl flex items-center text-xs font-bold transition-all shadow-lg ${
-                    showIdCard ? 'bg-blue-600 text-white' : 'bg-white/20 text-white hover:bg-white/30'
+                  className={`px-5 py-2.5 rounded-xl flex items-center text-[10px] font-bold uppercase tracking-widest transition-all shadow-xl active:scale-95 ${
+                    showIdCard ? 'bg-primary text-white' : 'bg-white/20 text-white hover:bg-white/30'
                   }`}
                 >
                   <Award className="w-4 h-4 mr-2" />
-                  {showIdCard ? 'View Profile' : 'Student ID Card'}
+                  {showIdCard ? 'View Profile' : 'Generate ID Card'}
                 </button>
                 <button 
                   onClick={() => {
                     setIsDetailModalOpen(false);
                     setShowIdCard(false);
                   }}
-                  className="p-2 bg-white/20 hover:bg-white/30 rounded-full text-white transition-colors"
+                  className="p-2.5 bg-white/20 hover:bg-white/30 rounded-xl text-white transition-all active:scale-90"
                 >
                   <X className="w-5 h-5" />
                 </button>
               </div>
               
               {!showIdCard && (
-                <div className="absolute -bottom-12 left-10 flex items-end space-x-6">
-                  <div className="w-32 h-32 rounded-3xl bg-white shadow-2xl flex items-center justify-center border-[6px] border-white overflow-hidden ring-1 ring-black/5">
+              <div className="absolute -bottom-14 left-12 flex items-end justify-between right-12 z-10">
+                <div className="flex items-end space-x-8">
+                  <div className="w-36 h-36 rounded-[2.5rem] bg-surface shadow-2xl flex items-center justify-center border-8 border-surface overflow-hidden group">
                     {viewingStudent.photoUrl ? (
-                      <img src={viewingStudent.photoUrl} alt="Student" className="w-full h-full object-cover" />
+                      <img src={viewingStudent.photoUrl} alt="Student" className="w-full h-full object-cover grayscale-[20%] group-hover:grayscale-0 transition-all duration-500" />
                     ) : (
-                      <User className="w-14 h-14 text-blue-100 bg-blue-50/50 p-3 rounded-full" />
+                      <div className="w-full h-full bg-slate-50 dark:bg-slate-900 flex items-center justify-center">
+                        <User className="w-16 h-16 text-slate-200" />
+                      </div>
                     )}
                   </div>
-                  <div className="mb-4">
-                    <h2 className="text-3xl font-black text-gray-900 tracking-tight">{viewingStudent.firstName} {viewingStudent.lastName}</h2>
-                    <p className="text-blue-600 font-black text-xs uppercase tracking-widest flex items-center bg-blue-50 px-3 py-1 rounded-full w-fit mt-2">
-                      {viewingStudent.registrationNumber || 'Pending ID'}
-                    </p>
+                  <div className="mb-6">
+                    <h2 className="text-3xl font-black text-on-surface tracking-tight leading-none mb-3">
+                      {viewingStudent.firstName} <span className="text-primary">{viewingStudent.lastName}</span>
+                    </h2>
+                    <div className="flex items-center space-x-3">
+                        <p className="text-primary font-bold text-[10px] uppercase tracking-[0.25em] flex items-center bg-primary/10 px-4 py-1.5 rounded-full border border-primary/20">
+                          {viewingStudent.registrationNumber || 'Pending Assignment'}
+                        </p>
+                        <span className={`w-2 h-2 rounded-full animate-pulse ${viewingStudent.status === 'Active' ? 'bg-emerald-500' : 'bg-slate-400'}`} />
+                    </div>
                   </div>
                 </div>
-              )}
-            </div>
-
-            <div className="flex-1 overflow-y-auto p-10 pt-16">
-              {showIdCard ? (
-                <div className="space-y-12 animate-in fade-in duration-500">
-                  <div className="flex flex-col items-center">
-                    {/* ID Card Content */}
-                    <div id="id-card" className="w-[400px] h-[250px] bg-white rounded-3xl shadow-2xl border-2 border-gray-100 overflow-hidden relative flex flex-col p-6 m-auto">
-                       {/* Background Decoration */}
-                       <div className="absolute -top-10 -right-10 w-40 h-40 bg-blue-600/5 rounded-full blur-3xl" />
-                       <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-indigo-600/5 rounded-full blur-3xl" />
-                       
-                       <div className="flex items-start justify-between mb-4 border-b border-gray-100 pb-3">
-                          <div className="flex items-center">
-                            <GraduationCap className="w-6 h-6 text-blue-600 mr-2" />
-                            <div>
-                               <h3 className="text-[14px] font-black tracking-tighter text-gray-900 uppercase">SaaSLink Academy</h3>
-                               <p className="text-[9px] font-bold text-blue-600 uppercase tracking-widest">Student Identity Card</p>
-                            </div>
-                          </div>
-                          <div className="text-right">
-                             <span className="text-[10px] font-black text-gray-400">Valid: 2026/27</span>
-                          </div>
-                       </div>
-
-                       <div className="flex-1 flex gap-6 mt-2">
-                          <div className="w-24 h-28 rounded-2xl bg-gray-50 border border-gray-100 overflow-hidden shadow-inner flex items-center justify-center shrink-0">
-                            {viewingStudent.photoUrl ? (
-                              <img src={viewingStudent.photoUrl} alt="Photo" className="w-full h-full object-cover" />
-                            ) : (
-                              <User className="w-8 h-8 text-gray-300" />
-                            )}
-                          </div>
-                          <div className="space-y-3 flex-1 flex flex-col justify-center">
-                             <div>
-                                <h4 className="text-sm font-black text-gray-900 uppercase">{viewingStudent.firstName} {viewingStudent.lastName}</h4>
-                                <p className="text-[10px] text-blue-600 font-bold">{viewingStudent.classLevel?.name} - {viewingStudent.section?.name}</p>
-                             </div>
-                             
-                             <div className="grid grid-cols-2 gap-4 pt-1">
-                                <div>
-                                   <label className="text-[7px] font-black text-gray-400 uppercase tracking-widest">Adm No</label>
-                                   <p className="text-[10px] font-bold text-gray-800">{viewingStudent.registrationNumber || 'N/A'}</p>
-                                </div>
-                                <div>
-                                   <label className="text-[7px] font-black text-gray-400 uppercase tracking-widest">Gender</label>
-                                   <p className="text-[10px] font-bold text-gray-800">{viewingStudent.gender || 'N/A'}</p>
-                                </div>
-                                <div className="col-span-2">
-                                   <label className="text-[7px] font-black text-gray-400 uppercase tracking-widest">Route / Residence</label>
-                                   <p className="text-[9px] font-bold text-gray-800 truncate">{viewingStudent.transportRoute || 'Self Transfer'} ({viewingStudent.residence || 'Local'})</p>
-                                </div>
-                             </div>
-                          </div>
-                       </div>
-                    </div>
-
-                    <p className="mt-8 text-xs text-gray-400 font-medium max-w-sm text-center">
-                      This digital ID card is automatically generated using the student's enrollment data. Use the print button to generate a physical version for transportation.
-                    </p>
-
-                    <button 
-                      onClick={() => window.print()}
-                      className="mt-6 px-8 py-3 bg-gray-900 text-white rounded-2xl font-bold flex items-center hover:scale-105 transition-all shadow-xl shadow-gray-200"
-                    >
-                      <Printer size={18} className="mr-3" />
-                      Print physical ID
-                    </button>
-                  </div>
+                
+                {/* Tab Navigation */}
+                <div className="flex bg-white/10 backdrop-blur-md p-1 rounded-2xl border border-white/10 mb-6">
+                   <button 
+                    onClick={() => setActiveDetailTab('info')}
+                    className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeDetailTab === 'info' ? 'bg-white text-slate-900 shadow-lg' : 'text-white/60 hover:text-white'}`}
+                   >
+                     Profile
+                   </button>
+                   <button 
+                    onClick={() => setActiveDetailTab('behavior')}
+                    className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${activeDetailTab === 'behavior' ? 'bg-white text-slate-900 shadow-lg' : 'text-white/60 hover:text-white'}`}
+                   >
+                     Discipline
+                     {behaviorSummary.net !== 0 && (
+                       <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[8px] ${behaviorSummary.net > 0 ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white'}`}>
+                         {Math.abs(behaviorSummary.net)}
+                       </span>
+                     )}
+                   </button>
                 </div>
-              ) : (
-                <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-                    <div className="space-y-6">
-                       <h4 className="text-xs font-black text-gray-400 uppercase tracking-[0.2em] border-b border-gray-100 pb-3">Academic Stats</h4>
-                       <div className="grid grid-cols-1 gap-4">
-                          <div className="p-5 bg-gray-50/50 rounded-2xl border border-gray-100 hover:border-blue-100 transition-colors group">
-                            <div className="flex items-center space-x-4">
-                              <div className="w-10 h-10 rounded-xl bg-white shadow-sm flex items-center justify-center text-blue-600 group-hover:scale-110 transition-transform">
-                                <GraduationCap size={20} />
-                              </div>
-                              <div>
-                                <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Assigned Class</p>
-                                <p className="text-sm font-black text-gray-900">{viewingStudent.classLevel?.name || 'Pending Placement'}</p>
-                              </div>
-                            </div>
-                          </div>
-                          
-                          <div className="p-5 bg-gray-50/50 rounded-2xl border border-gray-100 hover:border-blue-100 transition-colors group">
-                            <div className="flex items-center space-x-4">
-                              <div className="w-10 h-10 rounded-xl bg-white shadow-sm flex items-center justify-center text-blue-600 group-hover:scale-110 transition-transform">
-                                <Search size={20} />
-                              </div>
-                              <div>
-                                <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Current Section</p>
-                                <p className="text-sm font-black text-gray-900">{viewingStudent.section?.name || 'General'}</p>
-                              </div>
-                            </div>
-                          </div>
-
-                          <div className="p-5 bg-gray-50/50 rounded-2xl border border-gray-100 hover:border-blue-100 transition-colors group">
-                            <div className="flex items-center space-x-4">
-                              <div className="w-10 h-10 rounded-xl bg-white shadow-sm flex items-center justify-center text-blue-600 group-hover:scale-110 transition-transform">
-                                <Calendar size={20} />
-                              </div>
-                              <div>
-                                <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Admission Date</p>
-                                <p className="text-sm font-black text-gray-900 italic">Spring Intake 2026</p>
-                              </div>
-                            </div>
-                          </div>
-                       </div>
-                    </div>
-
-                    <div className="space-y-6">
-                       <h4 className="text-xs font-black text-gray-400 uppercase tracking-[0.2em] border-b border-gray-100 pb-3">Logistics & Residence</h4>
-                       <div className="p-6 bg-blue-50/30 rounded-3xl border border-blue-100/50 space-y-6 relative overflow-hidden">
-                          <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
-                            <Truck size={80} className="rotate-12" />
-                          </div>
-                          
-                          <div className="flex items-start space-x-4 relative z-10">
-                            <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white shadow-lg shadow-blue-200">
-                               <MapPin size={20} />
-                            </div>
-                            <div>
-                               <p className="text-[10px] text-blue-600 font-bold uppercase tracking-widest">Home Residence</p>
-                               <p className="text-gray-900 font-bold mt-1">{viewingStudent.residence || 'Address not listed'}</p>
-                            </div>
-                          </div>
-
-                          <div className="flex items-start space-x-4 relative z-10">
-                            <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center text-blue-600 shadow-sm">
-                               <Truck size={20} />
-                            </div>
-                            <div>
-                               <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Transport Route</p>
-                               <p className="text-gray-900 font-bold mt-1 text-sm">{viewingStudent.transportRoute || 'No School Pick-up Plan'}</p>
-                            </div>
-                          </div>
-
-                          <div className="flex items-start space-x-4 border-t border-blue-100 pt-6 relative z-10">
-                            <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center text-blue-600 shadow-sm">
-                               <Info size={20} />
-                            </div>
-                            <div>
-                               <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Emergency Contact</p>
-                               <p className="text-gray-900 font-bold mt-1 text-sm">Parent Primary Mobile Linked</p>
-                            </div>
-                          </div>
-                       </div>
-                    </div>
-                  </div>
-
-                  <div className="flex justify-between items-center bg-gray-50 p-6 rounded-3xl border border-gray-100">
-                    <div className="flex items-center space-x-4">
-                      <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-green-600 shadow-sm">
-                         <ShieldCheck size={24} />
-                      </div>
-                      <div>
-                         <p className="text-sm font-black text-gray-900">Student is Verified</p>
-                         <p className="text-[10px] text-gray-500 font-medium">Profile and biometric data updated on Apr 24, 2026</p>
-                      </div>
-                    </div>
-                    <button 
-                      onClick={() => {
-                        setIsDetailModalOpen(false);
-                        handleOpenModal(viewingStudent);
-                      }}
-                      className="px-6 py-2.5 bg-white text-gray-900 border border-gray-200 rounded-2xl font-bold flex items-center hover:bg-gray-50 transition-all active:scale-95"
-                    >
-                      <Edit className="w-4 h-4 mr-2" />
-                      Modify Record
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
+              </div>
+            )}
           </div>
+
+          <div className="flex-1 overflow-y-auto custom-scrollbar p-12 pt-20">
+            {showIdCard ? (
+              // ... ID card code ...
+              <div className="space-y-12 animate-in fade-in zoom-in-95 duration-500">
+                <div className="flex flex-col items-center">
+                  <div id="id-card" className="w-[480px] h-[300px] bg-slate-900 rounded-[2.5rem] shadow-[0_30px_70px_-20px_rgba(0,0,0,0.5)] overflow-hidden relative flex flex-col p-8 border border-white/10 group select-none">
+                     <div className="absolute top-0 right-0 w-64 h-64 bg-primary/20 rounded-full blur-[100px] -mr-32 -mt-32 opacity-50 group-hover:opacity-80 transition-opacity duration-1000" />
+                     <div className="absolute bottom-0 left-0 w-48 h-48 bg-indigo-500/10 rounded-full blur-[80px] -ml-24 -mb-24 opacity-30 group-hover:opacity-60 transition-opacity duration-1000" />
+                     <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)', backgroundSize: '24px 24px' }} />
+                     <div className="flex items-start justify-between relative z-10 border-b border-white/5 pb-5 mb-6">
+                        <div className="flex items-center space-x-4">
+                           <div className="w-10 h-10 bg-white rounded-2xl flex items-center justify-center text-slate-900 shadow-xl shadow-white/10">
+                             <ShieldCheck size={20} />
+                           </div>
+                           <div>
+                              <h3 className="text-[14px] font-black tracking-widest text-white uppercase italic">Academic Institution</h3>
+                              <p className="text-[8px] font-bold text-primary uppercase tracking-[0.4em] mt-0.5">SaaSLink School ERP</p>
+                           </div>
+                        </div>
+                        <div className="text-right">
+                           <div className="text-[8px] font-black text-white/40 uppercase tracking-widest mb-1">Session Data</div>
+                           <div className="px-3 py-1 bg-white/5 rounded-lg border border-white/10">
+                              <span className="text-[9px] font-bold text-white uppercase tracking-wider">2026 / 2027</span>
+                           </div>
+                        </div>
+                     </div>
+                     <div className="flex-1 flex gap-8 relative z-10">
+                        <div className="w-32 h-36 rounded-3xl bg-slate-800/50 border border-white/10 overflow-hidden shadow-2xl relative">
+                          {viewingStudent.photoUrl ? (
+                            <img src={viewingStudent.photoUrl} alt="Photo" className="w-full h-full object-cover grayscale-[15%] group-hover:grayscale-0 transition-transform duration-700 group-hover:scale-110" />
+                          ) : (
+                            <User className="w-10 h-10 text-white/10 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
+                          )}
+                          <div className="absolute bottom-0 inset-x-0 h-1 bg-primary group-hover:h-2 transition-all duration-300" />
+                        </div>
+                        <div className="flex-1 flex flex-col justify-center space-y-5">
+                           <div>
+                              <h4 className="text-xl font-black text-white uppercase tracking-tight mb-1 group-hover:text-primary transition-colors">{viewingStudent.firstName} {viewingStudent.lastName}</h4>
+                              <div className="flex items-center space-x-2">
+                                <span className="w-1.5 h-1.5 bg-primary rounded-full" />
+                                <p className="text-[11px] text-white/60 font-bold uppercase tracking-[0.1em]">{viewingStudent.classLevel?.name || 'Class: Alpha'} <span className="text-primary/40 mx-1">•</span> {viewingStudent.section?.name || 'Stream: Sector 1'}</p>
+                              </div>
+                           </div>
+                           <div className="grid grid-cols-2 gap-x-6 gap-y-4 border-t border-white/5 pt-5">
+                              <div>
+                                 <label className="text-[8px] font-black text-white/30 uppercase tracking-[0.2em] block mb-1">Registration No.</label>
+                                 <p className="text-[11px] font-bold text-white tracking-widest">{viewingStudent.registrationNumber || 'PENDING'}</p>
+                              </div>
+                              <div>
+                                 <label className="text-[8px] font-black text-white/30 uppercase tracking-[0.2em] block mb-1">Gender</label>
+                                 <p className="text-[11px] font-bold text-white uppercase tracking-widest">{viewingStudent.gender || 'Unknown'}</p>
+                              </div>
+                              <div className="col-span-2">
+                                 <label className="text-[8px] font-black text-white/30 uppercase tracking-[0.2em] block mb-1">Residence Address</label>
+                                 <div className="flex items-center space-x-2">
+                                    <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full" />
+                                    <p className="text-[10px] font-bold text-white/80 truncate uppercase tracking-widest leading-none">
+                                      {viewingStudent.residence || 'No Address Data'}
+                                    </p>
+                                 </div>
+                              </div>
+                           </div>
+                        </div>
+                     </div>
+                  </div>
+                  <div className="mt-12 flex flex-col items-center">
+                    <p className="text-[11px] text-slate-400 font-medium max-w-sm text-center leading-relaxed italic">
+                      "The above card represents the official identity of the enrolled student within the school management system."
+                    </p>
+                    <div className="flex items-center space-x-4 mt-10">
+                      <button onClick={() => window.print()} className="px-10 py-4 bg-slate-900 border border-slate-800 text-white rounded-2xl font-bold uppercase tracking-[0.2em] text-[10px] flex items-center hover:bg-primary transition-all shadow-xl active:scale-95">
+                        <Printer size={16} className="mr-3" />
+                        Print ID Card
+                      </button>
+                      <button className="p-4 bg-slate-100 dark:bg-slate-800 text-slate-500 rounded-2xl border border-border-muted hover:text-on-surface transition-all active:scale-95">
+                        <Download size={18} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : activeDetailTab === 'info' ? (
+              <div className="space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
+                  <div className="space-y-8">
+                     <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.3em] flex items-center">
+                       <div className="w-1.5 h-1.5 bg-primary rounded-full mr-3" />
+                       Academic Information
+                      </h4>
+                     <div className="space-y-4">
+                        <div className="p-6 bg-slate-50/50 dark:bg-slate-900/50 rounded-3xl border border-border-muted hover:border-primary/20 transition-all duration-300 group">
+                          <div className="flex items-center space-x-5">
+                            <div className="w-12 h-12 rounded-2xl bg-surface shadow-xl flex items-center justify-center text-primary group-hover:scale-110 group-hover:-rotate-6 transition-all duration-500">
+                              <GraduationCap size={24} />
+                            </div>
+                            <div>
+                              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-[0.15em] mb-1">Grade Level</p>
+                              <p className="text-base font-black text-on-surface tracking-tight">{viewingStudent.classLevel?.name || 'Awaiting Placement'}</p>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="p-6 bg-slate-50/50 dark:bg-slate-900/50 rounded-3xl border border-border-muted hover:border-primary/20 transition-all duration-300 group">
+                          <div className="flex items-center space-x-5">
+                            <div className="w-12 h-12 rounded-2xl bg-surface shadow-xl flex items-center justify-center text-primary group-hover:scale-110 group-hover:rotate-6 transition-all duration-500">
+                              <Search size={24} />
+                            </div>
+                            <div>
+                              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-[0.15em] mb-1">Current Section</p>
+                              <p className="text-base font-black text-on-surface tracking-tight">{viewingStudent.section?.name || 'Unassigned Section'}</p>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="p-6 bg-slate-50/50 dark:bg-slate-900/50 rounded-3xl border border-border-muted hover:border-primary/20 transition-all duration-300 group">
+                          <div className="flex items-center space-x-5">
+                            <div className="w-12 h-12 rounded-2xl bg-surface shadow-xl flex items-center justify-center text-primary group-hover:scale-110 group-hover:-rotate-3 transition-all duration-500">
+                              <Calendar size={24} />
+                            </div>
+                            <div>
+                              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-[0.15em] mb-1">Enrollment Year</p>
+                              <p className="text-base font-black text-on-surface tracking-tight">Academic Year 2026</p>
+                            </div>
+                          </div>
+                        </div>
+                     </div>
+                  </div>
+                  <div className="space-y-8">
+                     <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.3em] flex items-center">
+                       <div className="w-1.5 h-1.5 bg-primary rounded-full mr-3" />
+                       Transport & Logistics
+                      </h4>
+                     <div className="p-8 bg-slate-50 dark:bg-slate-900/50 rounded-[2.5rem] border border-border-muted space-y-8 relative overflow-hidden shadow-inner">
+                        <div className="absolute -bottom-8 -right-8 opacity-[0.03] select-none pointer-events-none">
+                          <Truck size={140} className="rotate-12" />
+                        </div>
+                        <div className="flex items-start space-x-5 relative z-10">
+                          <div className="w-12 h-12 rounded-2xl bg-indigo-600 flex items-center justify-center text-white shadow-xl shadow-indigo-600/20">
+                             <MapPin size= {22} />
+                          </div>
+                          <div>
+                             <p className="text-[10px] text-indigo-500 font-bold uppercase tracking-[0.2em] mb-1">Home Address</p>
+                             <p className="text-on-surface font-black tracking-tight">{viewingStudent.residence || 'No Address Provided'}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-start space-x-5 relative z-10">
+                          <div className="w-12 h-12 rounded-2xl bg-surface dark:bg-slate-800 flex items-center justify-center text-primary shadow-lg ring-1 ring-border-muted">
+                             <Truck size={22} />
+                          </div>
+                          <div>
+                             <p className="text-[10px] text-slate-400 font-bold uppercase tracking-[0.2em] mb-1">Transport Route</p>
+                             <p className="text-on-surface font-bold text-sm tracking-tight">{viewingStudent.transportRoute || 'No Transport Route'}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-start space-x-5 border-t border-border-muted pt-8 relative z-10">
+                          <div className="w-12 h-12 rounded-2xl bg-surface dark:bg-slate-800 flex items-center justify-center text-emerald-500 shadow-lg ring-1 ring-border-muted">
+                             <Phone size={22} />
+                          </div>
+                          <div className="flex-1">
+                             <p className="text-[10px] text-slate-400 font-bold uppercase tracking-[0.2em] mb-1">Emergency Contact</p>
+                             <div className="flex justify-between items-center">
+                               <p className="text-on-surface font-bold text-sm tracking-tight">{viewingStudent.parentPhone || 'No phone registered'}</p>
+                               <button className="text-[10px] font-black text-primary uppercase tracking-widest underline decoration-2 underline-offset-4">Call</button>
+                             </div>
+                          </div>
+                        </div>
+                     </div>
+                  </div>
+                </div>
+                <div className="flex flex-col sm:flex-row justify-between items-center bg-slate-900 dark:bg-slate-950 p-8 rounded-[2.5rem] border border-white/5 relative overflow-hidden group shadow-2xl">
+                  <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/10 rounded-full blur-[100px] -mr-32 -mt-32" />
+                  <div className="flex items-center space-x-6 relative z-10 mb-6 sm:mb-0">
+                    <div className="w-14 h-14 bg-emerald-500/20 rounded-2xl flex items-center justify-center text-emerald-500 shadow-xl shadow-emerald-500/10 border border-emerald-500/30">
+                       <ShieldCheck size={28} />
+                    </div>
+                    <div>
+                       <p className="text-lg font-black text-white tracking-tight">Verified Student</p>
+                       <p className="text-[10px] text-white/40 font-bold uppercase tracking-[0.2em] mt-1">Last System Update: Apr 24, 2026</p>
+                    </div>
+                  </div>
+                  <button 
+                    onClick={() => {
+                      setIsDetailModalOpen(false);
+                      handleOpenModal(viewingStudent);
+                    }}
+                    className="px-10 py-4 bg-white text-slate-900 rounded-2xl font-black uppercase tracking-[0.2em] text-[10px] flex items-center hover:bg-primary hover:text-white transition-all active:scale-95 relative z-10 shadow-2xl"
+                  >
+                    <Edit className="w-4 h-4 mr-3" />
+                    Edit Student Profile
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-10 animate-in fade-in slide-in-from-right-4 duration-500">
+                 {/* Behavior Summary Cards */}
+                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                    <div className="bg-emerald-500/5 border border-emerald-500/20 p-8 rounded-[2rem] flex flex-col items-center text-center">
+                       <Award size={32} className="text-emerald-500 mb-4" />
+                       <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest mb-1">Merits Earned</p>
+                       <p className="text-4xl font-black text-on-surface italic tracking-tight">{behaviorSummary.merits}</p>
+                    </div>
+                    <div className="bg-rose-500/5 border border-rose-500/20 p-8 rounded-[2rem] flex flex-col items-center text-center shadow-lg">
+                       <AlertTriangle size={32} className="text-rose-500 mb-4" />
+                       <p className="text-[10px] font-black text-rose-500 uppercase tracking-widest mb-1">Demerits Issued</p>
+                       <p className="text-4xl font-black text-on-surface italic tracking-tight">{behaviorSummary.demerits}</p>
+                    </div>
+                    <div className="bg-slate-900 p-8 rounded-[2rem] flex flex-col items-center text-center shadow-2xl">
+                       <Activity size={32} className="text-white opacity-40 mb-4" />
+                       <p className="text-[10px] font-black text-white opacity-40 uppercase tracking-widest mb-1">Net Standing</p>
+                       <p className={`text-4xl font-black italic tracking-tight ${behaviorSummary.net >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                         {behaviorSummary.net > 0 ? '+' : ''}{behaviorSummary.net}
+                       </p>
+                    </div>
+                 </div>
+
+                 {/* Behavior Timeline */}
+                 <div className="bg-white border border-gray-100 rounded-[2.5rem] p-10">
+                    <div className="flex justify-between items-center mb-10">
+                       <h4 className="text-[11px] font-black text-gray-400 uppercase tracking-[0.3em] italic">Disciplinary Timeline</h4>
+                       <button className="text-[10px] font-black text-primary uppercase tracking-widest flex items-center gap-2">
+                         <Plus size={14} />
+                         Add Record
+                       </button>
+                    </div>
+
+                    <div className="space-y-6 relative">
+                       {/* Center Line */}
+                       <div className="absolute left-[23px] top-0 bottom-0 w-[2px] bg-slate-50 dark:bg-slate-800" />
+                       
+                       {behaviorLoading ? (
+                         <div className="flex justify-center py-12">
+                           <div className="w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
+                         </div>
+                       ) : behaviorRecords.length > 0 ? (
+                         behaviorRecords.map((record, i) => (
+                           <div key={record.id} className="flex gap-6 relative z-10 group hover:-translate-x-1 transition-transform">
+                              <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 shadow-lg ${
+                                record.type === 'MERIT' ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white'
+                              }`}>
+                                {record.type === 'MERIT' ? <Award size={20} /> : <AlertTriangle size={20} />}
+                              </div>
+                              <div className="flex-1 bg-slate-50/50 dark:bg-slate-900/50 p-6 rounded-3xl border border-gray-100 transition-colors group-hover:border-primary/20">
+                                 <div className="flex justify-between items-start mb-2">
+                                    <h5 className="font-black text-gray-900 group-hover:text-primary transition-colors">{record.description}</h5>
+                                    <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">{new Date(record.date).toLocaleDateString()}</span>
+                                 </div>
+                                 <p className="text-xs text-gray-500 font-medium leading-relaxed italic">
+                                   Points Impact: <span className={record.type === 'MERIT' ? 'text-emerald-500 font-bold' : 'text-rose-500 font-bold'}>{record.points}</span>
+                                 </p>
+                                 <div className="mt-4 pt-4 border-t border-white/5 flex items-center justify-between">
+                                    <span className="text-[9px] font-bold text-gray-300 uppercase tracking-widest">Reported by: {record.reporter || 'System'}</span>
+                                    <MoreVertical size={12} className="text-gray-300" />
+                                 </div>
+                              </div>
+                           </div>
+                         ))
+                       ) : (
+                         <div className="py-20 text-center flex flex-col items-center">
+                            <Shield className="text-slate-100 mb-6" size={64} />
+                            <p className="text-[11px] font-black text-slate-300 uppercase tracking-widest">Exemplary Record</p>
+                            <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-2">No behavioral infractions or merits logged.</p>
+                         </div>
+                       )}
+                    </div>
+                 </div>
+              </div>
+            )}
+          </div>
+          </motion.div>
         </div>
       )}
-    </>
+      </AnimatePresence>
+
+    </div>
   );
 };
 

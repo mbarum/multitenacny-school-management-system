@@ -24,6 +24,7 @@ import StaffManagementPage from './pages/StaffManagementPage';
 import AttendancePage from './pages/AttendancePage';
 import TimetablePage from './pages/TimetablePage';
 import ReportingPage from './pages/ReportingPage';
+import CalendarPage from './pages/CalendarPage';
 import PrivacyPage from './pages/PrivacyPage';
 import TermsPage from './pages/TermsPage';
 import ContactPage from './pages/ContactPage';
@@ -150,6 +151,10 @@ const AppRoutes: React.FC = () => {
       <Route
         path="/timetable"
         element={renderProtectedRoute(<TimetablePage />)}
+      />
+      <Route
+        path="/calendar"
+        element={renderProtectedRoute(<CalendarPage />)}
       />
       <Route
         path="/reports"

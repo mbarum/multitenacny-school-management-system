@@ -23,4 +23,7 @@ export class Staff extends TenantAwareEntity {
 
   @Column({ nullable: true })
   phone: string;
+
+  @Column('decimal', { precision: 10, scale: 2, default: 0 })
+  basicSalary: number;
 }

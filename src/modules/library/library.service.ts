@@ -2,7 +2,7 @@ import { Injectable, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Book } from './entities/book.entity';
-import { Lending } from './entities/lending.entity';
+import { BookLending } from './entities/book-lending.entity';
 import { TenancyService } from 'src/core/tenancy/tenancy.service';
 import { TenantAwareCrudService } from 'src/core/common/tenant-aware-crud.service';
 
@@ -11,8 +11,8 @@ export class LibraryService extends TenantAwareCrudService<Book> {
   constructor(
     @InjectRepository(Book)
     private readonly bookRepository: Repository<Book>,
-    @InjectRepository(Lending)
-    private readonly lendingRepository: Repository<Lending>,
+    @InjectRepository(BookLending)
+    private readonly lendingRepository: Repository<BookLending>,
     tenancyService: TenancyService,
   ) {
     super(bookRepository, tenancyService);
@@ -23,18 +23,18 @@ export class LibraryService extends TenantAwareCrudService<Book> {
     const book = await this.bookRepository.findOne({ where: { id: bookId, tenantId } });
 
     if (!book) throw new BadRequestException('Book not found');
-    if (book.availableQuantity <= 0) throw new BadRequestException('No copies available');
+    if (book.availableCopies <= 0) throw new BadRequestException('No copies available');
 
     const lending = this.lendingRepository.create({
       tenantId,
       bookId,
       studentId,
-      borrowDate: new Date(),
+      issueDate: new Date(),
       dueDate: dueDate || new Date(Date.now() + 14 * 24 * 60 * 60 * 1000), // Default 14 days
       status: 'borrowed'
     });
 
-    book.availableQuantity -= 1;
+    book.availableCopies -= 1;
     await this.bookRepository.save(book);
     return this.lendingRepository.save(lending);
   }
@@ -49,9 +49,16 @@ export class LibraryService extends TenantAwareCrudService<Book> {
     lending.returnDate = new Date();
     lending.status = 'returned';
 
+    // Calculate fine (e.g., 50 units per day overdue)
+    if (lending.returnDate > lending.dueDate) {
+      const diffTime = Math.abs(lending.returnDate.getTime() - lending.dueDate.getTime());
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      lending.fineAmount = diffDays * 50; 
+    }
+
     const book = await this.bookRepository.findOne({ where: { id: lending.bookId, tenantId } });
     if (book) {
-      book.availableQuantity += 1;
+      book.availableCopies += 1;
       await this.bookRepository.save(book);
     }
 
@@ -61,8 +68,25 @@ export class LibraryService extends TenantAwareCrudService<Book> {
   async getActiveLendings() {
     const tenantId = this.tenancyService.getTenantId();
     return this.lendingRepository.find({
-      where: { tenantId, status: 'borrowed' },
-      order: { borrowDate: 'DESC' }
+      where: { 
+        tenantId, 
+        status: 'borrowed'
+      },
+      relations: ['book', 'student']
     });
+  }
+
+  async getOverdueBooks() {
+    const tenantId = this.tenancyService.getTenantId();
+    // Overdue is where status is borrowed AND dueDate < now
+    const lendings = await this.lendingRepository.find({
+      where: { 
+        tenantId, 
+        status: 'borrowed'
+      },
+      relations: ['book', 'student']
+    });
+
+    return lendings.filter(l => new Date(l.dueDate) < new Date());
   }
 }

@@ -2,7 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { jsPDF } from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 import { Tenant } from '../tenants/entities/tenant.entity';
 import {
   SubscriptionStatus,
@@ -273,7 +273,7 @@ export class SuperAdminService {
     doc.text(`Date: ${payment.createdAt.toLocaleDateString()}`, 20, 45);
     doc.text(`School: ${payment.tenant.name}`, 20, 55);
 
-    doc.autoTable({
+    autoTable(doc, {
       startY: 70,
       head: [['Description', 'Amount']],
       body: [
@@ -373,7 +373,7 @@ export class SuperAdminService {
     doc.text(tenant.contactEmail || '', 20, 110);
 
     // Table
-    doc.autoTable({
+    autoTable(doc, {
       startY: 120,
       head: [['Description', 'Amount (KES)']],
       body: [
@@ -389,7 +389,7 @@ export class SuperAdminService {
     doc.text(
       'Thank you for your business!',
       105,
-      doc.lastAutoTable.finalY + 20,
+      (doc as any).lastAutoTable.finalY + 20,
       { align: 'center' },
     );
 

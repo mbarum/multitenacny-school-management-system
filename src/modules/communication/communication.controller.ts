@@ -27,4 +27,15 @@ export class CommunicationController {
   findOne(@Param('id') id: string) {
     return this.communicationService.findOne(id);
   }
+
+  @Post('announcements')
+  @Roles(UserRole.ADMIN)
+  createAnnouncement(@Body() data: any) {
+    return this.communicationService.createAnnouncement(data);
+  }
+
+  @Get('announcements')
+  getActiveAnnouncements() {
+    return this.communicationService.getActiveAnnouncements();
+  }
 }

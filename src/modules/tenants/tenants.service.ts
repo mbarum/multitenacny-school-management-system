@@ -18,8 +18,8 @@ import { UsersService } from '../users/users.service';
 import { EmailService } from '../../shared/email.service';
 import * as bcrypt from 'bcrypt';
 import { jsPDF } from 'jspdf';
-import { UserRole } from '../../common/user-role.enum';
 import 'jspdf-autotable';
+import { UserRole } from '../../common/user-role.enum';
 import * as crypto from 'crypto';
 
 @Injectable()
@@ -170,21 +170,29 @@ export class TenantsService {
     doc.text(tenant.contactEmail || '', 20, 114);
 
     // Table
-    doc.autoTable({
-      startY: 125,
-      head: [['Description', 'Amount (KES)']],
-      body: [
-        [`Subscription Package: ${tenant.plan}`, fee.toFixed(2)],
-        ['VAT (16%)', vatAmount.toFixed(2)],
-        ['Total Paid', totalAmount.toFixed(2)],
-      ],
-      theme: 'grid',
-      headStyles: { fillColor: [100, 100, 100] },
-    });
+    try {
+      (doc as any).autoTable({
+        startY: 125,
+        head: [['Description', 'Amount (KES)']],
+        body: [
+          [`Subscription Package: ${tenant.plan}`, fee.toFixed(2)],
+          ['VAT (16%)', vatAmount.toFixed(2)],
+          ['Total Paid', totalAmount.toFixed(2)],
+        ],
+        theme: 'grid',
+        headStyles: { fillColor: [100, 100, 100] },
+      });
+    } catch (e) {
+      console.error('autoTable failed, falling back to manual text', e);
+      doc.text(`Subscription Package: ${tenant.plan} - ${fee.toFixed(2)}`, 20, 130);
+      doc.text(`VAT (16%) - ${vatAmount.toFixed(2)}`, 20, 138);
+      doc.text(`Total Paid - ${totalAmount.toFixed(2)}`, 20, 146);
+      (doc as any).lastAutoTable = { finalY: 150 };
+    }
 
     // Bank Details
     // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-    const finalY = doc.lastAutoTable.finalY + 20;
+    const finalY = (doc as any).lastAutoTable.finalY + 20;
     doc.setFontSize(14);
     doc.text('Payment Details:', 20, finalY);
     doc.setFontSize(10);

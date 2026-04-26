@@ -14,15 +14,46 @@ import { BulkUpdateStudentDto } from './dto/bulk-update-student.dto';
 import { UsersService } from '../users/users.service';
 import { UserRole } from 'src/common/user-role.enum';
 
+import { BehaviorRecord } from './entities/behavior-record.entity';
+
 @Injectable()
 export class StudentsService extends TenantAwareCrudService<Student> {
   constructor(
     @InjectRepository(Student)
     private readonly studentRepository: Repository<Student>,
+    @InjectRepository(BehaviorRecord)
+    private readonly behaviorRepository: Repository<Repository<BehaviorRecord>>,
     tenancyService: TenancyService,
     private readonly usersService: UsersService,
   ) {
     super(studentRepository, tenancyService);
+  }
+
+  // --- Behavior Tracking ---
+  async addBehaviorRecord(data: Partial<BehaviorRecord>): Promise<BehaviorRecord> {
+    const record = this.behaviorRepository.create({
+      ...data,
+      tenantId: this.tenancyService.getTenantId(),
+      date: data.date || new Date(),
+    } as any);
+    return this.behaviorRepository.save(record as any);
+  }
+
+  async getStudentBehavior(studentId: string): Promise<BehaviorRecord[]> {
+    return (this.behaviorRepository as any).find({
+      where: { 
+        studentId, 
+        tenantId: this.tenancyService.getTenantId() 
+      },
+      order: { date: 'DESC' }
+    });
+  }
+
+  async getBehaviorSummary(studentId: string) {
+    const records = await this.getStudentBehavior(studentId);
+    const merits = records.filter(r => r.type === 'MERIT').reduce((sum, r) => sum + r.points, 0);
+    const demerits = records.filter(r => r.type === 'DEMERIT').reduce((sum, r) => sum + r.points, 0);
+    return { merits, demerits, net: merits - demerits };
   }
 
   async findAll(query?: any): Promise<Student[]> {

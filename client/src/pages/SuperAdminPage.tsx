@@ -161,7 +161,7 @@ const SuperAdminPage = () => {
       <div className="min-h-screen bg-brand-dark flex items-center justify-center">
         <div className="flex flex-col items-center">
           <div className="w-16 h-16 border-4 border-brand-sand border-t-transparent rounded-full animate-spin"></div>
-          <p className="text-brand-white/40 mt-6 font-bold uppercase tracking-widest text-xs">Synchronizing Mission Control</p>
+          <p className="text-brand-white/40 mt-6 font-bold uppercase tracking-widest text-xs">Loading Administrative Dashboard</p>
         </div>
       </div>
     );
@@ -173,9 +173,9 @@ const SuperAdminPage = () => {
       <div className="flex space-x-1 bg-gray-100 p-1 rounded-sm border border-gray-200 mb-10 w-fit">
         {[
           { id: 'overview', label: 'Overview', icon: <BarChart3 size={14} /> },
-          { id: 'schools', label: 'Institutions', icon: <Building size={14} /> },
-          { id: 'financials', label: 'Fiscal Ledger', icon: <Wallet size={14} /> },
-          { id: 'settings', label: 'Logic Config', icon: <Settings size={14} /> },
+          { id: 'schools', label: 'Schools', icon: <Building size={14} /> },
+          { id: 'financials', label: 'Finance', icon: <Wallet size={14} /> },
+          { id: 'settings', label: 'Settings', icon: <Settings size={14} /> },
         ].map(tab => (
           <button
             key={tab.id}
@@ -197,19 +197,19 @@ const SuperAdminPage = () => {
         <div>
           <div className="flex items-center space-x-2 text-gray-400 uppercase tracking-widest text-[9px] font-mono font-bold mb-3">
             <Globe size={12} className="text-emerald-500" />
-            <span>Platform_Global_Node_001</span>
+            <span>Platform Management Console</span>
           </div>
           <h1 className="text-5xl font-serif italic tracking-tight text-gray-900 leading-none">
-            {activeTab === 'overview' && 'System Analytics'}
-            {activeTab === 'schools' && 'Managed Schools'}
-            {activeTab === 'financials' && 'Revenue Vectors'}
-            {activeTab === 'settings' && 'Platform Logic'}
+            {activeTab === 'overview' && 'Platform Overview'}
+            {activeTab === 'schools' && 'Registered Schools'}
+            {activeTab === 'financials' && 'Financial Overview'}
+            {activeTab === 'settings' && 'System Settings'}
           </h1>
           <p className="text-gray-500 mt-4 font-sans text-sm max-w-xl leading-relaxed">
-            {activeTab === 'overview' && 'Comprehensive real-time instrumentation across all provisioned platform nodes and educational clusters.'}
-            {activeTab === 'schools' && 'Direct management and state control for all high-value educational institutions within the SaaSLink network.'}
-            {activeTab === 'financials' && 'Centralized ledger for all subscription revenue, manual bank reconciliation, and fiscal health tracking.'}
-            {activeTab === 'settings' && 'Critical platform parameters, gateway logic, and ecosystem configuration for the entire EMIS network.'}
+            {activeTab === 'overview' && 'Real-time analytics and statistics across all registered schools on the platform.'}
+            {activeTab === 'schools' && 'Direct management and oversight for all educational institutions within the SaaSLink network.'}
+            {activeTab === 'financials' && 'Centralized records for all subscription revenue, manual bank reconciliation, and financial tracking.'}
+            {activeTab === 'settings' && 'Critical system settings and platform configuration for the entire management network.'}
           </p>
         </div>
             
@@ -218,7 +218,7 @@ const SuperAdminPage = () => {
                 onClick={fetchData}
                 className="px-4 py-2 bg-white border border-gray-200 rounded-sm text-[10px] uppercase font-bold tracking-widest hover:bg-gray-50 transition-all active:scale-95"
               >
-                Sync_Stream
+                Refresh Data
               </button>
               {activeTab === 'schools' && (
                 <button 
@@ -226,7 +226,7 @@ const SuperAdminPage = () => {
                   className="px-5 py-2 bg-gray-900 text-white rounded-sm text-[10px] uppercase font-bold tracking-widest flex items-center shadow-lg active:scale-95"
                 >
                   <Plus size={14} className="mr-2" />
-                  Enroll_Entity
+                  Register School
                 </button>
               )}
             </div>
@@ -254,10 +254,10 @@ const SuperAdminPage = () => {
                   {/* Revenue Chart */}
                   <div className="lg:col-span-2 bg-white border border-gray-200 p-10 rounded-sm">
                     <div className="flex items-center justify-between mb-8">
-                      <h3 className="text-lg font-serif italic text-gray-900">Growth & Fiscal Inflow</h3>
+                      <h3 className="text-lg font-serif italic text-gray-900">Revenue Growth</h3>
                       <div className="flex items-center space-x-1 text-[9px] font-mono font-bold text-gray-400 uppercase tracking-widest">
                         <span className="w-2 h-2 rounded-full bg-gray-900 border border-white shadow-[0_0_8px_rgba(0,0,0,0.1)]"></span>
-                        <span>Monthly_Kes</span>
+                        <span>Monthly_KES</span>
                       </div>
                     </div>
                     <div className="h-[300px]">
@@ -318,7 +318,7 @@ const SuperAdminPage = () => {
                   <div className="p-8 border-b border-gray-100 flex justify-between items-center">
                     <h3 className="text-xl font-bold tracking-tight text-gray-900">Financial Stream</h3>
                     <button onClick={() => setActiveTab('financials')} className="text-xs font-bold text-brand-green uppercase tracking-widest flex items-center hover:opacity-80 transition-opacity">
-                      Operational Ledger <ArrowRight size={14} className="ml-2" />
+                      Transaction History <ArrowRight size={14} className="ml-2" />
                     </button>
                   </div>
                   <div className="overflow-x-auto">
@@ -387,11 +387,11 @@ const SuperAdminPage = () => {
                     <table className="w-full text-left border-separate border-spacing-0">
                       <thead>
                         <tr className="bg-gray-50 text-gray-400 text-[10px] uppercase tracking-[0.2em] font-bold">
-                          <th className="px-8 py-4">Institution Profile</th>
-                          <th className="px-8 py-4">Platform Domain</th>
+                          <th className="px-8 py-4">School Details</th>
+                          <th className="px-8 py-4">School Domain</th>
                           <th className="px-8 py-4">Subscription Plan</th>
-                          <th className="px-8 py-4">Tenant Status</th>
-                          <th className="px-8 py-4 text-right">Control</th>
+                          <th className="px-8 py-4">Subscription Status</th>
+                          <th className="px-8 py-4 text-right">Actions</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-100">
@@ -400,7 +400,7 @@ const SuperAdminPage = () => {
                              <tr key={tenant.id} className="hover:bg-gray-50 transition-colors group">
                                <td className="px-8 py-6">
                                  <div className="font-bold text-gray-900 tracking-tight">{tenant.name}</div>
-                                 <div className="text-[10px] text-gray-500 uppercase tracking-widest mt-1">ID: {tenant.id.split('-')[0]}</div>
+                                 <div className="text-[10px] text-gray-500 uppercase tracking-widest mt-1">School ID: {tenant.id.split('-')[0]}</div>
                                </td>
                                <td className="px-8 py-6">
                                  <span className="text-xs font-mono text-indigo-600 font-bold">{tenant.domain}</span>
@@ -450,15 +450,15 @@ const SuperAdminPage = () => {
                                   <div className="w-20 h-20 bg-gray-50 rounded-[32px] flex items-center justify-center mb-6 border border-gray-100">
                                     <Building size={32} className="text-gray-200" />
                                   </div>
-                                  <h3 className="text-xl font-black text-gray-900 tracking-tight leading-none">No Institutions Found</h3>
+                                  <h3 className="text-xl font-black text-gray-900 tracking-tight leading-none">No Schools Found</h3>
                                   <p className="text-gray-500 mt-3 text-sm font-medium max-w-xs mx-auto">
-                                    The global network is waiting for its first node. Direct enrollment is required to proceed.
+                                    The school network is waiting for its first record. Direct registration is required to proceed.
                                   </p>
                                   <button 
                                     onClick={() => setShowEnrollModal(true)}
                                     className="mt-8 px-8 py-3 bg-brand-green text-brand-sand rounded-2xl text-[11px] font-black uppercase tracking-widest shadow-xl shadow-brand-green/10 active:scale-95 transition-all"
                                   >
-                                    Enroll First Institution
+                                    Register First School
                                   </button>
                                 </div>
                               </td>
@@ -546,7 +546,7 @@ const SuperAdminPage = () => {
 
                  <div className="bg-white border border-gray-100 rounded-[32px] shadow-sm overflow-hidden mb-12">
                     <div className="p-8 border-b border-gray-100">
-                       <h3 className="text-xl font-bold text-gray-900 leading-none tracking-tight">Platform Transaction Ledger</h3>
+                       <h3 className="text-xl font-bold text-gray-900 leading-none tracking-tight">Financial Ledger</h3>
                     </div>
                     <div className="overflow-x-auto">
                        <table className="w-full text-left border-separate border-spacing-0">
@@ -630,10 +630,10 @@ const SuperAdminPage = () => {
                   <div className="w-20 h-20 bg-gray-50 rounded-3xl flex items-center justify-center mx-auto mb-8 border border-gray-100">
                     <Settings size={32} className="text-gray-400" />
                   </div>
-                  <h3 className="text-2xl font-black mb-4 text-gray-900 tracking-tight leading-none">Infrastructure Gateway Configuration</h3>
-                  <p className="text-gray-500 max-w-lg mx-auto mb-10 text-[15px] font-medium leading-relaxed">Adjust global environment variables, payment credentials, and system-wide default parameters for the entire platform.</p>
+                  <h3 className="text-2xl font-black mb-4 text-gray-900 tracking-tight leading-none">System Settings & Configuration</h3>
+                  <p className="text-gray-500 max-w-lg mx-auto mb-10 text-[15px] font-medium leading-relaxed">Adjust global system settings, payment parameters, and system-wide default configurations for the entire platform.</p>
                   <Link to="/super-admin/settings" className="px-8 py-4 bg-brand-green text-brand-sand rounded-2xl font-bold uppercase tracking-widest text-[11px] shadow-xl shadow-brand-green/20 active:scale-95 inline-block">
-                    Access Configuration Engine
+                    Access System Settings
                   </Link>
                 </div>
               </motion.div>
@@ -667,8 +667,8 @@ const SuperAdminPage = () => {
                   disabled={updatingPlan}
                 >
                   <div className="text-left">
-                    <span className="block text-[10px] font-black uppercase tracking-[0.2em] text-purple-600">Infrastructure Tier</span>
-                    <span className="text-lg font-black text-gray-900 tracking-tight">Full Enterprise Access</span>
+                    <span className="block text-[10px] font-black uppercase tracking-[0.2em] text-purple-600">Subscription Plan</span>
+                    <span className="text-lg font-black text-gray-900 tracking-tight">Enterprise Plan</span>
                   </div>
                   <CheckCircle size={24} className="text-purple-600 opacity-0 group-hover:opacity-100 transition-opacity" />
                 </button>
@@ -698,7 +698,7 @@ const SuperAdminPage = () => {
                 className="mt-10 w-full text-center text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 hover:text-gray-900 transition-colors"
                 disabled={updatingPlan}
               >
-                Abort Changes
+                Cancel
               </button>
             </motion.div>
           </div>
@@ -720,15 +720,15 @@ const SuperAdminPage = () => {
                   <Building className="text-brand-green" size={24} />
                 </div>
                 <div>
-                   <h2 className="text-2xl font-black tracking-tight text-gray-900 leading-none">External Enrollment</h2>
-                   <p className="text-[10px] text-gray-500 uppercase tracking-[0.2em] font-black mt-2">Scale the educational network</p>
+                   <h2 className="text-2xl font-black tracking-tight text-gray-900 leading-none">School Registration</h2>
+                   <p className="text-[10px] text-gray-500 uppercase tracking-[0.2em] font-black mt-2">Expand the school network</p>
                 </div>
               </div>
 
               <form onSubmit={handleEnrollTenant} className="space-y-6">
                 <div className="space-y-5">
                   <div>
-                    <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 mb-2.5 ml-1">Entity Name</label>
+                    <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 mb-2.5 ml-1">School Name</label>
                     <input 
                       type="text" 
                       required
@@ -739,7 +739,7 @@ const SuperAdminPage = () => {
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 mb-2.5 ml-1">Virtual Infrastructure Domain</label>
+                    <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 mb-2.5 ml-1">School Domain</label>
                     <input 
                       type="text" 
                       required
@@ -750,7 +750,7 @@ const SuperAdminPage = () => {
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 mb-2.5 ml-1">Primary Admin Identity (Email)</label>
+                    <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 mb-2.5 ml-1">Administrator Email</label>
                     <input 
                       type="email" 
                       required
@@ -762,18 +762,18 @@ const SuperAdminPage = () => {
                   </div>
                   <div className="grid grid-cols-2 gap-5">
                     <div>
-                      <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 mb-2.5 ml-1">Subscription Vector</label>
+                      <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 mb-2.5 ml-1">Subscription Plan</label>
                       <div className="relative">
                         <select 
                           className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-6 py-4 text-sm focus:outline-none focus:border-brand-green appearance-none text-gray-900 font-bold"
                           value={newTenant.plan}
                           onChange={e => setNewTenant({...newTenant, plan: e.target.value})}
                         >
-                          <option value="free">L0: Foundation</option>
-                          <option value="basic">L1: Essential</option>
-                          <option value="standard">L2: Standard</option>
-                          <option value="premium">L3: Premium</option>
-                          <option value="enterprise">LX: Enterprise</option>
+                          <option value="free">Basic (Free)</option>
+                          <option value="basic">Standard</option>
+                          <option value="standard">Premium</option>
+                          <option value="premium">Enterprise</option>
+                          <option value="enterprise">Custom Enterprise</option>
                         </select>
                         <div className="absolute right-5 top-1/2 -translate-y-1/2 pointer-events-none">
                           <ArrowRight size={14} className="text-gray-400 rotate-90" />
@@ -781,7 +781,7 @@ const SuperAdminPage = () => {
                       </div>
                     </div>
                     <div>
-                      <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 mb-2.5 ml-1">Fee Allocation (KES)</label>
+                      <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 mb-2.5 ml-1">Subscription Fee (KES)</label>
                       <input 
                         type="number" 
                         required

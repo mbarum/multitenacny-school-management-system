@@ -76,4 +76,10 @@ export class ReportingController {
   getParentDashboardStats(@Req() req: AuthenticatedRequest) {
     return this.reportingService.getParentDashboardStats(req.user.userId);
   }
+
+  @Get('academics')
+  @Permissions('reporting.academics')
+  getAcademicReport(@Query('classLevelId') classLevelId: string) {
+    return this.reportingService.generateAcademicReport(classLevelId);
+  }
 }

@@ -56,4 +56,20 @@ export class StudentsController {
   remove(@Param('id') id: string) {
     return this.studentsService.remove(id);
   }
+
+  @Post(':id/behavior')
+  @Roles(UserRole.ADMIN, UserRole.TEACHER)
+  addBehavior(@Param('id') id: string, @Body() data: any) {
+    return this.studentsService.addBehaviorRecord({ ...data, studentId: id });
+  }
+
+  @Get(':id/behavior')
+  getBehavior(@Param('id') id: string) {
+    return this.studentsService.getStudentBehavior(id);
+  }
+
+  @Get(':id/behavior/summary')
+  getBehaviorSummary(@Param('id') id: string) {
+    return this.studentsService.getBehaviorSummary(id);
+  }
 }

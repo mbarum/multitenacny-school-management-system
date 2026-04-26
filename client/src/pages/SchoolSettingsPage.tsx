@@ -11,6 +11,15 @@ const SchoolSettingsPage: React.FC = () => {
   const { user } = useAuth();
   const [gradingMode, setGradingMode] = useState('TRADITIONAL');
   const [mpesaPaybill, setMpesaPaybill] = useState('');
+  const [gradingScales, setGradingScales] = useState<any[]>([]);
+  const [showAddScale, setShowAddScale] = useState(false);
+  const [newScale, setNewScale] = useState({
+    grade: '',
+    minMark: 0,
+    maxMark: 100,
+    gradePoint: 0,
+    remarks: ''
+  });
   const [schoolData, setSchoolData] = useState({
     name: '',
     logoUrl: '',
@@ -25,7 +34,42 @@ const SchoolSettingsPage: React.FC = () => {
 
   useEffect(() => {
     fetchSettings();
+    fetchGradingScales();
   }, []);
+
+  const fetchGradingScales = async () => {
+    try {
+      const res = await api.get('/academics/grading-scales');
+      setGradingScales(res.data);
+    } catch (error) {
+      console.error('Failed to fetch grading scales', error);
+    }
+  };
+
+  const handleAddScale = async () => {
+    try {
+      await api.post('/academics/grading-scales', {
+        ...newScale,
+        type: gradingMode
+      });
+      toast.success('Grade added');
+      setNewScale({ grade: '', minMark: 0, maxMark: 100, gradePoint: 0, remarks: '' });
+      setShowAddScale(false);
+      fetchGradingScales();
+    } catch (error) {
+      toast.error('Failed to add grade');
+    }
+  };
+
+  const handleDeleteScale = async (id: string) => {
+    try {
+      await api.delete(`/academics/grading-scales/${id}`);
+      toast.success('Grade deleted');
+      fetchGradingScales();
+    } catch (error) {
+      toast.error('Failed to delete grade');
+    }
+  };
 
   const fetchSettings = async () => {
     try {
@@ -240,6 +284,101 @@ const SchoolSettingsPage: React.FC = () => {
                 <h3 className="font-bold text-gray-900 mb-1">CBE (Competency Based)</h3>
                 <p className="text-xs text-gray-500 font-medium">Level-based assessments focusing on individual competencies and rubrics.</p>
               </button>
+            </div>
+
+            <div className="mt-8 space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-black text-gray-400 uppercase tracking-widest">
+                  {gradingMode === 'TRADITIONAL' ? 'Traditional Scaling' : 'CBE Performance Levels'}
+                </h3>
+                <button 
+                  onClick={() => setShowAddScale(true)}
+                  className="text-xs font-bold text-indigo-600 hover:text-indigo-700 flex items-center"
+                >
+                  <Plus size={14} className="mr-1" /> Add Layer
+                </button>
+              </div>
+
+              {showAddScale && (
+                <motion.div 
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  className="bg-gray-50 p-4 rounded-xl border border-gray-200 space-y-4 mb-4"
+                >
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Grade / Level Name</label>
+                      <input 
+                        type="text"
+                        placeholder="e.g. A or Exceeding"
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm font-bold"
+                        value={newScale.grade}
+                        onChange={(e) => setNewScale({...newScale, grade: e.target.value})}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Grade Point</label>
+                      <input 
+                        type="number"
+                        step="0.1"
+                        placeholder="e.g. 4.0"
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm font-bold"
+                        value={newScale.gradePoint}
+                        onChange={(e) => setNewScale({...newScale, gradePoint: Number(e.target.value)})}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Min Mark (%)</label>
+                      <input 
+                        type="number"
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm font-bold"
+                        value={newScale.minMark}
+                        onChange={(e) => setNewScale({...newScale, minMark: Number(e.target.value)})}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Max Mark (%)</label>
+                      <input 
+                        type="number"
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm font-bold"
+                        value={newScale.maxMark}
+                        onChange={(e) => setNewScale({...newScale, maxMark: Number(e.target.value)})}
+                      />
+                    </div>
+                  </div>
+                  <div className="flex justify-end space-x-2">
+                    <button onClick={() => setShowAddScale(false)} className="px-4 py-2 text-xs font-bold text-gray-500">Cancel</button>
+                    <button onClick={handleAddScale} className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-xs font-bold">Save Grade</button>
+                  </div>
+                </motion.div>
+              )}
+
+              <div className="space-y-2">
+                {gradingScales.filter(s => s.type === gradingMode).sort((a, b) => b.minMark - a.minMark).map(scale => (
+                  <div key={scale.id} className="flex items-center justify-between p-4 bg-white border border-gray-100 rounded-xl group">
+                    <div className="flex items-center space-x-4">
+                      <div className="w-10 h-10 bg-gray-50 rounded-lg flex items-center justify-center font-bold text-gray-900">
+                        {scale.grade}
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-gray-900">{scale.minMark}% - {scale.maxMark}%</p>
+                        <p className="text-[10px] text-gray-400 font-medium">GP: {scale.gradePoint}</p>
+                      </div>
+                    </div>
+                    <button 
+                      onClick={() => handleDeleteScale(scale.id)}
+                      className="opacity-0 group-hover:opacity-100 p-2 text-red-400 hover:text-red-600 transition-all font-mono text-[10px] flex items-center"
+                    >
+                      <Trash2 size={14} className="mr-1" /> REMOVE
+                    </button>
+                  </div>
+                ))}
+                {gradingScales.filter(s => s.type === gradingMode).length === 0 && (
+                  <div className="text-center py-8 bg-gray-50 rounded-xl border-2 border-dashed border-gray-100">
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">No grading layers defined for this mode</p>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 

@@ -1,4 +1,4 @@
-import { Entity, Column } from 'typeorm';
+import { Entity, Column, ManyToOne, JoinColumn } from 'typeorm';
 import { TenantAwareEntity } from 'src/core/tenancy/tenant-aware.entity';
 
 @Entity({ name: 'books' })
@@ -12,12 +12,15 @@ export class Book extends TenantAwareEntity {
   @Column({ nullable: true })
   isbn: string;
 
-  @Column({ default: 1 })
-  quantity: number;
+  @Column()
+  category: string;
 
   @Column({ default: 1 })
-  availableQuantity: number;
+  totalCopies: number;
 
-  @Column({ default: 'available' })
-  status: 'available' | 'borrowed';
+  @Column({ default: 1 })
+  availableCopies: number;
+
+  @Column({ nullable: true })
+  location: string; // e.g. "Shelf A-1"
 }

@@ -25,6 +25,46 @@ import { UserRole } from 'src/common/user-role.enum';
 export class LmsController {
   constructor(private readonly lmsService: LmsService) {}
 
+  @Get('courses')
+  findAllCourses() {
+    return this.lmsService.findAllCourses();
+  }
+
+  @Post('courses')
+  @Roles(UserRole.ADMIN, UserRole.TEACHER)
+  createCourse(@Body() data: any) {
+    return this.lmsService.createCourse(data);
+  }
+
+  @Get('courses/:id')
+  findCourseDetails(@Param('id') id: string) {
+    return this.lmsService.findCourseDetails(id);
+  }
+
+  @Post('lessons')
+  @Roles(UserRole.ADMIN, UserRole.TEACHER)
+  createLesson(@Body() data: any) {
+    return this.lmsService.createLesson(data);
+  }
+
+  @Post('assignments')
+  @Roles(UserRole.ADMIN, UserRole.TEACHER)
+  createAssignment(@Body() data: any) {
+    return this.lmsService.createAssignment(data);
+  }
+
+  @Post('assignments/:id/submit')
+  @Roles(UserRole.STUDENT)
+  submitAssignment(@Param('id') id: string, @Body() data: any) {
+    return this.lmsService.submitAssignment({ ...data, assignmentId: id });
+  }
+
+  @Get('assignments/:id/submissions')
+  @Roles(UserRole.ADMIN, UserRole.TEACHER)
+  findSubmissions(@Param('id') id: string) {
+    return this.lmsService.findSubmissions(id);
+  }
+
   @Get('connections')
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   getConnections() {

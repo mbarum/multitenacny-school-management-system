@@ -28,7 +28,7 @@ const LoginPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-canvas flex items-center justify-center p-6 font-sans selection:bg-brand-gold selection:text-surface transition-colors duration-500">
-      {/* Decorative Matrix Background */}
+      {/* Decorative Pattern Background */}
       <div className="absolute inset-0 z-0 opacity-[0.03] pointer-events-none">
         <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_center,var(--color-on-canvas)_1px,transparent_1px)] [background-size:24px_24px]" />
       </div>
@@ -44,7 +44,7 @@ const LoginPage: React.FC = () => {
             <div className="w-16 h-16 bg-primary rounded-xl shadow-lg flex items-center justify-center mb-4 transition-transform group-hover:scale-105">
               <Activity className="w-8 h-8 text-white" />
             </div>
-            <span className="text-2xl font-extrabold tracking-tight text-slate-900 group-hover:text-primary transition-colors">EduStream</span>
+            <span className="text-2xl font-extrabold tracking-tight text-slate-900 group-hover:text-primary transition-colors">SaaSLink Management</span>
           </Link>
           <h1 className="text-3xl font-bold text-slate-900 mt-8 tracking-tight">Welcome Back</h1>
           <p className="text-slate-500 mt-2 text-sm font-medium">Please sign in to your staff portal</p>
@@ -110,8 +110,8 @@ const LoginPage: React.FC = () => {
         </div>
         
         <div className="mt-12 text-center">
-          <Link to="/" className="text-[10px] font-mono font-bold uppercase tracking-[0.6em] text-gray-500 hover:text-on-canvas transition-colors">
-            ROOT_ORIGIN
+          <Link to="/" className="text-[10px] font-mono font-bold uppercase tracking-[0.2em] text-gray-500 hover:text-on-canvas transition-colors">
+            Back to Home
           </Link>
         </div>
       </motion.div>

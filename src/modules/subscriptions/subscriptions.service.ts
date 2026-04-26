@@ -4,7 +4,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import Stripe from 'stripe';
 import { jsPDF } from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 import { Tenant } from '../tenants/entities/tenant.entity';
 import { TenancyService } from 'src/core/tenancy/tenancy.service';
 import { SystemConfigService } from '../config/system-config.service';
@@ -148,7 +148,7 @@ export class SubscriptionsService {
     doc.text(tenant.contactEmail || '', 20, 100);
 
     // Table
-    doc.autoTable({
+    autoTable(doc, {
       startY: 110,
       head: [['Description', 'Amount (KES)']],
       body: [
@@ -161,7 +161,7 @@ export class SubscriptionsService {
     });
 
     // Bank Details
-    const finalY = doc.lastAutoTable.finalY + 20;
+    const finalY = (doc as any).lastAutoTable.finalY + 20;
     doc.setFontSize(14);
     doc.text('Payment Details:', 20, finalY);
     doc.setFontSize(10);

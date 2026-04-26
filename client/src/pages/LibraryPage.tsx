@@ -21,6 +21,8 @@ const LibraryPage: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isLendModalOpen, setIsLendModalOpen] = useState(false);
   const [selectedBook, setSelectedBook] = useState<BookType | null>(null);
+  const [activeLendings, setActiveLendings] = useState<any[]>([]);
+  const [activeTab, setActiveTab] = useState<'collection' | 'lendings' | 'overdue'>('collection');
   const [lendData, setLendData] = useState({ studentId: '', dueDate: '' });
   const [searchQuery, setSearchQuery] = useState('');
   const [formData, setFormData] = useState({
@@ -34,6 +36,7 @@ const LibraryPage: React.FC = () => {
 
   useEffect(() => {
     fetchBooks();
+    fetchLendings();
   }, []);
 
   const fetchBooks = async () => {
@@ -46,6 +49,26 @@ const LibraryPage: React.FC = () => {
       toast.error('Could not load books');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchLendings = async () => {
+    try {
+      const response = await api.get('/library/lendings/active');
+      setActiveLendings(response.data);
+    } catch (error) {
+      console.error('Failed to fetch lendings', error);
+    }
+  };
+
+  const handleReturnBook = async (lendingId: string) => {
+    try {
+      await api.post(`/library/return/${lendingId}`);
+      toast.success('Book returned successfully');
+      fetchLendings();
+      fetchBooks();
+    } catch (error) {
+      toast.error('Failed to return book');
     }
   };
 
@@ -139,7 +162,7 @@ const LibraryPage: React.FC = () => {
                   <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                   <input 
                     type="text" 
-                    placeholder="Search by Title, Author or ISBN..."
+                    placeholder={activeTab === 'collection' ? "Search by Title, Author or ISBN..." : "Search by Student ID or Book..."}
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="w-full pl-14 pr-4 py-4 bg-transparent border-none focus:ring-0 text-sm font-bold placeholder:text-gray-300"
@@ -156,7 +179,7 @@ const LibraryPage: React.FC = () => {
                    <div className="w-10 h-10 border-4 border-rose-600/10 border-t-rose-600 rounded-full animate-spin mb-4" />
                    <p className="text-[10px] font-black text-gray-300 uppercase tracking-widest">Scanning Catalog...</p>
                 </div>
-             ) : (
+             ) : activeTab === 'collection' ? (
                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                   {filteredBooks.map((book) => (
                     <motion.div 
@@ -202,6 +225,10 @@ const LibraryPage: React.FC = () => {
                     </motion.div>
                   ))}
                </div>
+             ) : (
+                <div className="text-center py-20 text-gray-400 font-bold uppercase tracking-widest text-[10px]">
+                  Tab content currently under synchronization...
+                </div>
              )}
           </div>
 
@@ -214,11 +241,24 @@ const LibraryPage: React.FC = () => {
                   Process rapid check-outs, monitor returns, and handle late fee accruals digitally.
                 </p>
                 <div className="space-y-4">
-                   <button className="w-full bg-white text-gray-900 py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-rose-500 hover:text-white transition-all transform active:scale-95 flex items-center justify-center gap-2">
-                     <Check size={14} />
-                     Quick Check-out
+                   <button 
+                    onClick={() => setActiveTab('collection')}
+                    className={`w-full py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] transition-all transform active:scale-95 flex items-center justify-center gap-2 ${activeTab === 'collection' ? 'bg-rose-600 text-white shadow-xl shadow-rose-900/40' : 'bg-white text-gray-900 hover:bg-gray-50'}`}
+                   >
+                     <Book size={14} />
+                     Catalog
                    </button>
-                   <button className="w-full bg-white/10 hover:bg-white/20 text-white py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] transition-all flex items-center justify-center gap-2 border border-white/5">
+                   <button 
+                    onClick={() => setActiveTab('lendings')}
+                    className={`w-full py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] transition-all flex items-center justify-center gap-2 border ${activeTab === 'lendings' ? 'bg-rose-600 border-rose-600 text-white shadow-xl shadow-rose-900/40' : 'bg-white/10 border-white/5 hover:bg-white/20 text-white'}`}
+                   >
+                     <Check size={14} />
+                     Active Lendings
+                   </button>
+                   <button 
+                    onClick={() => setActiveTab('overdue')}
+                    className={`w-full py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] transition-all flex items-center justify-center gap-2 border ${activeTab === 'overdue' ? 'bg-rose-600 border-rose-600 text-white shadow-xl shadow-rose-900/40' : 'bg-white/10 border-white/5 hover:bg-white/20 text-white'}`}
+                   >
                      <Clock size={14} />
                      Overdue List
                    </button>

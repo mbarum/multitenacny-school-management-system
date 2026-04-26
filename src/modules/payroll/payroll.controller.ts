@@ -33,6 +33,49 @@ export class PayrollController {
     return this.payrollService.findAll();
   }
 
+  // Item Definition Management
+  @Get('definitions')
+  findAllDefinitions() {
+    return this.payrollService.findAllItemDefs();
+  }
+
+  @Post('definitions')
+  @Roles(UserRole.ADMIN)
+  createDefinition(@Body() data: any) {
+    return this.payrollService.createItemDef(data);
+  }
+
+  @Delete('definitions/:id')
+  @Roles(UserRole.ADMIN)
+  removeDefinition(@Param('id') id: string) {
+    return this.payrollService.deleteItemDef(id);
+  }
+
+  // Staff Payroll Config
+  @Get('staff/:staffId/config')
+  getStaffConfig(@Param('staffId') staffId: string) {
+    return this.payrollService.getStaffPayrollConfig(staffId);
+  }
+
+  @Post('staff/:staffId/assign/:itemDefId')
+  @Roles(UserRole.ADMIN)
+  assignItem(@Param('staffId') staffId: string, @Param('itemDefId') itemDefId: string, @Body('customValue') customValue?: number) {
+    return this.payrollService.assignItemToStaff(staffId, itemDefId, customValue);
+  }
+
+  @Delete('staff/:staffId/remove/:itemDefId')
+  @Roles(UserRole.ADMIN)
+  removeItem(@Param('staffId') staffId: string, @Param('itemDefId') itemDefId: string) {
+    return this.payrollService.removeItemFromStaff(staffId, itemDefId);
+  }
+
+  // Payroll Generation
+  @Post('generate')
+  @Roles(UserRole.ADMIN)
+  generate(@Body('staffId') staffId: string, @Body('payDate') payDate: string) {
+    return this.payrollService.generatePayrollForStaff(staffId, new Date(payDate));
+  }
+
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.payrollService.findOne(id);

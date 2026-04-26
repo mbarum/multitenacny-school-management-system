@@ -5,6 +5,10 @@ import {
   LmsConnection,
   LmsProviderType,
 } from './entities/lms-connection.entity';
+import { Course } from './entities/course.entity';
+import { Lesson } from './entities/lesson.entity';
+import { Assignment } from './entities/assignment.entity';
+import { Submission } from './entities/submission.entity';
 import { TenancyService } from 'src/core/tenancy/tenancy.service';
 import { CryptoService } from 'src/shared/crypto.service';
 import { ConnectLmsDto } from './dto/connect-lms.dto';
@@ -23,10 +27,87 @@ export class LmsService {
   constructor(
     @InjectRepository(LmsConnection)
     private readonly lmsConnectionRepository: Repository<LmsConnection>,
+    @InjectRepository(Course)
+    private readonly courseRepository: Repository<Course>,
+    @InjectRepository(Lesson)
+    private readonly lessonRepository: Repository<Lesson>,
+    @InjectRepository(Assignment)
+    private readonly assignmentRepository: Repository<Assignment>,
+    @InjectRepository(Submission)
+    private readonly submissionRepository: Repository<Submission>,
     private readonly tenancyService: TenancyService,
     private readonly cryptoService: CryptoService,
     private readonly configService: ConfigService,
   ) {}
+
+  // --- Internal LMS Management ---
+  async findAllCourses(): Promise<Course[]> {
+    return this.courseRepository.find({
+      where: { tenantId: this.tenancyService.getTenantId() },
+      relations: ['classLevel', 'teacher'],
+    });
+  }
+
+  async createCourse(data: Partial<Course>): Promise<Course> {
+    const course = this.courseRepository.create({
+      ...data,
+      tenantId: this.tenancyService.getTenantId(),
+    });
+    return this.courseRepository.save(course);
+  }
+
+  async findCourseDetails(id: string) {
+    const tenantId = this.tenancyService.getTenantId();
+    const course = await this.courseRepository.findOne({
+      where: { id, tenantId },
+      relations: ['classLevel', 'teacher'],
+    });
+    if (!course) throw new NotFoundException('Course not found');
+
+    const lessons = await this.lessonRepository.find({
+      where: { courseId: id, tenantId },
+      order: { order: 'ASC' },
+    });
+
+    const assignments = await this.assignmentRepository.find({
+      where: { courseId: id, tenantId },
+      order: { dueDate: 'ASC' },
+    });
+
+    return { ...course, lessons, assignments };
+  }
+
+  async createLesson(data: Partial<Lesson>): Promise<Lesson> {
+    const lesson = this.lessonRepository.create({
+      ...data,
+      tenantId: this.tenancyService.getTenantId(),
+    });
+    return this.lessonRepository.save(lesson);
+  }
+
+  async createAssignment(data: Partial<Assignment>): Promise<Assignment> {
+    const assignment = this.assignmentRepository.create({
+      ...data,
+      tenantId: this.tenancyService.getTenantId(),
+    });
+    return this.assignmentRepository.save(assignment);
+  }
+
+  async submitAssignment(data: Partial<Submission>): Promise<Submission> {
+    const submission = this.submissionRepository.create({
+      ...data,
+      tenantId: this.tenancyService.getTenantId(),
+      status: 'submitted',
+    });
+    return this.submissionRepository.save(submission);
+  }
+
+  async findSubmissions(assignmentId: string): Promise<Submission[]> {
+    return this.submissionRepository.find({
+      where: { assignmentId, tenantId: this.tenancyService.getTenantId() },
+      relations: ['student'],
+    });
+  }
 
   async connect(connectLmsDto: ConnectLmsDto): Promise<LmsConnection> {
     const tenantId = this.tenancyService.getTenantId();

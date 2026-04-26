@@ -11,7 +11,16 @@ export class Payroll extends TenantAwareEntity {
   staffId: string;
 
   @Column('decimal', { precision: 10, scale: 2 })
-  salary: number;
+  basicSalary: number;
+
+  @Column('decimal', { precision: 10, scale: 2 })
+  grossSalary: number;
+
+  @Column('decimal', { precision: 10, scale: 2 })
+  netSalary: number;
+
+  @Column({ type: 'json', nullable: true })
+  details: any; // Breakdown of allowances and deductions
 
   @Column()
   payDate: Date;

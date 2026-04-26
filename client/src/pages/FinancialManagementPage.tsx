@@ -18,7 +18,8 @@ import {
   Smartphone,
   Eye,
   RefreshCw,
-  AlertCircle
+  AlertCircle,
+  ShieldCheck
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -132,13 +133,13 @@ const FinancialManagementPage = () => {
           <div>
             <div className="flex items-center space-x-2 text-purple-500 mb-3">
               <TrendingUp size={18} />
-              <span className="text-[10px] font-black uppercase tracking-[0.3em]">Institutional Finance</span>
+              <span className="text-[10px] font-black uppercase tracking-[0.3em]">Financial Management</span>
             </div>
             <h1 className="text-6xl font-black tracking-tighter leading-none italic uppercase">
-              Finance <span className="text-purple-500">Control</span>
+              Financial <span className="text-purple-500">Oversight</span>
             </h1>
             <p className="text-gray-400 mt-6 max-w-xl font-medium text-sm leading-relaxed opacity-80 uppercase tracking-wider">
-              Centralized auditing and verification hub for all platform-wide subscription inflows and fiscal reconciliations.
+              Centralized hub for managing school subscriptions, payment verifications, and financial records.
             </p>
           </div>
           
@@ -163,7 +164,7 @@ const FinancialManagementPage = () => {
                    <FileText size={24} />
                 </div>
                 <div>
-                   <h2 className="text-xl font-bold tracking-tight uppercase italic">Ledger <span className="text-purple-500">Audit</span></h2>
+                   <h2 className="text-xl font-bold tracking-tight uppercase italic">Payment <span className="text-purple-500">Ledger</span></h2>
                    <p className="text-[9px] font-black text-gray-500 uppercase tracking-widest mt-1">Transaction History</p>
                 </div>
              </div>
@@ -185,11 +186,11 @@ const FinancialManagementPage = () => {
               <thead>
                 <tr className="bg-black/20">
                   <th className="px-10 py-6 text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">Timestamp</th>
-                  <th className="px-10 py-6 text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">Institutional Client</th>
-                  <th className="px-10 py-6 text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">Fiscal Summary</th>
+                  <th className="px-10 py-6 text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">School Name</th>
+                  <th className="px-10 py-6 text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">Amount & Plan</th>
                   <th className="px-10 py-6 text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">Method</th>
                   <th className="px-10 py-6 text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">Status</th>
-                  <th className="px-10 py-6 text-right text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">Command</th>
+                  <th className="px-10 py-6 text-right text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/[0.03]">
@@ -197,7 +198,7 @@ const FinancialManagementPage = () => {
                    <tr>
                      <td colSpan={6} className="px-10 py-32 text-center">
                         <div className="w-10 h-10 border-4 border-purple-600/20 border-t-purple-600 rounded-full animate-spin mx-auto mb-4" />
-                        <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Validating Chain...</p>
+                        <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Fetching Records...</p>
                      </td>
                    </tr>
                 ) : filteredPayments.length === 0 ? (
@@ -206,8 +207,8 @@ const FinancialManagementPage = () => {
                         <div className="w-16 h-16 bg-gray-950 rounded-full flex items-center justify-center mx-auto mb-6 border border-white/5 text-gray-800">
                            <AlertCircle size={32} />
                         </div>
-                        <p className="text-lg font-bold text-gray-400 capitalize italic mb-1">No transactions localized</p>
-                        <p className="text-[9px] font-black text-gray-600 uppercase tracking-[0.2em]">All accounts are currently in sync</p>
+                        <p className="text-lg font-bold text-gray-400 capitalize italic mb-1">No transactions found</p>
+                        <p className="text-[9px] font-black text-gray-600 uppercase tracking-[0.2em]">All records are up to date</p>
                      </td>
                    </tr>
                 ) : filteredPayments.map((payment) => (
@@ -314,11 +315,11 @@ const FinancialManagementPage = () => {
         <div className="mt-12 flex items-center justify-center space-x-8 text-gray-600">
            <div className="flex items-center space-x-2">
               <ShieldCheck size={14} className="text-purple-500 opacity-50" />
-              <span className="text-[9px] font-black uppercase tracking-[0.3em]">End-to-End Cryptography</span>
+              <span className="text-[9px] font-black uppercase tracking-[0.3em]">Secure Transactions</span>
            </div>
            <div className="flex items-center space-x-2">
               <RefreshCw size={14} className="text-purple-500 opacity-50" />
-              <span className="text-[9px] font-black uppercase tracking-[0.3em]">Audits Synchronized</span>
+              <span className="text-[9px] font-black uppercase tracking-[0.3em]">Data Synchronized</span>
            </div>
         </div>
       </div>

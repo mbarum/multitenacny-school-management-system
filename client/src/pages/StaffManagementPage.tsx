@@ -24,6 +24,7 @@ const StaffManagementPage: React.FC = () => {
     role: 'Teacher',
     employeeId: '',
     photoUrl: '',
+    basicSalary: 0,
   });
 
   const [isCameraActive, setIsCameraActive] = useState(false);
@@ -102,7 +103,7 @@ const StaffManagementPage: React.FC = () => {
     try {
       await api.post('/staff', formData);
       setIsAdding(false);
-      setFormData({ firstName: '', lastName: '', email: '', role: 'Teacher', employeeId: '', photoUrl: '' });
+      setFormData({ firstName: '', lastName: '', email: '', role: 'Teacher', employeeId: '', photoUrl: '', basicSalary: 0 });
       fetchStaff();
       toast.success('Staff added successfully');
     } catch (error) {
@@ -236,6 +237,16 @@ const StaffManagementPage: React.FC = () => {
                     className="w-full bg-white border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-black outline-none transition-all"
                     value={formData.employeeId}
                     onChange={(e) => setFormData({ ...formData, employeeId: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Basic Salary (KES)</label>
+                  <input
+                    type="number"
+                    required
+                    className="w-full bg-white border-2 border-gray-200 rounded-xl px-4 py-3 focus:border-black outline-none transition-all"
+                    value={formData.basicSalary}
+                    onChange={(e) => setFormData({ ...formData, basicSalary: Number(e.target.value) })}
                   />
                 </div>
                 <div className="flex items-end">

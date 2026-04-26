@@ -22,17 +22,17 @@ import {
 import api from '../services/api';
 
 const steps = [
-  { id: 1, title: 'Node Info', icon: <School className="w-4 h-4" /> },
-  { id: 2, title: 'Identity', icon: <User className="w-4 h-4" /> },
-  { id: 3, title: 'Protocol', icon: <Zap className="w-4 h-4" /> },
+  { id: 1, title: 'School Info', icon: <School className="w-4 h-4" /> },
+  { id: 2, title: 'Administrator', icon: <User className="w-4 h-4" /> },
+  { id: 3, title: 'Subscription', icon: <Zap className="w-4 h-4" /> },
   { id: 4, title: 'Verify', icon: <CheckCircle2 className="w-4 h-4" /> }
 ];
 
 const plans = [
-  { id: 'free', name: 'Free', monthlyPrice: 0, annualPrice: 0, desc: 'Entry level academic ledger.' },
-  { id: 'basic', name: 'Basic', monthlyPrice: 1000, annualPrice: 10000, desc: 'Full campus orchestration.' },
-  { id: 'standard', name: 'Standard', monthlyPrice: 2000, annualPrice: 20000, desc: 'Multi-campus synchronization.' },
-  { id: 'premium', name: 'Premium', monthlyPrice: 3500, annualPrice: 35000, desc: 'Full-stack academic matrix.' }
+  { id: 'free', name: 'Free', monthlyPrice: 0, annualPrice: 0, desc: 'Essential school management tools.' },
+  { id: 'basic', name: 'Basic', monthlyPrice: 1000, annualPrice: 10000, desc: 'Complete school management solution.' },
+  { id: 'standard', name: 'Standard', monthlyPrice: 2000, annualPrice: 20000, desc: 'Multi-campus management and reporting.' },
+  { id: 'premium', name: 'Premium', monthlyPrice: 3500, annualPrice: 35000, desc: 'Comprehensive enterprise-grade system.' }
 ];
 
 const RegisterPage: React.FC = () => {
@@ -93,7 +93,7 @@ const RegisterPage: React.FC = () => {
               plan: formData.plan,
               billingCycle: formData.billingCycle
             });
-            toast.success('System Provisioning: Authorizing STK Push...');
+            toast.success('Payment Initiation: Please check your phone for the M-Pesa prompt.');
           } else if (formData.paymentMethod === 'stripe') {
             // For stripe, we usually need to redirect to checkout
             // But since this is part of registration, we might want to handle it differently
@@ -123,11 +123,11 @@ const RegisterPage: React.FC = () => {
         }
       }
 
-      toast.success('Identity Verified. Node Deployment Complete.');
+      toast.success('Registration Successful. Your school system is ready.');
       navigate('/dashboard');
     } catch (err: any) {
       console.error('Registration failed', err);
-      setError(err.response?.data?.message || 'Deployment Error: Identification failed.');
+      setError(err.response?.data?.message || 'Registration Error: Identification failed.');
       setLoading(false);
     }
   };
@@ -144,7 +144,7 @@ const RegisterPage: React.FC = () => {
             <div className="w-12 h-12 bg-primary rounded-xl flex items-center justify-center transition-transform group-hover:scale-105 shadow-lg shadow-primary/20">
                <GraduationCap className="text-white" size={28} />
             </div>
-            <span className="text-2xl font-extrabold tracking-tight text-slate-900 group-hover:text-primary transition-colors">EduStream</span>
+            <span className="text-2xl font-extrabold tracking-tight text-slate-900 group-hover:text-primary transition-colors">SaaSLink Management</span>
           </Link>
 
           {/* Stepper */}
@@ -212,7 +212,7 @@ const RegisterPage: React.FC = () => {
                         value={formData.domain}
                         onChange={(e) => setFormData({...formData, domain: e.target.value})}
                       />
-                      <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold tracking-tight">.edustream.io</span>
+                      <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold tracking-tight">.saaslink.io</span>
                     </div>
                   </div>
                 </div>
@@ -362,7 +362,7 @@ const RegisterPage: React.FC = () => {
                               value={formData.phone}
                               onChange={(e) => setFormData({...formData, phone: e.target.value})}
                             />
-                            <p className="text-[9px] text-slate-500 font-medium italic mt-2">System will trigger a prompt to your handset.</p>
+                            <p className="text-[9px] text-slate-500 font-medium italic mt-2">You will receive an M-Pesa prompt on your phone.</p>
                           </motion.div>
                         )}
 
@@ -394,7 +394,7 @@ const RegisterPage: React.FC = () => {
                       <CheckCircle2 className="text-emerald-500 mx-auto mb-4" size={32} />
                       <h4 className="text-emerald-800 font-bold mb-1">Free Tier Selected</h4>
                       <p className="text-emerald-700/60 text-[11px] font-medium leading-relaxed italic">
-                        "Start building your academic digital twin instantly - no credit card required."
+                        "Start building your digital school foundation instantly - no credit card required."
                       </p>
                     </div>
                   )}
@@ -439,7 +439,7 @@ const RegisterPage: React.FC = () => {
                   disabled={loading}
                   className="flex-1 md:flex-none bg-primary text-white px-10 py-4 rounded-xl font-bold uppercase tracking-widest text-[10px] hover:bg-primary-dark transition-all flex items-center justify-center space-x-3 shadow-xl shadow-primary/20 disabled:opacity-50 active:scale-[0.98]"
                 >
-                  <span>{loading ? 'Processing...' : 'Complete Activation'}</span>
+                  <span>{loading ? 'Processing...' : 'Complete Registration'}</span>
                   {!loading && <Zap size={16} className="fill-current" />}
                 </button>
               )}

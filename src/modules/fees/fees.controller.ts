@@ -24,6 +24,68 @@ export class FeesController {
     return this.feesService.findAll();
   }
 
+  @Get('items')
+  findAllItems() {
+    return this.feesService.findAllFeeItems();
+  }
+
+  @Post('items')
+  @Roles(UserRole.ADMIN)
+  createItem(@Body() data: any) {
+    return this.feesService.createFeeItem(data);
+  }
+
+  @Delete('items/:id')
+  @Roles(UserRole.ADMIN)
+  removeItem(@Param('id') id: string) {
+    return this.feesService.removeFeeItem(id);
+  }
+
+  @Get('structures')
+  findAllStructures() {
+    return this.feesService.findAllFeeStructures();
+  }
+
+  @Post('structures')
+  @Roles(UserRole.ADMIN)
+  createStructure(@Body() data: any) {
+    return this.feesService.createFeeStructure(data);
+  }
+
+  @Delete('structures/:id')
+  @Roles(UserRole.ADMIN)
+  removeStructure(@Param('id') id: string) {
+    return this.feesService.removeFeeStructure(id);
+  }
+
+  @Get('invoices')
+  findAllInvoices() {
+    return this.feesService.findAllInvoices();
+  }
+
+  @Post('invoices/generate')
+  @Roles(UserRole.ADMIN)
+  generateInvoices(@Body() data: { classLevelId: string; term: string; dueDate: string }) {
+    return this.feesService.generateInvoicesForClass(data.classLevelId, data.term, new Date(data.dueDate));
+  }
+
+  @Post('payments/manual')
+  @Roles(UserRole.ADMIN)
+  recordManualPayment(@Body() data: { invoiceId: string; amount: number; method: string; reference: string }) {
+    return this.feesService.recordManualPayment(data.invoiceId, data.amount, data.method, data.reference);
+  }
+
+  @Get('waivers')
+  findAllWaivers() {
+    return this.feesService.findAllWaivers();
+  }
+
+  @Post('waivers')
+  @Roles(UserRole.ADMIN)
+  createWaiver(@Body() data: any) {
+    return this.feesService.createWaiver(data);
+  }
+
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.feesService.findOne(id);
