@@ -70,13 +70,64 @@ const LmsPage: React.FC = () => {
     thumbnailUrl: ''
   });
 
+  const handleThumbnailUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const uploadToast = toast.loading('Uploading course thumbnail...');
+      try {
+        const formDataUpload = new FormData();
+        formDataUpload.append('file', file);
+        formDataUpload.append('folder', 'courses');
+
+        const response = await api.post('/media/upload', formDataUpload, {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        });
+
+        const { url } = response.data;
+        setCourseForm(prev => ({ ...prev, thumbnailUrl: url }));
+        toast.success('Thumbnail uploaded', { id: uploadToast });
+      } catch (error) {
+        console.error('Upload failed', error);
+        toast.error('Failed to upload thumbnail', { id: uploadToast });
+      }
+    }
+  };
+
   const [lessonForm, setLessonForm] = useState({
     title: '',
     content: '',
     videoUrl: '',
+    attachmentUrl: '',
     courseId: '',
     order: 0
   });
+
+  const handleLessonFileHeight = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const uploadToast = toast.loading('Uploading lesson material...');
+      try {
+        const formDataUpload = new FormData();
+        formDataUpload.append('file', file);
+        formDataUpload.append('folder', 'lessons');
+
+        const response = await api.post('/media/upload', formDataUpload, {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        });
+
+        const { url } = response.data;
+        setLessonForm(prev => ({ ...prev, attachmentUrl: url }));
+        toast.success('Material uploaded', { id: uploadToast });
+      } catch (error) {
+        console.error('Upload failed', error);
+        toast.error('Failed to upload material', { id: uploadToast });
+      }
+    }
+  };
 
   const [assignmentForm, setAssignmentForm] = useState({
     title: '',
@@ -417,6 +468,18 @@ const LmsPage: React.FC = () => {
                         <input required value={courseForm.title} onChange={(e) => setCourseForm({...courseForm, title: e.target.value})} className="w-full bg-gray-50 border-none rounded-2xl px-6 py-4 focus:ring-2 focus:ring-indigo-600 font-bold text-gray-900 transition-all outline-none" placeholder="e.g. Advanced Physics" />
                     </div>
                     <div className="col-span-2">
+                        <label className="block text-[11px] font-black text-gray-400 uppercase tracking-widest mb-3 italic">Course Thumbnail</label>
+                        <div className="flex items-center gap-4">
+                            {courseForm.thumbnailUrl && (
+                                <img src={courseForm.thumbnailUrl} alt="Preview" className="w-16 h-16 rounded-xl object-cover border border-gray-100" />
+                            )}
+                            <label className="flex-1">
+                                <span className="sr-only">Choose thumbnail</span>
+                                <input type="file" accept="image/*" onChange={handleThumbnailUpload} className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-black file:bg-indigo-50 file:text-indigo-600 hover:file:bg-indigo-100 transition-all cursor-pointer" />
+                            </label>
+                        </div>
+                    </div>
+                    <div className="col-span-2">
                         <label className="block text-[11px] font-black text-gray-400 uppercase tracking-widest mb-3 italic">Description</label>
                         <textarea value={courseForm.description} onChange={(e) => setCourseForm({...courseForm, description: e.target.value})} className="w-full bg-gray-50 border-none rounded-2xl px-6 py-4 focus:ring-2 focus:ring-indigo-600 font-bold text-gray-900 transition-all outline-none resize-none h-24" placeholder="Course syllabus overview..." />
                     </div>
@@ -458,6 +521,15 @@ const LmsPage: React.FC = () => {
                         <div className="relative">
                             <ExternalLink size={14} className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-400" />
                             <input value={lessonForm.videoUrl} onChange={(e) => setLessonForm({...lessonForm, videoUrl: e.target.value})} className="w-full pl-14 bg-gray-50 border-none rounded-2xl px-6 py-4 focus:ring-2 focus:ring-indigo-600 font-bold text-gray-900 outline-none  text-xs italic" placeholder="YouTube/Vimeo Embed Link" />
+                        </div>
+                    </div>
+                    <div>
+                        <label className="block text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-3 italic">Lesson Attachment (PDF/Doc)</label>
+                        <div className="flex items-center gap-4">
+                            {lessonForm.attachmentUrl && (
+                                <div className="text-[10px] font-black text-emerald-600 uppercase">Attached</div>
+                            )}
+                            <input type="file" onChange={handleLessonFileHeight} className="block w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-[10px] file:font-black file:bg-gray-100 file:text-gray-600 hover:file:bg-gray-200 transition-all cursor-pointer" />
                         </div>
                     </div>
                     <div>

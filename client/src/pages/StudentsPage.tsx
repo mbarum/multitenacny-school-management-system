@@ -155,21 +155,58 @@ const StudentsPage: React.FC = () => {
       const ctx = canvas.getContext('2d');
       if (ctx) {
         ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
-        const dataUrl = canvas.toDataURL('image/png');
-        setFormData(prev => ({ ...prev, photoUrl: dataUrl }));
-        stopCamera();
+        
+        canvas.toBlob(async (blob) => {
+          if (blob) {
+            const uploadToast = toast.loading('Saving photo...');
+            try {
+              const file = new File([blob], `capture_${Date.now()}.png`, { type: 'image/png' });
+              const formData = new FormData();
+              formData.append('file', file);
+              formData.append('folder', 'students');
+
+              const response = await api.post('/media/upload', formData, {
+                headers: {
+                  'Content-Type': 'multipart/form-data',
+                },
+              });
+
+              const { url } = response.data;
+              setFormData(prev => ({ ...prev, photoUrl: url }));
+              toast.success('Photo saved to cloud', { id: uploadToast });
+              stopCamera();
+            } catch (error) {
+              console.error('Upload failed', error);
+              toast.error('Failed to save captured photo', { id: uploadToast });
+            }
+          }
+        }, 'image/png');
       }
     }
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setFormData(prev => ({ ...prev, photoUrl: reader.result as string }));
-      };
-      reader.readAsDataURL(file);
+      const uploadToast = toast.loading('Uploading photo...');
+      try {
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('folder', 'students');
+
+        const response = await api.post('/media/upload', formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        });
+
+        const { url } = response.data;
+        setFormData(prev => ({ ...prev, photoUrl: url }));
+        toast.success('Photo uploaded successfully', { id: uploadToast });
+      } catch (error) {
+        console.error('Upload failed', error);
+        toast.error('Failed to upload photo to cloud storage', { id: uploadToast });
+      }
     }
   };
 
@@ -349,11 +386,13 @@ const StudentsPage: React.FC = () => {
         dateOfBirth: formData.dateOfBirth || undefined,
       };
 
+      console.log('[StudentsPage] Submitting student:', payload);
+
       if (editingStudent) {
-        await api.patch(`/students/${editingStudent.id}`, payload);
+        await api.patch(`students/${editingStudent.id}`, payload);
         toast.success('Student updated successfully');
       } else {
-        await api.post('/students', payload);
+        await api.post('students', payload);
         toast.success('Student added successfully');
       }
       handleCloseModal();

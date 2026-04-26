@@ -13,14 +13,24 @@ import { ReportCard } from '../report-cards/entities/report-card.entity';
 import { CalendarEvent } from '../calendar/entities/calendar-event.entity';
 import { Subject } from '../academics/entities/subject.entity';
 import { Examination } from '../examinations/entities/examination.entity';
+import { MediaModule } from '../media/media.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([
-      Fee, Expense, Attendance, Student, TimetableEntry, ReportCard, CalendarEvent, Subject, Examination
+      Fee,
+      Expense,
+      Attendance,
+      Student,
+      TimetableEntry,
+      ReportCard,
+      CalendarEvent,
+      Subject,
+      Examination,
     ]),
     TenancyModule,
     UsersModule,
+    MediaModule,
   ],
   controllers: [ReportingController],
   providers: [ReportingService],

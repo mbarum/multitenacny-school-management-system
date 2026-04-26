@@ -52,7 +52,7 @@ const DashboardPage: React.FC = () => {
 
   const fetchStats = async () => {
     try {
-      const response = await api.get('/reporting/dashboard-stats');
+      const response = await api.get('reporting/dashboard-stats');
       setStats(response.data);
     } catch (error) {
       console.error('Failed to fetch dashboard stats', error);
@@ -63,7 +63,7 @@ const DashboardPage: React.FC = () => {
 
   const fetchAnnouncements = async () => {
     try {
-      const response = await api.get('/communication/announcements');
+      const response = await api.get('communication/announcements');
       setAnnouncements(response.data);
     } catch (error) {
       console.error('Failed to fetch announcements', error);

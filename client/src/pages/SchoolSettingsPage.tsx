@@ -111,8 +111,12 @@ const SchoolSettingsPage: React.FC = () => {
 
   if (loading) {
     return <div className="flex items-center justify-center min-h-[400px]">
-      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-green"></div>
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
     </div>;
+  }
+
+  if (!schoolData) {
+     return <div className="p-8 text-center bg-red-50 text-red-600 rounded-xl">Failed to load institutional data. Please refresh.</div>
   }
 
   return (

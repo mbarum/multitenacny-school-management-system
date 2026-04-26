@@ -13,6 +13,9 @@ export class Lesson extends TenantAwareEntity {
   @Column({ nullable: true })
   videoUrl: string;
 
+  @Column({ nullable: true })
+  attachmentUrl: string;
+
   @Column()
   courseId: string;
 

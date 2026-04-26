@@ -11,6 +11,7 @@ import { CalendarEvent } from '../calendar/entities/calendar-event.entity';
 import { Subject } from '../academics/entities/subject.entity';
 import { Examination } from '../examinations/entities/examination.entity';
 import { TenancyService } from 'src/core/tenancy/tenancy.service';
+import { MediaService } from '../media/media.service';
 import * as ExcelJS from 'exceljs';
 
 @Injectable()
@@ -35,6 +36,7 @@ export class ReportingService {
     @InjectRepository(Examination)
     private readonly examinationRepository: Repository<Examination>,
     private readonly tenancyService: TenancyService,
+    private readonly mediaService: MediaService,
   ) {}
 
   async generateFinancialReport(startDate: Date, endDate: Date) {
@@ -66,19 +68,19 @@ export class ReportingService {
 
   async generateAcademicReport(classLevelId: string) {
     const tenantId = this.tenancyService.getTenantId();
-    
+
     // First find students in this class level
     const students = await this.studentRepository.find({
-      where: { tenantId, classLevelId }
+      where: { tenantId, classLevelId },
     });
-    
-    const studentIds = students.map(s => s.id);
-    
+
+    const studentIds = students.map((s) => s.id);
+
     if (studentIds.length === 0) {
       return {
         subjectAverages: [],
         gradeDistribution: [],
-        totalStudents: 0
+        totalStudents: 0,
       };
     }
 
@@ -172,6 +174,17 @@ export class ReportingService {
     worksheet.addRow({ type: 'NET PROFIT', amount: report.netProfit });
 
     return (await workbook.xlsx.writeBuffer()) as unknown as Buffer;
+  }
+
+  async exportFinancialsToCloud(startDate: Date, endDate: Date): Promise<string> {
+    const buffer = await this.exportFinancialsToExcel(startDate, endDate);
+    const fileName = `financial_report_${startDate.toISOString().split('T')[0]}_to_${endDate.toISOString().split('T')[0]}.xlsx`;
+    return this.mediaService.uploadBuffer(
+      buffer,
+      fileName,
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'exports/financials',
+    );
   }
 
   async generateAttendanceReport(classLevelId: string) {

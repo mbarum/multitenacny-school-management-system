@@ -54,6 +54,19 @@ export class ReportingController {
     res.end(buffer);
   }
 
+  @Get('financials/cloud-export')
+  @Permissions('reporting.financials.export')
+  async exportFinancialsCloud(
+    @Query('startDate') startDate: string,
+    @Query('endDate') endDate: string,
+  ) {
+    const url = await this.reportingService.exportFinancialsToCloud(
+      new Date(startDate),
+      new Date(endDate),
+    );
+    return { url };
+  }
+
   @Get('attendance')
   @Permissions('reporting.attendance')
   getAttendanceReport(@Query('classLevelId') classLevelId: string) {

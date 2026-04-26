@@ -40,6 +40,7 @@ import { AuditInterceptor } from './core/interceptors/audit.interceptor';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { CbeModule } from './modules/cbe/cbe.module';
 import { JobsModule } from './modules/jobs/jobs.module';
+import { MediaModule } from './modules/media/media.module';
 
 import { TenantThrottlerGuard } from './core/guards/tenant-throttler.guard';
 
@@ -199,6 +200,7 @@ import { TenantThrottlerGuard } from './core/guards/tenant-throttler.guard';
 
     CbeModule,
     JobsModule,
+    MediaModule,
   ],
   controllers: [], // Root controllers are removed for modularity
   providers: [

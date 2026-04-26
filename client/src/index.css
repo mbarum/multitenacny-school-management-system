@@ -12,6 +12,10 @@
   --color-primary-light: #4D8F88;
   --color-secondary: #64748B;
   
+  --color-brand-green: #3C716C;
+  --color-brand-sand: #F5F1E9;
+  --color-brand-white: #FFFFFF;
+  
   --color-canvas: var(--canvas-bg);
   --color-surface: var(--surface-bg);
   --color-on-surface: var(--surface-text);
