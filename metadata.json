@@ -1,5 +1,6 @@
 {
-  "name": "EduStream School Management System",
-  "description": "A robust multi-tenant school management system with professional academic management, financial tracking, and LMS integration.",
-  "requestFramePermissions": []
+  "name": "Standardized API Responses and Exceptions",
+  "description": "Global Standardized Response Interceptor and Exception Filter Playground designed with Express, React and Tailwind CSS.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }
