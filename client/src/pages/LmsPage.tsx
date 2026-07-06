@@ -236,27 +236,27 @@ const LmsPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-white">
       <div className="max-w-7xl mx-auto px-8 py-12">
-        <header className="flex flex-col md:flex-row md:items-center justify-between gap-8 mb-16">
+        <header className="flex flex-col md:flex-row md:items-center justify-between gap-8 mb-12">
           <div>
-            <div className="flex items-center space-x-2 text-indigo-600 mb-2">
-              <Globe size={16} className="animate-spin-slow" />
-              <span className="text-[10px] font-black uppercase tracking-[0.2em]">Learning Ecosystem</span>
+            <div className="flex items-center space-x-2 text-primary mb-2">
+              <Globe size={16} />
+              <span className="text-[10px] font-bold uppercase tracking-wider">Course Management</span>
             </div>
-            <h1 className="text-5xl font-black text-gray-900 uppercase tracking-tighter leading-tight italic">
-              Virtual <span className="text-indigo-600">Classroom</span>
+            <h1 className="text-4xl font-bold text-gray-900 tracking-tight">
+              Virtual Classroom
             </h1>
-            <div className="flex bg-gray-100 p-1 rounded-2xl w-fit mt-6 border border-gray-100">
+            <div className="flex bg-gray-100 p-1 rounded-xl w-fit mt-6 border border-gray-100">
               <button 
                 onClick={() => { setActiveView('internal'); setSelectedCourse(null); }}
-                className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeView === 'internal' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
+                className={`px-6 py-2 rounded-lg text-xs font-semibold transition-all ${activeView === 'internal' ? 'bg-white text-primary shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
               >
                 School Courses
               </button>
               <button 
                 onClick={() => setActiveView('external')}
-                className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeView === 'external' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
+                className={`px-6 py-2 rounded-lg text-xs font-semibold transition-all ${activeView === 'external' ? 'bg-white text-primary shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
               >
-                External Sync
+                LMS Sync
               </button>
             </div>
           </div>
@@ -265,7 +265,7 @@ const LmsPage: React.FC = () => {
             {activeView === 'internal' && !selectedCourse && (
               <button
                 onClick={() => setIsCourseModalOpen(true)}
-                className="px-8 py-4 bg-indigo-600 text-white rounded-3xl font-black uppercase tracking-widest text-[10px] shadow-2xl shadow-indigo-100 hover:bg-indigo-700 transition-all flex items-center gap-3"
+                className="px-6 py-3 bg-primary text-white rounded-xl font-bold text-xs shadow-sm hover:bg-primary-dark transition-all flex items-center gap-2"
               >
                 <Plus size={16} />
                 Create Course
@@ -274,7 +274,7 @@ const LmsPage: React.FC = () => {
             {activeView === 'external' && (
               <button
                 onClick={() => setIsModalOpen(true)}
-                className="px-8 py-4 bg-gray-900 text-white rounded-3xl font-black uppercase tracking-widest text-[10px] shadow-2xl shadow-gray-200 hover:bg-black transition-all flex items-center gap-3"
+                className="px-6 py-3 bg-slate-900 text-white rounded-xl font-bold text-xs shadow-sm hover:bg-black transition-all flex items-center gap-2"
               >
                 <Cloud size={16} />
                 Connect LMS
@@ -295,22 +295,22 @@ const LmsPage: React.FC = () => {
                 {providers.map(p => {
                   const conn = connections.find(c => c.provider === p.id);
                   return (
-                    <div key={p.id} className={`p-8 rounded-[3rem] border-2 transition-all relative overflow-hidden group ${conn?.isConnected ? 'border-indigo-600 bg-indigo-50/10' : 'border-gray-50 bg-gray-50/30'}`}>
+                    <div key={p.id} className={`p-6 rounded-2xl border transition-all relative overflow-hidden group ${conn?.isConnected ? 'border-primary bg-primary/5' : 'border-gray-100 bg-gray-50/50'}`}>
                       <div className="relative z-10">
-                        <div className={`w-14 h-14 ${p.color} text-white rounded-2xl flex items-center justify-center mb-6 shadow-xl`}>
+                        <div className={`w-12 h-12 ${p.color} text-white rounded-xl flex items-center justify-center mb-5 shadow-sm`}>
                             {p.icon}
                         </div>
-                        <h3 className="text-2xl font-black text-gray-900 mb-2 tracking-tight uppercase italic">{p.name}</h3>
-                        <p className="text-gray-400 text-xs font-medium leading-relaxed mb-8 uppercase tracking-wider">{p.desc}</p>
+                        <h3 className="text-xl font-bold text-gray-900 mb-2">{p.name}</h3>
+                        <p className="text-gray-500 text-xs leading-relaxed mb-6">{p.desc}</p>
                         
                         {conn?.isConnected ? (
-                            <div className="space-y-4">
-                                <div className="flex items-center space-x-2 text-green-600 text-[10px] font-black uppercase tracking-widest">
+                            <div className="space-y-3">
+                                <div className="flex items-center space-x-2 text-emerald-600 text-[10px] font-bold uppercase tracking-wider">
                                     <ShieldCheck size={14} />
-                                    <span>Status: Synced & Active</span>
+                                    <span>Status: Connected</span>
                                 </div>
-                                <button className="flex items-center space-x-2 text-indigo-600 text-[10px] font-black uppercase tracking-widest hover:translate-x-1 transition-transform">
-                                    <span>Integration Settings</span>
+                                <button className="flex items-center space-x-2 text-primary text-[10px] font-bold uppercase tracking-wider hover:translate-x-1 transition-transform">
+                                    <span>Settings</span>
                                     <ArrowRight size={14} />
                                 </button>
                             </div>
@@ -320,7 +320,7 @@ const LmsPage: React.FC = () => {
                                  setFormData({...formData, provider: p.id});
                                  setIsModalOpen(true);
                              }}
-                             className="px-6 py-3 bg-white border border-gray-200 text-gray-900 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:border-indigo-600 hover:text-indigo-600 transition-all font-bold shadow-sm"
+                             className="px-4 py-2 bg-white border border-gray-200 text-gray-900 rounded-lg text-xs font-semibold hover:border-primary hover:text-primary transition-all"
                             >
                                 Set up Connection
                             </button>

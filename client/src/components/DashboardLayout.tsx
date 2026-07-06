@@ -65,7 +65,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
   const filteredItems = menuItems.filter(item => item.roles.includes(user?.role as UserRole));
 
   return (
-    <div className="min-h-screen bg-slate-50 flex font-sans text-slate-900 selection:bg-primary/20 transition-colors duration-200">
+    <div className="min-h-screen bg-brand-page-bg flex font-body text-brand-charcoal selection:bg-brand-green/20 transition-colors duration-200">
       {/* Mobile Overlay */}
       <AnimatePresence>
         {isSidebarOpen && (
@@ -74,40 +74,40 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={() => setIsSidebarOpen(false)}
-            className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[90] lg:hidden"
+            className="fixed inset-0 bg-brand-green-dark/60 backdrop-blur-sm z-[90] lg:hidden"
           />
         )}
       </AnimatePresence>
 
       {/* Sidebar */}
       <aside className={`
-        fixed lg:static inset-y-0 left-0 z-[100] w-64 bg-surface border-r border-border-muted flex flex-col transform transition-transform duration-300 ease-in-out
+        fixed lg:static inset-y-0 left-0 z-[100] w-64 bg-brand-green-dark flex flex-col transform transition-transform duration-300 ease-in-out
         ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
       `}>
-        <div className="p-6">
+        <div className="h-14 flex items-center px-6 bg-brand-green">
           <Link to="/" className="flex items-center space-x-3 group">
-            <div className="w-9 h-9 rounded-lg bg-primary flex items-center justify-center shadow-lg shadow-primary/20">
+            <div className="w-8 h-8 rounded bg-brand-gold flex items-center justify-center">
                <GraduationCap className="text-white" size={20} />
             </div>
-            <span className="text-lg font-bold tracking-tight text-on-surface">SaaSLink</span>
+            <span className="text-lg font-display font-extrabold tracking-tight text-white">SaaSLink</span>
           </Link>
         </div>
 
-        <nav className="flex-1 px-3 space-y-1 overflow-y-auto pt-2 custom-scrollbar">
-          <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest px-4 mb-2">Management</div>
+        <nav className="flex-1 px-0 py-4 space-y-0.5 overflow-y-auto custom-scrollbar">
+          <div className="text-[11px] font-medium text-white/40 uppercase tracking-[0.1em] px-6 mb-3">Management</div>
           {filteredItems.map((item) => {
             const isActive = location.pathname === item.path;
             return (
               <Link
                 key={item.path}
                 to={item.path}
-                className={`flex items-center px-4 py-2.5 rounded-lg text-sm font-medium transition-all group ${
+                className={`flex items-center px-6 py-3 text-[13px] font-medium transition-all group border-l-4 ${
                   isActive 
-                    ? 'bg-primary/10 text-primary' 
-                    : 'text-slate-500 hover:text-on-surface hover:bg-slate-100 dark:hover:bg-slate-800'
+                    ? 'bg-white/5 text-white border-l-brand-gold' 
+                    : 'text-white/60 hover:text-white hover:bg-white/5 border-l-transparent'
                 }`}
               >
-                <span className={`mr-3 transition-colors ${isActive ? 'text-primary' : 'text-slate-400 group-hover:text-slate-600'}`}>
+                <span className={`mr-3 transition-colors ${isActive ? 'text-brand-gold' : 'text-white/40 group-hover:text-white/60'}`}>
                    {React.cloneElement(item.icon as React.ReactElement, { size: 18 })}
                 </span>
                 {item.label}
@@ -116,97 +116,84 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
           })}
 
           {isSuperAdmin && (
-            <div className="mt-6 pt-6 border-t border-border-muted">
-               <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest px-4 mb-2">Platform</div>
+            <div className="mt-6 pt-6 border-t border-white/10">
+               <div className="text-[11px] font-medium text-white/40 uppercase tracking-[0.1em] px-6 mb-3">Platform</div>
                <Link
                 to="/super-admin/tenants"
-                className={`flex items-center px-4 py-2.5 rounded-lg text-sm font-medium transition-all group ${
+                className={`flex items-center px-6 py-3 text-[13px] font-medium transition-all group border-l-4 ${
                   location.pathname.includes('/super-admin/tenants') 
-                    ? 'bg-primary/10 text-primary' 
-                    : 'text-slate-500 hover:text-on-surface hover:bg-slate-100 dark:hover:bg-slate-800'
+                    ? 'bg-white/5 text-white border-l-brand-gold' 
+                    : 'text-white/60 hover:text-white hover:bg-white/5 border-l-transparent'
                 }`}
               >
-                <ShieldAlert size={18} className="mr-3" />
+                <ShieldAlert size={18} className="mr-3 text-white/40 group-hover:text-white/60" />
                 Institutions
                </Link>
             </div>
           )}
         </nav>
 
-        <div className="p-4 mt-auto">
-          <div className="bg-slate-50 dark:bg-slate-900/50 rounded-xl p-4 border border-border-muted shadow-sm">
-             <div className="flex items-center space-x-3 mb-4">
-                <div className="w-8 h-8 rounded-lg bg-surface border border-border-muted flex items-center justify-center text-on-surface font-bold text-sm shadow-sm">
-                   {user?.username?.charAt(0).toUpperCase()}
-                </div>
-                <div className="flex-1 min-w-0">
-                   <p className="text-xs font-semibold text-on-surface truncate">{user?.username}</p>
-                   <p className="text-[10px] text-slate-400 font-medium truncate">{user?.email}</p>
-                </div>
+        <div className="p-4 border-t border-white/10">
+          <div className="flex items-center space-x-3 p-2">
+             <div className="w-8 h-8 rounded-full bg-brand-green-tint flex items-center justify-center text-brand-green-dark font-display font-bold text-sm">
+                {user?.username?.charAt(0).toUpperCase()}
              </div>
-             <button 
-              onClick={logout} 
-              className="flex items-center w-full px-3 py-1.5 text-slate-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-lg text-[11px] font-semibold transition-all"
-             >
-                <LogOut size={14} className="mr-2" />
-                Sign Out
-             </button>
+             <div className="flex-1 min-w-0">
+                <p className="text-xs font-medium text-white truncate">{user?.username}</p>
+                <p className="text-[10px] text-white/40 truncate">{user?.email}</p>
+             </div>
           </div>
+          <button 
+            onClick={logout} 
+            className="flex items-center w-full mt-2 px-3 py-2 text-white/50 hover:text-white hover:bg-white/5 rounded-lg text-[12px] font-medium transition-all"
+          >
+             <LogOut size={14} className="mr-2" />
+             Sign out
+          </button>
         </div>
       </aside>
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Top Header */}
-        <header className="h-16 bg-surface/80 backdrop-blur-md border-b border-border-muted flex items-center justify-between px-6 sticky top-0 z-40">
+        <header className="h-14 bg-white border-b border-brand-border flex items-center justify-between px-6 sticky top-0 z-40">
           <div className="flex items-center flex-1">
             <button 
                onClick={() => setIsSidebarOpen(true)}
-               className="lg:hidden p-2 rounded-lg bg-slate-50 border border-border-muted text-slate-600 mr-4 shadow-sm"
+               className="lg:hidden p-2 rounded-lg bg-brand-green-tint text-brand-green mr-4"
             >
                <Menu size={18} />
             </button>
             
             <div className="relative max-w-sm w-full hidden md:block">
-               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-brand-charcoal/40" size={16} />
                <input 
                 type="text" 
-                placeholder="Search..." 
-                className="w-full pl-10 pr-4 py-2 bg-slate-50/50 border border-border-muted rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all shadow-sm"
+                placeholder="Search resources..." 
+                className="h-10 w-full pl-10 pr-4 bg-brand-page-bg border border-brand-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-brand-green transition-all"
                />
             </div>
           </div>
 
-          <div className="flex items-center space-x-4">
-             <button 
-               onClick={toggleTheme}
-               className="p-2 rounded-lg bg-slate-50 border border-border-muted text-slate-400 hover:text-primary transition-all shadow-sm"
-             >
-               {theme === 'light' ? <Moon size={16} /> : <Sun size={16} />}
-             </button>
-
-             <button className="relative p-2 rounded-lg bg-slate-50 border border-border-muted text-slate-400 hover:text-primary transition-all shadow-sm">
-                <Bell size={16} />
-                <span className="absolute top-2 right-2 w-1.5 h-1.5 bg-red-500 rounded-full border border-white" />
+          <div className="flex items-center space-x-6">
+             <button className="relative p-2 text-brand-charcoal/60 hover:text-brand-green transition-colors">
+                <Bell size={18} />
+                <span className="absolute top-2 right-2 w-2 h-2 bg-brand-gold rounded-full border-2 border-white" />
              </button>
              
-             <div className="h-6 w-[1px] bg-border-muted mx-1" />
-             
-             <div className="flex items-center space-x-2.5 cursor-pointer group">
+             <div className="flex items-center space-x-3 cursor-pointer group">
                 <div className="hidden sm:block text-right">
-                   <p className="text-[11px] font-semibold text-on-surface leading-none mb-0.5">{user?.username}</p>
-                   <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">{user?.role?.replace('_', ' ')}</p>
+                   <p className="text-[13px] font-medium text-brand-charcoal leading-none mb-1">{user?.username}</p>
+                   <p className="text-[11px] font-medium text-brand-charcoal/50 uppercase tracking-widest">{user?.role?.replace('_', ' ')}</p>
                 </div>
-                <div className="w-8 h-8 rounded-lg border border-border-muted group-hover:border-primary transition-all p-0.5 bg-white">
-                   <div className="w-full h-full bg-slate-100 rounded-md flex items-center justify-center text-slate-500 font-bold text-xs">
-                      {user?.username?.charAt(0).toUpperCase()}
-                   </div>
+                <div className="w-9 h-9 rounded-full bg-brand-green-tint flex items-center justify-center text-brand-green-dark font-display font-bold text-sm border border-brand-green/10">
+                   {user?.username?.charAt(0).toUpperCase()}
                 </div>
              </div>
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto custom-scrollbar">
+        <main className="flex-1 overflow-y-auto custom-scrollbar p-6 lg:p-8">
           <div className="max-w-7xl mx-auto">
             {children}
           </div>

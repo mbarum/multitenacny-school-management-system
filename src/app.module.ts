@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ThrottlerModule } from '@nestjs/throttler';
+import { ThrottlerStorageRedisService } from 'nestjs-throttler-storage-redis';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ScheduleModule } from '@nestjs/schedule';
@@ -46,12 +47,36 @@ import { TenantThrottlerGuard } from './core/guards/tenant-throttler.guard';
 
 @Module({
   imports: [
-    ThrottlerModule.forRoot([
-      {
-        ttl: 60000, // 1 minute
-        limit: 100, // Shared global capacity
+    ThrottlerModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => {
+        const redisHost = configService.get<string>('REDIS_HOST');
+        const redisPort = configService.get<number>('REDIS_PORT', 6379);
+        const redisPassword = configService.get<string>('REDIS_PASSWORD');
+
+        const useRedis =
+          redisHost &&
+          redisHost !== 'localhost' &&
+          redisHost !== 'your_redis_host';
+
+        return {
+          throttlers: [
+            {
+              ttl: 60000, // 1 minute
+              limit: 100, // Shared global capacity
+            },
+          ],
+          storage: useRedis
+            ? new ThrottlerStorageRedisService({
+                host: redisHost,
+                port: redisPort,
+                password: redisPassword,
+              })
+            : undefined,
+        };
       },
-    ]),
+    }),
     CacheModule.registerAsync({
       isGlobal: true,
       useFactory: async (configService: ConfigService) => {
