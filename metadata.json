@@ -1,6 +1,10 @@
 {
-  "name": "Standardized API Responses and Exceptions",
-  "description": "Global Standardized Response Interceptor and Exception Filter Playground designed with Express, React and Tailwind CSS.",
-  "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+  "name": "Saaslink School Management System Multitenancy",
+  "description": "A modern, fully integrated school accounting and management system tailored for primary schools, designed to replace traditional tools with an easier-to-use and fully customizable platform.",
+  "requestFramePermissions": [
+    "camera"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
 }

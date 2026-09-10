@@ -1,0 +1,18 @@
+
+{
+  "schoolInfo": {
+    "name": "Springfield Elementary",
+    "address": "123 Main St, Springfield",
+    "phone": "555-1234",
+    "email": "contact@springfield.edu",
+    "logoUrl": "https://i.imgur.com/pAEt4tQ.png",
+    "gradingSystem": "Traditional"
+  },
+  "darajaSettings": {
+    "consumerKey": "",
+    "consumerSecret": "",
+    "shortCode": "",
+    "passkey": "",
+    "paybillNumber": ""
+  }
+}
