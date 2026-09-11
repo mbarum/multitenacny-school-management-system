@@ -1,12 +1,13 @@
 
 import { 
-    Role, StudentStatus, TransactionType, CommunicationType,
+    Role, StudentStatus, TransactionType, CommunicationType, SubscriptionPlan, SubscriptionStatus,
     type User, type Student, type Transaction, type Expense, type Staff, type Payroll, type Subject, type SchoolClass, 
     type ClassSubjectAssignment, type TimetableEntry, type Exam, type Grade, type AttendanceRecord, type SchoolEvent, 
     type SchoolInfo, type GradingRule, type FeeItem, type CommunicationLog, type Announcement, type ReportShareLog, 
     type PayrollItem, type DarajaSettings, type MpesaC2BTransaction, type NewStudent, type NewStaff, 
     type NewTransaction, type NewExpense, type NewPayrollItem, type NewAnnouncement, type NewCommunicationLog, 
-    type NewUser, type NewGradingRule, type NewFeeItem, type PlatformPricing, type Book, type NewBook 
+    type NewUser, type NewGradingRule, type NewFeeItem, type PlatformPricing, type Book, type NewBook,
+    type SubscriberSchool, type SaasInvoice, type SaasReceipt, type LifecycleSweepResult
 } from '../types';
 import { loadMockStore, saveMockStore } from '../data/mockData';
 
@@ -559,24 +560,285 @@ const handleLocalFallback = (endpoint: string, options: RequestInit): any => {
     if (cleanEndpoint === '/communications/communication-logs') return store.communicationLogs;
     if (cleanEndpoint === '/library/books') return store.books;
     if (cleanEndpoint === '/library/transactions') return [];
+    
+    // --- Super Admin Mock Handlers ---
     if (cleanEndpoint === '/super-admin/stats') {
+        const schools = store.schools || [];
+        const receipts = store.saasReceipts || [];
+        const invoices = store.saasInvoices || [];
+        const activeSubs = schools.filter(s => s.subscriptionStatus === SubscriptionStatus.ACTIVE).length;
+        const graceSubs = schools.filter(s => s.subscriptionStatus === SubscriptionStatus.PAST_DUE).length;
+        const suspendedSubs = schools.filter(s => s.subscriptionStatus === SubscriptionStatus.SUSPENDED).length;
+        const totalRevenue = receipts.reduce((sum, r) => sum + r.amount, 0);
+        
+        // Calculate MRR & ARR from active subscriptions
+        const mrr = schools.reduce((sum, s) => {
+            if (s.subscriptionStatus !== SubscriptionStatus.ACTIVE) return sum;
+            const monthlyEquivalent = s.billingCycle === 'ANNUALLY' 
+                ? (s.plan === SubscriptionPlan.PREMIUM ? 5000 : 2500) 
+                : (s.plan === SubscriptionPlan.PREMIUM ? 6000 : 3000);
+            return sum + monthlyEquivalent;
+        }, 0);
+
         return {
-            totalSchools: 1,
-            activeSubscriptions: 1,
-            monthlyRecurringRevenue: 5000,
+            totalSchools: schools.length,
+            activeSubscriptions: activeSubs,
+            gracePeriodCount: graceSubs,
+            disabledCount: suspendedSubs,
+            totalRevenue,
+            monthlyRecurringRevenue: mrr,
+            annualRecurringRevenue: mrr * 12,
             totalPlatformUsers: store.users.length,
             systemUptime: '99.98%'
         };
     }
+    
     if (cleanEndpoint === '/super-admin/schools') {
-        return [{
-            ...store.schoolInfo,
-            studentCount: store.students.length,
-            staffCount: store.staff.length,
-            subscriptionStatus: 'ACTIVE',
-            plan: 'PREMIUM'
-        }];
+        return store.schools || [];
     }
+
+    if (cleanEndpoint === '/super-admin/invoices') {
+        if (method === 'POST') {
+            const newInv: SaasInvoice = {
+                id: `inv-saas-${Date.now()}`,
+                invoiceNumber: `INV-SAAS-${new Date().getFullYear()}-${String((store.saasInvoices || []).length + 1).padStart(3, '0')}`,
+                schoolId: body.schoolId,
+                schoolName: body.schoolName,
+                schoolCode: body.schoolCode,
+                recipientEmail: body.recipientEmail,
+                recipientPhone: body.recipientPhone,
+                plan: body.plan || SubscriptionPlan.PREMIUM,
+                billingCycle: body.billingCycle || 'ANNUALLY',
+                amount: Number(body.amount) || 60000,
+                currency: body.currency || 'KES',
+                issueDate: body.issueDate || new Date().toISOString().split('T')[0],
+                dueDate: body.dueDate || new Date(Date.now() + 14 * 86400000).toISOString().split('T')[0],
+                status: body.status || 'ISSUED',
+                notes: body.notes
+            };
+            store.saasInvoices = [newInv, ...(store.saasInvoices || [])];
+            saveMockStore(store);
+            return newInv;
+        }
+        return store.saasInvoices || [];
+    }
+
+    if (cleanEndpoint.startsWith('/super-admin/invoices/') && cleanEndpoint.endsWith('/status')) {
+        const parts = cleanEndpoint.split('/');
+        const invoiceId = parts[3];
+        const invoice = (store.saasInvoices || []).find(i => i.id === invoiceId);
+        if (invoice) {
+            invoice.status = body.status;
+            if (body.status === 'PAID') {
+                invoice.paidDate = body.paidDate || new Date().toISOString().split('T')[0];
+                invoice.transactionRef = body.transactionRef || `MPESA-${Date.now().toString().slice(-6)}`;
+                
+                // Automatically generate SaasReceipt
+                const newReceipt: SaasReceipt = {
+                    id: `rec-saas-${Date.now()}`,
+                    receiptNumber: `REC-SAAS-${new Date().getFullYear()}-${String((store.saasReceipts || []).length + 1).padStart(3, '0')}`,
+                    invoiceId: invoice.id,
+                    invoiceNumber: invoice.invoiceNumber,
+                    schoolId: invoice.schoolId,
+                    schoolName: invoice.schoolName,
+                    amount: invoice.amount,
+                    currency: invoice.currency,
+                    paymentDate: invoice.paidDate || new Date().toISOString().split('T')[0],
+                    paymentMethod: body.paymentMethod || 'Lipa Na M-Pesa',
+                    transactionCode: invoice.transactionRef || `TXN-${Date.now()}`,
+                    plan: invoice.plan,
+                    provisionedUntil: new Date(Date.now() + 365 * 86400000).toISOString().split('T')[0],
+                    verifiedBy: 'Platform Super Administrator'
+                };
+                store.saasReceipts = [newReceipt, ...(store.saasReceipts || [])];
+
+                // Reactivate and extend school subscription
+                const school = (store.schools || []).find(s => s.id === invoice.schoolId);
+                if (school) {
+                    school.subscriptionStatus = SubscriptionStatus.ACTIVE;
+                    school.plan = invoice.plan;
+                    school.lastPaymentDate = invoice.paidDate;
+                    school.lastPaymentAmount = invoice.amount;
+                    const baseDate = new Date(school.endDate) > new Date() ? new Date(school.endDate) : new Date();
+                    baseDate.setDate(baseDate.getDate() + 365);
+                    school.endDate = baseDate.toISOString().split('T')[0];
+                    school.autoLockoutGraceDaysRemaining = undefined;
+                }
+            }
+            saveMockStore(store);
+            return invoice;
+        }
+        return { success: false, message: 'Invoice not found' };
+    }
+
+    if (cleanEndpoint === '/super-admin/receipts') {
+        return store.saasReceipts || [];
+    }
+
+    if (cleanEndpoint === '/super-admin/lifecycle-sweep') {
+        const now = new Date();
+        const schools = store.schools || [];
+        const actions: LifecycleSweepResult['actions'] = [];
+        let activeCount = 0;
+        let expiringSoonCount = 0;
+        let gracePeriodCount = 0;
+        let disabledCount = 0;
+        let remindersSent = 0;
+
+        schools.forEach(school => {
+            const endDate = new Date(school.endDate);
+            const diffDays = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+
+            if (diffDays > 5) {
+                activeCount++;
+                actions.push({
+                    schoolId: school.id,
+                    schoolName: school.name,
+                    action: 'ACTIVE_HEALTHY',
+                    message: `Active license in good standing. ${diffDays} days remaining until renewal on ${school.endDate}.`,
+                    daysUntilExpiry: diffDays,
+                    status: school.subscriptionStatus
+                });
+            } else if (diffDays > 0 && diffDays <= 5) {
+                expiringSoonCount++;
+                remindersSent++;
+                school.remindersCount = (school.remindersCount || 0) + 1;
+                school.lastReminderDate = now.toISOString().split('T')[0];
+                const actionType = diffDays === 5 ? 'REMINDER_5_DAY' : 'REMINDER_2_DAY';
+                actions.push({
+                    schoolId: school.id,
+                    schoolName: school.name,
+                    action: actionType,
+                    message: `Dispatched Pre-Expiry Reminder: ${diffDays} day(s) remaining until renewal on ${school.endDate}. Settle pending invoice to avoid interruption.`,
+                    daysUntilExpiry: diffDays,
+                    status: school.subscriptionStatus
+                });
+            } else {
+                const daysOverdue = Math.abs(diffDays);
+                if (daysOverdue <= 14) {
+                    gracePeriodCount++;
+                    remindersSent++;
+                    const daysLeft = 14 - daysOverdue;
+                    school.subscriptionStatus = SubscriptionStatus.PAST_DUE;
+                    school.remindersCount = (school.remindersCount || 0) + 1;
+                    school.lastReminderDate = now.toISOString().split('T')[0];
+                    school.autoLockoutGraceDaysRemaining = daysLeft;
+                    actions.push({
+                        schoolId: school.id,
+                        schoolName: school.name,
+                        action: 'GRACE_PERIOD_NOTICE',
+                        message: `Grace Period Overdue Alert: Expired ${daysOverdue} days ago. ${daysLeft} day(s) remaining before automatic account disabling.`,
+                        daysUntilExpiry: diffDays,
+                        status: SubscriptionStatus.PAST_DUE
+                    });
+                } else {
+                    disabledCount++;
+                    school.subscriptionStatus = SubscriptionStatus.SUSPENDED;
+                    school.autoLockoutGraceDaysRemaining = 0;
+                    actions.push({
+                        schoolId: school.id,
+                        schoolName: school.name,
+                        action: 'ACCOUNT_DISABLED',
+                        message: `ACCOUNT DISABLED: Expired ${daysOverdue} days ago (exceeded 14-day grace period). Dashboard access locked until payment is completed.`,
+                        daysUntilExpiry: diffDays,
+                        status: SubscriptionStatus.SUSPENDED
+                    });
+                }
+            }
+        });
+
+        saveMockStore(store);
+
+        const sweepResult: LifecycleSweepResult = {
+            timestamp: now.toISOString(),
+            totalScanned: schools.length,
+            activeCount,
+            expiringSoonCount,
+            gracePeriodCount,
+            disabledCount,
+            remindersSent,
+            actions
+        };
+        return sweepResult;
+    }
+
+    if (cleanEndpoint.startsWith('/super-admin/schools/') && cleanEndpoint.endsWith('/reminder')) {
+        const parts = cleanEndpoint.split('/');
+        const schoolId = parts[3];
+        const school = (store.schools || []).find(s => s.id === schoolId);
+        if (school) {
+            school.remindersCount = (school.remindersCount || 0) + 1;
+            school.lastReminderDate = new Date().toISOString().split('T')[0];
+            saveMockStore(store);
+            return { 
+                success: true, 
+                message: `Renewal reminder dispatched to ${school.email} for ${school.name}`,
+                remindersCount: school.remindersCount,
+                lastReminderDate: school.lastReminderDate
+            };
+        }
+        return { success: false, message: 'School not found' };
+    }
+
+    if (cleanEndpoint.startsWith('/super-admin/schools/') && cleanEndpoint.endsWith('/toggle-access')) {
+        const parts = cleanEndpoint.split('/');
+        const schoolId = parts[3];
+        const school = (store.schools || []).find(s => s.id === schoolId);
+        if (school) {
+            school.subscriptionStatus = body.enabled ? SubscriptionStatus.ACTIVE : SubscriptionStatus.SUSPENDED;
+            saveMockStore(store);
+            return { success: true, status: school.subscriptionStatus, school };
+        }
+        return { success: false, message: 'School not found' };
+    }
+
+    if (cleanEndpoint.startsWith('/super-admin/schools/') && cleanEndpoint.endsWith('/extend')) {
+        const parts = cleanEndpoint.split('/');
+        const schoolId = parts[3];
+        const school = (store.schools || []).find(s => s.id === schoolId);
+        if (school) {
+            const days = Number(body.days) || 30;
+            const baseDate = new Date(school.endDate) > new Date() ? new Date(school.endDate) : new Date();
+            baseDate.setDate(baseDate.getDate() + days);
+            school.endDate = baseDate.toISOString().split('T')[0];
+            school.subscriptionStatus = SubscriptionStatus.ACTIVE;
+            school.autoLockoutGraceDaysRemaining = undefined;
+            saveMockStore(store);
+            return { success: true, school };
+        }
+        return { success: false, message: 'School not found' };
+    }
+
+    if (cleanEndpoint === '/super-admin/payments/manual') {
+        const school = (store.schools || []).find(s => s.id === body.schoolId);
+        const receipt: SaasReceipt = {
+            id: `rec-saas-${Date.now()}`,
+            receiptNumber: `REC-SAAS-${new Date().getFullYear()}-${String((store.saasReceipts || []).length + 1).padStart(3, '0')}`,
+            schoolId: body.schoolId,
+            schoolName: school?.name || 'Subscribing Institution',
+            amount: Number(body.amount) || 60000,
+            currency: 'KES',
+            paymentDate: body.date || new Date().toISOString().split('T')[0],
+            paymentMethod: body.method || 'Bank Wire',
+            transactionCode: body.transactionCode,
+            plan: body.plan || school?.plan || SubscriptionPlan.PREMIUM,
+            provisionedUntil: new Date(Date.now() + 365 * 86400000).toISOString().split('T')[0],
+            verifiedBy: 'Platform Super Administrator'
+        };
+        store.saasReceipts = [receipt, ...(store.saasReceipts || [])];
+        if (school) {
+            school.subscriptionStatus = SubscriptionStatus.ACTIVE;
+            school.lastPaymentDate = receipt.paymentDate;
+            school.lastPaymentAmount = receipt.amount;
+            const baseDate = new Date(school.endDate) > new Date() ? new Date(school.endDate) : new Date();
+            baseDate.setDate(baseDate.getDate() + 365);
+            school.endDate = baseDate.toISOString().split('T')[0];
+            school.autoLockoutGraceDaysRemaining = undefined;
+        }
+        saveMockStore(store);
+        return { success: true, receipt };
+    }
+
     if (cleanEndpoint === '/super-admin/health') {
         return { status: 'healthy', database: 'connected', redis: 'active' };
     }
@@ -587,7 +849,7 @@ const handleLocalFallback = (endpoint: string, options: RequestInit): any => {
         }
         return store.pricing;
     }
-    if (cleanEndpoint === '/super-admin/payments') return [];
+    if (cleanEndpoint === '/super-admin/payments') return store.saasReceipts || [];
 
     return { success: true, data: [] };
 };
@@ -748,17 +1010,40 @@ export const createBulkCommunicationLogs = (data: NewCommunicationLog[]): Promis
 
 // --- Super Admin ---
 export const getPlatformStats = () => apiFetch('/super-admin/stats');
-export const getAllSchools = () => apiFetch('/super-admin/schools');
+export const getAllSchools = async (): Promise<SubscriberSchool[]> => {
+    const res = await apiFetch('/super-admin/schools');
+    if (Array.isArray(res)) return res;
+    if (res && Array.isArray(res.data)) return res.data;
+    return [];
+};
 export const getSystemHealth = () => apiFetch('/super-admin/health');
 export const getPlatformPricing = (): Promise<PlatformPricing> => apiFetch('/settings/public/pricing');
 export const updatePlatformPricing = (data: Partial<PlatformPricing>) => apiFetch('/super-admin/pricing', { method: 'PUT', body: JSON.stringify(data) });
 export const updateSchoolSubscription = (schoolId: string, payload: any) => apiFetch(`/super-admin/schools/${schoolId}/subscription`, { method: 'PATCH', body: JSON.stringify(payload) });
 export const getSubscriptionPayments = () => apiFetch('/super-admin/payments');
-// Fix: Added missing recordManualSubscriptionPayment export
 export const recordManualSubscriptionPayment = (data: any) => apiFetch('/super-admin/payments/manual', { method: 'POST', body: JSON.stringify(data) });
 export const updateSchoolEmail = (id: string, email: string) => apiFetch(`/super-admin/schools/${id}/email`, { method: 'PATCH', body: JSON.stringify({ email }) });
 export const updateSchoolPhone = (id: string, phone: string) => apiFetch(`/super-admin/schools/${id}/phone`, { method: 'PATCH', body: JSON.stringify({ phone }) });
 export const initiateSubscriptionPayment = (data: { amount: number, method: string, plan: string, transactionCode: string }): Promise<any> => apiFetch('/super-admin/payments/initiate', { method: 'POST', body: JSON.stringify(data) });
+
+export const getSaasInvoices = async (): Promise<SaasInvoice[]> => {
+    const res = await apiFetch('/super-admin/invoices');
+    if (Array.isArray(res)) return res;
+    if (res && Array.isArray(res.data)) return res.data;
+    return [];
+};
+export const createSaasInvoice = (data: Partial<SaasInvoice>): Promise<SaasInvoice> => apiFetch('/super-admin/invoices', { method: 'POST', body: JSON.stringify(data) });
+export const updateSaasInvoiceStatus = (id: string, status: string, paidDate?: string, ref?: string, paymentMethod?: string): Promise<SaasInvoice> => apiFetch(`/super-admin/invoices/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status, paidDate, transactionRef: ref, paymentMethod }) });
+export const getSaasReceipts = async (): Promise<SaasReceipt[]> => {
+    const res = await apiFetch('/super-admin/receipts');
+    if (Array.isArray(res)) return res;
+    if (res && Array.isArray(res.data)) return res.data;
+    return [];
+};
+export const runLifecycleSweep = (): Promise<LifecycleSweepResult> => apiFetch('/super-admin/lifecycle-sweep', { method: 'POST' });
+export const sendSchoolReminder = (schoolId: string, message?: string): Promise<any> => apiFetch(`/super-admin/schools/${schoolId}/reminder`, { method: 'POST', body: JSON.stringify({ message }) });
+export const toggleSchoolAccess = (schoolId: string, enabled: boolean): Promise<any> => apiFetch(`/super-admin/schools/${schoolId}/toggle-access`, { method: 'PATCH', body: JSON.stringify({ enabled }) });
+export const extendSchoolSubscription = (schoolId: string, days: number): Promise<any> => apiFetch(`/super-admin/schools/${schoolId}/extend`, { method: 'POST', body: JSON.stringify({ days }) });
 
 // --- Library ---
 export const getBooks = (params: any = {}): Promise<any> => apiFetch(`/library/books?${new URLSearchParams(cleanParams(params)).toString()}`);

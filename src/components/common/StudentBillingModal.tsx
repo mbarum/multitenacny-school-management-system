@@ -3,17 +3,23 @@ import type { Student, Transaction, NewTransaction } from '../../types';
 import { TransactionType } from '../../types';
 import Modal from './Modal';
 import StatementModal from './StatementModal';
+import ReceiptModal from './ReceiptModal';
 import { useData } from '../../contexts/DataContext';
+import { buildStudentTermInvoice, FinancialDocument } from '../../utils/invoiceReceiptGenerator';
 import * as api from '../../services/api';
 import Skeleton from './Skeleton';
+import { Printer, FileText } from 'lucide-react';
 
 const StudentBillingModal: React.FC<{ isOpen: boolean; onClose: () => void; student: Student | null; }> = ({ isOpen, onClose, student }) => {
-    const { addTransaction, schoolInfo, formatCurrency } = useData();
+    const { addTransaction, schoolInfo, formatCurrency, darajaSettings } = useData();
     const [showAdjustmentForm, setShowAdjustmentForm] = useState(false);
     const [adjustmentType, setAdjustmentType] = useState<TransactionType.ManualDebit | TransactionType.ManualCredit>(TransactionType.ManualDebit);
     const [adjustmentAmount, setAdjustmentAmount] = useState(0);
     const [adjustmentDescription, setAdjustmentDescription] = useState('');
     const [isStatementModalOpen, setIsStatementModalOpen] = useState(false);
+    const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
+    const [selectedDocTransaction, setSelectedDocTransaction] = useState<Transaction | null>(null);
+    const [studentInvoiceDoc, setStudentInvoiceDoc] = useState<FinancialDocument | null>(null);
     
     const [transactions, setTransactions] = useState<Transaction[]>([]);
     const [loading, setLoading] = useState(false);
@@ -27,6 +33,26 @@ const StudentBillingModal: React.FC<{ isOpen: boolean; onClose: () => void; stud
                 .finally(() => setLoading(false));
         }
     }, [isOpen, student]);
+
+    const handleOpenStudentInvoice = async () => {
+        if (!student || !schoolInfo) return;
+        try {
+            const feeItems = await api.getFeeStructure();
+            const currentBal = ledgerData[0]?.runningBalance || 0;
+            const doc = buildStudentTermInvoice(student, Array.isArray(feeItems) ? feeItems : [], schoolInfo, darajaSettings, currentBal);
+            setStudentInvoiceDoc(doc);
+            setSelectedDocTransaction(null);
+            setIsReceiptModalOpen(true);
+        } catch (e) {
+            console.error('Error generating student invoice:', e);
+        }
+    };
+
+    const handleOpenTransactionDoc = (t: Transaction) => {
+        setStudentInvoiceDoc(null);
+        setSelectedDocTransaction(t);
+        setIsReceiptModalOpen(true);
+    };
 
     const handleSaveAdjustment = (e: React.FormEvent) => {
         e.preventDefault();
@@ -65,9 +91,13 @@ const StudentBillingModal: React.FC<{ isOpen: boolean; onClose: () => void; stud
             <Modal isOpen={isOpen} onClose={onClose} title={`Institutional Ledger: ${student.name}`} size="3xl">
                 <div className="flex flex-col h-[75vh]">
                     <div className="flex justify-between items-center mb-6 px-2">
-                        <div className="flex gap-2">
-                            <button onClick={() => setShowAdjustmentForm(!showAdjustmentForm)} className="px-5 py-2 bg-slate-900 text-white rounded-xl font-black text-[10px] uppercase tracking-widest shadow-lg hover:bg-black transition-all">Manual Posting</button>
-                            <button onClick={() => setIsStatementModalOpen(true)} className="px-5 py-2 bg-white text-slate-700 border-2 border-slate-100 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-50 transition-all">Generate Statement</button>
+                        <div className="flex flex-wrap gap-2">
+                            <button onClick={() => setShowAdjustmentForm(!showAdjustmentForm)} className="px-4 py-2 bg-slate-900 text-white rounded-xl font-black text-[10px] uppercase tracking-widest shadow-md hover:bg-black transition-all">Manual Posting</button>
+                            <button onClick={() => setIsStatementModalOpen(true)} className="px-4 py-2 bg-white text-slate-700 border-2 border-slate-100 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-50 transition-all">Generate Statement</button>
+                            <button onClick={handleOpenStudentInvoice} className="inline-flex items-center gap-1.5 px-4 py-2 bg-primary-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-primary-700 shadow-md transition-all">
+                                <FileText className="w-3.5 h-3.5" />
+                                <span>Fee Invoice (A4)</span>
+                            </button>
                         </div>
                         <div className="text-right">
                             <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Net Payable</p>
@@ -111,6 +141,7 @@ const StudentBillingModal: React.FC<{ isOpen: boolean; onClose: () => void; stud
                                             <th className="px-6 py-4 font-black uppercase tracking-widest text-[9px] text-right">Debit</th>
                                             <th className="px-6 py-4 font-black uppercase tracking-widest text-[9px] text-right">Credit</th>
                                             <th className="px-6 py-4 font-black uppercase tracking-widest text-[9px] text-right bg-slate-800">Balance</th>
+                                            <th className="px-4 py-4 font-black uppercase tracking-widest text-[9px] text-center">Doc</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-50">
@@ -121,6 +152,20 @@ const StudentBillingModal: React.FC<{ isOpen: boolean; onClose: () => void; stud
                                                 <td className="px-6 py-4 text-right font-black text-slate-400">{t.isDebit ? t.amount.toLocaleString() : '-'}</td>
                                                 <td className="px-6 py-4 text-right font-black text-primary-600">{!t.isDebit ? t.amount.toLocaleString() : '-'}</td>
                                                 <td className="px-6 py-4 text-right font-black text-slate-900 bg-slate-50/50">{t.runningBalance.toLocaleString()}</td>
+                                                <td className="px-4 py-4 text-center">
+                                                    <button 
+                                                        type="button"
+                                                        onClick={() => handleOpenTransactionDoc(t)}
+                                                        className={`px-2.5 py-1 text-[10px] font-black uppercase tracking-wider rounded-lg transition-all shadow-xs ${
+                                                            t.isDebit 
+                                                                ? 'bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200' 
+                                                                : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200'
+                                                        }`}
+                                                        title={t.isDebit ? "View A4 Invoice" : "View A4 Receipt"}
+                                                    >
+                                                        {t.isDebit ? 'Invoice' : 'Receipt'}
+                                                    </button>
+                                                </td>
                                             </tr>
                                         ))}
                                     </tbody>
@@ -136,6 +181,18 @@ const StudentBillingModal: React.FC<{ isOpen: boolean; onClose: () => void; stud
                 student={student}
                 transactions={transactions}
                 schoolInfo={schoolInfo}
+            />
+            <ReceiptModal
+                isOpen={isReceiptModalOpen}
+                onClose={() => {
+                    setIsReceiptModalOpen(false);
+                    setSelectedDocTransaction(null);
+                    setStudentInvoiceDoc(null);
+                }}
+                transaction={selectedDocTransaction}
+                document={studentInvoiceDoc}
+                student={student}
+                studentBalance={ledgerData[0]?.runningBalance}
             />
         </>
     );

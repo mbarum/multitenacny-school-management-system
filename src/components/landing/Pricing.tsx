@@ -1,12 +1,12 @@
-
 import React, { useState, useEffect } from 'react';
 import { SubscriptionPlan, PlatformPricing, Currency } from '../../types';
 import * as api from '../../services/api';
 import Skeleton from '../common/Skeleton';
 import { useData } from '../../contexts/DataContext';
+import SubscriptionModal from './SubscriptionModal';
 
 interface PricingProps {
-    onSelectPlan: (plan: SubscriptionPlan, billing: 'MONTHLY' | 'ANNUALLY') => void;
+    onSelectPlan?: (plan: SubscriptionPlan, billing: 'MONTHLY' | 'ANNUALLY') => void;
 }
 
 const Pricing: React.FC<PricingProps> = ({ onSelectPlan }) => {
@@ -15,6 +15,10 @@ const Pricing: React.FC<PricingProps> = ({ onSelectPlan }) => {
     const [pricing, setPricing] = useState<PlatformPricing | null>(null);
     const [loading, setLoading] = useState(true);
     const [currency, setCurrency] = useState<string>('KES');
+
+    // Subscription Modal State
+    const [modalOpen, setModalOpen] = useState(false);
+    const [activeModalPlan, setActiveModalPlan] = useState<SubscriptionPlan>(SubscriptionPlan.BASIC);
 
     useEffect(() => {
         const fetchPricing = async () => {
@@ -42,66 +46,78 @@ const Pricing: React.FC<PricingProps> = ({ onSelectPlan }) => {
         return convertCurrency(basePrice, currency);
     };
 
+    const handlePlanClick = (planId: SubscriptionPlan) => {
+        setActiveModalPlan(planId);
+        setModalOpen(true);
+        if (onSelectPlan) {
+            onSelectPlan(planId, billing);
+        }
+    };
+
     const plans = [
         {
             id: SubscriptionPlan.FREE,
-            name: 'Starter',
+            name: 'Starter Evaluation',
             price: 0,
-            description: 'Essential tools for small schools just getting started.',
+            badge: '14-Day Free Trial',
+            description: 'Evaluate the core student database, dual CBC & Traditional grading, and parent directory with zero financial commitment.',
             features: [
-                'Up to 50 Students',
-                '2 Staff Accounts',
-                'Student Registry',
-                'Basic Reports',
-                'Manual Fee Recording'
+                'Up to 150 Students Enrolled',
+                'Dual CBC Rubric & 8-4-4 Marks Engine',
+                '5 Staff / Teacher Logins',
+                'Class Attendance & Roll Call',
+                'Manual Fee Payment Entries',
+                'Standard A4 PDF Report Cards'
             ],
             notIncluded: [
-                'Parent Portal',
-                'M-Pesa Integration',
-                'AI Insights',
-                'Library System'
+                'Automated Safaricom Daraja M-Pesa Hook',
+                'Parent SMS & Real-time Portal',
+                'Gemini AI Fee Defaulter Predictions',
+                'Bulk WhatsApp Broadcasts'
             ],
-            cta: 'Start Free'
+            cta: 'Start 14-Day Evaluation'
         },
         {
             id: SubscriptionPlan.BASIC,
-            name: 'Growth',
-            price: getPrice(SubscriptionPlan.BASIC),
-            description: 'Automated finance and communication for growing schools.',
+            name: 'Growth Academic Suite',
+            price: getPrice(SubscriptionPlan.BASIC) || 12500,
+            badge: 'Most Popular for Academies',
+            description: 'The definitive cloud operating system for primary, junior, and secondary schools seeking zero cash leakage.',
             features: [
-                'Up to 500 Students',
-                '10 Staff Accounts',
-                'Everything in Starter',
-                'Parent Portal Access',
-                'Automated M-Pesa Payments',
-                'SMS & Email Alerts',
-                'Data Export (CSV)'
+                'Up to 650 Students Enrolled',
+                'Real-Time Safaricom Daraja M-Pesa Paybill Hook',
+                'Instant Parent SMS Receipt Confirmations',
+                'Automated Defaulter Statements & Balance Reminders',
+                'Full Competency-Based (CBC) Learning Area Portfolio',
+                'Unlimited Teacher & Staff Accounts',
+                'Parent Online Portal with Fee Balances',
+                'Official Stamped Financial Receipts with QR'
             ],
             notIncluded: [
-                'AI Financial Insights',
-                'Library Management',
-                'Audit Logs'
+                'Multi-Campus Super-Admin Control',
+                'Gemini AI Financial Forecaster'
             ],
-            cta: 'Get Growth',
+            cta: 'Subscribe to Growth Suite',
             highlight: true
         },
         {
             id: SubscriptionPlan.PREMIUM,
-            name: 'Enterprise',
-            price: getPrice(SubscriptionPlan.PREMIUM),
-            description: 'Full-suite management with AI power and unlimited scale.',
+            name: 'Enterprise Cloud ERP',
+            price: getPrice(SubscriptionPlan.PREMIUM) || 24000,
+            badge: 'Comprehensive K-12 & Groups',
+            description: 'For large educational institutions, multiple branches, and high schools requiring full scale, AI insights, and custom integrations.',
             features: [
-                'Unlimited Students',
-                'Unlimited Staff',
-                'Everything in Growth',
-                'Gemini AI Financial Analyst',
-                'Full Library System',
-                'Detailed Audit Logs',
-                'Priority Support',
-                'ID Card Generation'
+                'Unlimited Students & Multiple Campuses',
+                'Everything in Growth Suite',
+                'Gemini AI Financial Analyst & Cashflow Forecaster',
+                'Automated Staff Payroll & KRA Statutory Deductions',
+                'Full Library & Text-Book Barcode Tracker',
+                'Custom School Domain & Subdomain Mapping',
+                'Automated Multi-Year Archival & Data Sovereignty',
+                '24/7 Dedicated Technical Engineer & Priority Hotline'
             ],
             notIncluded: [],
-            cta: 'Go Enterprise'
+            cta: 'Subscribe to Enterprise'
         }
     ];
 
@@ -110,125 +126,160 @@ const Pricing: React.FC<PricingProps> = ({ onSelectPlan }) => {
     }
 
     return (
-        <div id="pricing" className="py-24 bg-white relative overflow-hidden">
-             {/* Background decorative blob */}
-            <div className="absolute top-0 left-1/2 transform -translate-x-1/2 w-full h-full z-0 pointer-events-none opacity-30">
-                 <div className="absolute top-20 left-20 w-72 h-72 bg-primary-100 rounded-full mix-blend-multiply filter blur-3xl animate-blob"></div>
-                 <div className="absolute top-20 right-20 w-72 h-72 bg-purple-100 rounded-full mix-blend-multiply filter blur-3xl animate-blob animation-delay-2000"></div>
-            </div>
-
+        <div id="pricing" className="py-24 bg-slate-50 relative overflow-hidden border-t border-slate-200">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
                 <div className="text-center max-w-3xl mx-auto">
-                    <h2 className="text-base font-semibold text-primary-600 tracking-wide uppercase">Pricing</h2>
-                    <p className="mt-2 text-3xl font-extrabold text-slate-900 sm:text-4xl">
-                        Simple, transparent pricing for every stage
-                    </p>
-                    <p className="mt-4 text-xl text-slate-600">
-                        Choose the plan that fits your school's needs. Upgrade, downgrade, or cancel at any time.
+                    <span className="inline-block px-3 py-1 bg-primary-100 text-primary-800 text-xs font-bold rounded-full uppercase tracking-wider mb-2">
+                        Transparent School Licensing
+                    </span>
+                    <h2 className="text-3xl font-extrabold text-slate-900 sm:text-4xl tracking-tight">
+                        Predictable Termly & Annual Investment
+                    </h2>
+                    <p className="mt-4 text-base sm:text-lg text-slate-600">
+                        Zero hidden implementation fees, zero hardware purchases. Every plan includes comprehensive onboarding, data import assistance, and compliance under the Kenya Data Protection Act 2019.
                     </p>
                 </div>
 
-                <div className="mt-8 flex flex-col items-center gap-6">
-                    {/* Currency Selector */}
-                    <div className="flex items-center space-x-2">
-                        <span className="text-sm font-medium text-slate-600">Currency:</span>
-                        <select 
-                            value={currency} 
-                            onChange={(e) => setCurrency(e.target.value)}
-                            className="p-1 border border-slate-300 rounded text-sm bg-white focus:ring-primary-500 focus:border-primary-500"
-                        >
-                            {Object.values(Currency).map(c => <option key={c} value={c}>{c}</option>)}
-                        </select>
-                    </div>
+                <div className="mt-8 flex flex-col items-center gap-4 sm:gap-6">
+                    {/* Currency & Billing Toggle */}
+                    <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-4 max-w-full">
+                        <div className="flex items-center space-x-2 bg-white px-3 py-1.5 rounded-xl border border-slate-200 shadow-sm">
+                            <span className="text-xs font-bold text-slate-600">Currency:</span>
+                            <select 
+                                value={currency} 
+                                onChange={(e) => setCurrency(e.target.value)}
+                                className="text-xs font-bold text-slate-800 bg-transparent focus:outline-none cursor-pointer"
+                            >
+                                {Object.values(Currency).map(c => <option key={c} value={c}>{c}</option>)}
+                            </select>
+                        </div>
 
-                    {/* Billing Toggle */}
-                    <div className="relative bg-slate-100 p-1 rounded-xl flex shadow-inner">
-                        <button
-                            type="button"
-                            onClick={() => setBilling('MONTHLY')}
-                            className={`${billing === 'MONTHLY' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-900'} relative w-36 py-2.5 text-sm font-bold rounded-lg focus:outline-none transition-all duration-200`}
-                        >
-                            Monthly
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => setBilling('ANNUALLY')}
-                            className={`${billing === 'ANNUALLY' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-900'} relative w-36 py-2.5 text-sm font-bold rounded-lg focus:outline-none transition-all duration-200`}
-                        >
-                            Yearly <span className="absolute -top-3 -right-3 bg-green-500 text-white text-[10px] px-2 py-0.5 rounded-full shadow-sm">-17%</span>
-                        </button>
+                        {/* Billing Toggle */}
+                        <div className="bg-white p-1 rounded-xl flex border border-slate-200 shadow-sm max-w-full overflow-x-auto">
+                            <button
+                                type="button"
+                                onClick={() => setBilling('MONTHLY')}
+                                className={`${billing === 'MONTHLY' ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'} whitespace-nowrap px-3 sm:px-5 py-2 text-xs font-bold rounded-lg transition-all`}
+                            >
+                                Per Term (3x/Yr)
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setBilling('ANNUALLY')}
+                                className={`${billing === 'ANNUALLY' ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'} whitespace-nowrap px-3 sm:px-5 py-2 text-xs font-bold rounded-lg transition-all`}
+                            >
+                                Annual Prepaid <span className="ml-1 bg-emerald-500 text-white text-[9px] px-1.5 py-0.5 rounded-full font-black">Save 20%</span>
+                            </button>
+                        </div>
                     </div>
                 </div>
 
-                <div className="mt-16 space-y-12 lg:space-y-0 lg:grid lg:grid-cols-3 lg:gap-8">
-                    {plans.map((plan) => (
-                        <div key={plan.name} className={`relative flex flex-col p-8 bg-white border rounded-2xl shadow-lg transition-transform hover:-translate-y-1 ${plan.highlight ? 'border-primary-500 ring-4 ring-primary-500/20 z-10 scale-105' : 'border-slate-200'}`}>
+                <div className="mt-10 sm:mt-14 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 items-stretch">
+                    {plans.map((plan, index) => (
+                        <div 
+                            key={plan.name} 
+                            className={`relative flex flex-col p-6 sm:p-8 bg-white border rounded-3xl shadow-sm hover:shadow-xl transition-all ${
+                                plan.highlight 
+                                    ? 'border-primary-600 ring-2 ring-primary-600/20 z-10 lg:-translate-y-2' 
+                                    : 'border-slate-200'
+                            } ${index === 2 ? 'md:col-span-2 lg:col-span-1' : ''}`}
+                        >
                             {plan.highlight && (
-                                <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
-                                    <span className="bg-primary-600 text-white text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wide shadow-sm">
-                                        Most Popular
+                                <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
+                                    <span className="bg-primary-600 text-white text-[11px] font-bold px-3.5 py-1 rounded-full uppercase tracking-wider shadow-md">
+                                        {plan.badge}
                                     </span>
                                 </div>
                             )}
+
                             <div className="flex-1">
                                 <h3 className="text-xl font-bold text-slate-900">{plan.name}</h3>
-                                <p className="mt-2 text-sm text-slate-500">{plan.description}</p>
-                                <p className="mt-6 flex items-baseline text-slate-900">
-                                    <span className="text-5xl font-extrabold tracking-tight">{formatCurrency(plan.price, currency)}</span>
-                                    <span className="ml-1 text-xl font-semibold text-slate-500">/{billing === 'MONTHLY' ? 'mo' : 'yr'}</span>
-                                </p>
+                                <p className="mt-2 text-xs text-slate-500 leading-relaxed min-h-[36px]">{plan.description}</p>
+                                
+                                <div className="mt-6 flex items-baseline text-slate-900 border-b border-slate-100 pb-6">
+                                    <span className="text-4xl font-black tracking-tight">{formatCurrency(plan.price, currency)}</span>
+                                    <span className="ml-1.5 text-xs font-bold text-slate-500">
+                                        {plan.price === 0 ? ' (No credit card needed)' : billing === 'MONTHLY' ? '/ term' : '/ year'}
+                                    </span>
+                                </div>
 
-                                {/* Features */}
-                                <ul role="list" className="mt-8 space-y-4">
-                                    {plan.features.map((feature) => (
-                                        <li key={feature} className="flex items-start">
-                                            <div className="flex-shrink-0">
-                                                <svg className="h-6 w-6 text-green-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                                {/* Features List */}
+                                <div className="mt-6">
+                                    <div className="text-xs font-bold text-slate-800 uppercase tracking-wider mb-3">Included Capabilities:</div>
+                                    <ul role="list" className="space-y-2.5">
+                                        {plan.features.map((feature) => (
+                                            <li key={feature} className="flex items-start text-xs text-slate-700">
+                                                <svg className="h-4 w-4 text-emerald-600 shrink-0 mr-2 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
                                                 </svg>
-                                            </div>
-                                            <p className="ml-3 text-base text-slate-700">{feature}</p>
-                                        </li>
-                                    ))}
-                                    {plan.notIncluded.map((feature) => (
-                                        <li key={feature} className="flex items-start opacity-50">
-                                            <div className="flex-shrink-0">
-                                                <svg className="h-6 w-6 text-slate-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <span>{feature}</span>
+                                            </li>
+                                        ))}
+                                        {plan.notIncluded.map((feature) => (
+                                            <li key={feature} className="flex items-start text-xs text-slate-400 opacity-60">
+                                                <svg className="h-4 w-4 text-slate-300 shrink-0 mr-2 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                                                 </svg>
-                                            </div>
-                                            <p className="ml-3 text-base text-slate-500">{feature}</p>
-                                        </li>
-                                    ))}
-                                </ul>
+                                                <span>{feature}</span>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
                             </div>
+
                             <button
-                                onClick={() => onSelectPlan(plan.id, billing)}
-                                className={`mt-8 block w-full py-4 px-6 border border-transparent rounded-xl text-center font-bold text-lg transition-all shadow-md ${plan.highlight ? 'bg-primary-600 text-white hover:bg-primary-700 shadow-primary-500/30' : 'bg-primary-50 text-primary-700 hover:bg-primary-100'}`}
+                                onClick={() => handlePlanClick(plan.id)}
+                                className={`mt-8 block w-full py-3.5 px-4 rounded-xl text-center font-bold text-sm transition-all shadow-md ${
+                                    plan.highlight 
+                                        ? 'bg-primary-600 text-white hover:bg-primary-700 shadow-primary-600/30 hover:scale-[1.02]' 
+                                        : 'bg-slate-900 text-white hover:bg-slate-800'
+                                }`}
                             >
                                 {plan.cta}
                             </button>
+
+                            <p className="text-center text-[11px] text-slate-400 mt-2">
+                                Requires Terms & Conditions acceptance
+                            </p>
                         </div>
                     ))}
                 </div>
                 
-                <div className="mt-12 text-center">
-                    <p className="text-slate-500 flex flex-wrap items-center justify-center gap-4 text-sm">
-                        <span className="flex items-center text-slate-700">
-                            <svg className="w-5 h-5 mr-1.5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
-                            Secure M-Pesa Integration
-                        </span>
-                        <span className="flex items-center text-slate-700">
-                            <svg className="w-5 h-5 mr-1.5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
-                            Data Encrypted & Backed Up
-                        </span>
-                        <span className="flex items-center text-slate-700">
-                            <svg className="w-5 h-5 mr-1.5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
-                            Cancel Anytime
-                        </span>
-                    </p>
+                {/* Assurance Badges */}
+                <div className="mt-14 p-6 bg-white rounded-2xl border border-slate-200 shadow-sm text-center">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 text-xs text-slate-700">
+                        <div className="flex items-center justify-center gap-2">
+                            <span className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center font-bold shrink-0">&check;</span>
+                            <div className="text-left">
+                                <div className="font-bold text-slate-900">Official Safaricom Daraja Partner</div>
+                                <div className="text-slate-500 text-[11px]">Direct automated Paybill webhook clearing</div>
+                            </div>
+                        </div>
+                        <div className="flex items-center justify-center gap-2">
+                            <span className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold shrink-0">&check;</span>
+                            <div className="text-left">
+                                <div className="font-bold text-slate-900">Kenya Data Protection Act 2019</div>
+                                <div className="text-slate-500 text-[11px]">Strict institutional data sovereignty</div>
+                            </div>
+                        </div>
+                        <div className="flex items-center justify-center gap-2">
+                            <span className="w-8 h-8 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center font-bold shrink-0">&check;</span>
+                            <div className="text-left">
+                                <div className="font-bold text-slate-900">Free Staff Training & Data Migration</div>
+                                <div className="text-slate-500 text-[11px]">Assisted import from Excel or paper ledgers</div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
+
+            {/* Embedded Subscription Modal with Mandatory Terms Checkbox */}
+            <SubscriptionModal
+                isOpen={modalOpen}
+                onClose={() => setModalOpen(false)}
+                initialPlan={activeModalPlan}
+                initialBilling={billing === 'ANNUALLY' ? 'ANNUALLY' : 'TERMLY'}
+            />
         </div>
     );
 };

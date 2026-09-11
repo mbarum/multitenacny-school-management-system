@@ -83,4 +83,28 @@ export class SuperAdminController {
   updatePhone(@Param('id') id: string, @Body('phone') phone: string) {
       return this.superAdminService.updateSchoolPhone(id, phone);
   }
+
+  @Post('lifecycle-sweep')
+  @Roles(Role.SuperAdmin)
+  runLifecycleSweep() {
+      return this.superAdminService.runReminderAndLifecycleSweep();
+  }
+
+  @Post('schools/:id/reminder')
+  @Roles(Role.SuperAdmin)
+  sendReminder(@Param('id') id: string, @Body() body: { message?: string }) {
+      return this.superAdminService.sendSchoolManualReminder(id, body?.message);
+  }
+
+  @Patch('schools/:id/toggle-access')
+  @Roles(Role.SuperAdmin)
+  toggleSchoolAccess(@Param('id') id: string, @Body('enabled') enabled: boolean) {
+      return this.superAdminService.toggleSchoolAccess(id, enabled);
+  }
+
+  @Post('schools/:id/extend')
+  @Roles(Role.SuperAdmin)
+  extendSubscription(@Param('id') id: string, @Body('days') days: number) {
+      return this.superAdminService.extendSubscription(id, days || 30);
+  }
 }

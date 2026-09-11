@@ -38,6 +38,7 @@ import type { Student, NewStudent, CommunicationLog, FeeItem, NewTransaction } f
 import { CommunicationType, StudentStatus, TransactionType } from '../types';
 import StudentBillingModal from '../components/common/StudentBillingModal';
 import PromotionModal from '../components/common/PromotionModal';
+import BatchIDCardModal from '../components/common/BatchIDCardModal';
 import { useData } from '../contexts/DataContext';
 import { generateStudentsPDF } from '../services/exportService';
 import Pagination from '../components/common/Pagination';
@@ -473,6 +474,8 @@ const StudentsView: React.FC = () => {
     const [isBillingModalOpen, setIsBillingModalOpen] = useState(false);
     const [isPromotionModalOpen, setIsPromotionModalOpen] = useState(false);
     const [isCaptureModalOpen, setIsCaptureModalOpen] = useState(false);
+    const [isBatchIdModalOpen, setIsBatchIdModalOpen] = useState(false);
+    const [selectedStudentIdsForBatch, setSelectedStudentIdsForBatch] = useState<string[]>([]);
     const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
 
     const initialStudentState: any = {
@@ -670,6 +673,19 @@ const StudentsView: React.FC = () => {
                     >
                         <FileText className="w-3.5 h-3.5 mr-1.5 text-blue-600" />
                         Export PDF
+                    </button>
+
+                    <button 
+                        id="btn-open-batch-ids-modal"
+                        onClick={() => {
+                            setSelectedStudentIdsForBatch([]);
+                            setIsBatchIdModalOpen(true);
+                        }}
+                        className="inline-flex items-center px-3.5 py-2 text-xs font-semibold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-200 dark:border-indigo-800/60 rounded-xl shadow-xs hover:bg-indigo-100 dark:hover:bg-indigo-900/60 transition-colors"
+                        title="Batch generate, download, and print student ID cards"
+                    >
+                        <CreditCard className="w-3.5 h-3.5 mr-1.5 text-indigo-600 dark:text-indigo-400" />
+                        Batch ID Cards
                     </button>
 
                     <button 
@@ -911,6 +927,15 @@ const StudentsView: React.FC = () => {
                                                 </td>
                                                 <td className="px-5 py-3 text-center">
                                                     <div className="inline-flex items-center gap-1.5">
+                                                        <button 
+                                                            id={`btn-id-card-student-${s.id}`}
+                                                            onClick={() => openIdCardModal(s, 'student')}
+                                                            className="px-2.5 py-1 text-xs font-semibold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/40 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 rounded-lg transition-colors inline-flex items-center gap-1"
+                                                            title="Generate, Download & Print Student ID Card"
+                                                        >
+                                                            <IdCard className="w-3 h-3 text-indigo-600 dark:text-indigo-400" />
+                                                            ID Card
+                                                        </button>
                                                         <button 
                                                             id={`btn-audit-student-${s.id}`}
                                                             onClick={() => { setSelectedStudent(s); setIsProfileModalOpen(true); }}
@@ -1252,6 +1277,16 @@ const StudentsView: React.FC = () => {
                 isOpen={isCaptureModalOpen} 
                 onClose={() => setIsCaptureModalOpen(false)} 
                 onCapture={url => setNewStudent((prev: any) => ({ ...prev, profileImage: url }))} 
+            />
+
+            <BatchIDCardModal
+                isOpen={isBatchIdModalOpen}
+                onClose={() => setIsBatchIdModalOpen(false)}
+                students={allStudents.length > 0 ? allStudents : (registry?.data || [])}
+                classes={classes}
+                schoolInfo={schoolInfo}
+                initialClassId={selectedClass !== 'all' ? selectedClass : undefined}
+                preSelectedStudentIds={selectedStudentIdsForBatch}
             />
         </div>
     );

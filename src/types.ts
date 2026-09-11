@@ -290,6 +290,13 @@ export interface SchoolInfo {
     schoolCode: string;
     gradingSystem: GradingSystem;
     currency?: string;
+    bankName?: string;
+    bankAccountName?: string;
+    bankAccountNumber?: string;
+    bankBranch?: string;
+    mpesaPaybill?: string;
+    mpesaAccountPrefix?: string;
+    taxPin?: string;
     subscription?: {
         plan: SubscriptionPlan;
         status: SubscriptionStatus;
@@ -404,7 +411,92 @@ export enum SubscriptionStatus {
   CANCELLED = 'CANCELLED',
   TRIAL = 'TRIAL',
   PENDING_APPROVAL = 'PENDING_APPROVAL',
-  PENDING_PAYMENT = 'PENDING_PAYMENT'
+  PENDING_PAYMENT = 'PENDING_PAYMENT',
+  EXPIRED = 'EXPIRED',
+  SUSPENDED = 'SUSPENDED'
+}
+
+export interface SubscriberSchool {
+    id: string;
+    name: string;
+    slug?: string;
+    schoolCode?: string;
+    email: string;
+    phone: string;
+    address: string;
+    logoUrl?: string;
+    plan: SubscriptionPlan;
+    subscriptionStatus: SubscriptionStatus;
+    startDate: string;
+    endDate: string;
+    studentCount: number;
+    staffCount: number;
+    billingCycle: 'MONTHLY' | 'ANNUALLY';
+    lastPaymentDate?: string;
+    lastPaymentAmount?: number;
+    lastReminderDate?: string;
+    remindersCount?: number;
+    autoLockoutGraceDaysRemaining?: number;
+    paymentMethod?: string;
+    invoiceNumber?: string;
+    temporaryPassword?: string;
+    adminName?: string;
+}
+
+export interface SaasInvoice {
+    id: string;
+    invoiceNumber: string;
+    schoolId: string;
+    schoolName: string;
+    schoolCode?: string;
+    recipientEmail: string;
+    recipientPhone?: string;
+    plan: SubscriptionPlan;
+    billingCycle: 'MONTHLY' | 'ANNUALLY';
+    amount: number;
+    currency: string;
+    issueDate: string;
+    dueDate: string;
+    status: 'DRAFT' | 'ISSUED' | 'PAID' | 'OVERDUE' | 'CANCELLED';
+    paidDate?: string;
+    transactionRef?: string;
+    paymentMethod?: string;
+    notes?: string;
+}
+
+export interface SaasReceipt {
+    id: string;
+    receiptNumber: string;
+    invoiceId?: string;
+    invoiceNumber?: string;
+    schoolId: string;
+    schoolName: string;
+    amount: number;
+    currency: string;
+    paymentDate: string;
+    paymentMethod: string;
+    transactionCode: string;
+    plan: SubscriptionPlan;
+    provisionedUntil: string;
+    verifiedBy: string;
+}
+
+export interface LifecycleSweepResult {
+    timestamp: string;
+    totalScanned: number;
+    activeCount: number;
+    expiringSoonCount: number;
+    gracePeriodCount: number;
+    disabledCount: number;
+    remindersSent: number;
+    actions: Array<{
+        schoolId: string;
+        schoolName: string;
+        action: 'REMINDER_5_DAY' | 'REMINDER_2_DAY' | 'GRACE_PERIOD_NOTICE' | 'ACCOUNT_DISABLED' | 'ACTIVE_HEALTHY';
+        message: string;
+        daysUntilExpiry: number;
+        status: SubscriptionStatus;
+    }>;
 }
 
 export interface PlatformPricing {
@@ -421,6 +513,13 @@ export interface PlatformPricing {
     mpesaConsumerKey?: string;
     mpesaConsumerSecret?: string;
     mpesaEnvironment?: 'sandbox' | 'production';
+    // Super Admin Wire Transfer Details:
+    wireBankName?: string;
+    wireAccountName?: string;
+    wireAccountNumber?: string;
+    wireBankBranch?: string;
+    wireSwiftCode?: string;
+    wirePaymentInstructions?: string;
 }
 
 export enum Currency {

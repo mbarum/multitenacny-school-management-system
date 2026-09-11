@@ -43,7 +43,8 @@ const Header: React.FC = () => {
     }).length;
     
     const pendingApprovalCount = useMemo(() => {
-        return schools.filter((s: any) => 
+        const list = Array.isArray(schools) ? schools : (Array.isArray((schools as any)?.data) ? (schools as any).data : []);
+        return list.filter((s: any) => 
             s.subscription?.status === SubscriptionStatus.PENDING_APPROVAL || 
             s.subscription?.status === SubscriptionStatus.PENDING_PAYMENT
         ).length;

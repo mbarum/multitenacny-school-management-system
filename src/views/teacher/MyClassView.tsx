@@ -7,6 +7,8 @@ import { CommunicationType } from '../../types';
 import { useData } from '../../contexts/DataContext';
 import * as api from '../../services/api';
 import Skeleton from '../../components/common/Skeleton';
+import BatchIDCardModal from '../../components/common/BatchIDCardModal';
+import { CreditCard, IdCard, Printer } from 'lucide-react';
 
 interface StudentProfileModalProps {
     isOpen: boolean;
@@ -118,8 +120,9 @@ const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ isOpen, onClo
 };
 
 const MyClassView: React.FC = () => {
-    const { assignedClass, openIdCardModal } = useData();
+    const { assignedClass, openIdCardModal, schoolInfo } = useData();
     const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+    const [isBatchIdModalOpen, setIsBatchIdModalOpen] = useState(false);
     const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
 
     const { data: studentsInClass = [], isLoading } = useQuery({
@@ -148,38 +151,76 @@ const MyClassView: React.FC = () => {
 
     return (
         <div className="p-6 md:p-8">
-            <h2 className="text-3xl font-bold text-slate-800 mb-6">My Class: {assignedClass.name}</h2>
-            <div className="bg-white rounded-xl shadow-lg overflow-x-auto">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                <div>
+                    <h2 className="text-2xl sm:text-3xl font-bold text-slate-800 dark:text-slate-100">
+                        My Class: {assignedClass.name}
+                    </h2>
+                    <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                        Active student roster, guardian communications, and official scholar credentials.
+                    </p>
+                </div>
+
+                <div className="flex items-center gap-3">
+                    <button
+                        id="btn-class-batch-id-cards"
+                        onClick={() => setIsBatchIdModalOpen(true)}
+                        disabled={studentsInClass.length === 0}
+                        className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-200 dark:border-indigo-800 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 disabled:opacity-50 transition-colors shadow-xs"
+                    >
+                        <CreditCard className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                        Print Class ID Cards ({studentsInClass.length})
+                    </button>
+                </div>
+            </div>
+
+            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700/80 overflow-hidden">
                  <table className="w-full text-left table-auto">
                     <thead>
-                        <tr className="bg-slate-50 border-b border-slate-200">
-                            <th className="px-4 py-3 font-semibold text-slate-600">Student</th>
-                            <th className="px-4 py-3 font-semibold text-slate-600">Admission No.</th>
-                            <th className="px-4 py-3 font-semibold text-slate-600">Guardian Name</th>
-                            <th className="px-4 py-3 font-semibold text-slate-600">Guardian Contact</th>
-                            <th className="px-4 py-3 font-semibold text-slate-600 text-center">Actions</th>
+                        <tr className="bg-slate-50 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-700">
+                            <th className="px-5 py-3 font-semibold text-xs text-slate-600 dark:text-slate-300 uppercase tracking-wider">Student</th>
+                            <th className="px-5 py-3 font-semibold text-xs text-slate-600 dark:text-slate-300 uppercase tracking-wider">Admission No.</th>
+                            <th className="px-5 py-3 font-semibold text-xs text-slate-600 dark:text-slate-300 uppercase tracking-wider">Guardian Name</th>
+                            <th className="px-5 py-3 font-semibold text-xs text-slate-600 dark:text-slate-300 uppercase tracking-wider">Guardian Contact</th>
+                            <th className="px-5 py-3 font-semibold text-xs text-slate-600 dark:text-slate-300 uppercase tracking-wider text-center">Actions</th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-700/60">
                         {studentsInClass.length > 0 ? studentsInClass.map((student: Student) => (
-                            <tr key={student.id} className="border-b border-slate-100 hover:bg-slate-50">
-                                <td className="px-4 py-2 flex items-center space-x-3">
-                                    <img src={student.profileImage} alt={student.name} className="h-10 w-10 rounded-full object-cover"/>
-                                    <span className="font-semibold">{student.name}</span>
+                            <tr key={student.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-700/40 transition-colors">
+                                <td className="px-5 py-3 flex items-center space-x-3">
+                                    <img src={student.profileImage} alt={student.name} className="h-10 w-10 rounded-full object-cover border border-slate-200 dark:border-slate-700"/>
+                                    <span className="font-bold text-sm text-slate-800 dark:text-slate-100">{student.name}</span>
                                 </td>
-                                <td className="px-4 py-2">{student.admissionNumber}</td>
-                                <td className="px-4 py-2">{student.guardianName}</td>
-                                <td className="px-4 py-2">{student.guardianContact}</td>
-                                <td className="px-4 py-2 text-center">
-                                    <button onClick={() => handleViewProfile(student)} className="text-primary-600 hover:underline">View Profile</button>
+                                <td className="px-5 py-3 font-mono text-xs text-slate-600 dark:text-slate-300">{student.admissionNumber}</td>
+                                <td className="px-5 py-3 text-sm text-slate-700 dark:text-slate-300">{student.guardianName}</td>
+                                <td className="px-5 py-3 text-sm text-slate-600 dark:text-slate-300">{student.guardianContact}</td>
+                                <td className="px-5 py-3 text-center">
+                                    <div className="inline-flex items-center gap-2">
+                                        <button 
+                                            onClick={() => openIdCardModal(student, 'student')} 
+                                            className="px-2.5 py-1 text-xs font-semibold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/40 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 rounded-lg transition-colors inline-flex items-center gap-1"
+                                            title="Generate, Download & Print Student ID Card"
+                                        >
+                                            <IdCard className="w-3.5 h-3.5" />
+                                            ID Card
+                                        </button>
+                                        <button 
+                                            onClick={() => handleViewProfile(student)} 
+                                            className="px-2.5 py-1 text-xs font-semibold text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 rounded-lg transition-colors"
+                                        >
+                                            Profile
+                                        </button>
+                                    </div>
                                 </td>
                             </tr>
                         )) : (
-                            <tr><td colSpan={5} className="text-center py-6 text-slate-500">No students found in this class.</td></tr>
+                            <tr><td colSpan={5} className="text-center py-8 text-slate-500">No students found in this class.</td></tr>
                         )}
                     </tbody>
                 </table>
             </div>
+
             <StudentProfileModal 
                 isOpen={isProfileModalOpen}
                 onClose={() => setIsProfileModalOpen(false)}
@@ -190,6 +231,15 @@ const MyClassView: React.FC = () => {
                         setIsProfileModalOpen(false);
                     }
                 }}
+            />
+
+            <BatchIDCardModal
+                isOpen={isBatchIdModalOpen}
+                onClose={() => setIsBatchIdModalOpen(false)}
+                students={studentsInClass}
+                classes={assignedClass ? [assignedClass] : []}
+                schoolInfo={schoolInfo}
+                initialClassId={assignedClass?.id}
             />
         </div>
     );

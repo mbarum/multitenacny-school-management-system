@@ -5,9 +5,11 @@ import {
     initialExams, initialGrades, initialAttendance, initialStaff,
     initialPayrollItems, initialPayrollHistory, initialTransactions,
     initialExpenses, initialAnnouncements, initialCommunicationLogs,
-    initialGradingRules, initialFeeStructure, initialDarajaSettings, initialBooks
+    initialGradingRules, initialFeeStructure, initialDarajaSettings, initialBooks,
+    initialSchools, initialSaasInvoices, initialSaasReceipts
 } from '../data/mockData';
 import { EXCHANGE_RATES } from '../utils/currency';
+import { SubscriptionPlan, SubscriptionStatus } from '../types';
 
 export function viteApiPlugin(): Plugin {
     // In-memory data store for dev server API
@@ -33,6 +35,9 @@ export function viteApiPlugin(): Plugin {
     let feeStructure = [...initialFeeStructure];
     let darajaSettings = { ...initialDarajaSettings };
     let books = [...initialBooks];
+    let schools = [...initialSchools];
+    let saasInvoices = [...initialSaasInvoices];
+    let saasReceipts = [...initialSaasReceipts];
 
     return {
         name: 'saaslink-mock-api-plugin',
@@ -516,25 +521,271 @@ export function viteApiPlugin(): Plugin {
 
                 // Super Admin
                 if (path === '/api/super-admin/stats') {
+                    const activeCount = schools.filter(s => s.subscriptionStatus === SubscriptionStatus.ACTIVE).length;
+                    const graceCount = schools.filter(s => s.subscriptionStatus === SubscriptionStatus.PAST_DUE).length;
+                    const disabledCount = schools.filter(s => s.subscriptionStatus === SubscriptionStatus.SUSPENDED).length;
+                    const totalRev = saasReceipts.reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
+                    const mrr = schools
+                        .filter(s => s.subscriptionStatus === SubscriptionStatus.ACTIVE)
+                        .reduce((sum, s) => {
+                            const planAnnual = s.plan === SubscriptionPlan.PREMIUM ? (pricing?.premiumAnnualPrice || 60000) : (pricing?.basicAnnualPrice || 30000);
+                            const planMonthly = s.plan === SubscriptionPlan.PREMIUM ? (pricing?.premiumMonthlyPrice || 6000) : (pricing?.basicMonthlyPrice || 3000);
+                            return sum + (s.billingCycle === 'ANNUALLY' ? Math.round(planAnnual / 12) : planMonthly);
+                        }, 0);
+
                     sendJson(200, {
-                        totalSchools: 1,
-                        activeSubscriptions: 1,
-                        monthlyRecurringRevenue: 5000,
+                        totalSchools: schools.length,
+                        activeSubscriptions: activeCount,
+                        gracePeriodCount: graceCount,
+                        disabledCount: disabledCount,
+                        totalRevenue: totalRev,
+                        monthlyRecurringRevenue: mrr,
+                        annualRecurringRevenue: mrr * 12,
                         totalPlatformUsers: users.length,
-                        systemUptime: '99.98%'
+                        systemUptime: '99.98%',
+                        pricing
                     });
                     return;
                 }
                 if (path === '/api/super-admin/schools') {
-                    sendJson(200, [
-                        {
-                            ...schoolInfo,
-                            studentCount: students.length,
-                            staffCount: staff.length,
-                            subscriptionStatus: 'ACTIVE',
-                            plan: 'PREMIUM'
+                    sendJson(200, schools);
+                    return;
+                }
+                if (path === '/api/super-admin/invoices') {
+                    if (req.method === 'POST') {
+                        readBody(body => {
+                            const newInv = {
+                                id: `inv-saas-${Date.now()}`,
+                                invoiceNumber: `INV-SAAS-${new Date().getFullYear()}-${String(saasInvoices.length + 1).padStart(3, '0')}`,
+                                schoolId: body.schoolId,
+                                schoolName: body.schoolName,
+                                schoolCode: body.schoolCode,
+                                recipientEmail: body.recipientEmail,
+                                recipientPhone: body.recipientPhone,
+                                plan: body.plan || 'PREMIUM',
+                                billingCycle: body.billingCycle || 'ANNUALLY',
+                                amount: Number(body.amount) || 60000,
+                                currency: body.currency || 'KES',
+                                issueDate: body.issueDate || new Date().toISOString().split('T')[0],
+                                dueDate: body.dueDate || new Date(Date.now() + 14 * 86400000).toISOString().split('T')[0],
+                                status: body.status || 'ISSUED',
+                                notes: body.notes
+                            };
+                            saasInvoices = [newInv, ...saasInvoices];
+                            sendJson(200, newInv);
+                        });
+                        return;
+                    }
+                    sendJson(200, saasInvoices);
+                    return;
+                }
+                if (path.startsWith('/api/super-admin/invoices/') && path.endsWith('/status')) {
+                    const parts = path.split('/');
+                    const invoiceId = parts[4];
+                    readBody(body => {
+                        const invIndex = saasInvoices.findIndex(i => i.id === invoiceId);
+                        if (invIndex !== -1) {
+                            const paidDate = body.paidDate || new Date().toISOString().split('T')[0];
+                            const txRef = body.transactionRef || `MPESA-${Date.now().toString().slice(-6)}`;
+                            const payMethod = body.paymentMethod || 'Lipa Na M-Pesa';
+                            saasInvoices[invIndex] = {
+                                ...saasInvoices[invIndex],
+                                status: body.status || 'PAID',
+                                paidDate,
+                                transactionRef: txRef,
+                                paymentMethod: payMethod
+                            };
+                            const inv = saasInvoices[invIndex];
+                            if (inv.status === 'PAID') {
+                                const newReceipt = {
+                                    id: `rec-saas-${Date.now()}`,
+                                    receiptNumber: `REC-SAAS-${new Date().getFullYear()}-${String(saasReceipts.length + 1).padStart(3, '0')}`,
+                                    invoiceId: inv.id,
+                                    invoiceNumber: inv.invoiceNumber,
+                                    schoolId: inv.schoolId,
+                                    schoolName: inv.schoolName,
+                                    amount: inv.amount,
+                                    currency: inv.currency,
+                                    paymentDate: paidDate,
+                                    paymentMethod: payMethod,
+                                    transactionCode: txRef,
+                                    plan: inv.plan,
+                                    provisionedUntil: new Date(Date.now() + 365 * 86400000).toISOString().split('T')[0],
+                                    verifiedBy: 'Platform Super Administrator'
+                                };
+                                saasReceipts = [newReceipt, ...saasReceipts];
+                                const schIdx = schools.findIndex(s => s.id === inv.schoolId);
+                                if (schIdx !== -1) {
+                                    schools[schIdx] = {
+                                        ...schools[schIdx],
+                                        subscriptionStatus: SubscriptionStatus.ACTIVE,
+                                        endDate: newReceipt.provisionedUntil,
+                                        remindersCount: 0
+                                    };
+                                }
+                            }
+                            sendJson(200, inv);
+                        } else {
+                            sendJson(404, { error: 'Invoice not found' });
                         }
-                    ]);
+                    });
+                    return;
+                }
+                if (path === '/api/super-admin/receipts') {
+                    sendJson(200, saasReceipts);
+                    return;
+                }
+                if (path === '/api/super-admin/lifecycle-sweep') {
+                    let remindersSent = 0;
+                    let disabledCount = 0;
+                    let warningCount = 0;
+                    const log: any[] = [];
+                    const now = new Date();
+                    schools = schools.map(school => {
+                        const end = new Date(school.endDate);
+                        const daysLeft = Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+                        let newStatus = school.subscriptionStatus;
+                        let count = school.remindersCount || 0;
+                        let lastDate = school.lastReminderDate;
+
+                        if (daysLeft < -14) {
+                            if (newStatus !== SubscriptionStatus.SUSPENDED) {
+                                newStatus = SubscriptionStatus.SUSPENDED;
+                                disabledCount++;
+                                log.push({
+                                    schoolId: school.id,
+                                    schoolName: school.name,
+                                    action: 'LOCKED',
+                                    reason: `Account past due by ${Math.abs(daysLeft)} days (exceeded 14-day grace).`,
+                                    timestamp: new Date().toISOString()
+                                });
+                            }
+                        } else if (daysLeft < 0) {
+                            if (newStatus !== SubscriptionStatus.SUSPENDED) {
+                                newStatus = SubscriptionStatus.PAST_DUE;
+                                warningCount++;
+                                count++;
+                                lastDate = new Date().toISOString().split('T')[0];
+                                remindersSent++;
+                                log.push({
+                                    schoolId: school.id,
+                                    schoolName: school.name,
+                                    action: 'GRACE_REMINDER_SENT',
+                                    reason: `Subscription expired ${Math.abs(daysLeft)} days ago. Grace lockout in ${14 + daysLeft} days.`,
+                                    timestamp: new Date().toISOString()
+                                });
+                            }
+                        } else if (daysLeft <= 5) {
+                            warningCount++;
+                            count++;
+                            lastDate = new Date().toISOString().split('T')[0];
+                            remindersSent++;
+                            log.push({
+                                schoolId: school.id,
+                                schoolName: school.name,
+                                action: 'EXPIRY_REMINDER_SENT',
+                                reason: `Subscription expiring in ${daysLeft} days. Bi-daily reminder cadence active.`,
+                                timestamp: new Date().toISOString()
+                            });
+                        }
+                        return {
+                            ...school,
+                            subscriptionStatus: newStatus,
+                            remindersCount: count,
+                            lastReminderDate: lastDate
+                        };
+                    });
+                    sendJson(200, {
+                        scannedAt: new Date().toISOString(),
+                        schoolsEvaluated: schools.length,
+                        remindersSent,
+                        disabledCount,
+                        warningCount,
+                        log
+                    });
+                    return;
+                }
+                if (path.startsWith('/api/super-admin/schools/') && path.endsWith('/reminder')) {
+                    const parts = path.split('/');
+                    const schoolId = parts[4];
+                    const sch = schools.find(s => s.id === schoolId);
+                    if (sch) {
+                        sch.remindersCount = (sch.remindersCount || 0) + 1;
+                        sch.lastReminderDate = new Date().toISOString().split('T')[0];
+                        sendJson(200, { success: true, message: `Payment reminder dispatched to ${sch.name} (${sch.email}).` });
+                    } else {
+                        sendJson(404, { error: 'School not found' });
+                    }
+                    return;
+                }
+                if (path.startsWith('/api/super-admin/schools/') && path.endsWith('/toggle-access')) {
+                    const parts = path.split('/');
+                    const schoolId = parts[4];
+                    readBody(body => {
+                        const sch = schools.find(s => s.id === schoolId);
+                        if (sch) {
+                            sch.subscriptionStatus = body.enabled ? SubscriptionStatus.ACTIVE : SubscriptionStatus.SUSPENDED;
+                            sendJson(200, { success: true, school: sch });
+                        } else {
+                            sendJson(404, { error: 'School not found' });
+                        }
+                    });
+                    return;
+                }
+                if (path.startsWith('/api/super-admin/schools/') && path.endsWith('/extend')) {
+                    const parts = path.split('/');
+                    const schoolId = parts[4];
+                    readBody(body => {
+                        const sch = schools.find(s => s.id === schoolId);
+                        if (sch) {
+                            const days = Number(body.days) || 30;
+                            const currentEnd = new Date(sch.endDate);
+                            const baseTime = currentEnd.getTime() > Date.now() ? currentEnd.getTime() : Date.now();
+                            sch.endDate = new Date(baseTime + days * 86400000).toISOString().split('T')[0];
+                            sch.subscriptionStatus = SubscriptionStatus.ACTIVE;
+                            sendJson(200, { success: true, school: sch });
+                        } else {
+                            sendJson(404, { error: 'School not found' });
+                        }
+                    });
+                    return;
+                }
+                if (path === '/api/super-admin/payments/manual') {
+                    readBody(body => {
+                        const targetSchool = schools.find(s => s.id === body.schoolId);
+                        const newReceipt = {
+                            id: `rec-saas-${Date.now()}`,
+                            receiptNumber: `REC-SAAS-${new Date().getFullYear()}-${String(saasReceipts.length + 1).padStart(3, '0')}`,
+                            invoiceId: body.invoiceId || '',
+                            invoiceNumber: body.invoiceNumber || `INV-SAAS-${new Date().getFullYear()}-MANUAL`,
+                            schoolId: body.schoolId,
+                            schoolName: targetSchool?.name || 'Institution',
+                            amount: Number(body.amount) || 60000,
+                            currency: body.currency || 'KES',
+                            paymentDate: body.date || new Date().toISOString().split('T')[0],
+                            paymentMethod: body.method || 'Lipa Na M-Pesa',
+                            transactionCode: body.transactionCode || `TXN-${Date.now()}`,
+                            plan: (targetSchool?.plan || SubscriptionPlan.PREMIUM) as SubscriptionPlan,
+                            provisionedUntil: new Date(Date.now() + 365 * 86400000).toISOString().split('T')[0],
+                            verifiedBy: 'Platform Super Administrator'
+                        };
+                        saasReceipts = [newReceipt, ...saasReceipts];
+                        if (targetSchool) {
+                            targetSchool.subscriptionStatus = SubscriptionStatus.ACTIVE;
+                            targetSchool.endDate = newReceipt.provisionedUntil;
+                            targetSchool.remindersCount = 0;
+                        }
+                        if (body.invoiceId) {
+                            const inv = saasInvoices.find(i => i.id === body.invoiceId);
+                            if (inv) {
+                                inv.status = 'PAID';
+                                inv.paidDate = newReceipt.paymentDate;
+                                inv.transactionRef = newReceipt.transactionCode;
+                                inv.paymentMethod = newReceipt.paymentMethod;
+                            }
+                        }
+                        sendJson(200, { success: true, receipt: newReceipt });
+                    });
                     return;
                 }
                 if (path === '/api/super-admin/health') {
@@ -553,7 +804,7 @@ export function viteApiPlugin(): Plugin {
                     return;
                 }
                 if (path === '/api/super-admin/payments') {
-                    sendJson(200, []);
+                    sendJson(200, saasReceipts);
                     return;
                 }
 

@@ -797,6 +797,111 @@ const SettingsView: React.FC = () => {
                                     <option value={GradingSystem.CBC}>Competency-Based Curriculum (CBC Rubrics)</option>
                                 </select>
                             </div>
+
+                            <div>
+                                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2">
+                                    Official Tax PIN / KRA PIN
+                                </label>
+                                <input 
+                                    id="input-school-tax-pin"
+                                    value={localSchoolInfo.taxPin || ''} 
+                                    onChange={e => setLocalSchoolInfo({ ...localSchoolInfo, taxPin: e.target.value })} 
+                                    placeholder="e.g. P051234567Z"
+                                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-semibold text-xs focus:bg-white dark:focus:bg-slate-900 focus:outline-hidden focus:border-primary-500 font-mono"
+                                />
+                            </div>
+                        </div>
+
+                        {/* Banking & Settlement Details for Invoices & Receipts */}
+                        <div className="pt-6 border-t border-slate-200 dark:border-slate-800 space-y-4">
+                            <div>
+                                <h4 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider">
+                                    Invoice &amp; Receipt Payment Channels (A4 Printouts)
+                                </h4>
+                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                                    These banking details and M-Pesa business numbers appear directly on all generated A4 student fee invoices and official payment receipts.
+                                </p>
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2">
+                                        Lipa Na M-Pesa Paybill No
+                                    </label>
+                                    <input 
+                                        id="input-school-mpesa-paybill"
+                                        value={localSchoolInfo.mpesaPaybill || ''} 
+                                        onChange={e => setLocalSchoolInfo({ ...localSchoolInfo, mpesaPaybill: e.target.value })} 
+                                        placeholder="e.g. 522522 or 247247"
+                                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-semibold text-xs focus:bg-white dark:focus:bg-slate-900 focus:outline-hidden focus:border-primary-500 font-mono"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2">
+                                        M-Pesa Account Prefix (Optional)
+                                    </label>
+                                    <input 
+                                        id="input-school-mpesa-prefix"
+                                        value={localSchoolInfo.mpesaAccountPrefix || ''} 
+                                        onChange={e => setLocalSchoolInfo({ ...localSchoolInfo, mpesaAccountPrefix: e.target.value })} 
+                                        placeholder="e.g. SCH- or leave blank to use Admission No"
+                                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-semibold text-xs focus:bg-white dark:focus:bg-slate-900 focus:outline-hidden focus:border-primary-500 font-mono"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2">
+                                        Bank Name
+                                    </label>
+                                    <input 
+                                        id="input-school-bank-name"
+                                        value={localSchoolInfo.bankName || ''} 
+                                        onChange={e => setLocalSchoolInfo({ ...localSchoolInfo, bankName: e.target.value })} 
+                                        placeholder="e.g. Equity Bank Kenya / KCB"
+                                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-semibold text-xs focus:bg-white dark:focus:bg-slate-900 focus:outline-hidden focus:border-primary-500"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2">
+                                        Bank Account Name
+                                    </label>
+                                    <input 
+                                        id="input-school-bank-ac-name"
+                                        value={localSchoolInfo.bankAccountName || ''} 
+                                        onChange={e => setLocalSchoolInfo({ ...localSchoolInfo, bankAccountName: e.target.value })} 
+                                        placeholder="e.g. St. Jude Academy Tuition Collection"
+                                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-semibold text-xs focus:bg-white dark:focus:bg-slate-900 focus:outline-hidden focus:border-primary-500"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2">
+                                        Bank Account Number
+                                    </label>
+                                    <input 
+                                        id="input-school-bank-ac-number"
+                                        value={localSchoolInfo.bankAccountNumber || ''} 
+                                        onChange={e => setLocalSchoolInfo({ ...localSchoolInfo, bankAccountNumber: e.target.value })} 
+                                        placeholder="e.g. 0123456789012"
+                                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-semibold text-xs focus:bg-white dark:focus:bg-slate-900 focus:outline-hidden focus:border-primary-500 font-mono"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2">
+                                        Bank Branch
+                                    </label>
+                                    <input 
+                                        id="input-school-bank-branch"
+                                        value={localSchoolInfo.bankBranch || ''} 
+                                        onChange={e => setLocalSchoolInfo({ ...localSchoolInfo, bankBranch: e.target.value })} 
+                                        placeholder="e.g. Upper Hill Commercial Center"
+                                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-semibold text-xs focus:bg-white dark:focus:bg-slate-900 focus:outline-hidden focus:border-primary-500"
+                                    />
+                                </div>
+                            </div>
                         </div>
 
                         <div className="pt-4 flex justify-end">

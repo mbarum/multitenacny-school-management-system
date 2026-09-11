@@ -309,6 +309,13 @@ export interface SchoolInfo {
         endDate: string;
     };
     currency?: string;
+    bankName?: string;
+    bankAccountName?: string;
+    bankAccountNumber?: string;
+    bankBranch?: string;
+    mpesaPaybill?: string;
+    mpesaAccountPrefix?: string;
+    taxPin?: string;
 }
 
 export interface GradingRule {
@@ -408,7 +415,89 @@ export enum SubscriptionStatus {
   ACTIVE = 'ACTIVE',
   PAST_DUE = 'PAST_DUE',
   CANCELLED = 'CANCELLED',
-  TRIAL = 'TRIAL'
+  TRIAL = 'TRIAL',
+  PENDING_APPROVAL = 'PENDING_APPROVAL',
+  PENDING_PAYMENT = 'PENDING_PAYMENT',
+  EXPIRED = 'EXPIRED',
+  SUSPENDED = 'SUSPENDED'
+}
+
+export interface SubscriberSchool {
+    id: string;
+    name: string;
+    slug?: string;
+    schoolCode?: string;
+    email: string;
+    phone: string;
+    address: string;
+    logoUrl?: string;
+    plan: SubscriptionPlan;
+    subscriptionStatus: SubscriptionStatus;
+    startDate: string;
+    endDate: string;
+    studentCount: number;
+    staffCount: number;
+    billingCycle: 'MONTHLY' | 'ANNUALLY';
+    lastPaymentDate?: string;
+    lastPaymentAmount?: number;
+    lastReminderDate?: string;
+    remindersCount?: number;
+    autoLockoutGraceDaysRemaining?: number;
+}
+
+export interface SaasInvoice {
+    id: string;
+    invoiceNumber: string;
+    schoolId: string;
+    schoolName: string;
+    schoolCode?: string;
+    recipientEmail: string;
+    recipientPhone?: string;
+    plan: SubscriptionPlan;
+    billingCycle: 'MONTHLY' | 'ANNUALLY';
+    amount: number;
+    currency: string;
+    issueDate: string;
+    dueDate: string;
+    status: 'DRAFT' | 'ISSUED' | 'PAID' | 'OVERDUE' | 'CANCELLED';
+    paidDate?: string;
+    transactionRef?: string;
+    notes?: string;
+}
+
+export interface SaasReceipt {
+    id: string;
+    receiptNumber: string;
+    invoiceId?: string;
+    invoiceNumber?: string;
+    schoolId: string;
+    schoolName: string;
+    amount: number;
+    currency: string;
+    paymentDate: string;
+    paymentMethod: string;
+    transactionCode: string;
+    plan: SubscriptionPlan;
+    provisionedUntil: string;
+    verifiedBy: string;
+}
+
+export interface LifecycleSweepResult {
+    timestamp: string;
+    totalScanned: number;
+    activeCount: number;
+    expiringSoonCount: number;
+    gracePeriodCount: number;
+    disabledCount: number;
+    remindersSent: number;
+    actions: Array<{
+        schoolId: string;
+        schoolName: string;
+        action: 'REMINDER_5_DAY' | 'REMINDER_2_DAY' | 'GRACE_PERIOD_NOTICE' | 'ACCOUNT_DISABLED' | 'ACTIVE_HEALTHY';
+        message: string;
+        daysUntilExpiry: number;
+        status: SubscriptionStatus;
+    }>;
 }
 
 export interface PlatformPricing {

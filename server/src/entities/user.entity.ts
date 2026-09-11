@@ -52,6 +52,6 @@ export class User extends BaseEntity {
   @OneToMany(() => ClassSubjectAssignment, (assignment) => assignment.teacher)
   taughtSubjects!: ClassSubjectAssignment[];
 
-  @OneToOne(() => Staff, (staff) => staff.user, { cascade: true })
+  @OneToOne(() => Staff, (staff) => staff.user, { cascade: true, nullable: true })
   staffProfile!: Staff;
 }

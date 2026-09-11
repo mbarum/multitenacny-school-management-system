@@ -17,11 +17,11 @@ export class Staff extends BaseEntity {
   school!: School;
 
   @Column({ type: 'uuid', unique: true, nullable: true })
-  userId!: string;
+  userId!: string | null;
   
-  @OneToOne(() => User, (user) => user.staffProfile, { onDelete: 'CASCADE' })
+  @OneToOne(() => User, (user) => user.staffProfile, { onDelete: 'CASCADE', nullable: true })
   @JoinColumn({ name: 'userId' })
-  user!: User;
+  user!: User | null;
 
   @Column()
   name!: string;

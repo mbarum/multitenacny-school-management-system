@@ -1,6 +1,6 @@
 {
   "name": "Saaslink School Management System Multitenancy",
-  "description": "A modern, fully integrated school accounting and management system tailored for primary schools, designed to replace traditional tools with an easier-to-use and fully customizable platform.",
+  "description": "Comprehensive school management and accounting system by SaasLink Technologies Ltd supporting CBC and traditional 8-4-4 learning, automated Daraja M-Pesa fee reconciliation, and KNEC CBA reporting.",
   "requestFramePermissions": [
     "camera"
   ],

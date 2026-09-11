@@ -6,20 +6,27 @@ import {
     type TimetableEntry, type Exam, type Grade, type AttendanceRecord, type Staff,
     type Payroll, type PayrollItem, type Transaction, type Expense, type Announcement,
     type CommunicationLog, type GradingRule, type FeeItem, type SchoolInfo, type PlatformPricing,
-    type DarajaSettings, type Book
+    type DarajaSettings, type Book, type SubscriberSchool, type SaasInvoice, type SaasReceipt
 } from '../types';
 import { EXCHANGE_RATES } from '../utils/currency';
 
 export const initialSchoolInfo: SchoolInfo = {
     id: 'school-1',
     name: 'Springfield Elementary',
-    address: '123 Main St, Nairobi',
+    address: '123 Main St, Academic Ridge, Nairobi',
     phone: '+254 700 000 000',
-    email: 'info@springfield.edu',
+    email: 'bursar@springfield.edu',
     logoUrl: 'https://images.unsplash.com/photo-1580582932707-520aed937b7b?auto=format&fit=crop&q=80&w=120',
     schoolCode: 'SPE',
     gradingSystem: GradingSystem.Traditional,
     currency: 'KES',
+    bankName: 'Equity Bank Kenya',
+    bankAccountName: 'Springfield Elementary School Main A/C',
+    bankAccountNumber: '0140293847291',
+    bankBranch: 'Westlands Supreme Branch',
+    mpesaPaybill: '522522',
+    mpesaAccountPrefix: 'SPE-',
+    taxPin: 'P051239845X',
     subscription: {
         plan: SubscriptionPlan.PREMIUM,
         status: SubscriptionStatus.ACTIVE,
@@ -34,7 +41,13 @@ export const initialPricing: PlatformPricing = {
     premiumMonthlyPrice: 5000,
     premiumAnnualPrice: 50000,
     stripePublishableKey: 'pk_test_sample',
-    mpesaPaybill: '522522'
+    mpesaPaybill: '522522',
+    wireBankName: 'NCBA Bank Kenya PLC',
+    wireAccountName: 'SaasLink Technologies Ltd - Cloud Operations',
+    wireAccountNumber: '1004928371',
+    wireBankBranch: 'Upper Hill Corporate Branch, Nairobi',
+    wireSwiftCode: 'NCBAKENA',
+    wirePaymentInstructions: 'Include the Proforma Invoice Number as the mandatory wire reference. Once wire transfer is remitted, our Super Administrator verifies the deposit and activates your institutional license with credentials dispatched.'
 };
 
 export const initialUsers: User[] = [
@@ -719,6 +732,241 @@ export const initialBooks: Book[] = [
     { id: 'bk-3', title: 'Story of the Savannah', author: 'Ngugi wa Thiong\'o', isbn: '978-9966-003', category: 'Fiction', totalQuantity: 25, availableQuantity: 24, shelfLocation: 'C3-01' }
 ];
 
+export const initialSchools: SubscriberSchool[] = [
+    {
+        id: 'school-1',
+        name: 'Springfield Elementary',
+        slug: 'springfield-elementary',
+        schoolCode: 'SPE',
+        email: 'bursar@springfield.edu',
+        phone: '+254 700 000 000',
+        address: '123 Main St, Academic Ridge, Nairobi',
+        logoUrl: 'https://images.unsplash.com/photo-1580582932707-520aed937b7b?auto=format&fit=crop&q=80&w=120',
+        plan: SubscriptionPlan.PREMIUM,
+        subscriptionStatus: SubscriptionStatus.ACTIVE,
+        startDate: '2025-01-01',
+        endDate: new Date(Date.now() + 180 * 86400000).toISOString().split('T')[0],
+        studentCount: 120,
+        staffCount: 14,
+        billingCycle: 'ANNUALLY',
+        lastPaymentDate: '2025-01-15',
+        lastPaymentAmount: 60000,
+        remindersCount: 0
+    },
+    {
+        id: 'school-2',
+        name: 'Greenfield Academy',
+        slug: 'greenfield-academy',
+        schoolCode: 'GFA',
+        email: 'principal@greenfield.ac.ke',
+        phone: '+254 711 223 344',
+        address: 'Kilimani Road, Nairobi',
+        logoUrl: 'https://images.unsplash.com/photo-1546410531-bb4caa6b424d?auto=format&fit=crop&q=80&w=120',
+        plan: SubscriptionPlan.PREMIUM,
+        subscriptionStatus: SubscriptionStatus.ACTIVE,
+        startDate: '2025-02-15',
+        endDate: new Date(Date.now() + 4 * 86400000).toISOString().split('T')[0],
+        studentCount: 240,
+        staffCount: 22,
+        billingCycle: 'ANNUALLY',
+        lastPaymentDate: '2024-02-15',
+        lastPaymentAmount: 60000,
+        lastReminderDate: new Date(Date.now() - 1 * 86400000).toISOString().split('T')[0],
+        remindersCount: 1
+    },
+    {
+        id: 'school-3',
+        name: 'Hillcrest International School',
+        slug: 'hillcrest-intl',
+        schoolCode: 'HIS',
+        email: 'accounts@hillcrest.edu',
+        phone: '+254 722 334 455',
+        address: 'Karen Plains, Nairobi',
+        logoUrl: 'https://images.unsplash.com/photo-1523050854058-8df90110c9f1?auto=format&fit=crop&q=80&w=120',
+        plan: SubscriptionPlan.PREMIUM,
+        subscriptionStatus: SubscriptionStatus.PAST_DUE,
+        startDate: '2024-03-01',
+        endDate: new Date(Date.now() - 6 * 86400000).toISOString().split('T')[0],
+        studentCount: 480,
+        staffCount: 38,
+        billingCycle: 'ANNUALLY',
+        lastPaymentDate: '2024-03-01',
+        lastPaymentAmount: 60000,
+        lastReminderDate: new Date(Date.now() - 2 * 86400000).toISOString().split('T')[0],
+        remindersCount: 3,
+        autoLockoutGraceDaysRemaining: 8
+    },
+    {
+        id: 'school-4',
+        name: 'St. Jude Preparatory',
+        slug: 'st-jude-prep',
+        schoolCode: 'SJP',
+        email: 'admin@stjudeprep.sc.ke',
+        phone: '+254 733 445 566',
+        address: 'Eldoret Bypass, Uasin Gishu',
+        logoUrl: 'https://images.unsplash.com/photo-1509062522246-3755977927d7?auto=format&fit=crop&q=80&w=120',
+        plan: SubscriptionPlan.BASIC,
+        subscriptionStatus: SubscriptionStatus.SUSPENDED,
+        startDate: '2024-01-10',
+        endDate: new Date(Date.now() - 18 * 86400000).toISOString().split('T')[0],
+        studentCount: 95,
+        staffCount: 9,
+        billingCycle: 'MONTHLY',
+        lastPaymentDate: '2024-01-10',
+        lastPaymentAmount: 5000,
+        lastReminderDate: new Date(Date.now() - 4 * 86400000).toISOString().split('T')[0],
+        remindersCount: 7,
+        autoLockoutGraceDaysRemaining: 0
+    },
+    {
+        id: 'school-5',
+        name: 'Nairobi Apex Academy',
+        slug: 'nairobi-apex',
+        schoolCode: 'NAA',
+        email: 'info@nairobiapex.co.ke',
+        phone: '+254 744 556 677',
+        address: 'Westlands Commercial Hub, Nairobi',
+        logoUrl: 'https://images.unsplash.com/photo-1577495508048-b635879837f1?auto=format&fit=crop&q=80&w=120',
+        plan: SubscriptionPlan.BASIC,
+        subscriptionStatus: SubscriptionStatus.ACTIVE,
+        startDate: '2025-01-10',
+        endDate: new Date(Date.now() + 110 * 86400000).toISOString().split('T')[0],
+        studentCount: 180,
+        staffCount: 16,
+        billingCycle: 'ANNUALLY',
+        lastPaymentDate: '2025-01-10',
+        lastPaymentAmount: 30000,
+        remindersCount: 0
+    }
+];
+
+export const initialSaasInvoices: SaasInvoice[] = [
+    {
+        id: 'inv-saas-1',
+        invoiceNumber: 'INV-SAAS-2025-001',
+        schoolId: 'school-1',
+        schoolName: 'Springfield Elementary',
+        schoolCode: 'SPE',
+        recipientEmail: 'bursar@springfield.edu',
+        recipientPhone: '+254 700 000 000',
+        plan: SubscriptionPlan.PREMIUM,
+        billingCycle: 'ANNUALLY',
+        amount: 60000,
+        currency: 'KES',
+        issueDate: '2025-01-05',
+        dueDate: '2025-01-15',
+        status: 'PAID',
+        paidDate: '2025-01-15',
+        transactionRef: 'QKD872619H',
+        notes: 'Annual SaaS Enterprise subscription with multi-campus and biometric SMS add-on.'
+    },
+    {
+        id: 'inv-saas-2',
+        invoiceNumber: 'INV-SAAS-2025-002',
+        schoolId: 'school-5',
+        schoolName: 'Nairobi Apex Academy',
+        schoolCode: 'NAA',
+        recipientEmail: 'info@nairobiapex.co.ke',
+        recipientPhone: '+254 744 556 677',
+        plan: SubscriptionPlan.BASIC,
+        billingCycle: 'ANNUALLY',
+        amount: 30000,
+        currency: 'KES',
+        issueDate: '2025-01-02',
+        dueDate: '2025-01-10',
+        status: 'PAID',
+        paidDate: '2025-01-10',
+        transactionRef: 'NCBA-TXN-8841',
+        notes: 'Basic Annual License for primary level management.'
+    },
+    {
+        id: 'inv-saas-3',
+        invoiceNumber: 'INV-SAAS-2025-003',
+        schoolId: 'school-2',
+        schoolName: 'Greenfield Academy',
+        schoolCode: 'GFA',
+        recipientEmail: 'principal@greenfield.ac.ke',
+        recipientPhone: '+254 711 223 344',
+        plan: SubscriptionPlan.PREMIUM,
+        billingCycle: 'ANNUALLY',
+        amount: 60000,
+        currency: 'KES',
+        issueDate: new Date(Date.now() - 5 * 86400000).toISOString().split('T')[0],
+        dueDate: new Date(Date.now() + 4 * 86400000).toISOString().split('T')[0],
+        status: 'ISSUED',
+        notes: 'Upcoming renewal. 5-day pre-expiry reminder dispatched.'
+    },
+    {
+        id: 'inv-saas-4',
+        invoiceNumber: 'INV-SAAS-2025-004',
+        schoolId: 'school-3',
+        schoolName: 'Hillcrest International School',
+        schoolCode: 'HIS',
+        recipientEmail: 'accounts@hillcrest.edu',
+        recipientPhone: '+254 722 334 455',
+        plan: SubscriptionPlan.PREMIUM,
+        billingCycle: 'ANNUALLY',
+        amount: 60000,
+        currency: 'KES',
+        issueDate: new Date(Date.now() - 20 * 86400000).toISOString().split('T')[0],
+        dueDate: new Date(Date.now() - 6 * 86400000).toISOString().split('T')[0],
+        status: 'OVERDUE',
+        notes: 'In 14-day grace period. Account will lock out in 8 days if unsettled.'
+    },
+    {
+        id: 'inv-saas-5',
+        invoiceNumber: 'INV-SAAS-2025-005',
+        schoolId: 'school-4',
+        schoolName: 'St. Jude Preparatory',
+        schoolCode: 'SJP',
+        recipientEmail: 'admin@stjudeprep.sc.ke',
+        recipientPhone: '+254 733 445 566',
+        plan: SubscriptionPlan.BASIC,
+        billingCycle: 'MONTHLY',
+        amount: 5000,
+        currency: 'KES',
+        issueDate: new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0],
+        dueDate: new Date(Date.now() - 18 * 86400000).toISOString().split('T')[0],
+        status: 'OVERDUE',
+        notes: 'EXCEEDED 14-DAY GRACE PERIOD: Account disabled until settlement.'
+    }
+];
+
+export const initialSaasReceipts: SaasReceipt[] = [
+    {
+        id: 'rec-saas-1',
+        receiptNumber: 'REC-SAAS-2025-001',
+        invoiceId: 'inv-saas-1',
+        invoiceNumber: 'INV-SAAS-2025-001',
+        schoolId: 'school-1',
+        schoolName: 'Springfield Elementary',
+        amount: 60000,
+        currency: 'KES',
+        paymentDate: '2025-01-15',
+        paymentMethod: 'Lipa Na M-Pesa',
+        transactionCode: 'QKD872619H',
+        plan: SubscriptionPlan.PREMIUM,
+        provisionedUntil: new Date(Date.now() + 180 * 86400000).toISOString().split('T')[0],
+        verifiedBy: 'Platform Super Administrator'
+    },
+    {
+        id: 'rec-saas-2',
+        receiptNumber: 'REC-SAAS-2025-002',
+        invoiceId: 'inv-saas-2',
+        invoiceNumber: 'INV-SAAS-2025-002',
+        schoolId: 'school-5',
+        schoolName: 'Nairobi Apex Academy',
+        amount: 30000,
+        currency: 'KES',
+        paymentDate: '2025-01-10',
+        paymentMethod: 'Bank Wire (NCBA)',
+        transactionCode: 'NCBA-TXN-8841',
+        plan: SubscriptionPlan.BASIC,
+        provisionedUntil: new Date(Date.now() + 110 * 86400000).toISOString().split('T')[0],
+        verifiedBy: 'Platform Super Administrator'
+    }
+];
+
 // Helper to load or initialize LocalStorage store
 const STORAGE_KEY = 'saaslink_app_data_v1';
 
@@ -746,6 +994,9 @@ export interface AppMockStore {
     feeStructure: FeeItem[];
     darajaSettings: DarajaSettings;
     books: Book[];
+    schools: SubscriberSchool[];
+    saasInvoices: SaasInvoice[];
+    saasReceipts: SaasReceipt[];
 }
 
 export const getInitialMockStore = (): AppMockStore => ({
@@ -771,7 +1022,10 @@ export const getInitialMockStore = (): AppMockStore => ({
     gradingScale: [...initialGradingRules],
     feeStructure: [...initialFeeStructure],
     darajaSettings: { ...initialDarajaSettings },
-    books: [...initialBooks]
+    books: [...initialBooks],
+    schools: [...initialSchools],
+    saasInvoices: [...initialSaasInvoices],
+    saasReceipts: [...initialSaasReceipts]
 });
 
 export const loadMockStore = (): AppMockStore => {
@@ -784,6 +1038,21 @@ export const loadMockStore = (): AppMockStore => {
                 ...initial,
                 ...parsed
             };
+
+            // Ensure subscriber schools are populated
+            if (!store.schools || !Array.isArray(store.schools) || store.schools.length === 0) {
+                store.schools = [...initialSchools];
+            }
+
+            // Ensure saasInvoices are populated
+            if (!store.saasInvoices || !Array.isArray(store.saasInvoices) || store.saasInvoices.length === 0) {
+                store.saasInvoices = [...initialSaasInvoices];
+            }
+
+            // Ensure saasReceipts are populated
+            if (!store.saasReceipts || !Array.isArray(store.saasReceipts) || store.saasReceipts.length === 0) {
+                store.saasReceipts = [...initialSaasReceipts];
+            }
 
             // Ensure students collection is populated
             if (!store.students || !Array.isArray(store.students) || store.students.length === 0) {

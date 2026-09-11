@@ -1,5 +1,6 @@
 
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useData } from '../../contexts/DataContext';
 import Modal from '../common/Modal';
 import { sendPasswordResetEmail } from '../../services/emailService';
@@ -66,18 +67,52 @@ const Login: React.FC = () => {
 
     return (
         <>
-            <div className="min-h-screen w-full bg-slate-50 lg:grid lg:grid-cols-2">
-                <div className="flex flex-col justify-center items-center p-8 lg:p-12 relative z-10 bg-white">
+            <div className="min-h-screen w-full bg-slate-50 lg:grid lg:grid-cols-2 relative">
+                {/* Top Quick Navigation Bar */}
+                <div className="absolute top-0 inset-x-0 z-30 p-4 sm:p-6 flex justify-between items-center bg-white/95 backdrop-blur-md border-b border-slate-200 lg:bg-transparent lg:border-none">
+                    <Link
+                        to="/"
+                        id="btn-back-to-website"
+                        className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold text-slate-800 hover:text-slate-950 bg-white hover:bg-slate-100 shadow-sm border border-slate-200 transition-all hover:scale-[1.02]"
+                        title="Return to SaasLink Website"
+                    >
+                        <svg className="w-4 h-4 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                        </svg>
+                        <span>&larr; Back to Website</span>
+                    </Link>
+                    <div className="text-xs font-semibold text-slate-500 hidden sm:block">
+                        SaasLink School Operating System
+                    </div>
+                </div>
+
+                <div className="flex flex-col justify-center items-center p-8 pt-20 lg:p-12 relative z-10 bg-white">
                     <div className="w-full max-w-sm">
-                        <div className="mb-10 text-center">
+                        {/* Switch button above card */}
+                        <div className="mb-6 flex justify-between items-center">
+                            <Link
+                                to="/"
+                                className="text-xs font-bold text-slate-500 hover:text-primary-600 flex items-center gap-1 transition-colors"
+                            >
+                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                                </svg>
+                                Home / Landing Page
+                            </Link>
+                            <span className="text-[10px] font-bold uppercase tracking-wider bg-primary-50 text-primary-700 px-2 py-0.5 rounded border border-primary-200">
+                                Sign In Screen
+                            </span>
+                        </div>
+
+                        <div className="mb-8 text-center">
                              <div className="flex items-center justify-center">
                                  {schoolInfo?.logoUrl && (
                                     <img src={schoolInfo.logoUrl} alt="School Logo" className="h-16 w-16 rounded-full object-cover border border-slate-100 shadow-sm" />
                                  )}
                                 <span className="ml-4 text-3xl font-bold text-primary-700 tracking-tight">{schoolInfo?.name || 'Saaslink'}</span>
                              </div>
-                             <h1 className="mt-8 text-3xl font-extrabold text-slate-900">Welcome Back</h1>
-                             <p className="mt-2 text-slate-600">Please sign in to access the portal.</p>
+                             <h1 className="mt-6 text-3xl font-extrabold text-slate-900">Welcome Back</h1>
+                             <p className="mt-2 text-slate-600 text-sm">Please sign in to access the portal.</p>
                         </div>
                         
                         <form onSubmit={handleLoginSubmit} className="space-y-6">
@@ -145,51 +180,27 @@ const Login: React.FC = () => {
                                         : 'Sign In'}
                                 </button>
                             </div>
-
-                            <div className="mt-3 pt-3 border-t border-slate-200">
-                                <p className="text-xs font-medium text-slate-500 mb-2 text-center">Demo Quick Fill:</p>
-                                <div className="flex flex-wrap gap-1.5 justify-center">
-                                    <button
-                                        type="button"
-                                        onClick={() => { setEmail('admin@saaslink.com'); setPassword('password123'); }}
-                                        className="px-2.5 py-1 text-xs font-medium rounded-lg bg-slate-100 hover:bg-primary-50 hover:text-primary-700 text-slate-700 transition"
-                                    >
-                                        Admin
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => { setEmail('alice@saaslink.com'); setPassword('password123'); }}
-                                        className="px-2.5 py-1 text-xs font-medium rounded-lg bg-slate-100 hover:bg-primary-50 hover:text-primary-700 text-slate-700 transition"
-                                    >
-                                        Teacher
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => { setEmail('parent1@saaslink.com'); setPassword('password123'); }}
-                                        className="px-2.5 py-1 text-xs font-medium rounded-lg bg-slate-100 hover:bg-primary-50 hover:text-primary-700 text-slate-700 transition"
-                                    >
-                                        Parent
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => { setEmail('accountant@saaslink.com'); setPassword('password123'); }}
-                                        className="px-2.5 py-1 text-xs font-medium rounded-lg bg-slate-100 hover:bg-primary-50 hover:text-primary-700 text-slate-700 transition"
-                                    >
-                                        Accountant
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => { setEmail('super@saaslink.com'); setPassword('password123'); }}
-                                        className="px-2.5 py-1 text-xs font-medium rounded-lg bg-slate-100 hover:bg-primary-50 hover:text-primary-700 text-slate-700 transition"
-                                    >
-                                        Super Admin
-                                    </button>
-                                </div>
-                            </div>
                         </form>
+
+                        {/* Dedicated Return to Website Button */}
+                        <div className="mt-8 pt-6 border-t border-slate-200/80 text-center">
+                            <span className="text-xs text-slate-500 block mb-3">
+                                Need to review curriculum coverage, pricing, or subscription plans?
+                            </span>
+                            <Link
+                                to="/"
+                                id="btn-login-to-landing-bottom"
+                                className="w-full inline-flex items-center justify-center gap-2 px-4 py-3.5 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded-xl text-xs sm:text-sm font-bold text-slate-800 transition-all hover:scale-[1.01] shadow-sm"
+                            >
+                                <svg className="w-4 h-4 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                                </svg>
+                                <span>&larr; Back to Website</span>
+                            </Link>
+                        </div>
                     </div>
                      <p className="absolute bottom-8 text-center text-sm text-slate-400">
-                        &copy; {new Date().getFullYear()} Saaslink Technologies Ltd. All rights reserved.
+                        &copy; {new Date().getFullYear()} SaasLink Technologies Ltd. All rights reserved.
                     </p>
                 </div>
                  <div className="hidden lg:block relative overflow-hidden">
@@ -212,6 +223,22 @@ const Login: React.FC = () => {
                     </div>
                 </div>
             </div>
+
+            {/* Persistent Floating Back to Website Button */}
+            <div className="fixed bottom-6 right-6 z-40">
+                <Link
+                    to="/"
+                    id="floating-switch-to-landing"
+                    className="inline-flex items-center gap-2 px-4 py-3 bg-slate-900 hover:bg-slate-800 text-white rounded-full shadow-2xl border border-slate-700 text-xs sm:text-sm font-bold transition-all hover:scale-105 group"
+                    title="Return to SaasLink Website"
+                >
+                    <span className="w-6 h-6 rounded-full bg-primary-500 text-white flex items-center justify-center font-black text-xs group-hover:-translate-x-0.5 transition-transform">
+                        &larr;
+                    </span>
+                    <span>Back to Website</span>
+                </Link>
+            </div>
+
             <Modal isOpen={isResetModalOpen} onClose={() => setIsResetModalOpen(false)} title="Reset Password">
                 <form onSubmit={handlePasswordReset} className="space-y-4">
                     <p className="text-sm text-slate-600">Enter your email address and we will send you a link to reset your password.</p>

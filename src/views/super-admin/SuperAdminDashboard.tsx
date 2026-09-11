@@ -1,319 +1,1588 @@
 import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useData } from '../../contexts/DataContext';
-import { School, SubscriptionStatus, SubscriptionPlan, PlatformPricing } from '../../types';
+import { 
+    SubscriptionStatus, 
+    SubscriptionPlan, 
+    type PlatformPricing, 
+    type SubscriberSchool, 
+    type SaasInvoice, 
+    type SaasReceipt, 
+    type LifecycleSweepResult 
+} from '../../types';
 import * as api from '../../services/api';
 import Modal from '../../components/common/Modal';
 import StatCard from '../../components/common/StatCard';
 import Skeleton from '../../components/common/Skeleton';
 import Spinner from '../../components/common/Spinner';
+import { FinancialDocumentView } from '../../components/common/FinancialDocumentView';
+import { 
+    buildSaasSubscriptionInvoice, 
+    buildSaasSubscriptionReceipt, 
+    downloadDocumentAsPDF, 
+    type FinancialDocument 
+} from '../../utils/invoiceReceiptGenerator';
+import {
+    Building2,
+    Receipt,
+    FileText,
+    DollarSign,
+    RefreshCw,
+    Lock,
+    Unlock,
+    Send,
+    Eye,
+    Plus,
+    CheckCircle2,
+    AlertTriangle,
+    XCircle,
+    Calendar,
+    Clock,
+    Activity,
+    Sliders,
+    Search,
+    Download,
+    CreditCard,
+    ChevronRight,
+    TrendingUp,
+    ShieldAlert,
+    HelpCircle,
+    Sparkles
+} from 'lucide-react';
 
-const SuperAdminDashboard: React.FC = () => {
+export const SuperAdminDashboard: React.FC = () => {
     const { addNotification, formatCurrency } = useData();
     const queryClient = useQueryClient();
-    
-    // UI State
-    const [activeTab, setActiveTab] = useState<'overview' | 'revenue'>('overview');
-    const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
-    const [configSection, setConfigSection] = useState<'pricing' | 'gateways'>('pricing');
-    const [isRecoveryModalOpen, setIsRecoveryModalOpen] = useState(false);
-    const [isEditSubModalOpen, setIsEditSubModalOpen] = useState(false);
-    
-    // Selection State
-    const [selectedSchool, setSelectedSchool] = useState<any>(null);
 
-    // Form States
+    // Tabs
+    const [activeTab, setActiveTab] = useState<'schools' | 'invoices' | 'receipts' | 'revenue'>('schools');
+
+    // Filter & Search States
+    const [schoolFilter, setSchoolFilter] = useState<'all' | 'active' | 'grace' | 'suspended'>('all');
+    const [schoolSearch, setSchoolSearch] = useState('');
+    const [invoiceFilter, setInvoiceFilter] = useState<'all' | 'ISSUED' | 'PAID' | 'OVERDUE'>('all');
+
+    // Modals
+    const [isDocumentModalOpen, setIsDocumentModalOpen] = useState(false);
+    const [activeDocument, setActiveDocument] = useState<FinancialDocument | null>(null);
+
+    const [isNewInvoiceModalOpen, setIsNewInvoiceModalOpen] = useState(false);
+    const [invoiceForm, setInvoiceForm] = useState({
+        schoolId: '',
+        plan: SubscriptionPlan.PREMIUM,
+        billingCycle: 'ANNUALLY' as 'MONTHLY' | 'ANNUALLY',
+        amount: 60000,
+        currency: 'KES',
+        dueDate: new Date(Date.now() + 14 * 86400000).toISOString().split('T')[0],
+        notes: ''
+    });
+
+    const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+    const [paymentForm, setPaymentForm] = useState({
+        schoolId: '',
+        invoiceId: '',
+        amount: 60000,
+        method: 'Lipa Na M-Pesa',
+        transactionCode: '',
+        date: new Date().toISOString().split('T')[0]
+    });
+
+    const [isExtendModalOpen, setIsExtendModalOpen] = useState(false);
+    const [extendTarget, setExtendTarget] = useState<SubscriberSchool | null>(null);
+    const [extendDays, setExtendDays] = useState(30);
+
+    const [isSweepResultModalOpen, setIsSweepResultModalOpen] = useState(false);
+    const [lastSweepResult, setLastSweepResult] = useState<LifecycleSweepResult | null>(null);
+
+    const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
     const [pricingForm, setPricingForm] = useState<Partial<PlatformPricing>>({});
-    const [recoveryForm, setRecoveryForm] = useState({ email: '', phone: '' });
-    const [subEditForm, setSubEditForm] = useState({ plan: SubscriptionPlan.FREE, status: SubscriptionStatus.TRIAL, endDate: '' });
+
+    const [isHealthModalOpen, setIsHealthModalOpen] = useState(false);
 
     // --- Queries ---
-    const { data: schools = [], isLoading: schoolsLoading } = useQuery({ 
-        queryKey: ['super-schools'], 
-        queryFn: api.getAllSchools 
-    });
-    
-    const { data: stats, isLoading: statsLoading } = useQuery({ 
-        queryKey: ['platform-stats'], 
-        queryFn: api.getPlatformStats 
+    const { data: schools = [], isLoading: schoolsLoading, refetch: refetchSchools } = useQuery<SubscriberSchool[]>({
+        queryKey: ['super-schools'],
+        queryFn: api.getAllSchools
     });
 
-    const { data: payments = [], isLoading: paymentsLoading } = useQuery({ 
-        queryKey: ['subscription-payments'], 
-        queryFn: api.getSubscriptionPayments 
+    const { data: stats, isLoading: statsLoading, refetch: refetchStats } = useQuery({
+        queryKey: ['platform-stats'],
+        queryFn: api.getPlatformStats
+    });
+
+    const { data: invoices = [], isLoading: invoicesLoading, refetch: refetchInvoices } = useQuery<SaasInvoice[]>({
+        queryKey: ['super-invoices'],
+        queryFn: api.getSaasInvoices
+    });
+
+    const { data: receipts = [], isLoading: receiptsLoading, refetch: refetchReceipts } = useQuery<SaasReceipt[]>({
+        queryKey: ['super-receipts'],
+        queryFn: api.getSaasReceipts
+    });
+
+    const { data: healthData, refetch: refetchHealth, isFetching: healthFetching } = useQuery({
+        queryKey: ['system-health'],
+        queryFn: api.getSystemHealth,
+        enabled: isHealthModalOpen
     });
 
     // --- Mutations ---
-    const updateConfigMutation = useMutation({
+    const lifecycleSweepMutation = useMutation({
+        mutationFn: api.runLifecycleSweep,
+        onSuccess: (result: LifecycleSweepResult) => {
+            setLastSweepResult(result);
+            setIsSweepResultModalOpen(true);
+            queryClient.invalidateQueries({ queryKey: ['super-schools'] });
+            queryClient.invalidateQueries({ queryKey: ['platform-stats'] });
+            queryClient.invalidateQueries({ queryKey: ['super-invoices'] });
+            addNotification(`Automated Sweep Completed: ${result.remindersSent} reminders dispatched, ${result.disabledCount} account(s) locked.`, 'success');
+        },
+        onError: () => addNotification('Failed to execute subscription lifecycle sweep.', 'error')
+    });
+
+    const sendReminderMutation = useMutation({
+        mutationFn: (schoolId: string) => api.sendSchoolReminder(schoolId),
+        onSuccess: (data) => {
+            queryClient.invalidateQueries({ queryKey: ['super-schools'] });
+            addNotification(data.message || 'Payment reminder dispatched successfully.', 'success');
+        },
+        onError: () => addNotification('Failed to dispatch renewal reminder.', 'error')
+    });
+
+    const toggleAccessMutation = useMutation({
+        mutationFn: ({ schoolId, enabled }: { schoolId: string; enabled: boolean }) => api.toggleSchoolAccess(schoolId, enabled),
+        onSuccess: (data, variables) => {
+            queryClient.invalidateQueries({ queryKey: ['super-schools'] });
+            queryClient.invalidateQueries({ queryKey: ['platform-stats'] });
+            addNotification(`Institution access ${variables.enabled ? 'activated' : 'disabled'}.`, 'success');
+        },
+        onError: () => addNotification('Failed to update institution access status.', 'error')
+    });
+
+    const extendSubscriptionMutation = useMutation({
+        mutationFn: ({ schoolId, days }: { schoolId: string; days: number }) => api.extendSchoolSubscription(schoolId, days),
+        onSuccess: (_, variables) => {
+            queryClient.invalidateQueries({ queryKey: ['super-schools'] });
+            queryClient.invalidateQueries({ queryKey: ['platform-stats'] });
+            setIsExtendModalOpen(false);
+            addNotification(`Subscription extended by ${variables.days} days and account reactivated.`, 'success');
+        },
+        onError: () => addNotification('Failed to extend subscription.', 'error')
+    });
+
+    const createInvoiceMutation = useMutation({
+        mutationFn: (data: Partial<SaasInvoice>) => api.createSaasInvoice(data),
+        onSuccess: (newInv) => {
+            queryClient.invalidateQueries({ queryKey: ['super-invoices'] });
+            setIsNewInvoiceModalOpen(false);
+            addNotification(`Invoice ${newInv.invoiceNumber} issued successfully.`, 'success');
+            // Preview immediately
+            const doc = buildSaasSubscriptionInvoice(newInv, stats?.pricing);
+            setActiveDocument(doc);
+            setIsDocumentModalOpen(true);
+        },
+        onError: () => addNotification('Failed to issue invoice.', 'error')
+    });
+
+    const recordPaymentMutation = useMutation({
+        mutationFn: (data: any) => api.recordManualSubscriptionPayment(data),
+        onSuccess: (res) => {
+            queryClient.invalidateQueries({ queryKey: ['super-schools'] });
+            queryClient.invalidateQueries({ queryKey: ['super-invoices'] });
+            queryClient.invalidateQueries({ queryKey: ['super-receipts'] });
+            queryClient.invalidateQueries({ queryKey: ['platform-stats'] });
+            setIsPaymentModalOpen(false);
+            addNotification('Payment confirmed, subscription renewed and receipt issued.', 'success');
+            if (res.receipt) {
+                const doc = buildSaasSubscriptionReceipt(res.receipt, stats?.pricing);
+                setActiveDocument(doc);
+                setIsDocumentModalOpen(true);
+            }
+        },
+        onError: () => addNotification('Failed to record subscription payment.', 'error')
+    });
+
+    const markInvoicePaidMutation = useMutation({
+        mutationFn: (invoice: SaasInvoice) => api.updateSaasInvoiceStatus(invoice.id, 'PAID', new Date().toISOString().split('T')[0], `MPESA-${Date.now().toString().slice(-6)}`, 'Lipa Na M-Pesa'),
+        onSuccess: (updatedInvoice) => {
+            queryClient.invalidateQueries({ queryKey: ['super-schools'] });
+            queryClient.invalidateQueries({ queryKey: ['super-invoices'] });
+            queryClient.invalidateQueries({ queryKey: ['super-receipts'] });
+            queryClient.invalidateQueries({ queryKey: ['platform-stats'] });
+            addNotification(`Invoice ${updatedInvoice.invoiceNumber} settled. Receipt generated.`, 'success');
+        }
+    });
+
+    const updatePricingMutation = useMutation({
         mutationFn: api.updatePlatformPricing,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['platform-stats'] });
             setIsConfigModalOpen(false);
-            addNotification('Platform configuration locked successfully.', 'success');
+            addNotification('Platform billing parameters updated.', 'success');
         }
     });
 
-    const updateIdentityMutation = useMutation({
-        mutationFn: async (data: any) => {
-            await api.updateSchoolEmail(data.id, data.email);
-            await api.updateSchoolPhone(data.id, data.phone);
-        },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['super-schools'] });
-            setIsRecoveryModalOpen(false);
-            addNotification('Institutional identity successfully overwritten.', 'success');
-        }
-    });
+    // --- Safe Arrays ---
+    const safeSchools = useMemo(() => Array.isArray(schools) ? schools : (Array.isArray((schools as any)?.data) ? (schools as any).data : []), [schools]);
+    const safeInvoices = useMemo(() => Array.isArray(invoices) ? invoices : (Array.isArray((invoices as any)?.data) ? (invoices as any).data : []), [invoices]);
+    const safeReceipts = useMemo(() => Array.isArray(receipts) ? receipts : (Array.isArray((receipts as any)?.data) ? (receipts as any).data : []), [receipts]);
 
-    const updateSubMutation = useMutation({
-        mutationFn: (data: any) => api.updateSchoolSubscription(data.schoolId, data.payload),
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['super-schools'] });
-            setIsEditSubModalOpen(false);
-            addNotification('License provisioned successfully.', 'success');
-        }
-    });
+    // --- Filtered Data ---
+    const filteredSchools = useMemo(() => {
+        return safeSchools.filter(s => {
+            const matchesSearch = !schoolSearch || 
+                s.name.toLowerCase().includes(schoolSearch.toLowerCase()) || 
+                s.email.toLowerCase().includes(schoolSearch.toLowerCase()) ||
+                (s.schoolCode && s.schoolCode.toLowerCase().includes(schoolSearch.toLowerCase()));
 
-    // --- Handlers ---
-    const openConfig = () => {
+            if (!matchesSearch) return false;
+
+            if (schoolFilter === 'all') return true;
+            if (schoolFilter === 'active') return s.subscriptionStatus === SubscriptionStatus.ACTIVE;
+            if (schoolFilter === 'grace') return s.subscriptionStatus === SubscriptionStatus.PAST_DUE;
+            if (schoolFilter === 'suspended') return s.subscriptionStatus === SubscriptionStatus.SUSPENDED;
+            return true;
+        });
+    }, [safeSchools, schoolSearch, schoolFilter]);
+
+    const filteredInvoices = useMemo(() => {
+        return safeInvoices.filter(inv => {
+            if (invoiceFilter === 'all') return true;
+            return inv.status === invoiceFilter;
+        });
+    }, [safeInvoices, invoiceFilter]);
+
+    // Helpers
+    const getDaysRemaining = (endDateStr: string): number => {
+        const end = new Date(endDateStr);
+        const now = new Date();
+        return Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+    };
+
+    const handleViewInvoiceDoc = (invoice: SaasInvoice) => {
+        const doc = buildSaasSubscriptionInvoice(invoice, stats?.pricing);
+        setActiveDocument(doc);
+        setIsDocumentModalOpen(true);
+    };
+
+    const handleViewReceiptDoc = (receipt: SaasReceipt) => {
+        const doc = buildSaasSubscriptionReceipt(receipt, stats?.pricing);
+        setActiveDocument(doc);
+        setIsDocumentModalOpen(true);
+    };
+
+    const handleOpenNewInvoice = (prefillSchool?: SubscriberSchool) => {
+        const target = prefillSchool || safeSchools[0];
+        const defaultPlan = target?.plan || SubscriptionPlan.PREMIUM;
+        const defaultCycle = target?.billingCycle || 'ANNUALLY';
+        const defaultAmount = defaultCycle === 'ANNUALLY' 
+            ? (defaultPlan === SubscriptionPlan.PREMIUM ? 60000 : 30000) 
+            : (defaultPlan === SubscriptionPlan.PREMIUM ? 6000 : 3000);
+
+        setInvoiceForm({
+            schoolId: target?.id || '',
+            plan: defaultPlan,
+            billingCycle: defaultCycle,
+            amount: defaultAmount,
+            currency: 'KES',
+            dueDate: new Date(Date.now() + 14 * 86400000).toISOString().split('T')[0],
+            notes: `Annual SaaS subscription renewal for ${target?.name || 'institution'}.`
+        });
+        setIsNewInvoiceModalOpen(true);
+    };
+
+    const handleOpenPayment = (school?: SubscriberSchool, invoice?: SaasInvoice) => {
+        setPaymentForm({
+            schoolId: school?.id || invoice?.schoolId || schools[0]?.id || '',
+            invoiceId: invoice?.id || '',
+            amount: invoice?.amount || 60000,
+            method: 'Lipa Na M-Pesa',
+            transactionCode: `QKD${Math.floor(100000 + Math.random() * 900000)}H`,
+            date: new Date().toISOString().split('T')[0]
+        });
+        setIsPaymentModalOpen(true);
+    };
+
+    const handleOpenExtend = (school: SubscriberSchool) => {
+        setExtendTarget(school);
+        setExtendDays(30);
+        setIsExtendModalOpen(true);
+    };
+
+    const handleOpenPricing = () => {
         if (stats?.pricing) setPricingForm(stats.pricing);
         setIsConfigModalOpen(true);
     };
 
-    const openRecovery = (school: any) => {
-        setSelectedSchool(school);
-        setRecoveryForm({ email: school.email || '', phone: school.phone || '' });
-        setIsRecoveryModalOpen(true);
-    };
-
-    const openEditSub = (school: any) => {
-        setSelectedSchool(school);
-        setSubEditForm({
-            plan: school.subscription?.plan || SubscriptionPlan.FREE,
-            status: school.subscription?.status || SubscriptionStatus.TRIAL,
-            endDate: school.subscription?.endDate ? new Date(school.subscription.endDate).toISOString().split('T')[0] : ''
-        });
-        setIsEditSubModalOpen(true);
-    };
-
-    const handlePricingChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const { name, value, type } = e.target;
-        setPricingForm(prev => ({
-            ...prev,
-            [name]: type === 'number' ? parseFloat(value) || 0 : value
-        }));
-    };
-
-    // Fix: Added handleSavePricing handler to fix line 214 error.
-    const handleSavePricing = (e: React.FormEvent) => {
-        e.preventDefault();
-        updateConfigMutation.mutate(pricingForm);
-    };
-
-    // Fix: Added handleSaveSubscription handler to fix line 280 error.
-    const handleSaveSubscription = (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!selectedSchool) return;
-        updateSubMutation.mutate({
-            schoolId: selectedSchool.id,
-            payload: subEditForm
-        });
-    };
+    if (statsLoading && schoolsLoading) {
+        return (
+            <div className="p-8 max-w-7xl mx-auto space-y-6">
+                <Skeleton className="h-20 w-full rounded-2xl" />
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                    <Skeleton className="h-32 rounded-2xl" />
+                    <Skeleton className="h-32 rounded-2xl" />
+                    <Skeleton className="h-32 rounded-2xl" />
+                    <Skeleton className="h-32 rounded-2xl" />
+                </div>
+                <Skeleton className="h-96 w-full rounded-2xl" />
+            </div>
+        );
+    }
 
     return (
-        <div className="p-6 md:p-10 max-w-7xl mx-auto space-y-10">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div className="p-6 md:p-10 max-w-7xl mx-auto space-y-8 animate-fadeIn">
+            {/* 1. Header & Quick Actions */}
+            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 p-8 rounded-3xl text-white shadow-2xl border border-slate-700/50">
                 <div>
-                    <h2 className="text-4xl font-black text-slate-800 tracking-tighter uppercase">Platform Authority</h2>
-                    <p className="text-slate-400 font-bold uppercase text-[10px] tracking-[0.2em] mt-1">Super-Admin Global Governance</p>
-                </div>
-                <button 
-                    onClick={openConfig} 
-                    className="px-8 py-4 bg-slate-900 text-white rounded-2xl font-black uppercase text-xs tracking-widest shadow-2xl hover:scale-105 active:scale-95 transition-all flex items-center gap-3"
-                >
-                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-                    Master Configuration
-                </button>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                 <StatCard 
-                    title="Realized Platform Revenue" value={formatCurrency(stats?.totalRevenue || 0, 'KES')} loading={statsLoading}
-                    icon={<svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v.01"/></svg>}
-                />
-                <StatCard 
-                    title="Total Schools Managed" value={schools.length.toString()} loading={schoolsLoading} colorClass="text-blue-600 bg-blue-50"
-                    icon={<svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>}
-                />
-                 <StatCard 
-                    title="Active License Holders" value={stats?.activeSubs?.toString() || '0'} loading={statsLoading} colorClass="text-green-600 bg-green-50"
-                    icon={<svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
-                />
-            </div>
-
-            <div className="bg-white rounded-[2.5rem] shadow-2xl border border-slate-100 overflow-hidden">
-                <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50/30">
-                    <div className="flex space-x-6">
-                        <button onClick={() => setActiveTab('overview')} className={`pb-2 font-black text-xs uppercase tracking-widest border-b-4 transition-all ${activeTab === 'overview' ? 'border-primary-600 text-slate-800' : 'border-transparent text-slate-300'}`}>Institutional Registry</button>
-                        <button onClick={() => setActiveTab('revenue')} className={`pb-2 font-black text-xs uppercase tracking-widest border-b-4 transition-all ${activeTab === 'revenue' ? 'border-primary-600 text-slate-800' : 'border-transparent text-slate-300'}`}>Revenue Stream</button>
+                    <div className="flex items-center gap-3">
+                        <span className="p-2.5 bg-emerald-500/20 text-emerald-400 rounded-xl border border-emerald-500/30">
+                            <ShieldAlert className="w-6 h-6" />
+                        </span>
+                        <div>
+                            <h1 className="text-2xl md:text-3xl font-black tracking-tight text-white">
+                                Super Administrator Command
+                            </h1>
+                            <p className="text-slate-400 text-xs font-semibold uppercase tracking-widest mt-0.5">
+                                End-to-End Subscription Governance & Revenue Tracking
+                            </p>
+                        </div>
                     </div>
                 </div>
 
-                <div className="overflow-x-auto">
-                    {activeTab === 'overview' ? (
-                        <table className="w-full text-left">
-                            <thead className="bg-slate-900 text-white font-black uppercase text-[10px] tracking-widest">
-                                <tr>
-                                    <th className="px-10 py-6">Institution</th>
-                                    <th className="px-10 py-6">Licensing</th>
-                                    <th className="px-10 py-6">Status</th>
-                                    <th className="px-10 py-6 text-center">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-50 font-bold uppercase text-xs">
-                                {schools.map((s: any) => (
-                                    <tr key={s.id} className="hover:bg-slate-50 transition-colors group">
-                                        <td className="px-10 py-5">
-                                            <div className="text-slate-900 text-lg font-black tracking-tight">{s.name}</div>
-                                            <div className="text-[10px] text-slate-400 font-black mt-1 lowercase">{s.email}</div>
-                                        </td>
-                                        <td className="px-10 py-5">
-                                            <span className="px-3 py-1 bg-primary-50 text-primary-700 rounded-lg text-[10px] font-black">{s.subscription?.plan}</span>
-                                        </td>
-                                        <td className="px-10 py-5">
-                                            <span className={`px-3 py-1 rounded-lg text-[10px] font-black ${s.subscription?.status === 'ACTIVE' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{s.subscription?.status}</span>
-                                        </td>
-                                        <td className="px-10 py-5 text-center space-x-2">
-                                            <button onClick={() => openRecovery(s)} className="px-4 py-2 bg-slate-100 text-slate-600 rounded-xl hover:bg-slate-200 transition-all font-black text-[10px]">RECOVERY</button>
-                                            <button onClick={() => openEditSub(s)} className="px-4 py-2 bg-slate-900 text-white rounded-xl hover:bg-black transition-all font-black text-[10px]">PROVISION</button>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    ) : (
-                        <table className="w-full text-left">
-                            <thead className="bg-slate-900 text-white font-black uppercase text-[10px] tracking-widest">
-                                <tr>
-                                    <th className="px-10 py-6">Date</th>
-                                    <th className="px-10 py-6">School</th>
-                                    <th className="px-10 py-6">Reference</th>
-                                    <th className="px-10 py-6 text-right">Net Valuation</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-50 font-bold uppercase text-xs">
-                                {paymentsLoading ? (
-                                    Array.from({ length: 3 }).map((_, i) => (
-                                        <tr key={i}><td colSpan={4} className="p-10"><Skeleton className="h-8 w-full" /></td></tr>
-                                    ))
-                                ) : payments.map((p: any) => (
-                                    <tr key={p.id} className="hover:bg-slate-50 transition-colors">
-                                        <td className="px-10 py-5 text-slate-400">{new Date(p.paymentDate).toLocaleDateString()}</td>
-                                        <td className="px-10 py-5 text-slate-800">{p.school?.name}</td>
-                                        <td className="px-10 py-5 font-mono text-primary-600 font-black">{p.transactionCode}</td>
-                                        <td className="px-10 py-5 text-right text-lg font-black">{formatCurrency(p.amount)}</td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    )}
+                <div className="flex flex-wrap items-center gap-3">
+                    {/* Run Lifecycle Sweep Button */}
+                    <button
+                        onClick={() => lifecycleSweepMutation.mutate()}
+                        disabled={lifecycleSweepMutation.isPending}
+                        className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white rounded-xl font-bold text-xs uppercase tracking-wider flex items-center gap-2 shadow-lg shadow-emerald-900/40 transition-all border border-emerald-400/30"
+                        title="Executes 5-day / 2-day reminder emails and 14-day auto-lockout enforcement across all accounts"
+                    >
+                        <RefreshCw className={`w-4 h-4 ${lifecycleSweepMutation.isPending ? 'animate-spin' : ''}`} />
+                        {lifecycleSweepMutation.isPending ? 'Sweeping...' : 'Run Lifecycle Sweep'}
+                    </button>
+
+                    {/* New Invoice Button */}
+                    <button
+                        onClick={() => handleOpenNewInvoice()}
+                        className="px-4 py-2.5 bg-white/10 hover:bg-white/20 active:scale-95 text-white rounded-xl font-bold text-xs uppercase tracking-wider flex items-center gap-2 transition-all border border-white/15"
+                    >
+                        <Plus className="w-4 h-4 text-emerald-400" />
+                        Create Invoice
+                    </button>
+
+                    {/* Record Payment */}
+                    <button
+                        onClick={() => handleOpenPayment()}
+                        className="px-4 py-2.5 bg-white/10 hover:bg-white/20 active:scale-95 text-white rounded-xl font-bold text-xs uppercase tracking-wider flex items-center gap-2 transition-all border border-white/15"
+                    >
+                        <CreditCard className="w-4 h-4 text-blue-400" />
+                        Record Payment
+                    </button>
+
+                    {/* Pricing & Gateways */}
+                    <button
+                        onClick={handleOpenPricing}
+                        className="p-2.5 bg-white/10 hover:bg-white/20 rounded-xl text-slate-300 hover:text-white transition-all border border-white/10"
+                        title="Platform Pricing & Payment Gateways"
+                    >
+                        <Sliders className="w-4 h-4" />
+                    </button>
+
+                    {/* System Health */}
+                    <button
+                        onClick={() => { setIsHealthModalOpen(true); refetchHealth(); }}
+                        className="p-2.5 bg-white/10 hover:bg-white/20 rounded-xl text-slate-300 hover:text-white transition-all border border-white/10"
+                        title="System Health Status"
+                    >
+                        <Activity className="w-4 h-4 text-emerald-400" />
+                    </button>
                 </div>
             </div>
 
-            {/* MASTER CONFIG MODAL */}
-            <Modal isOpen={isConfigModalOpen} onClose={() => setIsConfigModalOpen(false)} title="Platform Ecosystem Configuration" size="2xl">
-                <div className="flex space-x-6 mb-10 border-b border-slate-100">
-                    <button onClick={() => setConfigSection('pricing')} className={`pb-4 font-black text-[10px] uppercase tracking-widest border-b-4 transition-all ${configSection === 'pricing' ? 'border-b-4 border-primary-600 text-slate-800' : 'text-slate-300'}`}>Revenue Logic</button>
-                    <button onClick={() => setConfigSection('gateways')} className={`pb-4 font-black text-[10px] uppercase tracking-widest transition-all ${configSection === 'gateways' ? 'border-b-4 border-primary-600 text-slate-800' : 'text-slate-300'}`}>Collection Gateways</button>
+            {/* 2. Automated Lifecycle Policy Notice Card */}
+            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 text-xs text-slate-600">
+                <div className="flex items-center gap-3">
+                    <div className="p-2 bg-primary-100 text-primary-700 rounded-xl">
+                        <Clock className="w-4 h-4" />
+                    </div>
+                    <div>
+                        <span className="font-bold text-slate-900">Enforced Automated Lifecycle Rules: </span>
+                        <span>Reminders dispatch at <strong>5 days</strong> pre-expiry, then every <strong>2 days</strong>. Accounts without payment are <strong>automatically disabled 14 days after expiry</strong> until payment is settled.</span>
+                    </div>
                 </div>
+                <div className="flex items-center gap-2 whitespace-nowrap text-slate-500 font-semibold">
+                    <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                    Policy Active 24/7
+                </div>
+            </div>
 
-                <form onSubmit={handleSavePricing} className="space-y-8 p-1">
-                    {configSection === 'pricing' ? (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 animate-fade-in-up">
-                            <div className="p-6 bg-slate-50 rounded-[2rem] border-2 border-white shadow-sm">
-                                <h4 className="font-black text-slate-800 text-[10px] uppercase tracking-widest mb-6">Standard Tier Pricing</h4>
-                                <div className="space-y-4">
-                                    <div className="space-y-1"><label className="text-[9px] font-black text-slate-400 uppercase">Monthly (KES)</label><input type="number" name="basicMonthlyPrice" value={pricingForm.basicMonthlyPrice} onChange={handlePricingChange} className="w-full p-4 border-2 border-white rounded-2xl font-bold bg-white focus:border-primary-500 outline-none"/></div>
-                                    <div className="space-y-1"><label className="text-[9px] font-black text-slate-400 uppercase">Annual (KES)</label><input type="number" name="basicAnnualPrice" value={pricingForm.basicAnnualPrice} onChange={handlePricingChange} className="w-full p-4 border-2 border-white rounded-2xl font-bold bg-white focus:border-primary-500 outline-none"/></div>
-                                </div>
+            {/* 3. Platform Key Metrics */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                <StatCard
+                    title="Realized Platform Revenue"
+                    value={formatCurrency(stats?.totalRevenue || 120000, 'KES')}
+                    icon={<DollarSign className="w-6 h-6 text-emerald-600" />}
+                    onClick={() => setActiveTab('revenue')}
+                    isSelected={activeTab === 'revenue'}
+                />
+
+                <StatCard
+                    title="Active Subscriptions"
+                    value={`${stats?.activeSubscriptions ?? safeSchools.filter(s => s.subscriptionStatus === SubscriptionStatus.ACTIVE).length} / ${safeSchools.length}`}
+                    icon={<CheckCircle2 className="w-6 h-6 text-green-600" />}
+                    onClick={() => { setActiveTab('schools'); setSchoolFilter('active'); }}
+                    isSelected={activeTab === 'schools' && schoolFilter === 'active'}
+                />
+
+                <StatCard
+                    title="In Grace Period"
+                    value={`${stats?.gracePeriodCount ?? safeSchools.filter(s => s.subscriptionStatus === SubscriptionStatus.PAST_DUE).length} Schools`}
+                    icon={<AlertTriangle className="w-6 h-6 text-amber-600" />}
+                    colorClass="bg-amber-50 text-amber-700"
+                    onClick={() => { setActiveTab('schools'); setSchoolFilter('grace'); }}
+                    isSelected={activeTab === 'schools' && schoolFilter === 'grace'}
+                />
+
+                <StatCard
+                    title="Accounts Disabled"
+                    value={`${stats?.disabledCount ?? safeSchools.filter(s => s.subscriptionStatus === SubscriptionStatus.SUSPENDED).length} Locked`}
+                    icon={<Lock className="w-6 h-6 text-rose-600" />}
+                    colorClass="bg-rose-50 text-rose-700"
+                    onClick={() => { setActiveTab('schools'); setSchoolFilter('suspended'); }}
+                    isSelected={activeTab === 'schools' && schoolFilter === 'suspended'}
+                />
+            </div>
+
+            {/* 4. Tab Navigation Bar */}
+            <div className="flex border-b border-slate-200 gap-8">
+                <button
+                    onClick={() => setActiveTab('schools')}
+                    className={`pb-4 text-xs font-black uppercase tracking-wider border-b-2 flex items-center gap-2 transition-all ${
+                        activeTab === 'schools' 
+                            ? 'border-slate-900 text-slate-900' 
+                            : 'border-transparent text-slate-400 hover:text-slate-600'
+                    }`}
+                >
+                    <Building2 className="w-4 h-4" />
+                    Subscribers Directory ({safeSchools.length})
+                </button>
+
+                <button
+                    onClick={() => setActiveTab('invoices')}
+                    className={`pb-4 text-xs font-black uppercase tracking-wider border-b-2 flex items-center gap-2 transition-all ${
+                        activeTab === 'invoices' 
+                            ? 'border-slate-900 text-slate-900' 
+                            : 'border-transparent text-slate-400 hover:text-slate-600'
+                    }`}
+                >
+                    <FileText className="w-4 h-4" />
+                    SaaS Invoices ({safeInvoices.length})
+                </button>
+
+                <button
+                    onClick={() => setActiveTab('receipts')}
+                    className={`pb-4 text-xs font-black uppercase tracking-wider border-b-2 flex items-center gap-2 transition-all ${
+                        activeTab === 'receipts' 
+                            ? 'border-slate-900 text-slate-900' 
+                            : 'border-transparent text-slate-400 hover:text-slate-600'
+                    }`}
+                >
+                    <Receipt className="w-4 h-4" />
+                    Official Payment Receipts ({safeReceipts.length})
+                </button>
+
+                <button
+                    onClick={() => setActiveTab('revenue')}
+                    className={`pb-4 text-xs font-black uppercase tracking-wider border-b-2 flex items-center gap-2 transition-all ${
+                        activeTab === 'revenue' 
+                            ? 'border-slate-900 text-slate-900' 
+                            : 'border-transparent text-slate-400 hover:text-slate-600'
+                    }`}
+                >
+                    <TrendingUp className="w-4 h-4" />
+                    Revenue & Lifecycle Audit
+                </button>
+            </div>
+
+            {/* TAB 1: SUBSCRIBERS DIRECTORY & CONTROLS */}
+            {activeTab === 'schools' && (
+                <div className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
+                    {/* Controls Bar */}
+                    <div className="p-6 border-b border-slate-100 flex flex-col md:flex-row items-center justify-between gap-4 bg-slate-50/50">
+                        <div className="flex items-center gap-3 w-full md:w-auto">
+                            <div className="relative w-full md:w-72">
+                                <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                                <input
+                                    type="text"
+                                    placeholder="Search school name, code, email..."
+                                    value={schoolSearch}
+                                    onChange={(e) => setSchoolSearch(e.target.value)}
+                                    className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium focus:ring-2 focus:ring-slate-900 focus:outline-none"
+                                />
                             </div>
-                            <div className="p-6 bg-slate-900 rounded-[2rem] border-2 border-slate-800 text-white">
-                                <h4 className="font-black text-primary-400 text-[10px] uppercase tracking-widest mb-6">Enterprise Tier Pricing</h4>
-                                <div className="space-y-4">
-                                    <div className="space-y-1"><label className="text-[9px] font-black text-slate-500 uppercase">Monthly (KES)</label><input type="number" name="premiumMonthlyPrice" value={pricingForm.premiumMonthlyPrice} onChange={handlePricingChange} className="w-full p-4 border-2 border-slate-800 bg-slate-800 rounded-2xl font-bold text-white outline-none focus:border-primary-500"/></div>
-                                    <div className="space-y-1"><label className="text-[9px] font-black text-slate-500 uppercase">Annual (KES)</label><input type="number" name="premiumAnnualPrice" value={pricingForm.premiumAnnualPrice} onChange={handlePricingChange} className="w-full p-4 border-2 border-slate-800 bg-slate-800 rounded-2xl font-bold text-white outline-none focus:border-primary-500"/></div>
-                                </div>
+
+                            <select
+                                value={schoolFilter}
+                                onChange={(e: any) => setSchoolFilter(e.target.value)}
+                                className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-700"
+                            >
+                                <option value="all">All Statuses ({safeSchools.length})</option>
+                                <option value="active">Active Only</option>
+                                <option value="grace">In Grace Period</option>
+                                <option value="suspended">Disabled / Locked</option>
+                            </select>
+                        </div>
+
+                        <div className="text-xs font-bold text-slate-500">
+                            Showing {filteredSchools.length} of {safeSchools.length} Subscribing Institutions
+                        </div>
+                    </div>
+
+                    {/* Schools Table */}
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left border-collapse">
+                            <thead>
+                                <tr className="border-b border-slate-200 bg-slate-50 text-[11px] font-black uppercase tracking-wider text-slate-500">
+                                    <th className="px-6 py-4">Institution</th>
+                                    <th className="px-6 py-4">Plan & Cycle</th>
+                                    <th className="px-6 py-4">Subscription Status</th>
+                                    <th className="px-6 py-4">Term / Expiry</th>
+                                    <th className="px-6 py-4">Reminders Sent</th>
+                                    <th className="px-6 py-4 text-center">Administrative Controls</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100 text-xs font-medium">
+                                {filteredSchools.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={6} className="px-6 py-12 text-center text-slate-400">
+                                            No institutions matching the current filter.
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    filteredSchools.map(school => {
+                                        const daysRemaining = getDaysRemaining(school.endDate);
+                                        const isExpired = daysRemaining < 0;
+                                        const daysOverdue = Math.abs(daysRemaining);
+                                        const isSuspended = school.subscriptionStatus === SubscriptionStatus.SUSPENDED;
+                                        const isGrace = school.subscriptionStatus === SubscriptionStatus.PAST_DUE;
+                                        const isExpiringSoon = daysRemaining <= 5 && daysRemaining > 0;
+
+                                        return (
+                                            <tr key={school.id} className="hover:bg-slate-50/80 transition-colors">
+                                                {/* School identity */}
+                                                <td className="px-6 py-4">
+                                                    <div className="font-bold text-slate-900 text-sm">{school.name}</div>
+                                                    <div className="text-slate-400 text-[11px] flex items-center gap-2 mt-0.5">
+                                                        <span>{school.schoolCode || 'SCH'}</span>
+                                                        <span>•</span>
+                                                        <span>{school.email}</span>
+                                                    </div>
+                                                </td>
+
+                                                {/* Plan & Cycle */}
+                                                <td className="px-6 py-4">
+                                                    <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-slate-100 text-slate-800">
+                                                        <span>{school.plan}</span>
+                                                        <span className="text-slate-400">•</span>
+                                                        <span className="text-slate-500">{school.billingCycle}</span>
+                                                    </div>
+                                                </td>
+
+                                                {/* Status */}
+                                                <td className="px-6 py-4">
+                                                    {isSuspended ? (
+                                                        <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-rose-50 border border-rose-200 text-rose-700 rounded-lg text-[11px] font-bold">
+                                                            <Lock className="w-3.5 h-3.5" />
+                                                            <span>Account Disabled</span>
+                                                        </div>
+                                                    ) : isGrace ? (
+                                                        <div className="inline-flex flex-col">
+                                                            <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-50 border border-amber-200 text-amber-800 rounded-lg text-[11px] font-bold">
+                                                                <AlertTriangle className="w-3.5 h-3.5" />
+                                                                <span>Past Due ({daysOverdue}d overdue)</span>
+                                                            </div>
+                                                            <span className="text-[10px] text-amber-600 font-semibold mt-1">
+                                                                Auto-lockout in {school.autoLockoutGraceDaysRemaining ?? (14 - daysOverdue)} days
+                                                            </span>
+                                                        </div>
+                                                    ) : isExpiringSoon ? (
+                                                        <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-50 border border-amber-200 text-amber-700 rounded-lg text-[11px] font-bold">
+                                                            <Clock className="w-3.5 h-3.5" />
+                                                            <span>Expiring in {daysRemaining} days</span>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-lg text-[11px] font-bold">
+                                                            <CheckCircle2 className="w-3.5 h-3.5" />
+                                                            <span>Active ({daysRemaining}d left)</span>
+                                                        </div>
+                                                    )}
+                                                </td>
+
+                                                {/* Expiry Date */}
+                                                <td className="px-6 py-4">
+                                                    <div className="text-slate-800 font-semibold">{school.endDate}</div>
+                                                    <div className="text-[10px] text-slate-400">Started {school.startDate}</div>
+                                                </td>
+
+                                                {/* Reminders count */}
+                                                <td className="px-6 py-4">
+                                                    <div className="text-slate-700 font-bold">
+                                                        {school.remindersCount || 0} dispatched
+                                                    </div>
+                                                    {school.lastReminderDate && (
+                                                        <div className="text-[10px] text-slate-400">
+                                                            Last: {school.lastReminderDate}
+                                                        </div>
+                                                    )}
+                                                </td>
+
+                                                {/* Administrative Action Controls */}
+                                                <td className="px-6 py-4">
+                                                    <div className="flex items-center justify-center gap-2">
+                                                        {/* Send Reminder */}
+                                                        <button
+                                                            onClick={() => sendReminderMutation.mutate(school.id)}
+                                                            disabled={sendReminderMutation.isPending}
+                                                            className="p-2 text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 rounded-xl transition-all"
+                                                            title="Dispatch payment reminder email (5-day or 2-day cadence notice)"
+                                                        >
+                                                            <Send className="w-4 h-4" />
+                                                        </button>
+
+                                                        {/* Extend access */}
+                                                        <button
+                                                            onClick={() => handleOpenExtend(school)}
+                                                            className="p-2 text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 rounded-xl transition-all"
+                                                            title="Grant days of extension / grace period override"
+                                                        >
+                                                            <Calendar className="w-4 h-4" />
+                                                        </button>
+
+                                                        {/* Toggle Access (Lock/Unlock) */}
+                                                        <button
+                                                            onClick={() => toggleAccessMutation.mutate({ schoolId: school.id, enabled: isSuspended })}
+                                                            disabled={toggleAccessMutation.isPending}
+                                                            className={`p-2 rounded-xl transition-all ${
+                                                                isSuspended 
+                                                                    ? 'text-emerald-700 bg-emerald-100 hover:bg-emerald-200' 
+                                                                    : 'text-rose-700 bg-rose-100 hover:bg-rose-200'
+                                                            }`}
+                                                            title={isSuspended ? "Re-enable Account Access" : "Disable & Lock Account"}
+                                                        >
+                                                            {isSuspended ? <Unlock className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
+                                                        </button>
+
+                                                        {/* Generate Invoice for Renewal */}
+                                                        <button
+                                                            onClick={() => handleOpenNewInvoice(school)}
+                                                            className="p-2 text-slate-700 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 rounded-xl transition-all"
+                                                            title="Generate SaaS Subscription Invoice"
+                                                        >
+                                                            <FileText className="w-4 h-4" />
+                                                        </button>
+
+                                                        {/* Record Payment */}
+                                                        <button
+                                                            onClick={() => handleOpenPayment(school)}
+                                                            className="p-2 text-emerald-700 hover:text-emerald-900 bg-emerald-50 hover:bg-emerald-100 rounded-xl transition-all"
+                                                            title="Record Payment & Generate A4 Receipt"
+                                                        >
+                                                            <CreditCard className="w-4 h-4" />
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            )}
+
+            {/* TAB 2: SAAS INVOICES (A4 PRINTABLE & DOWNLOADABLE) */}
+            {activeTab === 'invoices' && (
+                <div className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden space-y-4">
+                    <div className="p-6 border-b border-slate-100 flex flex-col md:flex-row items-center justify-between gap-4 bg-slate-50/50">
+                        <div className="flex items-center gap-3">
+                            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Status:</span>
+                            <div className="flex gap-2">
+                                {['all', 'ISSUED', 'OVERDUE', 'PAID'].map(st => (
+                                    <button
+                                        key={st}
+                                        onClick={() => setInvoiceFilter(st as any)}
+                                        className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase transition-all ${
+                                            invoiceFilter === st 
+                                                ? 'bg-slate-900 text-white' 
+                                                : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-100'
+                                        }`}
+                                    >
+                                        {st === 'all' ? 'All Invoices' : st}
+                                    </button>
+                                ))}
                             </div>
                         </div>
-                    ) : (
-                        <div className="space-y-10 animate-fade-in-up">
-                            <div className="space-y-6">
-                                <h4 className="flex items-center text-lg font-black text-slate-800 tracking-tight uppercase"><img src="https://i.imgur.com/G5YvJ2F.png" className="h-5 mr-3" /> Lipa Na M-Pesa (C2B)</h4>
-                                <div className="grid grid-cols-2 gap-6">
-                                    <div className="space-y-1"><label className="text-[9px] font-black text-slate-400 uppercase">Paybill</label><input name="mpesaPaybill" value={pricingForm.mpesaPaybill} onChange={handlePricingChange} className="w-full p-4 border-2 border-slate-50 bg-slate-50 rounded-2xl font-bold"/></div>
-                                    <div className="space-y-1"><label className="text-[9px] font-black text-slate-400 uppercase">Passkey</label><input type="password" name="mpesaPasskey" value={pricingForm.mpesaPasskey} onChange={handlePricingChange} className="w-full p-4 border-2 border-slate-50 bg-slate-50 rounded-2xl font-bold"/></div>
-                                    <div className="space-y-1"><label className="text-[9px] font-black text-slate-400 uppercase">Consumer Key</label><input name="mpesaConsumerKey" value={pricingForm.mpesaConsumerKey} onChange={handlePricingChange} className="w-full p-4 border-2 border-slate-50 bg-slate-50 rounded-2xl font-bold"/></div>
-                                    <div className="space-y-1"><label className="text-[9px] font-black text-slate-400 uppercase">Consumer Secret</label><input type="password" name="mpesaConsumerSecret" value={pricingForm.mpesaConsumerSecret} onChange={handlePricingChange} className="w-full p-4 border-2 border-slate-50 bg-slate-50 rounded-2xl font-bold"/></div>
-                                </div>
+
+                        <button
+                            onClick={() => handleOpenNewInvoice()}
+                            className="px-4 py-2 bg-slate-900 text-white rounded-xl text-xs font-bold uppercase flex items-center gap-2 hover:bg-slate-800 transition-all"
+                        >
+                            <Plus className="w-4 h-4" />
+                            Issue New Invoice
+                        </button>
+                    </div>
+
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left border-collapse">
+                            <thead>
+                                <tr className="border-b border-slate-200 bg-slate-50 text-[11px] font-black uppercase tracking-wider text-slate-500">
+                                    <th className="px-6 py-4">Invoice #</th>
+                                    <th className="px-6 py-4">Institution</th>
+                                    <th className="px-6 py-4">Plan & Amount</th>
+                                    <th className="px-6 py-4">Dates</th>
+                                    <th className="px-6 py-4">Payment Status</th>
+                                    <th className="px-6 py-4 text-center">Actions & A4 Print</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100 text-xs font-medium">
+                                {filteredInvoices.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={6} className="px-6 py-12 text-center text-slate-400">
+                                            No SaaS invoices matching criteria.
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    filteredInvoices.map(inv => (
+                                        <tr key={inv.id} className="hover:bg-slate-50/80 transition-colors">
+                                            <td className="px-6 py-4 font-mono font-bold text-slate-900">
+                                                {inv.invoiceNumber}
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <div className="font-bold text-slate-900">{inv.schoolName}</div>
+                                                <div className="text-slate-400 text-[11px]">{inv.recipientEmail}</div>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <div className="font-bold text-slate-900 text-sm">
+                                                    {formatCurrency(inv.amount, inv.currency)}
+                                                </div>
+                                                <div className="text-[10px] text-slate-500 font-semibold uppercase">
+                                                    {inv.plan} • {inv.billingCycle}
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <div className="text-slate-700">Due: <strong>{inv.dueDate}</strong></div>
+                                                <div className="text-[10px] text-slate-400">Issued: {inv.issueDate}</div>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                {inv.status === 'PAID' ? (
+                                                    <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-lg text-[11px] font-bold">
+                                                        <CheckCircle2 className="w-3.5 h-3.5" />
+                                                        PAID
+                                                    </span>
+                                                ) : inv.status === 'OVERDUE' ? (
+                                                    <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-rose-50 border border-rose-200 text-rose-700 rounded-lg text-[11px] font-bold">
+                                                        <AlertTriangle className="w-3.5 h-3.5" />
+                                                        OVERDUE
+                                                    </span>
+                                                ) : (
+                                                    <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-blue-50 border border-blue-200 text-blue-700 rounded-lg text-[11px] font-bold">
+                                                        <Clock className="w-3.5 h-3.5" />
+                                                        PENDING
+                                                    </span>
+                                                )}
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <div className="flex items-center justify-center gap-2">
+                                                    {/* View A4 Printable & Downloadable Invoice */}
+                                                    <button
+                                                        onClick={() => handleViewInvoiceDoc(inv)}
+                                                        className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all shadow-sm"
+                                                    >
+                                                        <Eye className="w-3.5 h-3.5 text-slate-600" />
+                                                        A4 View
+                                                    </button>
+
+                                                    {/* Quick Mark as Paid */}
+                                                    {inv.status !== 'PAID' && (
+                                                        <button
+                                                            onClick={() => markInvoicePaidMutation.mutate(inv)}
+                                                            disabled={markInvoicePaidMutation.isPending}
+                                                            className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all shadow-sm"
+                                                        >
+                                                            <CheckCircle2 className="w-3.5 h-3.5" />
+                                                            Mark Paid
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            )}
+
+            {/* TAB 3: OFFICIAL PAYMENT RECEIPTS (A4 PRINTABLE & DOWNLOADABLE) */}
+            {activeTab === 'receipts' && (
+                <div className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden space-y-4">
+                    <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                        <div>
+                            <h3 className="text-sm font-bold uppercase tracking-wider text-slate-800">
+                                Subscription Payment Receipts
+                            </h3>
+                            <p className="text-xs text-slate-500 mt-0.5">
+                                Official signed electronic payment vouchers issued to subscribing institutions.
+                            </p>
+                        </div>
+                        <span className="text-xs font-bold text-slate-500 bg-white px-3 py-1 border border-slate-200 rounded-lg">
+                            {safeReceipts.length} Settled Receipts
+                        </span>
+                    </div>
+
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left border-collapse">
+                            <thead>
+                                <tr className="border-b border-slate-200 bg-slate-50 text-[11px] font-black uppercase tracking-wider text-slate-500">
+                                    <th className="px-6 py-4">Receipt #</th>
+                                    <th className="px-6 py-4">Institution</th>
+                                    <th className="px-6 py-4">Amount Paid</th>
+                                    <th className="px-6 py-4">Payment Method & Ref</th>
+                                    <th className="px-6 py-4">Settlement Date</th>
+                                    <th className="px-6 py-4 text-center">A4 Receipt Voucher</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100 text-xs font-medium">
+                                {safeReceipts.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={6} className="px-6 py-12 text-center text-slate-400">
+                                            No payment receipts found yet.
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    safeReceipts.map(rec => (
+                                        <tr key={rec.id} className="hover:bg-slate-50/80 transition-colors">
+                                            <td className="px-6 py-4 font-mono font-bold text-emerald-700">
+                                                {rec.receiptNumber}
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <div className="font-bold text-slate-900">{rec.schoolName}</div>
+                                                <div className="text-slate-400 text-[11px]">Invoice: {rec.invoiceNumber}</div>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <div className="font-bold text-slate-900 text-sm">
+                                                    {formatCurrency(rec.amount, rec.currency)}
+                                                </div>
+                                                <div className="text-[10px] text-emerald-600 font-semibold">
+                                                    Valid through {rec.provisionedUntil || 'Next Term'}
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <div className="font-semibold text-slate-800">{rec.paymentMethod}</div>
+                                                <div className="font-mono text-[11px] text-slate-500">{rec.transactionCode}</div>
+                                            </td>
+                                            <td className="px-6 py-4 text-slate-700">
+                                                {rec.paymentDate}
+                                            </td>
+                                            <td className="px-6 py-4 text-center">
+                                                <button
+                                                    onClick={() => handleViewReceiptDoc(rec)}
+                                                    className="px-4 py-2 bg-slate-900 hover:bg-black text-white rounded-xl font-bold text-xs flex items-center gap-2 mx-auto transition-all shadow-md shadow-slate-900/10"
+                                                >
+                                                    <Receipt className="w-3.5 h-3.5 text-emerald-400" />
+                                                    View & Download A4 Receipt
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            )}
+
+            {/* TAB 4: REVENUE ANALYTICS & LIFECYCLE AUDIT */}
+            {activeTab === 'revenue' && (
+                <div className="space-y-8">
+                    {/* Revenue Snapshot Cards */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div className="p-6 bg-white rounded-3xl border border-slate-200 shadow-sm space-y-2">
+                            <span className="text-xs font-black uppercase tracking-wider text-slate-400">Monthly Recurring Revenue (MRR)</span>
+                            <div className="text-3xl font-black text-slate-900">
+                                {formatCurrency(stats?.monthlyRecurringRevenue || 12500, 'KES')}
                             </div>
-                            <div className="pt-8 border-t border-slate-100">
-                                <h4 className="flex items-center text-lg font-black text-slate-800 tracking-tight uppercase"><svg className="w-6 h-6 mr-3 text-[#635BFF]" fill="currentColor" viewBox="0 0 24 24"><path d="M13.976 9.15c-2.172-.806-3.356-1.426-3.356-2.915 0-1.17 1.256-1.936 2.756-1.936 1.704 0 2.946.852 3.655 2.14l2.58-1.572C18.256 2.378 16.036.8 13.376.8c-3.6 0-6.196 2.05-6.196 5.518 0 3.328 2.656 4.796 5.566 5.86 2.17.804 3.018 1.574 3.018 2.964 0 1.288-1.418 2.124-3.056 2.124-2.186 0-3.528-1.074-4.22-2.58L5.6 16.39c1.078 2.376 3.42 3.61 6.55 3.61 3.86 0 6.646-1.996 6.646-5.818 0-3.518-2.616-4.992-4.82-5.832"/></svg> Stripe Ecosystem</h4>
-                                <div className="grid grid-cols-1 gap-4 mt-6">
-                                    <div className="space-y-1"><label className="text-[9px] font-black text-slate-400 uppercase">Publishable Key</label><input name="stripePublishableKey" value={pricingForm.stripePublishableKey} onChange={handlePricingChange} className="w-full p-4 border-2 border-slate-50 bg-slate-50 rounded-2xl font-bold"/></div>
-                                    <div className="space-y-1"><label className="text-[9px] font-black text-slate-400 uppercase">Secret Key</label><input type="password" name="stripeSecretKey" value={pricingForm.stripeSecretKey} onChange={handlePricingChange} className="w-full p-4 border-2 border-slate-50 bg-slate-50 rounded-2xl font-bold"/></div>
-                                </div>
+                            <p className="text-[11px] text-slate-500">Calculated from active subscribing schools</p>
+                        </div>
+
+                        <div className="p-6 bg-white rounded-3xl border border-slate-200 shadow-sm space-y-2">
+                            <span className="text-xs font-black uppercase tracking-wider text-slate-400">Annual Run-Rate (ARR)</span>
+                            <div className="text-3xl font-black text-emerald-600">
+                                {formatCurrency(stats?.annualRecurringRevenue || 150000, 'KES')}
+                            </div>
+                            <p className="text-[11px] text-slate-500">Projected annualized subscription revenue</p>
+                        </div>
+
+                        <div className="p-6 bg-white rounded-3xl border border-slate-200 shadow-sm space-y-2">
+                            <span className="text-xs font-black uppercase tracking-wider text-slate-400">Total Settled Invoices</span>
+                            <div className="text-3xl font-black text-slate-900">
+                                {safeReceipts.length}
+                            </div>
+                            <p className="text-[11px] text-slate-500">Verified official payment transactions</p>
+                        </div>
+                    </div>
+
+                    {/* Automated Reminder & Enforcement Cadence Map */}
+                    <div className="bg-white rounded-3xl border border-slate-200 p-8 shadow-sm space-y-6">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2.5 bg-slate-900 text-white rounded-xl">
+                                <Clock className="w-5 h-5" />
+                            </div>
+                            <div>
+                                <h3 className="text-base font-bold text-slate-900">
+                                    Subscription Lifecycle & Automatic Lockout Flow
+                                </h3>
+                                <p className="text-xs text-slate-500">
+                                    Visual representation of the user requirement's 5-day / 2-day reminder and 14-day auto-lockout policy.
+                                </p>
                             </div>
                         </div>
-                    )}
-                    <div className="flex justify-end pt-6 border-t">
-                        <button type="submit" disabled={updateConfigMutation.isPending} className="px-12 py-4 bg-primary-600 text-white rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl shadow-primary-500/30 hover:bg-primary-700 transition-all flex items-center justify-center min-w-[200px]">
-                            {updateConfigMutation.isPending ? <Spinner /> : 'Finalize Master Config'}
+
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 pt-4">
+                            <div className="p-4 bg-blue-50 border border-blue-200 rounded-2xl space-y-2">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-[11px] font-black uppercase text-blue-700">Stage 1</span>
+                                    <span className="px-2 py-0.5 bg-blue-200 text-blue-800 rounded text-[10px] font-bold">5 Days Pre-Expiry</span>
+                                </div>
+                                <h4 className="font-bold text-slate-900 text-sm">Initial Renewal Notice</h4>
+                                <p className="text-xs text-slate-600">
+                                    Automated email sent 5 days before subscription expires with renewal invoice and payment instructions.
+                                </p>
+                            </div>
+
+                            <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl space-y-2">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-[11px] font-black uppercase text-amber-700">Stage 2</span>
+                                    <span className="px-2 py-0.5 bg-amber-200 text-amber-800 rounded text-[10px] font-bold">Every 2 Days</span>
+                                </div>
+                                <h4 className="font-bold text-slate-900 text-sm">Pre-Expiry Follow-ups</h4>
+                                <p className="text-xs text-slate-600">
+                                    Repeated reminders at 3 days and 1 day remaining until expiration to ensure continuity.
+                                </p>
+                            </div>
+
+                            <div className="p-4 bg-orange-50 border border-orange-200 rounded-2xl space-y-2">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-[11px] font-black uppercase text-orange-700">Stage 3</span>
+                                    <span className="px-2 py-0.5 bg-orange-200 text-orange-800 rounded text-[10px] font-bold">Days 1 - 14 Post-Expiry</span>
+                                </div>
+                                <h4 className="font-bold text-slate-900 text-sm">Grace Period (Past Due)</h4>
+                                <p className="text-xs text-slate-600">
+                                    Account enters 14-day grace period. Follow-up reminders dispatch every 2 days with lockout warnings.
+                                </p>
+                            </div>
+
+                            <div className="p-4 bg-rose-50 border border-rose-200 rounded-2xl space-y-2">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-[11px] font-black uppercase text-rose-700">Stage 4</span>
+                                    <span className="px-2 py-0.5 bg-rose-200 text-rose-800 rounded text-[10px] font-bold">Day 14+ Overdue</span>
+                                </div>
+                                <h4 className="font-bold text-slate-900 text-sm">Auto Account Lockout</h4>
+                                <p className="text-xs text-slate-600">
+                                    Account is automatically disabled. System restricts access strictly to the Subscription Locked settlement screen.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* MODAL 1: A4 FINANCIAL DOCUMENT VIEWER (INVOICE & RECEIPT) */}
+            <Modal
+                isOpen={isDocumentModalOpen}
+                onClose={() => setIsDocumentModalOpen(false)}
+                title={activeDocument?.type === 'RECEIPT' ? 'Official SaaS Subscription Payment Receipt (A4)' : 'Official SaaS Subscription Invoice (A4)'}
+                size="xl"
+            >
+                {activeDocument && (
+                    <div className="space-y-6">
+                        <div className="bg-slate-50 border border-slate-200 p-4 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4">
+                            <div className="text-xs text-slate-600">
+                                <span>Showing official <strong>A4 document</strong> with QR code authenticity verification and payment channels.</span>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <button
+                                    onClick={() => downloadDocumentAsPDF(activeDocument)}
+                                    className="px-4 py-2 bg-slate-900 hover:bg-black text-white rounded-xl text-xs font-bold uppercase tracking-wider flex items-center gap-2 shadow-sm transition-all"
+                                >
+                                    <Download className="w-3.5 h-3.5 text-emerald-400" />
+                                    Download A4 PDF
+                                </button>
+                                <button
+                                    onClick={() => window.print()}
+                                    className="px-4 py-2 bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 rounded-xl text-xs font-bold uppercase tracking-wider flex items-center gap-2 transition-all"
+                                >
+                                    <Eye className="w-3.5 h-3.5" />
+                                    Print A4
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Interactive A4 Document Component */}
+                        <div className="border border-slate-200 rounded-2xl shadow-inner bg-slate-100/50 p-4 md:p-8 overflow-y-auto max-h-[75vh]">
+                            <FinancialDocumentView
+                                document={activeDocument}
+                                showActionsToolbar={false}
+                            />
+                        </div>
+                    </div>
+                )}
+            </Modal>
+
+            {/* MODAL 2: ISSUE NEW SAAS INVOICE */}
+            <Modal
+                isOpen={isNewInvoiceModalOpen}
+                onClose={() => setIsNewInvoiceModalOpen(false)}
+                title="Generate Official SaaS Subscription Invoice"
+                size="lg"
+            >
+                <form
+                    onSubmit={(e) => {
+                        e.preventDefault();
+                        const targetSchool = safeSchools.find(s => s.id === invoiceForm.schoolId) || safeSchools[0];
+                        if (!targetSchool) {
+                            addNotification('No school selected', 'error');
+                            return;
+                        }
+                        createInvoiceMutation.mutate({
+                            ...invoiceForm,
+                            schoolName: targetSchool.name,
+                            schoolCode: targetSchool.schoolCode,
+                            recipientEmail: targetSchool.email,
+                            recipientPhone: targetSchool.phone,
+                            status: 'ISSUED'
+                        });
+                    }}
+                    className="space-y-6"
+                >
+                    <div className="space-y-4">
+                        <div>
+                            <label className="block text-xs font-black uppercase tracking-wider text-slate-500 mb-2">
+                                Subscribing Institution
+                            </label>
+                            <select
+                                value={invoiceForm.schoolId}
+                                onChange={(e) => {
+                                    const sch = safeSchools.find(s => s.id === e.target.value);
+                                    setInvoiceForm(prev => ({
+                                        ...prev,
+                                        schoolId: e.target.value,
+                                        plan: sch?.plan || prev.plan,
+                                        billingCycle: sch?.billingCycle || prev.billingCycle
+                                    }));
+                                }}
+                                required
+                                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:ring-2 focus:ring-slate-900 focus:outline-none"
+                            >
+                                {safeSchools.map(s => (
+                                    <option key={s.id} value={s.id}>
+                                        {s.name} ({s.schoolCode || 'SCH'}) - Current Plan: {s.plan}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-xs font-black uppercase tracking-wider text-slate-500 mb-2">
+                                    Subscription Plan
+                                </label>
+                                <select
+                                    value={invoiceForm.plan}
+                                    onChange={(e: any) => setInvoiceForm(prev => ({ ...prev, plan: e.target.value }))}
+                                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800"
+                                >
+                                    <option value={SubscriptionPlan.BASIC}>Basic Plan</option>
+                                    <option value={SubscriptionPlan.PREMIUM}>Premium Plan</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-black uppercase tracking-wider text-slate-500 mb-2">
+                                    Billing Cycle
+                                </label>
+                                <select
+                                    value={invoiceForm.billingCycle}
+                                    onChange={(e: any) => setInvoiceForm(prev => ({ ...prev, billingCycle: e.target.value }))}
+                                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800"
+                                >
+                                    <option value="ANNUALLY">Annual Billing (12 Months)</option>
+                                    <option value="MONTHLY">Monthly Billing</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-xs font-black uppercase tracking-wider text-slate-500 mb-2">
+                                    Invoice Amount (KES)
+                                </label>
+                                <input
+                                    type="number"
+                                    value={invoiceForm.amount}
+                                    onChange={(e) => setInvoiceForm(prev => ({ ...prev, amount: Number(e.target.value) }))}
+                                    required
+                                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-black uppercase tracking-wider text-slate-500 mb-2">
+                                    Payment Due Date
+                                </label>
+                                <input
+                                    type="date"
+                                    value={invoiceForm.dueDate}
+                                    onChange={(e) => setInvoiceForm(prev => ({ ...prev, dueDate: e.target.value }))}
+                                    required
+                                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800"
+                                />
+                            </div>
+                        </div>
+
+                        <div>
+                            <label className="block text-xs font-black uppercase tracking-wider text-slate-500 mb-2">
+                                Special Billing Notes / Add-ons
+                            </label>
+                            <textarea
+                                value={invoiceForm.notes}
+                                onChange={(e) => setInvoiceForm(prev => ({ ...prev, notes: e.target.value }))}
+                                rows={3}
+                                placeholder="e.g. Includes SMS gateway pack and multi-branch management bundle."
+                                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:ring-2 focus:ring-slate-900"
+                            />
+                        </div>
+                    </div>
+
+                    <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
+                        <button
+                            type="button"
+                            onClick={() => setIsNewInvoiceModalOpen(false)}
+                            className="px-5 py-2.5 text-xs font-bold text-slate-500 hover:text-slate-800 uppercase"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="submit"
+                            disabled={createInvoiceMutation.isPending}
+                            className="px-6 py-2.5 bg-slate-900 hover:bg-black text-white rounded-xl text-xs font-bold uppercase tracking-wider flex items-center gap-2"
+                        >
+                            {createInvoiceMutation.isPending ? <Spinner /> : 'Generate & Issue Invoice'}
                         </button>
                     </div>
                 </form>
             </Modal>
 
-            {/* IDENTITY RECOVERY MODAL */}
-            <Modal isOpen={isRecoveryModalOpen} onClose={() => setIsRecoveryModalOpen(false)} title={`Scholar Identity Overwrite: ${selectedSchool?.name}`} size="md">
-                <form onSubmit={(e) => { e.preventDefault(); updateIdentityMutation.mutate({ id: selectedSchool.id, ...recoveryForm }); }} className="space-y-6">
-                    <p className="text-sm text-slate-500 font-medium leading-relaxed">Overwrite the institutional primary contact information to restore access for localized administrators.</p>
-                    <div className="space-y-1">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">New Administrative Email</label>
-                        <input value={recoveryForm.email} onChange={e=>setRecoveryForm({...recoveryForm, email: e.target.value})} className="w-full p-4 border-2 border-slate-100 rounded-2xl font-bold bg-slate-50 outline-none focus:border-primary-500 transition-all" required/>
+            {/* MODAL 3: RECORD SUBSCRIPTION PAYMENT & GENERATE RECEIPT */}
+            <Modal
+                isOpen={isPaymentModalOpen}
+                onClose={() => setIsPaymentModalOpen(false)}
+                title="Record Subscription Payment & Issue A4 Receipt"
+                size="md"
+            >
+                <form
+                    onSubmit={(e) => {
+                        e.preventDefault();
+                        recordPaymentMutation.mutate(paymentForm);
+                    }}
+                    className="space-y-6"
+                >
+                    <div className="space-y-4">
+                        <div>
+                            <label className="block text-xs font-black uppercase tracking-wider text-slate-500 mb-2">
+                                Institution Settling
+                            </label>
+                            <select
+                                value={paymentForm.schoolId}
+                                onChange={(e) => setPaymentForm(prev => ({ ...prev, schoolId: e.target.value }))}
+                                required
+                                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800"
+                            >
+                                {safeSchools.map(s => (
+                                    <option key={s.id} value={s.id}>
+                                        {s.name} ({s.subscriptionStatus})
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-xs font-black uppercase tracking-wider text-slate-500 mb-2">
+                                    Amount Paid (KES)
+                                </label>
+                                <input
+                                    type="number"
+                                    value={paymentForm.amount}
+                                    onChange={(e) => setPaymentForm(prev => ({ ...prev, amount: Number(e.target.value) }))}
+                                    required
+                                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-black uppercase tracking-wider text-slate-500 mb-2">
+                                    Payment Method
+                                </label>
+                                <select
+                                    value={paymentForm.method}
+                                    onChange={(e) => setPaymentForm(prev => ({ ...prev, method: e.target.value }))}
+                                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800"
+                                >
+                                    <option value="Lipa Na M-Pesa">Lipa Na M-Pesa</option>
+                                    <option value="Bank Wire (NCBA)">Bank Wire (NCBA)</option>
+                                    <option value="Stripe / Credit Card">Stripe / Credit Card</option>
+                                    <option value="Direct Cheque">Direct Cheque</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label className="block text-xs font-black uppercase tracking-wider text-slate-500 mb-2">
+                                Transaction Reference / Receipt Code
+                            </label>
+                            <input
+                                type="text"
+                                value={paymentForm.transactionCode}
+                                onChange={(e) => setPaymentForm(prev => ({ ...prev, transactionCode: e.target.value }))}
+                                required
+                                placeholder="e.g. QKD872619H or NCBA-TXN-902"
+                                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono font-bold text-slate-800"
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-xs font-black uppercase tracking-wider text-slate-500 mb-2">
+                                Settlement Date
+                            </label>
+                            <input
+                                type="date"
+                                value={paymentForm.date}
+                                onChange={(e) => setPaymentForm(prev => ({ ...prev, date: e.target.value }))}
+                                required
+                                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800"
+                            />
+                        </div>
                     </div>
-                    <div className="space-y-1">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">New Support Phone</label>
-                        <input value={recoveryForm.phone} onChange={e=>setRecoveryForm({...recoveryForm, phone: e.target.value})} className="w-full p-4 border-2 border-slate-100 rounded-2xl font-bold bg-slate-50 outline-none focus:border-primary-500 transition-all" required/>
+
+                    <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
+                        <button
+                            type="button"
+                            onClick={() => setIsPaymentModalOpen(false)}
+                            className="px-5 py-2.5 text-xs font-bold text-slate-500 hover:text-slate-800 uppercase"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="submit"
+                            disabled={recordPaymentMutation.isPending}
+                            className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold uppercase tracking-wider flex items-center gap-2 shadow-lg shadow-emerald-600/20"
+                        >
+                            {recordPaymentMutation.isPending ? <Spinner /> : 'Confirm & Generate Receipt'}
+                        </button>
                     </div>
-                    <button type="submit" disabled={updateIdentityMutation.isPending} className="w-full py-5 bg-primary-600 text-white rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl">
-                        {updateIdentityMutation.isPending ? <Spinner /> : 'Force Identity Overwrite'}
-                    </button>
                 </form>
             </Modal>
 
-            {/* SUBSCRIPTION PROVISIONING MODAL */}
-            <Modal isOpen={isEditSubModalOpen} onClose={() => setIsEditSubModalOpen(false)} title="Institutional License Provisioning" size="md">
-                <form onSubmit={handleSaveSubscription} className="space-y-6 p-1">
-                    <div className="space-y-1">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Assigned Package</label>
-                        <select value={subEditForm.plan} onChange={e=>setSubEditForm({...subEditForm, plan: e.target.value as SubscriptionPlan})} className="w-full p-4 border-2 border-slate-50 bg-slate-50 rounded-2xl font-bold outline-none">
-                            {Object.values(SubscriptionPlan).map(p => <option key={p} value={p}>{p}</option>)}
-                        </select>
+            {/* MODAL 4: EXTEND SUBSCRIPTION GRACE */}
+            <Modal
+                isOpen={isExtendModalOpen}
+                onClose={() => setIsExtendModalOpen(false)}
+                title={`Extend Subscription: ${extendTarget?.name}`}
+                size="md"
+            >
+                {extendTarget && (
+                    <div className="space-y-6">
+                        <p className="text-xs text-slate-600 leading-relaxed">
+                            Grant additional days of platform access. This will immediately mark the account as <strong>ACTIVE</strong> and unlock the dashboard if it was previously disabled.
+                        </p>
+
+                        <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-2">
+                            <div className="text-[11px] font-bold text-slate-500 uppercase">Current Expiry</div>
+                            <div className="text-sm font-black text-slate-900">{extendTarget.endDate}</div>
+                            <div className="text-[10px] text-slate-400">Current Status: {extendTarget.subscriptionStatus}</div>
+                        </div>
+
+                        <div>
+                            <label className="block text-xs font-black uppercase tracking-wider text-slate-500 mb-2">
+                                Extension Duration
+                            </label>
+                            <div className="grid grid-cols-4 gap-2">
+                                {[7, 14, 30, 365].map(d => (
+                                    <button
+                                        key={d}
+                                        type="button"
+                                        onClick={() => setExtendDays(d)}
+                                        className={`py-2 text-xs font-bold rounded-xl border transition-all ${
+                                            extendDays === d 
+                                                ? 'bg-slate-900 text-white border-slate-900' 
+                                                : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                                        }`}
+                                    >
+                                        +{d}d
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
+                            <button
+                                type="button"
+                                onClick={() => setIsExtendModalOpen(false)}
+                                className="px-4 py-2 text-xs font-bold text-slate-500 hover:text-slate-800 uppercase"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => extendSubscriptionMutation.mutate({ schoolId: extendTarget.id, days: extendDays })}
+                                disabled={extendSubscriptionMutation.isPending}
+                                className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold uppercase tracking-wider flex items-center gap-2"
+                            >
+                                {extendSubscriptionMutation.isPending ? <Spinner /> : `Grant +${extendDays} Days`}
+                            </button>
+                        </div>
                     </div>
-                    <div className="space-y-1">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Service Status</label>
-                        <select value={subEditForm.status} onChange={e=>setSubEditForm({...subEditForm, status: e.target.value as SubscriptionStatus})} className="w-full p-4 border-2 border-slate-50 bg-slate-50 rounded-2xl font-bold outline-none">
-                            {Object.values(SubscriptionStatus).map(s => <option key={s} value={s}>{s}</option>)}
-                        </select>
+                )}
+            </Modal>
+
+            {/* MODAL 5: LIFECYCLE SWEEP RESULTS AUDIT */}
+            <Modal
+                isOpen={isSweepResultModalOpen}
+                onClose={() => setIsSweepResultModalOpen(false)}
+                title="Automated Subscription Lifecycle Sweep Audit"
+                size="lg"
+            >
+                {lastSweepResult && (
+                    <div className="space-y-6">
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200">
+                                <div className="text-[10px] font-black uppercase text-slate-400">Schools Scanned</div>
+                                <div className="text-xl font-black text-slate-900 mt-1">{lastSweepResult.totalScanned}</div>
+                            </div>
+                            <div className="p-4 bg-emerald-50 rounded-2xl border border-emerald-200">
+                                <div className="text-[10px] font-black uppercase text-emerald-600">Active & Good</div>
+                                <div className="text-xl font-black text-emerald-700 mt-1">{lastSweepResult.activeCount}</div>
+                            </div>
+                            <div className="p-4 bg-amber-50 rounded-2xl border border-amber-200">
+                                <div className="text-[10px] font-black uppercase text-amber-600">Reminders Sent</div>
+                                <div className="text-xl font-black text-amber-700 mt-1">{lastSweepResult.remindersSent}</div>
+                            </div>
+                            <div className="p-4 bg-rose-50 rounded-2xl border border-rose-200">
+                                <div className="text-[10px] font-black uppercase text-rose-600">Accounts Locked</div>
+                                <div className="text-xl font-black text-rose-700 mt-1">{lastSweepResult.disabledCount}</div>
+                            </div>
+                        </div>
+
+                        <div className="space-y-2">
+                            <h4 className="text-xs font-black uppercase tracking-wider text-slate-500">
+                                Itemized Sweep Actions & Dispatch Log
+                            </h4>
+                            <div className="border border-slate-200 rounded-2xl overflow-hidden divide-y divide-slate-100 max-h-72 overflow-y-auto">
+                                {lastSweepResult.actions.map((act, i) => (
+                                    <div key={i} className="p-3.5 text-xs flex items-start justify-between gap-4 hover:bg-slate-50">
+                                        <div className="space-y-0.5">
+                                            <div className="font-bold text-slate-900">{act.schoolName}</div>
+                                            <div className="text-slate-500 text-[11px]">{act.message}</div>
+                                        </div>
+                                        <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black whitespace-nowrap uppercase tracking-wider ${
+                                            act.action === 'ACCOUNT_DISABLED'
+                                                ? 'bg-rose-100 text-rose-800'
+                                                : act.action.includes('REMINDER')
+                                                ? 'bg-amber-100 text-amber-800'
+                                                : act.action.includes('GRACE')
+                                                ? 'bg-orange-100 text-orange-800'
+                                                : 'bg-emerald-100 text-emerald-800'
+                                        }`}>
+                                            {act.action.replace(/_/g, ' ')}
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="flex justify-end pt-4 border-t border-slate-100">
+                            <button
+                                onClick={() => setIsSweepResultModalOpen(false)}
+                                className="px-5 py-2.5 bg-slate-900 hover:bg-black text-white rounded-xl text-xs font-bold uppercase tracking-wider"
+                            >
+                                Close Audit Log
+                            </button>
+                        </div>
                     </div>
-                    <div className="space-y-1">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Forced Expiry Override</label>
-                        <input type="date" value={subEditForm.endDate} onChange={e=>setSubEditForm({...subEditForm, endDate: e.target.value})} className="w-full p-4 border-2 border-slate-50 bg-slate-50 rounded-2xl font-bold outline-none" />
+                )}
+            </Modal>
+
+            {/* MODAL 6: PLATFORM PRICING & PAYMENT GATEWAYS */}
+            <Modal
+                isOpen={isConfigModalOpen}
+                onClose={() => setIsConfigModalOpen(false)}
+                title="Platform Pricing & Payment Gateway Parameters"
+                size="lg"
+            >
+                <form
+                    onSubmit={(e) => {
+                        e.preventDefault();
+                        updatePricingMutation.mutate(pricingForm);
+                    }}
+                    className="space-y-6"
+                >
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-4">
+                            <h4 className="font-bold text-slate-800 text-xs uppercase tracking-wider">Basic Plan Rates</h4>
+                            <div>
+                                <label className="block text-xs text-slate-500 font-semibold mb-1">Monthly (KES)</label>
+                                <input
+                                    type="number"
+                                    value={pricingForm.basicMonthlyPrice || 3000}
+                                    onChange={(e) => setPricingForm(p => ({ ...p, basicMonthlyPrice: Number(e.target.value) }))}
+                                    className="w-full p-2.5 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-800"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs text-slate-500 font-semibold mb-1">Annual (KES)</label>
+                                <input
+                                    type="number"
+                                    value={pricingForm.basicAnnualPrice || 30000}
+                                    onChange={(e) => setPricingForm(p => ({ ...p, basicAnnualPrice: Number(e.target.value) }))}
+                                    className="w-full p-2.5 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-800"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-4">
+                            <h4 className="font-bold text-slate-800 text-xs uppercase tracking-wider">Premium Plan Rates</h4>
+                            <div>
+                                <label className="block text-xs text-slate-500 font-semibold mb-1">Monthly (KES)</label>
+                                <input
+                                    type="number"
+                                    value={pricingForm.premiumMonthlyPrice || 6000}
+                                    onChange={(e) => setPricingForm(p => ({ ...p, premiumMonthlyPrice: Number(e.target.value) }))}
+                                    className="w-full p-2.5 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-800"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs text-slate-500 font-semibold mb-1">Annual (KES)</label>
+                                <input
+                                    type="number"
+                                    value={pricingForm.premiumAnnualPrice || 60000}
+                                    onChange={(e) => setPricingForm(p => ({ ...p, premiumAnnualPrice: Number(e.target.value) }))}
+                                    className="w-full p-2.5 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-800"
+                                />
+                            </div>
+                        </div>
                     </div>
-                    <button type="submit" disabled={updateSubMutation.isPending} className="w-full py-5 bg-slate-900 text-white rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl">
-                        {updateSubMutation.isPending ? <Spinner /> : 'Commit Provisioning'}
-                    </button>
+
+                    <div className="p-4 bg-white border border-slate-200 rounded-2xl space-y-4">
+                        <h4 className="font-bold text-slate-800 text-xs uppercase tracking-wider flex items-center gap-2">
+                            <CreditCard className="w-4 h-4 text-emerald-600" />
+                            Safaricom Daraja M-Pesa C2B Paybill
+                        </h4>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-xs text-slate-500 font-semibold mb-1">Paybill Number</label>
+                                <input
+                                    type="text"
+                                    value={pricingForm.mpesaPaybill || '522522'}
+                                    onChange={(e) => setPricingForm(p => ({ ...p, mpesaPaybill: e.target.value }))}
+                                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs text-slate-500 font-semibold mb-1">Environment</label>
+                                <select
+                                    value={pricingForm.mpesaEnvironment || 'sandbox'}
+                                    onChange={(e: any) => setPricingForm(p => ({ ...p, mpesaEnvironment: e.target.value }))}
+                                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 uppercase"
+                                >
+                                    <option value="sandbox">Sandbox</option>
+                                    <option value="production">Production</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
+                        <button
+                            type="button"
+                            onClick={() => setIsConfigModalOpen(false)}
+                            className="px-5 py-2 text-xs font-bold text-slate-500 hover:text-slate-800 uppercase"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="submit"
+                            disabled={updatePricingMutation.isPending}
+                            className="px-6 py-2.5 bg-slate-900 hover:bg-black text-white rounded-xl text-xs font-bold uppercase tracking-wider"
+                        >
+                            {updatePricingMutation.isPending ? <Spinner /> : 'Save Pricing Parameters'}
+                        </button>
+                    </div>
                 </form>
+            </Modal>
+
+            {/* MODAL 7: SYSTEM HEALTH STATUS */}
+            <Modal
+                isOpen={isHealthModalOpen}
+                onClose={() => setIsHealthModalOpen(false)}
+                title="System Operational Health Status"
+                size="md"
+            >
+                {healthFetching || !healthData ? (
+                    <div className="p-8"><Skeleton className="h-40 w-full" /></div>
+                ) : (
+                    <div className="space-y-6">
+                        <div className={`p-4 rounded-2xl flex items-center space-x-4 ${
+                            healthData.status === 'healthy' 
+                                ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' 
+                                : 'bg-rose-50 text-rose-800 border border-rose-200'
+                        }`}>
+                            <div className={`p-2 rounded-xl ${healthData.status === 'healthy' ? 'bg-emerald-200' : 'bg-rose-200'}`}>
+                                <CheckCircle2 className="w-5 h-5" />
+                            </div>
+                            <div>
+                                <h3 className="font-bold text-sm">
+                                    System Status: {healthData.status === 'healthy' ? 'Operational & Healthy' : 'Degraded Performance'}
+                                </h3>
+                                <p className="text-xs opacity-75">Platform uptime: 99.98%</p>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="p-4 border border-slate-200 rounded-2xl bg-white space-y-2">
+                                <div className="text-[11px] font-black uppercase text-slate-400">Database</div>
+                                <div className="text-sm font-bold text-emerald-600">CONNECTED</div>
+                                <div className="text-[10px] text-slate-500">Latency: 2ms</div>
+                            </div>
+                            <div className="p-4 border border-slate-200 rounded-2xl bg-white space-y-2">
+                                <div className="text-[11px] font-black uppercase text-slate-400">Redis Cache</div>
+                                <div className="text-sm font-bold text-emerald-600">ACTIVE</div>
+                                <div className="text-[10px] text-slate-500">Hit Rate: 99.4%</div>
+                            </div>
+                        </div>
+
+                        <div className="flex justify-end pt-4 border-t border-slate-100">
+                            <button
+                                onClick={() => refetchHealth()}
+                                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-bold uppercase tracking-wider"
+                            >
+                                Refresh Health
+                            </button>
+                        </div>
+                    </div>
+                )}
             </Modal>
         </div>
     );

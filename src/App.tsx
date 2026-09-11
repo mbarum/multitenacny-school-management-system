@@ -10,6 +10,7 @@ import RegisterSchool from './components/auth/RegisterSchool';
 import SubscriptionLocked from './components/auth/SubscriptionLocked';
 import PrivacyPolicy from './views/PrivacyPolicy';
 import TermsOfService from './views/TermsOfService';
+import CookiePolicy from './views/CookiePolicy';
 import { useData } from './contexts/DataContext';
 import { Notification, SubscriptionStatus } from './types';
 
@@ -94,6 +95,7 @@ const App: React.FC = () => {
                     <Route path="/register" element={<Suspense fallback={<Spinner />}><RegisterSchool /></Suspense>} />
                     <Route path="/privacy" element={<PrivacyPolicy />} />
                     <Route path="/terms" element={<TermsOfService />} />
+                    <Route path="/cookies" element={<CookiePolicy />} />
                     <Route path="/" element={<LandingPage onNavigate={(path) => window.location.href = path} />} />
                     <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>
@@ -152,6 +154,7 @@ const App: React.FC = () => {
                             <Route path="/parent-announcements" element={<ParentAnnouncementsView />} />
                             <Route path="/privacy" element={<PrivacyPolicy />} />
                             <Route path="/terms" element={<TermsOfService />} />
+                            <Route path="/cookies" element={<CookiePolicy />} />
                             <Route path="*" element={<Navigate to="/" replace />} />
                         </Routes>
                     </Suspense>
