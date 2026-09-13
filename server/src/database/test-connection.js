@@ -1,20 +1,58 @@
-require('dotenv').config();
+const fs = require('fs');
+const path = require('path');
+const dotenv = require('dotenv');
 const mysql = require('mysql2/promise');
 
-const host = process.env.MYSQL_HOST || process.env.DB_HOST || '127.0.0.1';
-const port = parseInt(process.env.MYSQL_PORT || process.env.DB_PORT || '3306', 10);
-const user = process.env.MYSQL_USER || process.env.DB_USER || 'root';
-const password = process.env.MYSQL_PASSWORD !== undefined
-  ? process.env.MYSQL_PASSWORD
-  : (process.env.DB_PASSWORD !== undefined ? process.env.DB_PASSWORD : '');
-const database = process.env.MYSQL_DATABASE || process.env.DB_NAME || 'saaslink_db';
+// Find active .env file
+const candidates = [
+  path.join(process.cwd(), '.env'),
+  path.join(process.cwd(), 'server', '.env'),
+  path.join(process.cwd(), '..', '.env'),
+  path.join(__dirname, '..', '..', '.env'),
+];
+
+let activePath = null;
+let parsed = {};
+for (const p of candidates) {
+  if (fs.existsSync(p) && fs.statSync(p).isFile()) {
+    const raw = fs.readFileSync(p, 'utf-8');
+    parsed = dotenv.parse(raw);
+    for (const [k, v] of Object.entries(parsed)) {
+      process.env[k] = v;
+    }
+    activePath = p;
+    break;
+  }
+}
+
+function clean(v) {
+  if (v === undefined || v === null) return undefined;
+  let s = String(v).trim();
+  if ((s.startsWith('"') && s.endsWith('"')) || (s.startsWith("'") && s.endsWith("'"))) {
+    s = s.slice(1, -1);
+  }
+  return s.trim();
+}
+
+const getVal = (k) => clean(process.env[k] || parsed[k]);
+
+const host = getVal('MYSQL_HOST') || getVal('DB_HOST') || '127.0.0.1';
+const port = parseInt(getVal('MYSQL_PORT') || getVal('DB_PORT') || '3306', 10);
+const user = getVal('MYSQL_USER') || getVal('DB_USER') || getVal('MYSQL_USERNAME') || 'root';
+const password = getVal('MYSQL_PASSWORD') !== undefined 
+  ? getVal('MYSQL_PASSWORD') 
+  : (getVal('DB_PASSWORD') !== undefined 
+      ? getVal('DB_PASSWORD') 
+      : (getVal('MYSQL_ROOT_PASSWORD') !== undefined ? getVal('MYSQL_ROOT_PASSWORD') : ''));
+const database = getVal('MYSQL_DATABASE') || getVal('DB_NAME') || 'saaslink_db';
 
 console.log('------------------------------------------------------------');
 console.log('🔍  MYSQL CONNECTION DIAGNOSTIC TEST');
-console.log(`🌐  Host      : ${host}:${port}`);
-console.log(`👤  User      : ${user}`);
-console.log(`🔑  Password  : ${password ? 'CONFIGURED (' + password.length + ' chars)' : 'EMPTY / NOT SET'}`);
-console.log(`🗄️   Database  : ${database}`);
+console.log(`📁  .env file used : ${activePath || 'NONE'}`);
+console.log(`🌐  Host           : ${host}:${port}`);
+console.log(`👤  User           : ${user}`);
+console.log(`🔑  Password       : ${password ? 'CONFIGURED (' + password.length + ' chars)' : 'EMPTY / NOT SET'}`);
+console.log(`🗄️   Database       : ${database}`);
 console.log('------------------------------------------------------------');
 
 async function testConnection() {
@@ -25,7 +63,7 @@ async function testConnection() {
       port,
       user,
       password,
-      database: null, // Test user authentication first without selecting database
+      database: undefined,
     });
 
     console.log(`✅  Authentication successful for user "${user}"!`);
@@ -52,21 +90,7 @@ async function testConnection() {
     console.error(`Error Code   : ${err.code}`);
     console.error(`Error Number : ${err.errno}`);
     console.error(`Message      : ${err.message}`);
-    console.error('------------------------------------------------------------');
-    
-    if (err.code === 'ER_ACCESS_DENIED_ERROR') {
-      console.log('\n🛠️   HOW TO FIX (Access Denied):');
-      console.log(`1. Your MySQL server rejected the credentials for '${user}'@'${host}'.`);
-      console.log(`2. If your database user is different (e.g. saaslink_user), edit your .env:`);
-      console.log(`   MYSQL_USER=saaslink_user`);
-      console.log(`   MYSQL_PASSWORD=your_actual_password`);
-      console.log(`3. Or grant privileges in MySQL as root:`);
-      console.log(`   sudo mysql -e "CREATE USER IF NOT EXISTS '${user}'@'localhost' IDENTIFIED BY '${password || 'your_password'}';"`);
-      console.log(`   sudo mysql -e "GRANT ALL PRIVILEGES ON \`${database}\`.* TO '${user}'@'localhost'; FLUSH PRIVILEGES;"`);
-    } else if (err.code === 'ECONNREFUSED') {
-      console.log('\n🛠️   HOW TO FIX (Connection Refused):');
-      console.log(`1. Ensure MySQL service is running: sudo systemctl start mysql`);
-    }
+    console.log('------------------------------------------------------------');
     process.exit(1);
   }
 }

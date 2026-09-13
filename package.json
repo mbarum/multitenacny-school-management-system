@@ -11,6 +11,7 @@
     "db:sync": "npm --prefix server run db:sync",
     "seed": "npm --prefix server run seed",
     "db:test": "npm --prefix server run db:test",
+    "db:inspect": "npm --prefix server run db:inspect",
     "server:dev": "npm --prefix server run start:dev",
     "server:build": "npm --prefix server run build",
     "server:start": "npm --prefix server run start:prod"

@@ -10,6 +10,7 @@
     "start:dev": "nest start --watch",
     "start:prod": "node dist/main",
     "db:test": "node src/database/test-connection.js",
+    "db:inspect": "node src/database/inspect-env.js",
     "seed": "ts-node --transpile-only src/database/seed.ts",
     "db:sync": "ts-node --transpile-only src/database/sync-schema.ts",
     "schema:sync": "typeorm-ts-node-commonjs schema:sync -d src/config/typeorm-cli.config.ts",
