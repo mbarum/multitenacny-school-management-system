@@ -1,33 +1,39 @@
 
 import { DataSource } from 'typeorm';
-import { ConfigService } from '@nestjs/config';
 import { config } from 'dotenv';
 import { join } from 'path';
 import { 
     User, Staff, SchoolClass, Student, Subject, ClassSubjectAssignment, MpesaC2BTransaction, 
     Announcement, AttendanceRecord, ClassFee, CommunicationLog, Exam, Expense, FeeItem, Grade, 
     GradingRule, Payroll, PayrollEntry, PayrollItem, ReportShareLog, SchoolEvent, TimetableEntry, 
-    Transaction, SchoolSetting, DarajaSetting, Book, LibraryTransaction, School, Subscription, PlatformSetting
+    Transaction, SchoolSetting, DarajaSetting, Book, LibraryTransaction, School, Subscription, PlatformSetting,
+    SubscriptionPayment, MonthlyFinancial, AuditLog
 } from '../entities/all-entities';
 
-// Load .env from the server root directory
-config({ path: join((process as any).cwd(), '.env') });
+// Load .env from current directory or server directory
+config({ path: join(process.cwd(), '.env') });
+config({ path: join(__dirname, '../../.env') });
 
-const configService = new ConfigService();
+const host = process.env.MYSQL_HOST || 'localhost';
+const port = Number(process.env.MYSQL_PORT || 3306);
+const username = process.env.MYSQL_USER || process.env.DB_USER || 'root';
+const password = process.env.MYSQL_PASSWORD || process.env.MYSQL_ROOT_PASSWORD || '';
+const database = process.env.MYSQL_DATABASE || process.env.DB_NAME || 'saaslink_db';
 
 export default new DataSource({
   type: 'mysql',
-  host: configService.get<string>('MYSQL_HOST', 'localhost'),
-  port: Number(configService.get<number | string>('MYSQL_PORT', 3306)),
-  username: configService.get<string>('MYSQL_USER') || configService.get<string>('DB_USER', 'root'),
-  password: configService.get<string>('MYSQL_PASSWORD') || configService.get<string>('MYSQL_ROOT_PASSWORD', ''),
-  database: configService.get<string>('MYSQL_DATABASE') || configService.get<string>('DB_NAME', 'saaslink_db'),
+  host,
+  port,
+  username,
+  password,
+  database,
   entities: [
     User, Staff, SchoolClass, Student, Subject, ClassSubjectAssignment, MpesaC2BTransaction, 
     Announcement, AttendanceRecord, ClassFee, CommunicationLog, Exam, Expense, FeeItem, Grade, 
     GradingRule, Payroll, PayrollEntry, PayrollItem, ReportShareLog, SchoolEvent, TimetableEntry, 
-    Transaction, SchoolSetting, DarajaSetting, Book, LibraryTransaction, School, Subscription, PlatformSetting
+    Transaction, SchoolSetting, DarajaSetting, Book, LibraryTransaction, School, Subscription, PlatformSetting,
+    SubscriptionPayment, MonthlyFinancial, AuditLog
   ],
-  migrations: [join((process as any).cwd(), 'src/migrations/*.{ts,js}')],
+  migrations: [join(process.cwd(), 'src/migrations/*.{ts,js}')],
   synchronize: false, 
 });
