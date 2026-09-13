@@ -14,6 +14,8 @@ export const typeOrmAsyncConfig: TypeOrmModuleAsyncOptions = {
   inject: [ConfigService],
   useFactory: async (configService: ConfigService): Promise<TypeOrmModuleOptions> => {
     const isProduction = configService.get<string>('NODE_ENV') === 'production';
+    const forceSync = configService.get<string>('DB_SYNCHRONIZE') === 'true';
+    const shouldSynchronize = forceSync || !isProduction;
     const databaseUrl = configService.get<string>('DATABASE_URL');
 
     const commonEntities = [
@@ -37,7 +39,7 @@ export const typeOrmAsyncConfig: TypeOrmModuleAsyncOptions = {
         type: 'mysql',
         url: databaseUrl,
         entities: commonEntities,
-        synchronize: !isProduction,
+        synchronize: shouldSynchronize,
         logging: ['error', 'warn'],
         autoLoadEntities: true,
         extra: poolConfig,
@@ -52,7 +54,7 @@ export const typeOrmAsyncConfig: TypeOrmModuleAsyncOptions = {
       password: configService.get<string>('MYSQL_PASSWORD') || configService.get<string>('MYSQL_ROOT_PASSWORD', ''),
       database: configService.get<string>('MYSQL_DATABASE') || configService.get<string>('DB_NAME', 'saaslink_db'),
       entities: commonEntities,
-      synchronize: !isProduction, 
+      synchronize: shouldSynchronize, 
       logging: ['error', 'warn'],
       autoLoadEntities: true,
       extra: poolConfig,

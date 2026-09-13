@@ -1,4 +1,6 @@
+/// <reference types="node" />
 import 'dotenv/config';
+import process from 'node:process';
 import { DataSource, DataSourceOptions } from 'typeorm';
 import { 
     User, Staff, SchoolClass, Student, Subject, ClassSubjectAssignment, 
