@@ -41,13 +41,20 @@ import { TenancyModule } from './tenancy/tenancy.module';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true, envFilePath: '.env' }),
+    ConfigModule.forRoot({ 
+      isGlobal: true, 
+      envFilePath: ['.env', '../.env', join((process as any).cwd(), '.env'), join((process as any).cwd(), '..', '.env')] 
+    }),
     TypeOrmModule.forRootAsync(typeOrmAsyncConfig),
     TypeOrmModule.forFeature([School]),
-    ThrottlerModule.forRoot([{
-      ttl: 60000,
-      limit: 100,
-    }]),
+    ThrottlerModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => [{
+        ttl: config.get<number>('THROTTLE_TTL', 60000),
+        limit: config.get<number>('THROTTLE_LIMIT', 100),
+      }],
+    }),
     CacheModule.register({
       isGlobal: true,
       ttl: 60000,
@@ -55,12 +62,31 @@ import { TenancyModule } from './tenancy/tenancy.module';
     }),
     BullModule.forRootAsync({
       imports: [ConfigModule],
-      useFactory: async (configService: ConfigService) => ({
-        connection: {
-          host: configService.get('REDIS_HOST', 'localhost'),
-          port: configService.get('REDIS_PORT', 6379),
-        },
-      }),
+      useFactory: async (configService: ConfigService) => {
+        const redisUrl = configService.get<string>('REDIS_URL');
+        if (redisUrl) {
+          try {
+            const parsed = new URL(redisUrl);
+            return {
+              connection: {
+                host: parsed.hostname,
+                port: Number(parsed.port || 6379),
+                password: parsed.password || undefined,
+                username: parsed.username || undefined,
+              }
+            };
+          } catch {
+            // Fall through to host/port
+          }
+        }
+        return {
+          connection: {
+            host: configService.get<string>('REDIS_HOST', 'localhost'),
+            port: Number(configService.get<number | string>('REDIS_PORT', 6379)),
+            password: configService.get<string>('REDIS_PASSWORD') || undefined,
+          },
+        };
+      },
       inject: [ConfigService],
     }),
     ServeStaticModule.forRoot({

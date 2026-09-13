@@ -40,6 +40,7 @@ import Skeleton from '../components/common/Skeleton';
 import WebcamCaptureModal from '../components/common/WebcamCaptureModal';
 import Pagination from '../components/common/Pagination';
 import Spinner from '../components/common/Spinner';
+import { optimizeImage } from '../utils/imageOptimizer';
 
 // CSV Export Utility
 function downloadExpensesCSV(filename: string, expenses: any[], currency: string = 'KES') {
@@ -266,20 +267,24 @@ const ExpensesView: React.FC = () => {
 
     const handleFileUpload = async (file: File) => {
         setIsUploading(true);
-        const uploadData = new FormData();
-        uploadData.append('file', file);
         try {
-            const res = await api.uploadExpenseReceipt(uploadData);
-            setFormData(prev => ({ ...prev, attachmentUrl: res.url }));
-            addNotification("Receipt attached to voucher.", "success");
-        } catch (e) {
-            // Fallback: Read as Data URL
-            const reader = new FileReader();
-            reader.onload = (loadEvt) => {
-                setFormData(prev => ({ ...prev, attachmentUrl: loadEvt.target?.result as string }));
-                addNotification("Receipt saved locally.", "info");
-            };
-            reader.readAsDataURL(file);
+            // Resize and compress receipt image to max 1200x1200px WebP for minimal VPS disk space
+            const optimized = await optimizeImage(file, { preset: 'receipt', maxWidth: 1200, maxHeight: 1200 });
+            const uploadData = new FormData();
+            uploadData.append('file', optimized.file);
+            uploadData.append('dataUrl', optimized.dataUrl);
+
+            try {
+                const res = await api.uploadExpenseReceipt(uploadData);
+                const finalUrl = res?.url && !res.url.includes('undefined') ? res.url : optimized.dataUrl;
+                setFormData(prev => ({ ...prev, attachmentUrl: finalUrl }));
+                addNotification(`Receipt optimized for VPS storage (${optimized.formattedStats}) and attached!`, "success");
+            } catch (e) {
+                setFormData(prev => ({ ...prev, attachmentUrl: optimized.dataUrl }));
+                addNotification(`Receipt optimized (${optimized.formattedStats}) and saved locally.`, "info");
+            }
+        } catch (err: any) {
+            addNotification("Failed to optimize receipt image: " + (err?.message || "File error"), "error");
         } finally {
             setIsUploading(false);
         }

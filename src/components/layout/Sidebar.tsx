@@ -77,6 +77,10 @@ const Sidebar: React.FC = () => {
         if (view === 'parent_child_details') return '/parent-child-details';
         if (view === 'parent_finances') return '/parent-finances';
         if (view === 'parent_announcements') return '/parent-announcements';
+        if (view === 'parent_lms') return '/parent-lms';
+
+        // LMS
+        if (view === 'lms') return '/lms';
 
         // Super Admin
         if (view === 'super_admin_dashboard') return '/super-admin';

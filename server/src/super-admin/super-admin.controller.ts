@@ -15,6 +15,18 @@ export class SuperAdminController {
     return this.superAdminService.findAllSchools();
   }
 
+  @Post('schools')
+  @Roles(Role.SuperAdmin)
+  createSchool(@Body() dto: any) {
+    return this.superAdminService.createSchool(dto);
+  }
+
+  @Post('schools/:id/activate')
+  @Roles(Role.SuperAdmin)
+  activateSchool(@Param('id') id: string, @Body() payload: any) {
+    return this.superAdminService.activateSchool(id, payload);
+  }
+
   @Get('schools/:id')
   @Roles(Role.SuperAdmin)
   findSchoolDetails(@Param('id') id: string) {
@@ -31,6 +43,30 @@ export class SuperAdminController {
   @Roles(Role.SuperAdmin)
   getSystemHealth() {
       return this.superAdminService.getSystemHealth();
+  }
+
+  @Get('online-users')
+  @Roles(Role.SuperAdmin)
+  getOnlineUsers() {
+      return this.superAdminService.getOnlineUsers();
+  }
+
+  @Post('health/ping-db')
+  @Roles(Role.SuperAdmin)
+  pingDatabase() {
+      return this.superAdminService.pingDatabase();
+  }
+
+  @Post('health/test-queue')
+  @Roles(Role.SuperAdmin)
+  testQueueWorker() {
+      return this.superAdminService.testQueueWorker();
+  }
+
+  @Post('health/retry-failed-jobs')
+  @Roles(Role.SuperAdmin)
+  retryFailedJobs() {
+      return this.superAdminService.retryFailedJobs();
   }
   
   @Put('pricing')

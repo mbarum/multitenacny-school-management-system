@@ -7,7 +7,9 @@ import {
     type PayrollItem, type DarajaSettings, type MpesaC2BTransaction, type NewStudent, type NewStaff, 
     type NewTransaction, type NewExpense, type NewPayrollItem, type NewAnnouncement, type NewCommunicationLog, 
     type NewUser, type NewGradingRule, type NewFeeItem, type PlatformPricing, type Book, type NewBook,
-    type SubscriberSchool, type SaasInvoice, type SaasReceipt, type LifecycleSweepResult
+    type SubscriberSchool, type SaasInvoice, type SaasReceipt, type LifecycleSweepResult,
+    type LmsAssignment, type LmsSubmission, type LmsLiveClass, type EdTechArticle,
+    type SystemHealthData, type OnlineUserSession
 } from '../types';
 import { loadMockStore, saveMockStore } from '../data/mockData';
 
@@ -53,7 +55,18 @@ const handleLocalFallback = (endpoint: string, options: RequestInit): any => {
         return store.darajaSettings;
     }
     if (cleanEndpoint === '/settings/upload-logo') {
-        return { logoUrl: store.schoolInfo.logoUrl || 'https://images.unsplash.com/photo-1580582932707-520aed937b7b?auto=format&fit=crop&q=80&w=120' };
+        let newLogo = store.schoolInfo.logoUrl;
+        if (options.body instanceof FormData) {
+            const passedDataUrl = options.body.get('dataUrl');
+            if (typeof passedDataUrl === 'string' && passedDataUrl.startsWith('data:')) {
+                newLogo = passedDataUrl;
+            }
+        }
+        if (newLogo) {
+            store.schoolInfo.logoUrl = newLogo;
+            saveMockStore(store);
+        }
+        return { logoUrl: newLogo || store.schoolInfo.logoUrl || 'https://i.imgur.com/S5o7W44.png' };
     }
     if (cleanEndpoint === '/auth/me') {
         const token = localStorage.getItem('authToken');
@@ -84,15 +97,38 @@ const handleLocalFallback = (endpoint: string, options: RequestInit): any => {
     }
     if (cleanEndpoint === '/auth/logout') return { success: true };
     if (cleanEndpoint === '/auth/register-school') {
+        const schoolId = `school-${Date.now()}`;
+        const isWire = body.paymentMethod === 'WIRE';
+        const isFree = body.plan === SubscriptionPlan.FREE;
+        const plan = body.plan || SubscriptionPlan.BASIC;
+        const cycle: 'ANNUALLY' | 'MONTHLY' = body.billingCycle === 'ANNUALLY' ? 'ANNUALLY' : 'MONTHLY';
+
         const newSchool = {
             ...store.schoolInfo,
+            id: schoolId,
             name: body.schoolName || store.schoolInfo.name,
-            email: body.email || store.schoolInfo.email
+            slug: (body.schoolName || 'school').toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+            schoolCode: (body.schoolName || 'SCH').substring(0, 3).toUpperCase(),
+            email: body.adminEmail || body.email || store.schoolInfo.email,
+            phone: body.phone || store.schoolInfo.phone,
+            address: body.address || 'Nairobi, Kenya',
+            plan: plan,
+            subscriptionStatus: isWire ? SubscriptionStatus.PENDING_APPROVAL : (isFree ? SubscriptionStatus.TRIAL : SubscriptionStatus.ACTIVE),
+            startDate: new Date().toISOString().split('T')[0],
+            endDate: new Date(Date.now() + (cycle === 'ANNUALLY' ? 365 : 30) * 86400000).toISOString().split('T')[0],
+            studentCount: Number(body.studentCount) || 50,
+            staffCount: 10,
+            billingCycle: cycle,
+            paymentMethod: body.paymentMethod || (isFree ? 'FREE' : 'MPESA'),
+            invoiceNumber: body.invoiceNumber || (isWire ? `INV-SAAS-${new Date().getFullYear()}-${String((store.saasInvoices || []).length + 1).padStart(3, '0')}` : undefined),
+            temporaryPassword: body.password || 'Admin@2026',
+            adminName: body.adminName,
+            remindersCount: 0
         };
         const newUser: User = {
             id: `user-${Date.now()}`,
             name: body.adminName || 'School Admin',
-            email: body.email || 'admin@school.com',
+            email: body.adminEmail || body.email || 'admin@school.com',
             role: Role.Admin,
             avatarUrl: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=120',
             status: 'Active',
@@ -100,8 +136,84 @@ const handleLocalFallback = (endpoint: string, options: RequestInit): any => {
         };
         store.users.push(newUser);
         store.schoolInfo = newSchool;
+        if (!store.schools) store.schools = [];
+        store.schools.unshift(newSchool as any);
+
+        if (isWire) {
+            const newInv: SaasInvoice = {
+                id: `inv-saas-${Date.now()}`,
+                invoiceNumber: newSchool.invoiceNumber || `INV-SAAS-${new Date().getFullYear()}-${String((store.saasInvoices || []).length + 1).padStart(3, '0')}`,
+                schoolId: newSchool.id,
+                schoolName: newSchool.name,
+                schoolCode: newSchool.schoolCode,
+                recipientEmail: newSchool.email,
+                recipientPhone: newSchool.phone,
+                plan: newSchool.plan,
+                billingCycle: cycle,
+                amount: newSchool.plan === SubscriptionPlan.PREMIUM ? 69600 : 34800,
+                currency: 'KES',
+                issueDate: new Date().toISOString().split('T')[0],
+                dueDate: new Date(Date.now() + 14 * 86400000).toISOString().split('T')[0],
+                status: 'ISSUED',
+                paymentMethod: 'Bank Wire',
+                notes: 'Wire transfer payment pending verification by Super Admin'
+            };
+            if (!store.saasInvoices) store.saasInvoices = [];
+            store.saasInvoices.unshift(newInv);
+
+            if (!store.communicationLogs) store.communicationLogs = [];
+            store.communicationLogs.unshift({
+                id: `log-${Date.now()}`,
+                studentId: newSchool.id,
+                type: CommunicationType.Email,
+                message: `[Subscription Request Received] Invoice ${newInv.invoiceNumber} for ${newSchool.name}. Status: Subscription request submitted. Wait for an activation email. Bank: ${store.pricing?.wireBankName || 'NCBA Bank Kenya PLC'} | Acc: ${store.pricing?.wireAccountNumber || '8809220019'}`,
+                date: new Date().toISOString(),
+                sentBy: 'Platform System',
+                recipient: newSchool.email,
+                channel: 'Email',
+                status: 'Delivered',
+                timestamp: new Date().toISOString()
+            });
+        } else if (!isFree) {
+            const isCard = body.paymentMethod === 'CARD';
+            const totalAmount = newSchool.plan === SubscriptionPlan.PREMIUM ? 69600 : 34800;
+            const txnCode = body.paymentIntentId || body.transactionRef || (isCard ? `CARD-STRIPE-${Date.now().toString().slice(-6)}` : `MPESA-QKD-${Date.now().toString().slice(-6)}`);
+            const newReceipt: SaasReceipt = {
+                id: `rec-saas-${Date.now()}`,
+                receiptNumber: `REC-SAAS-${new Date().getFullYear()}-${String((store.saasReceipts || []).length + 1).padStart(3, '0')}`,
+                invoiceId: '',
+                invoiceNumber: `INV-SAAS-${new Date().getFullYear()}-INSTANT`,
+                schoolId: newSchool.id,
+                schoolName: newSchool.name,
+                amount: totalAmount,
+                currency: 'KES',
+                paymentDate: new Date().toISOString().split('T')[0],
+                paymentMethod: isCard ? 'Stripe / Credit Card' : 'Lipa Na M-Pesa (STK Push)',
+                transactionCode: txnCode,
+                plan: newSchool.plan,
+                provisionedUntil: newSchool.endDate,
+                verifiedBy: 'Automated Gateway'
+            };
+            if (!store.saasReceipts) store.saasReceipts = [];
+            store.saasReceipts.unshift(newReceipt);
+
+            if (!store.communicationLogs) store.communicationLogs = [];
+            store.communicationLogs.unshift({
+                id: `log-${Date.now()}`,
+                studentId: newSchool.id,
+                type: CommunicationType.Email,
+                message: `[Payment Verified] Receipt: ${newReceipt.receiptNumber} | Portal activated for ${newSchool.name}. Initial Password: ${newSchool.temporaryPassword}`,
+                date: new Date().toISOString(),
+                sentBy: 'Automated Payment Gateway',
+                recipient: newSchool.email,
+                channel: 'Email',
+                status: 'Delivered',
+                timestamp: new Date().toISOString()
+            });
+        }
+
         saveMockStore(store);
-        return { user: newUser, token: newUser.id, school: newSchool };
+        return { user: newUser, token: newUser.id, school: newSchool, status: isWire ? 'PENDING' : 'ACTIVE' };
     }
     if (cleanEndpoint === '/auth/create-payment-intent') {
         return { clientSecret: 'mock_secret_key', amount: 3000 };
@@ -509,7 +621,19 @@ const handleLocalFallback = (endpoint: string, options: RequestInit): any => {
         return store.staff;
     }
     if (cleanEndpoint === '/payroll/payroll-items') return store.payrollItems;
-    if (cleanEndpoint === '/payroll/payroll-history') return store.payrollHistory;
+    if (cleanEndpoint === '/payroll/payroll-history') {
+        const queryParams = new URLSearchParams(endpoint.split('?')[1] || '');
+        const staffId = queryParams.get('staffId');
+        const month = queryParams.get('month');
+        let filtered = store.payrollHistory || [];
+        if (staffId) {
+            filtered = filtered.filter(p => p.staffId === staffId);
+        }
+        if (month) {
+            filtered = filtered.filter(p => p.month && p.month.toLowerCase().includes(month.toLowerCase()));
+        }
+        return { data: filtered, total: filtered.length, page: 1, limit: filtered.length, last_page: 1 };
+    }
     if (cleanEndpoint === '/payroll/generate') {
         if (Array.isArray(body)) {
             store.payrollHistory = [...body, ...store.payrollHistory];
@@ -560,6 +684,121 @@ const handleLocalFallback = (endpoint: string, options: RequestInit): any => {
     if (cleanEndpoint === '/communications/communication-logs') return store.communicationLogs;
     if (cleanEndpoint === '/library/books') return store.books;
     if (cleanEndpoint === '/library/transactions') return [];
+
+    // --- LMS Handlers ---
+    if (cleanEndpoint === '/lms/assignments') {
+        if (method === 'POST') {
+            const body = options.body ? JSON.parse(options.body as string) : {};
+            const newAssign = {
+                id: `lms-assign-${Date.now()}`,
+                ...body,
+                createdAt: new Date().toISOString(),
+                submittedCount: 0,
+                gradedCount: 0,
+                totalAssigned: (store.students || []).filter(s => s.classId === body.classId).length || 5
+            };
+            store.lmsAssignments = [newAssign, ...(store.lmsAssignments || [])];
+            saveMockStore(store);
+            return newAssign;
+        }
+        return store.lmsAssignments || [];
+    }
+    if (cleanEndpoint.startsWith('/lms/assignments/')) {
+        const id = cleanEndpoint.replace('/lms/assignments/', '');
+        if (method === 'PATCH' || method === 'PUT') {
+            const body = options.body ? JSON.parse(options.body as string) : {};
+            const list = store.lmsAssignments || [];
+            const idx = list.findIndex(a => a.id === id);
+            if (idx >= 0) {
+                list[idx] = { ...list[idx], ...body, updatedAt: new Date().toISOString() };
+                store.lmsAssignments = list;
+                saveMockStore(store);
+                return list[idx];
+            }
+        }
+        if (method === 'DELETE') {
+            store.lmsAssignments = (store.lmsAssignments || []).filter(a => a.id !== id);
+            store.lmsSubmissions = (store.lmsSubmissions || []).filter(s => s.assignmentId !== id);
+            saveMockStore(store);
+            return { success: true };
+        }
+    }
+    if (cleanEndpoint === '/lms/submissions') {
+        if (method === 'POST') {
+            const body = options.body ? JSON.parse(options.body as string) : {};
+            const list = store.lmsSubmissions || [];
+            const existingIdx = list.findIndex(s => s.assignmentId === body.assignmentId && s.studentId === body.studentId);
+            const newSub = {
+                id: existingIdx >= 0 ? list[existingIdx].id : `sub-${Date.now()}`,
+                ...body,
+                submittedAt: new Date().toISOString()
+            };
+            if (existingIdx >= 0) list[existingIdx] = newSub;
+            else list.unshift(newSub);
+            store.lmsSubmissions = list;
+            const assign = (store.lmsAssignments || []).find(a => a.id === body.assignmentId);
+            if (assign) {
+                assign.submittedCount = list.filter(s => s.assignmentId === body.assignmentId).length;
+            }
+            saveMockStore(store);
+            return newSub;
+        }
+        return store.lmsSubmissions || [];
+    }
+    if (cleanEndpoint.startsWith('/lms/submissions/') && cleanEndpoint.endsWith('/grade')) {
+        const id = cleanEndpoint.replace('/lms/submissions/', '').replace('/grade', '');
+        const body = options.body ? JSON.parse(options.body as string) : {};
+        const sub = (store.lmsSubmissions || []).find(s => s.id === id);
+        if (sub) {
+            sub.score = body.score;
+            sub.gradeLetter = body.gradeLetter;
+            sub.teacherFeedback = body.teacherFeedback;
+            sub.gradedBy = body.gradedBy || 'Teacher';
+            sub.gradedAt = new Date().toISOString();
+            sub.status = body.status || 'Graded';
+            sub.rubricScores = body.rubricScores;
+            const assign = (store.lmsAssignments || []).find(a => a.id === sub.assignmentId);
+            if (assign) {
+                assign.gradedCount = (store.lmsSubmissions || []).filter(s => s.assignmentId === sub.assignmentId && s.score !== null && s.score !== undefined).length;
+            }
+            saveMockStore(store);
+            return sub;
+        }
+    }
+    if (cleanEndpoint === '/lms/live-classes') {
+        if (method === 'POST') {
+            const body = options.body ? JSON.parse(options.body as string) : {};
+            const newLive = {
+                id: `live-${Date.now()}`,
+                ...body,
+                attendeesCount: body.attendeesCount || 0,
+                createdAt: new Date().toISOString()
+            };
+            store.lmsLiveClasses = [newLive, ...(store.lmsLiveClasses || [])];
+            saveMockStore(store);
+            return newLive;
+        }
+        return store.lmsLiveClasses || [];
+    }
+    if (cleanEndpoint.startsWith('/lms/live-classes/')) {
+        const id = cleanEndpoint.replace('/lms/live-classes/', '');
+        if (method === 'PATCH' || method === 'PUT') {
+            const body = options.body ? JSON.parse(options.body as string) : {};
+            const list = store.lmsLiveClasses || [];
+            const idx = list.findIndex(c => c.id === id);
+            if (idx >= 0) {
+                list[idx] = { ...list[idx], ...body };
+                store.lmsLiveClasses = list;
+                saveMockStore(store);
+                return list[idx];
+            }
+        }
+        if (method === 'DELETE') {
+            store.lmsLiveClasses = (store.lmsLiveClasses || []).filter(c => c.id !== id);
+            saveMockStore(store);
+            return { success: true };
+        }
+    }
     
     // --- Super Admin Mock Handlers ---
     if (cleanEndpoint === '/super-admin/stats') {
@@ -809,6 +1048,76 @@ const handleLocalFallback = (endpoint: string, options: RequestInit): any => {
         return { success: false, message: 'School not found' };
     }
 
+    if (cleanEndpoint.startsWith('/super-admin/schools/') && cleanEndpoint.endsWith('/activate')) {
+        const parts = cleanEndpoint.split('/');
+        const schoolId = parts[3];
+        const school = (store.schools || []).find(s => s.id === schoolId);
+        if (school) {
+            const totalAmount = school.plan === SubscriptionPlan.PREMIUM ? 69600 : 34800;
+            const txnRef = body.transactionRef || `WIRE-NCBA-${Date.now().toString().slice(-6)}`;
+            const paymentDate = new Date().toISOString().split('T')[0];
+            const provisionedDays = school.billingCycle === 'ANNUALLY' ? 365 : 30;
+
+            school.subscriptionStatus = SubscriptionStatus.ACTIVE;
+            school.endDate = new Date(Date.now() + provisionedDays * 86400000).toISOString().split('T')[0];
+            school.remindersCount = 0;
+            school.lastPaymentDate = paymentDate;
+            school.lastPaymentAmount = totalAmount;
+            school.autoLockoutGraceDaysRemaining = undefined;
+
+            const inv = (store.saasInvoices || []).find(i => i.schoolId === schoolId && i.status !== 'PAID');
+            if (inv) {
+                inv.status = 'PAID';
+                inv.paidDate = paymentDate;
+                inv.transactionRef = txnRef;
+                inv.paymentMethod = body.paymentMethod || 'Bank Wire';
+            }
+
+            const newReceipt: SaasReceipt = {
+                id: `rec-saas-${Date.now()}`,
+                receiptNumber: `REC-SAAS-${new Date().getFullYear()}-${String((store.saasReceipts || []).length + 1).padStart(3, '0')}`,
+                invoiceId: inv?.id || '',
+                invoiceNumber: inv?.invoiceNumber || school.invoiceNumber || `INV-SAAS-${new Date().getFullYear()}-ACT`,
+                schoolId: school.id,
+                schoolName: school.name,
+                amount: totalAmount,
+                currency: 'KES',
+                paymentDate: paymentDate,
+                paymentMethod: body.paymentMethod || 'Bank Wire',
+                transactionCode: txnRef,
+                plan: school.plan,
+                provisionedUntil: school.endDate,
+                verifiedBy: 'Platform Super Administrator'
+            };
+            if (!store.saasReceipts) store.saasReceipts = [];
+            store.saasReceipts.unshift(newReceipt);
+
+            const initialPassword = school.temporaryPassword || 'Admin@2026';
+            if (!store.communicationLogs) store.communicationLogs = [];
+            store.communicationLogs.unshift({
+                id: `log-${Date.now()}`,
+                studentId: school.id,
+                type: CommunicationType.Email,
+                message: `[Account Activated] Portal activated for ${school.name}. Login URL: /login | Username: ${school.email} | Initial Password: ${initialPassword} | Plan: ${school.plan} | Valid Until: ${school.endDate}`,
+                date: new Date().toISOString(),
+                sentBy: 'Super Administrator',
+                recipient: school.email,
+                channel: 'Email',
+                status: 'Delivered',
+                timestamp: new Date().toISOString()
+            });
+
+            saveMockStore(store);
+            return { 
+                success: true, 
+                school, 
+                receipt: newReceipt, 
+                credentials: { email: school.email, password: initialPassword } 
+            };
+        }
+        return { success: false, message: 'School not found' };
+    }
+
     if (cleanEndpoint === '/super-admin/payments/manual') {
         const school = (store.schools || []).find(s => s.id === body.schoolId);
         const receipt: SaasReceipt = {
@@ -851,8 +1160,103 @@ const handleLocalFallback = (endpoint: string, options: RequestInit): any => {
     }
     if (cleanEndpoint === '/super-admin/payments') return store.saasReceipts || [];
 
+    // EdTech News Mock Handling
+    if (cleanEndpoint === '/edtech-news' || cleanEndpoint === '/super-admin/edtech-news') {
+        if (!store.edTechArticles) store.edTechArticles = [];
+        if (method === 'POST') {
+            const newArt: EdTechArticle = {
+                id: body.id || `article-${Date.now()}`,
+                slug: body.slug || (body.title ? body.title.toLowerCase().replace(/[^a-z0-9]+/g, '-') : `article-${Date.now()}`),
+                title: body.title || 'Untitled EdTech Article',
+                category: body.category || 'CBC Curriculum',
+                date: body.date || new Date().toLocaleDateString('en-KE', { month: 'long', day: 'numeric', year: 'numeric' }),
+                readTime: body.readTime || '4 min read',
+                excerpt: body.excerpt || '',
+                author: body.author || 'SaasLink Editorial Board',
+                authorRole: body.authorRole || 'Educational Specialist',
+                authorAvatar: body.authorAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=150',
+                coverImageUrl: body.coverImageUrl || 'https://images.unsplash.com/photo-1509062522246-3755977927d7?auto=format&fit=crop&q=80&w=1000',
+                content: Array.isArray(body.content) ? body.content : [body.content || ''],
+                tags: Array.isArray(body.tags) ? body.tags : [],
+                status: body.status || 'PUBLISHED',
+                featured: Boolean(body.featured),
+                learningObjectives: Array.isArray(body.learningObjectives) ? body.learningObjectives : [],
+                media: Array.isArray(body.media) ? body.media : [],
+                viewsCount: body.viewsCount || 0,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+            };
+            store.edTechArticles = [newArt, ...store.edTechArticles];
+            saveMockStore(store);
+            return newArt;
+        }
+        return store.edTechArticles;
+    }
+
+    if (cleanEndpoint.startsWith('/edtech-news/') || cleanEndpoint.startsWith('/super-admin/edtech-news/')) {
+        if (!store.edTechArticles) store.edTechArticles = [];
+        const parts = cleanEndpoint.split('/');
+        const articleId = parts[parts.length - 1];
+
+        if (cleanEndpoint.endsWith('/toggle-status')) {
+            const idToToggle = parts[parts.length - 2];
+            const art = store.edTechArticles.find(a => a.id === idToToggle || a.slug === idToToggle);
+            if (art) {
+                art.status = art.status === 'PUBLISHED' ? 'DRAFT' : 'PUBLISHED';
+                art.updatedAt = new Date().toISOString();
+                saveMockStore(store);
+                return art;
+            }
+        }
+
+        if (cleanEndpoint.endsWith('/toggle-featured')) {
+            const idToToggle = parts[parts.length - 2];
+            const art = store.edTechArticles.find(a => a.id === idToToggle || a.slug === idToToggle);
+            if (art) {
+                art.featured = !art.featured;
+                art.updatedAt = new Date().toISOString();
+                saveMockStore(store);
+                return art;
+            }
+        }
+
+        if (method === 'GET') {
+            const art = store.edTechArticles.find(a => a.id === articleId || a.slug === articleId);
+            if (art) {
+                art.viewsCount = (art.viewsCount || 0) + 1;
+                saveMockStore(store);
+                return art;
+            }
+        }
+
+        if (method === 'PUT' || method === 'PATCH') {
+            const idx = store.edTechArticles.findIndex(a => a.id === articleId || a.slug === articleId);
+            if (idx >= 0) {
+                store.edTechArticles[idx] = {
+                    ...store.edTechArticles[idx],
+                    ...body,
+                    updatedAt: new Date().toISOString()
+                };
+                saveMockStore(store);
+                return store.edTechArticles[idx];
+            }
+        }
+
+        if (method === 'DELETE') {
+            store.edTechArticles = store.edTechArticles.filter(a => a.id !== articleId && a.slug !== articleId);
+            saveMockStore(store);
+            return { success: true };
+        }
+    }
+
     return { success: true, data: [] };
 };
+
+const API_BASE_URL = ((import.meta as any).env?.VITE_API_URL || '').replace(/\/+$/, '');
+const DISABLE_MOCK_FALLBACK = Boolean(
+    (import.meta as any).env?.VITE_DISABLE_MOCK_FALLBACK === 'true' || 
+    (import.meta as any).env?.VITE_STRICT_API === 'true'
+);
 
 // Generic API fetch wrapper for JSON responses with automatic resilient fallback
 const apiFetch = async (endpoint: string, options: RequestInit = {}) => {
@@ -864,15 +1268,23 @@ const apiFetch = async (endpoint: string, options: RequestInit = {}) => {
     if (token) {
         headers.set('Authorization', `Bearer ${token}`);
     }
+    const url = API_BASE_URL ? `${API_BASE_URL}/api${endpoint}` : `/api${endpoint}`;
     try {
-        const response = await fetch(`/api${endpoint}`, { ...options, headers });
+        const response = await fetch(url, { ...options, headers });
         if (!response.ok) {
+            if (DISABLE_MOCK_FALLBACK) {
+                const errorData = await response.json().catch(() => ({ message: response.statusText }));
+                throw new Error(errorData.message || `API error (${response.status}) on ${endpoint}`);
+            }
             // If endpoint is not found or returns an error status, use graceful local fallback
             return handleLocalFallback(endpoint, options);
         }
         if (response.status === 204) return null;
         return await response.json();
-    } catch {
+    } catch (err: any) {
+        if (DISABLE_MOCK_FALLBACK) {
+            throw err;
+        }
         // Fallback gracefully instead of throwing "Server connection failed."
         return handleLocalFallback(endpoint, options);
     }
@@ -885,8 +1297,9 @@ const apiFetchBlob = async (endpoint: string, options: RequestInit = {}) => {
     if (token) {
         headers.set('Authorization', `Bearer ${token}`);
     }
+    const url = API_BASE_URL ? `${API_BASE_URL}/api${endpoint}` : `/api${endpoint}`;
     try {
-        const response = await fetch(`/api${endpoint}`, { ...options, headers });
+        const response = await fetch(url, { ...options, headers });
         if (!response.ok) {
             return new Blob(["Mock export data"], { type: "text/csv" });
         }
@@ -1016,7 +1429,12 @@ export const getAllSchools = async (): Promise<SubscriberSchool[]> => {
     if (res && Array.isArray(res.data)) return res.data;
     return [];
 };
-export const getSystemHealth = () => apiFetch('/super-admin/health');
+export const createSuperAdminSchool = (data: any): Promise<SubscriberSchool> => apiFetch('/super-admin/schools', { method: 'POST', body: JSON.stringify(data) });
+export const getSystemHealth = (): Promise<SystemHealthData> => apiFetch('/super-admin/health');
+export const getOnlineUsers = (): Promise<OnlineUserSession[]> => apiFetch('/super-admin/online-users');
+export const pingDatabase = (): Promise<{ success: boolean; latencyMs: number; timestamp: string }> => apiFetch('/super-admin/health/ping-db', { method: 'POST' });
+export const testQueueWorker = (): Promise<{ success: boolean; jobId: string; message: string; latencyMs: number }> => apiFetch('/super-admin/health/test-queue', { method: 'POST' });
+export const retryFailedQueueJobs = (): Promise<{ success: boolean; retriedCount: number }> => apiFetch('/super-admin/health/retry-failed-jobs', { method: 'POST' });
 export const getPlatformPricing = (): Promise<PlatformPricing> => apiFetch('/settings/public/pricing');
 export const updatePlatformPricing = (data: Partial<PlatformPricing>) => apiFetch('/super-admin/pricing', { method: 'PUT', body: JSON.stringify(data) });
 export const updateSchoolSubscription = (schoolId: string, payload: any) => apiFetch(`/super-admin/schools/${schoolId}/subscription`, { method: 'PATCH', body: JSON.stringify(payload) });
@@ -1044,6 +1462,7 @@ export const runLifecycleSweep = (): Promise<LifecycleSweepResult> => apiFetch('
 export const sendSchoolReminder = (schoolId: string, message?: string): Promise<any> => apiFetch(`/super-admin/schools/${schoolId}/reminder`, { method: 'POST', body: JSON.stringify({ message }) });
 export const toggleSchoolAccess = (schoolId: string, enabled: boolean): Promise<any> => apiFetch(`/super-admin/schools/${schoolId}/toggle-access`, { method: 'PATCH', body: JSON.stringify({ enabled }) });
 export const extendSchoolSubscription = (schoolId: string, days: number): Promise<any> => apiFetch(`/super-admin/schools/${schoolId}/extend`, { method: 'POST', body: JSON.stringify({ days }) });
+export const activateSchoolSubscription = (schoolId: string, payload: { paymentMethod?: string; transactionRef?: string } = {}): Promise<any> => apiFetch(`/super-admin/schools/${schoolId}/activate`, { method: 'POST', body: JSON.stringify(payload) });
 
 // --- Library ---
 export const getBooks = (params: any = {}): Promise<any> => apiFetch(`/library/books?${new URLSearchParams(cleanParams(params)).toString()}`);
@@ -1054,6 +1473,67 @@ export const issueBook = (data: any): Promise<any> => apiFetch('/library/issue',
 export const returnBook = (id: string): Promise<any> => apiFetch(`/library/return/${id}`, { method: 'POST' });
 export const markBookLost = (id: string): Promise<any> => apiFetch(`/library/lost/${id}`, { method: 'POST' });
 export const getLibraryTransactions = (params: any = {}): Promise<any> => apiFetch(`/library/transactions?${new URLSearchParams(cleanParams(params)).toString()}`);
+
+// --- LMS & Virtual Classrooms ---
+export const getLmsAssignments = (params: any = {}): Promise<LmsAssignment[]> => 
+    apiFetch(`/lms/assignments?${new URLSearchParams(cleanParams(params)).toString()}`);
+
+export const createLmsAssignment = (data: Partial<LmsAssignment>): Promise<LmsAssignment> => 
+    apiFetch('/lms/assignments', { method: 'POST', body: JSON.stringify(data) });
+
+export const updateLmsAssignment = (id: string, data: Partial<LmsAssignment>): Promise<LmsAssignment> => 
+    apiFetch(`/lms/assignments/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
+
+export const deleteLmsAssignment = (id: string): Promise<any> => 
+    apiFetch(`/lms/assignments/${id}`, { method: 'DELETE' });
+
+export const getLmsSubmissions = (params: any = {}): Promise<LmsSubmission[]> => 
+    apiFetch(`/lms/submissions?${new URLSearchParams(cleanParams(params)).toString()}`);
+
+export const submitLmsAssignment = (data: Partial<LmsSubmission>): Promise<LmsSubmission> => 
+    apiFetch('/lms/submissions', { method: 'POST', body: JSON.stringify(data) });
+
+export const gradeLmsSubmission = (id: string, data: { score: number; gradeLetter: string; teacherFeedback?: string; gradedBy?: string; rubricScores?: any[] }): Promise<LmsSubmission> => 
+    apiFetch(`/lms/submissions/${id}/grade`, { method: 'PATCH', body: JSON.stringify(data) });
+
+export const getLmsLiveClasses = (params: any = {}): Promise<LmsLiveClass[]> => 
+    apiFetch(`/lms/live-classes?${new URLSearchParams(cleanParams(params)).toString()}`);
+
+export const createLmsLiveClass = (data: Partial<LmsLiveClass>): Promise<LmsLiveClass> => 
+    apiFetch('/lms/live-classes', { method: 'POST', body: JSON.stringify(data) });
+
+export const updateLmsLiveClass = (id: string, data: Partial<LmsLiveClass>): Promise<LmsLiveClass> => 
+    apiFetch(`/lms/live-classes/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
+
+export const deleteLmsLiveClass = (id: string): Promise<any> => 
+    apiFetch(`/lms/live-classes/${id}`, { method: 'DELETE' });
+
+// --- EdTech News & Learning Resources ---
+export const getEdTechArticles = async (params: { category?: string; status?: string } = {}): Promise<EdTechArticle[]> => {
+    const query = new URLSearchParams(cleanParams(params)).toString();
+    const res = await apiFetch(`/edtech-news${query ? `?${query}` : ''}`);
+    if (Array.isArray(res)) return res;
+    if (res && Array.isArray(res.data)) return res.data;
+    return [];
+};
+
+export const getEdTechArticleById = (id: string): Promise<EdTechArticle> => 
+    apiFetch(`/edtech-news/${id}`);
+
+export const createEdTechArticle = (data: Partial<EdTechArticle>): Promise<EdTechArticle> => 
+    apiFetch('/super-admin/edtech-news', { method: 'POST', body: JSON.stringify(data) });
+
+export const updateEdTechArticle = (id: string, data: Partial<EdTechArticle>): Promise<EdTechArticle> => 
+    apiFetch(`/super-admin/edtech-news/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+
+export const deleteEdTechArticle = (id: string): Promise<any> => 
+    apiFetch(`/super-admin/edtech-news/${id}`, { method: 'DELETE' });
+
+export const toggleEdTechArticleStatus = (id: string): Promise<EdTechArticle> => 
+    apiFetch(`/super-admin/edtech-news/${id}/toggle-status`, { method: 'POST' });
+
+export const toggleEdTechArticleFeatured = (id: string): Promise<EdTechArticle> => 
+    apiFetch(`/super-admin/edtech-news/${id}/toggle-featured`, { method: 'POST' });
 
 export const fetchInitialData = async () => {
     const results = await Promise.all([

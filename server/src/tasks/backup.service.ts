@@ -4,10 +4,7 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { ConfigService } from '@nestjs/config';
 import * as fs from 'fs';
 import * as path from 'path';
-import { exec } from 'child_process';
-import { promisify } from 'util';
-
-const execAsync = promisify(exec);
+import { spawn } from 'child_process';
 
 @Injectable()
 export class BackupService {
@@ -22,31 +19,55 @@ export class BackupService {
   }
 
   @Cron(CronExpression.EVERY_DAY_AT_3AM)
-  async performDailyBackup() {
+  async performDailyBackup(): Promise<void> {
     this.logger.log('Starting daily database backup...');
 
     const host = this.configService.get<string>('MYSQL_HOST', 'localhost');
-    const user = this.configService.get<string>('MYSQL_USER', 'root');
-    const password = this.configService.get<string>('MYSQL_ROOT_PASSWORD', '');
-    const database = this.configService.get<string>('MYSQL_DATABASE', 'saaslink_db');
+    const port = String(this.configService.get<number | string>('MYSQL_PORT', 3306));
+    const user = this.configService.get<string>('MYSQL_USER') || this.configService.get<string>('DB_USER', 'root');
+    const password = this.configService.get<string>('MYSQL_PASSWORD') || this.configService.get<string>('MYSQL_ROOT_PASSWORD', '');
+    const database = this.configService.get<string>('MYSQL_DATABASE') || this.configService.get<string>('DB_NAME', 'saaslink_db');
     
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     const filename = `backup-${database}-${timestamp}.sql`;
     const filePath = path.join(this.backupDir, filename);
 
-    // Note: This requires 'mysqldump' to be available in the system PATH.
-    // In Docker, ensure the container has mysql-client installed.
-    const command = `mysqldump -h ${host} -u ${user} ${password ? `-p${password}` : ''} ${database} > "${filePath}"`;
+    // Secure execution: use spawn with parameterized arguments and MYSQL_PWD env var
+    // to completely avoid command injection and hiding passwords from 'ps aux'
+    const args = ['-h', host, '-P', port, '-u', user, database];
 
-    try {
-      await execAsync(command);
-      this.logger.log(`Backup completed successfully: ${filename}`);
-      
-      // Cleanup: Keep only last 7 days
-      this.cleanOldBackups();
-    } catch (error) {
-      this.logger.error('Database backup failed', error);
-    }
+    return new Promise((resolve) => {
+      const writeStream = fs.createWriteStream(filePath);
+      const child = spawn('mysqldump', args, {
+        env: { ...process.env, MYSQL_PWD: password },
+      });
+
+      child.stdout.pipe(writeStream);
+
+      let stderrData = '';
+      child.stderr.on('data', (data) => {
+        stderrData += data.toString();
+      });
+
+      child.on('error', (err) => {
+        this.logger.error(`Database backup process failed to spawn: ${err.message}`);
+        resolve();
+      });
+
+      child.on('close', (code) => {
+        writeStream.end();
+        if (code === 0) {
+          this.logger.log(`Backup completed successfully: ${filename}`);
+          this.cleanOldBackups();
+        } else {
+          this.logger.error(`Database backup failed with exit code ${code}: ${stderrData}`);
+          if (fs.existsSync(filePath)) {
+            try { fs.unlinkSync(filePath); } catch {}
+          }
+        }
+        resolve();
+      });
+    });
   }
 
   private cleanOldBackups() {

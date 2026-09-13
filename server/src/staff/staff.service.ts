@@ -136,17 +136,20 @@ export class StaffService {
     if (!staff) {
       throw new NotFoundException(`Staff member with ID "${id}" not found`);
     }
-    // Delete user (cascades to staff)
-    await this.userRepository.delete({ id: staff.userId, schoolId: schoolId as any });
+    // Delete user if linked, and remove staff member
+    if (staff.userId) {
+      await this.userRepository.delete({ id: staff.userId, schoolId: schoolId as any });
+    }
+    await this.staffRepository.delete({ id, schoolId: schoolId as any });
   }
 
   async exportStaff(schoolId: string): Promise<string> {
     const staffList = await this.staffRepository.find({ where: { schoolId: schoolId as any }, relations: ['user'] });
     const data = staffList.map(s => ({
       Name: s.name,
-      Email: s.user.email,
+      Email: s.user?.email || '',
       Role: s.role,
-      UserRole: s.user.role,
+      UserRole: s.user?.role || '',
       Salary: s.salary,
       JoinDate: s.joinDate,
       KRA: s.kraPin,

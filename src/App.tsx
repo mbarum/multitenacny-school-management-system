@@ -13,6 +13,7 @@ import TermsOfService from './views/TermsOfService';
 import CookiePolicy from './views/CookiePolicy';
 import { useData } from './contexts/DataContext';
 import { Notification, SubscriptionStatus } from './types';
+import { identifySocketUser, sendSocketHeartbeat } from './services/socket';
 
 // Admin Views
 const Dashboard = lazy(() => import('./views/Dashboard'));
@@ -43,6 +44,8 @@ const ParentDashboard = lazy(() => import('./views/parent/ParentDashboard'));
 const ParentChildDetails = lazy(() => import('./views/parent/ParentChildDetails'));
 const ParentFinances = lazy(() => import('./views/parent/ParentFinances'));
 const ParentAnnouncementsView = lazy(() => import('./views/parent/ParentAnnouncementsView'));
+const ParentLmsView = lazy(() => import('./views/parent/ParentLmsView'));
+const LmsView = lazy(() => import('./views/lms/LmsView'));
 
 const App: React.FC = () => {
     const {
@@ -62,6 +65,17 @@ const App: React.FC = () => {
         handleResize(); 
         return () => window.removeEventListener('resize', handleResize);
     }, [setIsSidebarCollapsed]);
+
+    // Live Socket Presence & Heartbeat for System-Wide Monitoring
+    useEffect(() => {
+        if (currentUser) {
+            identifySocketUser(currentUser, schoolInfo);
+            const interval = setInterval(() => {
+                sendSocketHeartbeat(window.location.pathname);
+            }, 30000);
+            return () => clearInterval(interval);
+        }
+    }, [currentUser, schoolInfo]);
 
     const NotificationContainer: React.FC<{ notifications: Notification[] }> = ({ notifications }) => (
         <div className="fixed top-5 right-5 z-[100] space-y-3 w-full max-w-sm pointer-events-none">
@@ -152,6 +166,8 @@ const App: React.FC = () => {
                             <Route path="/parent-child-details" element={<ParentChildDetails />} />
                             <Route path="/parent-finances" element={<ParentFinances />} />
                             <Route path="/parent-announcements" element={<ParentAnnouncementsView />} />
+                            <Route path="/parent-lms" element={<ParentLmsView />} />
+                            <Route path="/lms" element={<LmsView />} />
                             <Route path="/privacy" element={<PrivacyPolicy />} />
                             <Route path="/terms" element={<TermsOfService />} />
                             <Route path="/cookies" element={<CookiePolicy />} />

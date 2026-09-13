@@ -30,8 +30,8 @@ export class ExpensesController {
       },
     }),
     fileFilter: (req: any, file: any, cb: (error: Error | null, acceptFile: boolean) => void) => {
-        if (!file.originalname.match(/\.(jpg|jpeg|png|pdf)$/)) {
-            return cb(new BadRequestException('Only image files (jpg, jpeg, png) and PDFs are allowed!'), false);
+        if (!file.originalname.match(/\.(jpg|jpeg|png|webp|pdf)$/i)) {
+            return cb(new BadRequestException('Only image files (jpg, jpeg, png, webp) and PDFs are allowed!'), false);
         }
         cb(null, true);
     },

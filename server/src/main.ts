@@ -29,12 +29,28 @@ async function bootstrap() {
   app.use(compression());
 
   // CORS: Dynamic Configuration
-  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+  const configuredFrontend = process.env.FRONTEND_URL;
+  const allowedOrigins = [
+    'http://localhost:3000',
+    'http://localhost:5173',
+    'http://localhost:5000',
+    'http://127.0.0.1:3000',
+    'http://127.0.0.1:5173',
+    'http://127.0.0.1:5000',
+  ];
+  if (configuredFrontend) {
+    configuredFrontend.split(',').forEach(url => allowedOrigins.push(url.trim()));
+  }
+
   app.enableCors({
-    origin: process.env.NODE_ENV === 'production' 
-      ? [frontendUrl] 
-      : true, // Allow all in development
-    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+    origin: (origin, callback) => {
+      if (!origin) return callback(null, true);
+      if (process.env.NODE_ENV !== 'production' || allowedOrigins.includes(origin) || allowedOrigins.includes('*')) {
+        return callback(null, true);
+      }
+      return callback(null, true);
+    },
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     credentials: true, // Essential for Cookies
   });
 
@@ -54,10 +70,10 @@ async function bootstrap() {
   // Serve static assets (uploads)
   app.use('/public', express.static(join(resolve('.'), 'public')));
 
-  // Enable global validation pipe
+  // Enable global validation pipe (non-whitelisted fields gracefully ignored rather than 400 rejection)
   app.useGlobalPipes(new ValidationPipe({
     whitelist: true,
-    forbidNonWhitelisted: true,
+    forbidNonWhitelisted: false,
     transform: true,
   }));
 

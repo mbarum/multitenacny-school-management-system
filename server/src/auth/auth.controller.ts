@@ -3,15 +3,19 @@ import { Controller, Post, Body, Get, Request, Res } from '@nestjs/common';
 import { Response } from 'express';
 import { AuthService } from './auth.service';
 import { RegisterSchoolDto } from './dto/register-school.dto';
+import { LoginDto } from './dto/login.dto';
+import { RequestPasswordResetDto } from './dto/request-password-reset.dto';
 import { Public } from './public.decorator';
+import { Throttle } from '@nestjs/throttler';
 
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Public()
+  @Throttle({ default: { limit: 5, ttl: 60000 } }) // Explicit brute-force & credential stuffing defense (max 5 per minute)
   @Post('login')
-  async login(@Body() loginDto: any, @Res() response: Response) {
+  async login(@Body() loginDto: LoginDto, @Res() response: Response) {
     const { email, password } = loginDto;
     const { user, token } = await this.authService.login(email, password);
 
@@ -35,6 +39,7 @@ export class AuthController {
   }
 
   @Public()
+  @Throttle({ default: { limit: 5, ttl: 60000 } }) // Prevent registration flooding
   @Post('register-school')
   async registerSchool(@Body() registerDto: RegisterSchoolDto, @Res() response: Response) {
      const { user, token, school } = await this.authService.registerSchool(registerDto);
@@ -58,9 +63,10 @@ export class AuthController {
   }
 
   @Public()
+  @Throttle({ default: { limit: 3, ttl: 60000 } }) // Prevent email enumeration / inbox spamming
   @Post('request-password-reset')
-  async requestPasswordReset(@Body('email') email: string) {
-    return this.authService.requestPasswordReset(email);
+  async requestPasswordReset(@Body() dto: RequestPasswordResetDto) {
+    return this.authService.requestPasswordReset(dto.email);
   }
 
   @Get('me')

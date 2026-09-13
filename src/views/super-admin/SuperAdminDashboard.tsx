@@ -16,6 +16,8 @@ import StatCard from '../../components/common/StatCard';
 import Skeleton from '../../components/common/Skeleton';
 import Spinner from '../../components/common/Spinner';
 import { FinancialDocumentView } from '../../components/common/FinancialDocumentView';
+import { EdTechNewsManager } from '../../components/super-admin/EdTechNewsManager';
+import { SystemPulseView } from './SystemPulseView';
 import { 
     buildSaasSubscriptionInvoice, 
     buildSaasSubscriptionReceipt, 
@@ -47,7 +49,9 @@ import {
     TrendingUp,
     ShieldAlert,
     HelpCircle,
-    Sparkles
+    Sparkles,
+    Newspaper,
+    Wifi
 } from 'lucide-react';
 
 export const SuperAdminDashboard: React.FC = () => {
@@ -55,10 +59,10 @@ export const SuperAdminDashboard: React.FC = () => {
     const queryClient = useQueryClient();
 
     // Tabs
-    const [activeTab, setActiveTab] = useState<'schools' | 'invoices' | 'receipts' | 'revenue'>('schools');
+    const [activeTab, setActiveTab] = useState<'schools' | 'invoices' | 'receipts' | 'revenue' | 'edtech-news' | 'system-pulse'>('schools');
 
     // Filter & Search States
-    const [schoolFilter, setSchoolFilter] = useState<'all' | 'active' | 'grace' | 'suspended'>('all');
+    const [schoolFilter, setSchoolFilter] = useState<'all' | 'pending' | 'active' | 'grace' | 'suspended'>('all');
     const [schoolSearch, setSchoolSearch] = useState('');
     const [invoiceFilter, setInvoiceFilter] = useState<'all' | 'ISSUED' | 'PAID' | 'OVERDUE'>('all');
 
@@ -98,6 +102,27 @@ export const SuperAdminDashboard: React.FC = () => {
     const [pricingForm, setPricingForm] = useState<Partial<PlatformPricing>>({});
 
     const [isHealthModalOpen, setIsHealthModalOpen] = useState(false);
+    const [activationSuccessModal, setActivationSuccessModal] = useState<{
+        isOpen: boolean;
+        school?: any;
+        receipt?: any;
+        credentials?: { email: string; password?: string };
+    }>({ isOpen: false });
+
+    const [isAddSchoolModalOpen, setIsAddSchoolModalOpen] = useState(false);
+    const [addSchoolForm, setAddSchoolForm] = useState({
+        schoolName: '',
+        schoolCode: '',
+        adminName: '',
+        adminEmail: '',
+        phone: '',
+        county: 'Nairobi',
+        plan: SubscriptionPlan.BASIC,
+        billingCycle: 'ANNUALLY' as 'MONTHLY' | 'ANNUALLY',
+        status: SubscriptionStatus.ACTIVE,
+        password: 'Admin@2026',
+        studentCount: 100,
+    });
 
     // --- Queries ---
     const { data: schools = [], isLoading: schoolsLoading, refetch: refetchSchools } = useQuery<SubscriberSchool[]>({
@@ -123,7 +148,7 @@ export const SuperAdminDashboard: React.FC = () => {
     const { data: healthData, refetch: refetchHealth, isFetching: healthFetching } = useQuery({
         queryKey: ['system-health'],
         queryFn: api.getSystemHealth,
-        enabled: isHealthModalOpen
+        refetchInterval: 10000,
     });
 
     // --- Mutations ---
@@ -168,6 +193,26 @@ export const SuperAdminDashboard: React.FC = () => {
             addNotification(`Subscription extended by ${variables.days} days and account reactivated.`, 'success');
         },
         onError: () => addNotification('Failed to extend subscription.', 'error')
+    });
+
+    const activateSchoolMutation = useMutation({
+        mutationFn: (schoolId: string) => api.activateSchoolSubscription(schoolId),
+        onSuccess: (data) => {
+            queryClient.invalidateQueries({ queryKey: ['super-schools'] });
+            queryClient.invalidateQueries({ queryKey: ['platform-stats'] });
+            queryClient.invalidateQueries({ queryKey: ['super-invoices'] });
+            queryClient.invalidateQueries({ queryKey: ['super-receipts'] });
+            addNotification(`Institution "${data?.school?.name || 'School'}" verified and activated successfully! Login credentials and activation receipt dispatched.`, 'success');
+            if (data?.credentials || data?.receipt) {
+                setActivationSuccessModal({
+                    isOpen: true,
+                    school: data.school,
+                    receipt: data.receipt,
+                    credentials: data.credentials
+                });
+            }
+        },
+        onError: () => addNotification('Failed to verify and activate school subscription.', 'error')
     });
 
     const createInvoiceMutation = useMutation({
@@ -222,6 +267,38 @@ export const SuperAdminDashboard: React.FC = () => {
         }
     });
 
+    const createSchoolMutation = useMutation({
+        mutationFn: (data: any) => api.createSuperAdminSchool(data),
+        onSuccess: (newSchool) => {
+            queryClient.invalidateQueries({ queryKey: ['super-schools'] });
+            queryClient.invalidateQueries({ queryKey: ['platform-stats'] });
+            setIsAddSchoolModalOpen(false);
+            addNotification(`Institution "${newSchool?.name || addSchoolForm.schoolName}" onboarded successfully!`, 'success');
+            setActivationSuccessModal({
+                isOpen: true,
+                school: newSchool,
+                credentials: {
+                    email: addSchoolForm.adminEmail,
+                    password: addSchoolForm.password
+                }
+            });
+            setAddSchoolForm({
+                schoolName: '',
+                schoolCode: '',
+                adminName: '',
+                adminEmail: '',
+                phone: '',
+                county: 'Nairobi',
+                plan: SubscriptionPlan.BASIC,
+                billingCycle: 'ANNUALLY',
+                status: SubscriptionStatus.ACTIVE,
+                password: 'Admin@2026',
+                studentCount: 100,
+            });
+        },
+        onError: (err: any) => addNotification(err?.message || 'Failed to onboard institution.', 'error')
+    });
+
     // --- Safe Arrays ---
     const safeSchools = useMemo(() => Array.isArray(schools) ? schools : (Array.isArray((schools as any)?.data) ? (schools as any).data : []), [schools]);
     const safeInvoices = useMemo(() => Array.isArray(invoices) ? invoices : (Array.isArray((invoices as any)?.data) ? (invoices as any).data : []), [invoices]);
@@ -238,6 +315,7 @@ export const SuperAdminDashboard: React.FC = () => {
             if (!matchesSearch) return false;
 
             if (schoolFilter === 'all') return true;
+            if (schoolFilter === 'pending') return s.subscriptionStatus === SubscriptionStatus.PENDING_APPROVAL || s.paymentMethod === 'WIRE';
             if (schoolFilter === 'active') return s.subscriptionStatus === SubscriptionStatus.ACTIVE;
             if (schoolFilter === 'grace') return s.subscriptionStatus === SubscriptionStatus.PAST_DUE;
             if (schoolFilter === 'suspended') return s.subscriptionStatus === SubscriptionStatus.SUSPENDED;
@@ -390,11 +468,15 @@ export const SuperAdminDashboard: React.FC = () => {
 
                     {/* System Health */}
                     <button
-                        onClick={() => { setIsHealthModalOpen(true); refetchHealth(); }}
-                        className="p-2.5 bg-white/10 hover:bg-white/20 rounded-xl text-slate-300 hover:text-white transition-all border border-white/10"
-                        title="System Health Status"
+                        onClick={() => setActiveTab('system-pulse')}
+                        className={`p-2.5 rounded-xl transition-all border ${
+                            activeTab === 'system-pulse'
+                                ? 'bg-emerald-500 text-slate-900 border-emerald-400 font-bold shadow-lg shadow-emerald-500/20'
+                                : 'bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white border-white/10'
+                        }`}
+                        title="System Pulse & Realtime Health"
                     >
-                        <Activity className="w-4 h-4 text-emerald-400" />
+                        <Activity className={`w-4 h-4 ${activeTab === 'system-pulse' ? 'text-slate-900' : 'text-emerald-400'}`} />
                     </button>
                 </div>
             </div>
@@ -417,7 +499,7 @@ export const SuperAdminDashboard: React.FC = () => {
             </div>
 
             {/* 3. Platform Key Metrics */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 sm:gap-6">
                 <StatCard
                     title="Realized Platform Revenue"
                     value={formatCurrency(stats?.totalRevenue || 120000, 'KES')}
@@ -450,6 +532,15 @@ export const SuperAdminDashboard: React.FC = () => {
                     colorClass="bg-rose-50 text-rose-700"
                     onClick={() => { setActiveTab('schools'); setSchoolFilter('suspended'); }}
                     isSelected={activeTab === 'schools' && schoolFilter === 'suspended'}
+                />
+
+                <StatCard
+                    title="Active Users Online"
+                    value={`${healthData?.onlineUsersSummary?.totalOnline ?? (healthData?.onlineUsersList?.length || 6)} Connected`}
+                    icon={<Wifi className="w-6 h-6 text-indigo-600" />}
+                    colorClass="bg-indigo-50 text-indigo-700"
+                    onClick={() => setActiveTab('system-pulse')}
+                    isSelected={activeTab === 'system-pulse'}
                 />
             </div>
 
@@ -502,6 +593,37 @@ export const SuperAdminDashboard: React.FC = () => {
                     <TrendingUp className="w-4 h-4" />
                     Revenue & Lifecycle Audit
                 </button>
+
+                <button
+                    onClick={() => setActiveTab('edtech-news')}
+                    className={`pb-4 text-xs font-black uppercase tracking-wider border-b-2 flex items-center gap-2 transition-all ${
+                        activeTab === 'edtech-news' 
+                            ? 'border-primary-600 text-primary-700 font-extrabold' 
+                            : 'border-transparent text-slate-400 hover:text-slate-600'
+                    }`}
+                >
+                    <Newspaper className="w-4 h-4" />
+                    EdTech News & Learning Media
+                    <span className="px-2 py-0.5 rounded-full text-[10px] bg-primary-100 text-primary-800 font-bold">
+                        Curriculum & Media
+                    </span>
+                </button>
+
+                <button
+                    onClick={() => setActiveTab('system-pulse')}
+                    className={`pb-4 text-xs font-black uppercase tracking-wider border-b-2 flex items-center gap-2 transition-all ${
+                        activeTab === 'system-pulse' 
+                            ? 'border-emerald-500 text-emerald-600 font-extrabold' 
+                            : 'border-transparent text-slate-400 hover:text-slate-600'
+                    }`}
+                >
+                    <Activity className="w-4 h-4 text-emerald-500" />
+                    System Pulse & Realtime Access
+                    <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] bg-emerald-100 text-emerald-800 font-bold">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                        Live Access
+                    </span>
+                </button>
             </div>
 
             {/* TAB 1: SUBSCRIBERS DIRECTORY & CONTROLS */}
@@ -527,14 +649,25 @@ export const SuperAdminDashboard: React.FC = () => {
                                 className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-700"
                             >
                                 <option value="all">All Statuses ({safeSchools.length})</option>
+                                <option value="pending">Pending Wire / Verification</option>
                                 <option value="active">Active Only</option>
                                 <option value="grace">In Grace Period</option>
                                 <option value="suspended">Disabled / Locked</option>
                             </select>
                         </div>
 
-                        <div className="text-xs font-bold text-slate-500">
-                            Showing {filteredSchools.length} of {safeSchools.length} Subscribing Institutions
+                        <div className="flex items-center gap-3 w-full md:w-auto justify-between md:justify-end">
+                            <div className="text-xs font-bold text-slate-500">
+                                Showing {filteredSchools.length} of {safeSchools.length} Institutions
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setIsAddSchoolModalOpen(true)}
+                                className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold uppercase tracking-wider flex items-center gap-2 shadow-sm transition-all whitespace-nowrap"
+                            >
+                                <Plus className="w-4 h-4" />
+                                <span>Onboard Institution</span>
+                            </button>
                         </div>
                     </div>
 
@@ -563,6 +696,7 @@ export const SuperAdminDashboard: React.FC = () => {
                                         const daysRemaining = getDaysRemaining(school.endDate);
                                         const isExpired = daysRemaining < 0;
                                         const daysOverdue = Math.abs(daysRemaining);
+                                        const isPending = school.subscriptionStatus === SubscriptionStatus.PENDING_APPROVAL || (school.paymentMethod === 'WIRE' && school.subscriptionStatus !== SubscriptionStatus.ACTIVE);
                                         const isSuspended = school.subscriptionStatus === SubscriptionStatus.SUSPENDED;
                                         const isGrace = school.subscriptionStatus === SubscriptionStatus.PAST_DUE;
                                         const isExpiringSoon = daysRemaining <= 5 && daysRemaining > 0;
@@ -571,11 +705,27 @@ export const SuperAdminDashboard: React.FC = () => {
                                             <tr key={school.id} className="hover:bg-slate-50/80 transition-colors">
                                                 {/* School identity */}
                                                 <td className="px-6 py-4">
-                                                    <div className="font-bold text-slate-900 text-sm">{school.name}</div>
-                                                    <div className="text-slate-400 text-[11px] flex items-center gap-2 mt-0.5">
-                                                        <span>{school.schoolCode || 'SCH'}</span>
-                                                        <span>•</span>
-                                                        <span>{school.email}</span>
+                                                    <div className="flex items-center gap-3">
+                                                        {school.logoUrl ? (
+                                                            <img 
+                                                                src={school.logoUrl} 
+                                                                alt={school.name} 
+                                                                className="w-9 h-9 rounded-xl object-contain bg-white border border-slate-200 shadow-xs flex-shrink-0"
+                                                                onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+                                                            />
+                                                        ) : (
+                                                            <div className="w-9 h-9 rounded-xl bg-slate-100 text-slate-700 font-black text-xs flex items-center justify-center border border-slate-200 flex-shrink-0 uppercase">
+                                                                {school.name.substring(0, 2)}
+                                                            </div>
+                                                        )}
+                                                        <div>
+                                                            <div className="font-bold text-slate-900 text-sm">{school.name}</div>
+                                                            <div className="text-slate-400 text-[11px] flex items-center gap-2 mt-0.5">
+                                                                <span className="font-mono font-bold text-slate-600">{school.schoolCode || 'SCH'}</span>
+                                                                <span>•</span>
+                                                                <span>{school.email}</span>
+                                                            </div>
+                                                        </div>
                                                     </div>
                                                 </td>
 
@@ -590,7 +740,17 @@ export const SuperAdminDashboard: React.FC = () => {
 
                                                 {/* Status */}
                                                 <td className="px-6 py-4">
-                                                    {isSuspended ? (
+                                                    {isPending ? (
+                                                        <div className="inline-flex flex-col">
+                                                            <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-50 border border-amber-300 text-amber-900 rounded-lg text-[11px] font-bold">
+                                                                <Clock className="w-3.5 h-3.5 text-amber-600 animate-pulse" />
+                                                                <span>Pending Wire Verification</span>
+                                                            </div>
+                                                            <span className="text-[10px] text-slate-500 font-semibold mt-1">
+                                                                Proforma #{school.invoiceNumber || 'WIRE'}
+                                                            </span>
+                                                        </div>
+                                                    ) : isSuspended ? (
                                                         <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-rose-50 border border-rose-200 text-rose-700 rounded-lg text-[11px] font-bold">
                                                             <Lock className="w-3.5 h-3.5" />
                                                             <span>Account Disabled</span>
@@ -639,6 +799,19 @@ export const SuperAdminDashboard: React.FC = () => {
                                                 {/* Administrative Action Controls */}
                                                 <td className="px-6 py-4">
                                                     <div className="flex items-center justify-center gap-2">
+                                                        {/* Verify & Activate Wire Pending */}
+                                                        {isPending && (
+                                                            <button
+                                                                onClick={() => activateSchoolMutation.mutate(school.id)}
+                                                                disabled={activateSchoolMutation.isPending}
+                                                                className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold text-[11px] uppercase tracking-wider flex items-center gap-1.5 shadow-sm transition-all"
+                                                                title="Verify bank wire transfer and activate institutional school portal"
+                                                            >
+                                                                {activateSchoolMutation.isPending ? <Spinner /> : <CheckCircle2 className="w-3.5 h-3.5" />}
+                                                                <span>Activate</span>
+                                                            </button>
+                                                        )}
+
                                                         {/* Send Reminder */}
                                                         <button
                                                             onClick={() => sendReminderMutation.mutate(school.id)}
@@ -909,28 +1082,28 @@ export const SuperAdminDashboard: React.FC = () => {
                 <div className="space-y-8">
                     {/* Revenue Snapshot Cards */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <div className="p-6 bg-white rounded-3xl border border-slate-200 shadow-sm space-y-2">
-                            <span className="text-xs font-black uppercase tracking-wider text-slate-400">Monthly Recurring Revenue (MRR)</span>
-                            <div className="text-3xl font-black text-slate-900">
+                        <div className="p-6 bg-white rounded-3xl border border-slate-200 shadow-sm space-y-2 min-w-0 overflow-hidden">
+                            <span className="text-xs font-black uppercase tracking-wider text-slate-400 block truncate" title="Monthly Recurring Revenue (MRR)">Monthly Recurring Revenue (MRR)</span>
+                            <div className="text-2xl sm:text-3xl font-black text-slate-900 truncate" title={formatCurrency(stats?.monthlyRecurringRevenue || 12500, 'KES')}>
                                 {formatCurrency(stats?.monthlyRecurringRevenue || 12500, 'KES')}
                             </div>
-                            <p className="text-[11px] text-slate-500">Calculated from active subscribing schools</p>
+                            <p className="text-[11px] text-slate-500 truncate">Calculated from active subscribing schools</p>
                         </div>
 
-                        <div className="p-6 bg-white rounded-3xl border border-slate-200 shadow-sm space-y-2">
-                            <span className="text-xs font-black uppercase tracking-wider text-slate-400">Annual Run-Rate (ARR)</span>
-                            <div className="text-3xl font-black text-emerald-600">
+                        <div className="p-6 bg-white rounded-3xl border border-slate-200 shadow-sm space-y-2 min-w-0 overflow-hidden">
+                            <span className="text-xs font-black uppercase tracking-wider text-slate-400 block truncate" title="Annual Run-Rate (ARR)">Annual Run-Rate (ARR)</span>
+                            <div className="text-2xl sm:text-3xl font-black text-emerald-600 truncate" title={formatCurrency(stats?.annualRecurringRevenue || 150000, 'KES')}>
                                 {formatCurrency(stats?.annualRecurringRevenue || 150000, 'KES')}
                             </div>
-                            <p className="text-[11px] text-slate-500">Projected annualized subscription revenue</p>
+                            <p className="text-[11px] text-slate-500 truncate">Projected annualized subscription revenue</p>
                         </div>
 
-                        <div className="p-6 bg-white rounded-3xl border border-slate-200 shadow-sm space-y-2">
-                            <span className="text-xs font-black uppercase tracking-wider text-slate-400">Total Settled Invoices</span>
-                            <div className="text-3xl font-black text-slate-900">
+                        <div className="p-6 bg-white rounded-3xl border border-slate-200 shadow-sm space-y-2 min-w-0 overflow-hidden">
+                            <span className="text-xs font-black uppercase tracking-wider text-slate-400 block truncate">Total Settled Invoices</span>
+                            <div className="text-2xl sm:text-3xl font-black text-slate-900 truncate">
                                 {safeReceipts.length}
                             </div>
-                            <p className="text-[11px] text-slate-500">Verified official payment transactions</p>
+                            <p className="text-[11px] text-slate-500 truncate">Verified official payment transactions</p>
                         </div>
                     </div>
 
@@ -997,6 +1170,16 @@ export const SuperAdminDashboard: React.FC = () => {
                         </div>
                     </div>
                 </div>
+            )}
+
+            {/* TAB 5: EDTECH NEWS & LEARNING MEDIA MANAGER */}
+            {activeTab === 'edtech-news' && (
+                <EdTechNewsManager />
+            )}
+
+            {/* TAB 6: SYSTEM PULSE & REALTIME ACCESS */}
+            {activeTab === 'system-pulse' && (
+                <SystemPulseView />
             )}
 
             {/* MODAL 1: A4 FINANCIAL DOCUMENT VIEWER (INVOICE & RECEIPT) */}
@@ -1514,6 +1697,69 @@ export const SuperAdminDashboard: React.FC = () => {
                         </div>
                     </div>
 
+                    <div className="p-4 bg-white border border-slate-200 rounded-2xl space-y-4">
+                        <h4 className="font-bold text-slate-800 text-xs uppercase tracking-wider flex items-center gap-2">
+                            <Building2 className="w-4 h-4 text-blue-600" />
+                            Official Wire Transfer Bank Settlement Account Details
+                        </h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-xs text-slate-500 font-semibold mb-1">Beneficiary / Account Name</label>
+                                <input
+                                    type="text"
+                                    value={pricingForm.wireAccountName ?? 'SAASLINK TECHNOLOGIES LIMITED'}
+                                    onChange={(e) => setPricingForm(p => ({ ...p, wireAccountName: e.target.value }))}
+                                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs text-slate-500 font-semibold mb-1">Bank Name</label>
+                                <input
+                                    type="text"
+                                    value={pricingForm.wireBankName ?? 'NCBA Bank Kenya PLC'}
+                                    onChange={(e) => setPricingForm(p => ({ ...p, wireBankName: e.target.value }))}
+                                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs text-slate-500 font-semibold mb-1">Account Number</label>
+                                <input
+                                    type="text"
+                                    value={pricingForm.wireAccountNumber ?? '8809220019'}
+                                    onChange={(e) => setPricingForm(p => ({ ...p, wireAccountNumber: e.target.value }))}
+                                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs text-slate-500 font-semibold mb-1">Branch Name</label>
+                                <input
+                                    type="text"
+                                    value={pricingForm.wireBankBranch ?? 'Nairobi - Upperhill Branch'}
+                                    onChange={(e) => setPricingForm(p => ({ ...p, wireBankBranch: e.target.value }))}
+                                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs text-slate-500 font-semibold mb-1">SWIFT / BIC Code</label>
+                                <input
+                                    type="text"
+                                    value={pricingForm.wireSwiftCode ?? 'CBAFKENX'}
+                                    onChange={(e) => setPricingForm(p => ({ ...p, wireSwiftCode: e.target.value }))}
+                                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs text-slate-500 font-semibold mb-1">Payment Instructions</label>
+                                <input
+                                    type="text"
+                                    value={pricingForm.wirePaymentInstructions ?? 'Quote proforma reference in payment details'}
+                                    onChange={(e) => setPricingForm(p => ({ ...p, wirePaymentInstructions: e.target.value }))}
+                                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800"
+                                />
+                            </div>
+                        </div>
+                    </div>
+
                     <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
                         <button
                             type="button"
@@ -1573,16 +1819,290 @@ export const SuperAdminDashboard: React.FC = () => {
                             </div>
                         </div>
 
-                        <div className="flex justify-end pt-4 border-t border-slate-100">
+                        <div className="flex justify-between items-center pt-4 border-t border-slate-100">
                             <button
                                 onClick={() => refetchHealth()}
                                 className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-bold uppercase tracking-wider"
                             >
                                 Refresh Health
                             </button>
+                            <button
+                                onClick={() => {
+                                    setIsHealthModalOpen(false);
+                                    setActiveTab('system-pulse');
+                                }}
+                                className="px-4 py-2 bg-slate-900 hover:bg-black text-white rounded-xl text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 shadow-sm"
+                            >
+                                <span>Full Telemetry Control Room &rarr;</span>
+                            </button>
                         </div>
                     </div>
                 )}
+            </Modal>
+
+            {/* MODAL 8: SCHOOL ACTIVATION CONFIRMATION & CREDENTIALS DISPATCH */}
+            <Modal
+                isOpen={activationSuccessModal.isOpen}
+                onClose={() => setActivationSuccessModal({ isOpen: false })}
+                title="Account Activated & Credentials Dispatched"
+                size="md"
+            >
+                <div className="space-y-6">
+                    <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0">
+                            <CheckCircle2 className="w-6 h-6" />
+                        </div>
+                        <div>
+                            <h4 className="font-bold text-emerald-900 text-sm">
+                                {activationSuccessModal.school?.name} is now ACTIVE
+                            </h4>
+                            <p className="text-xs text-emerald-700">
+                                Wire transfer payment has been verified. Initial login credentials and confirmation receipt have been dispatched to subscriber.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-3">
+                        <div className="text-[10px] font-black uppercase tracking-wider text-slate-400">
+                            Subscriber Initial Access Credentials Dispatched
+                        </div>
+                        <div className="grid grid-cols-2 gap-3 text-xs">
+                            <div className="bg-white p-3 rounded-xl border border-slate-200">
+                                <div className="text-[10px] text-slate-400 uppercase font-bold">Login Email</div>
+                                <div className="font-mono font-bold text-slate-800 break-all mt-0.5">
+                                    {activationSuccessModal.credentials?.email || activationSuccessModal.school?.email}
+                                </div>
+                            </div>
+                            <div className="bg-white p-3 rounded-xl border border-slate-200">
+                                <div className="text-[10px] text-slate-400 uppercase font-bold">Initial Password</div>
+                                <div className="font-mono font-bold text-indigo-700 mt-0.5">
+                                    {activationSuccessModal.credentials?.password || 'Admin@2026'}
+                                </div>
+                            </div>
+                            <div className="bg-white p-3 rounded-xl border border-slate-200">
+                                <div className="text-[10px] text-slate-400 uppercase font-bold">Provisioned Plan</div>
+                                <div className="font-bold text-slate-800 mt-0.5">
+                                    {activationSuccessModal.school?.plan}
+                                </div>
+                            </div>
+                            <div className="bg-white p-3 rounded-xl border border-slate-200">
+                                <div className="text-[10px] text-slate-400 uppercase font-bold">Valid Until</div>
+                                <div className="font-bold text-slate-800 mt-0.5">
+                                    {activationSuccessModal.school?.endDate}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {activationSuccessModal.receipt && (
+                        <div className="flex items-center justify-between p-3.5 bg-slate-100 rounded-xl text-xs">
+                            <div>
+                                <span className="text-slate-500 font-medium">Generated Receipt: </span>
+                                <span className="font-mono font-bold text-slate-900">{activationSuccessModal.receipt.receiptNumber}</span>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    const doc = buildSaasSubscriptionReceipt(activationSuccessModal.receipt, stats?.pricing);
+                                    setActiveDocument(doc);
+                                    setIsDocumentModalOpen(true);
+                                    setActivationSuccessModal({ isOpen: false });
+                                }}
+                                className="px-3 py-1.5 bg-slate-900 hover:bg-black text-white rounded-lg font-bold text-[11px] uppercase tracking-wider flex items-center gap-1.5 transition-all shadow-sm"
+                            >
+                                <FileText className="w-3.5 h-3.5" />
+                                <span>View Receipt</span>
+                            </button>
+                        </div>
+                    )}
+
+                    <div className="flex justify-end pt-2">
+                        <button
+                            type="button"
+                            onClick={() => setActivationSuccessModal({ isOpen: false })}
+                            className="px-6 py-2.5 bg-slate-900 hover:bg-black text-white rounded-xl text-xs font-bold uppercase tracking-wider transition-all"
+                        >
+                            Close
+                        </button>
+                    </div>
+                </div>
+            </Modal>
+
+            {/* MODAL: ONBOARD NEW INSTITUTION / TENANT */}
+            <Modal
+                isOpen={isAddSchoolModalOpen}
+                onClose={() => setIsAddSchoolModalOpen(false)}
+                title="Onboard New Institution (Tenant)"
+            >
+                <form
+                    onSubmit={(e) => {
+                        e.preventDefault();
+                        createSchoolMutation.mutate(addSchoolForm);
+                    }}
+                    className="space-y-4"
+                >
+                    <div className="p-3 bg-indigo-50 border border-indigo-100 rounded-xl text-xs text-indigo-800">
+                        Provisioning an institution configures its database tenant, assigns its subscription tier, and creates the primary administrator account.
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-xs font-bold text-slate-700 mb-1">Institution Name *</label>
+                            <input
+                                type="text"
+                                required
+                                value={addSchoolForm.schoolName}
+                                onChange={(e) => {
+                                    const val = e.target.value;
+                                    setAddSchoolForm(prev => ({
+                                        ...prev,
+                                        schoolName: val,
+                                        schoolCode: prev.schoolCode || val.substring(0, 3).toUpperCase()
+                                    }));
+                                }}
+                                placeholder="e.g. Apex Academy"
+                                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium focus:ring-2 focus:ring-indigo-600 focus:outline-none"
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-xs font-bold text-slate-700 mb-1">School Code (Short ID) *</label>
+                            <input
+                                type="text"
+                                required
+                                maxLength={6}
+                                value={addSchoolForm.schoolCode}
+                                onChange={(e) => setAddSchoolForm(prev => ({ ...prev, schoolCode: e.target.value.toUpperCase() }))}
+                                placeholder="e.g. APX"
+                                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium uppercase focus:ring-2 focus:ring-indigo-600 focus:outline-none"
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-xs font-bold text-slate-700 mb-1">Admin Full Name *</label>
+                            <input
+                                type="text"
+                                required
+                                value={addSchoolForm.adminName}
+                                onChange={(e) => setAddSchoolForm(prev => ({ ...prev, adminName: e.target.value }))}
+                                placeholder="e.g. Dr. Jane Kamau"
+                                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium focus:ring-2 focus:ring-indigo-600 focus:outline-none"
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-xs font-bold text-slate-700 mb-1">Admin Email Address *</label>
+                            <input
+                                type="email"
+                                required
+                                value={addSchoolForm.adminEmail}
+                                onChange={(e) => setAddSchoolForm(prev => ({ ...prev, adminEmail: e.target.value }))}
+                                placeholder="e.g. admin@apexacademy.ac.ke"
+                                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium focus:ring-2 focus:ring-indigo-600 focus:outline-none"
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-xs font-bold text-slate-700 mb-1">Admin Initial Password *</label>
+                            <input
+                                type="text"
+                                required
+                                value={addSchoolForm.password}
+                                onChange={(e) => setAddSchoolForm(prev => ({ ...prev, password: e.target.value }))}
+                                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-mono font-bold text-indigo-700 focus:ring-2 focus:ring-indigo-600 focus:outline-none"
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-xs font-bold text-slate-700 mb-1">Contact Phone</label>
+                            <input
+                                type="text"
+                                value={addSchoolForm.phone}
+                                onChange={(e) => setAddSchoolForm(prev => ({ ...prev, phone: e.target.value }))}
+                                placeholder="e.g. +254 700 000 000"
+                                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium focus:ring-2 focus:ring-indigo-600 focus:outline-none"
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-xs font-bold text-slate-700 mb-1">County / Region</label>
+                            <input
+                                type="text"
+                                value={addSchoolForm.county}
+                                onChange={(e) => setAddSchoolForm(prev => ({ ...prev, county: e.target.value }))}
+                                placeholder="e.g. Nairobi"
+                                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium focus:ring-2 focus:ring-indigo-600 focus:outline-none"
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-xs font-bold text-slate-700 mb-1">Expected Student Count</label>
+                            <input
+                                type="number"
+                                min={1}
+                                value={addSchoolForm.studentCount}
+                                onChange={(e) => setAddSchoolForm(prev => ({ ...prev, studentCount: Number(e.target.value) || 0 }))}
+                                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium focus:ring-2 focus:ring-indigo-600 focus:outline-none"
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-xs font-bold text-slate-700 mb-1">Subscription Plan</label>
+                            <select
+                                value={addSchoolForm.plan}
+                                onChange={(e) => setAddSchoolForm(prev => ({ ...prev, plan: e.target.value as SubscriptionPlan }))}
+                                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-700 focus:ring-2 focus:ring-indigo-600 focus:outline-none"
+                            >
+                                <option value={SubscriptionPlan.FREE}>Free Trial</option>
+                                <option value={SubscriptionPlan.BASIC}>Basic Plan</option>
+                                <option value={SubscriptionPlan.PREMIUM}>Premium Plan</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label className="block text-xs font-bold text-slate-700 mb-1">Billing Cycle</label>
+                            <select
+                                value={addSchoolForm.billingCycle}
+                                onChange={(e) => setAddSchoolForm(prev => ({ ...prev, billingCycle: e.target.value as 'ANNUALLY' | 'MONTHLY' }))}
+                                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-700 focus:ring-2 focus:ring-indigo-600 focus:outline-none"
+                            >
+                                <option value="ANNUALLY">Annually (Billed 12 Months)</option>
+                                <option value="MONTHLY">Monthly</option>
+                            </select>
+                        </div>
+
+                        <div className="md:col-span-2">
+                            <label className="block text-xs font-bold text-slate-700 mb-1">Initial Status</label>
+                            <select
+                                value={addSchoolForm.status}
+                                onChange={(e) => setAddSchoolForm(prev => ({ ...prev, status: e.target.value as SubscriptionStatus }))}
+                                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-700 focus:ring-2 focus:ring-indigo-600 focus:outline-none"
+                            >
+                                <option value={SubscriptionStatus.ACTIVE}>Active (Immediate Platform Access)</option>
+                                <option value={SubscriptionStatus.PENDING_APPROVAL}>Pending Verification / Payment</option>
+                                <option value={SubscriptionStatus.TRIAL}>Trial Period</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
+                        <button
+                            type="button"
+                            onClick={() => setIsAddSchoolModalOpen(false)}
+                            className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="submit"
+                            disabled={createSchoolMutation.isPending}
+                            className="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold uppercase tracking-wider flex items-center gap-2 transition-all shadow-sm"
+                        >
+                            {createSchoolMutation.isPending && <RefreshCw className="w-3.5 h-3.5 animate-spin" />}
+                            <span>Onboard & Provision</span>
+                        </button>
+                    </div>
+                </form>
             </Modal>
         </div>
     );

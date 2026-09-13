@@ -20,6 +20,8 @@ const cleanParams = (params: Record<string, any>) => {
     return cleaned;
 };
 
+const API_BASE_URL = ((import.meta as any).env?.VITE_API_URL || '').replace(/\/+$/, '');
+
 // Generic API fetch wrapper for JSON responses
 const apiFetch = async (endpoint: string, options: RequestInit = {}) => {
     const token = localStorage.getItem('authToken');
@@ -30,7 +32,8 @@ const apiFetch = async (endpoint: string, options: RequestInit = {}) => {
     if (token) {
         headers.set('Authorization', `Bearer ${token}`);
     }
-    const response = await fetch(`/api${endpoint}`, { ...options, headers });
+    const url = API_BASE_URL ? `${API_BASE_URL}/api${endpoint}` : `/api${endpoint}`;
+    const response = await fetch(url, { ...options, headers });
     if (!response.ok) {
         const errorData = await response.json().catch(() => ({ message: response.statusText }));
         throw new Error(errorData.message || 'Server connection failed.');
@@ -46,7 +49,8 @@ const apiFetchBlob = async (endpoint: string, options: RequestInit = {}) => {
     if (token) {
         headers.set('Authorization', `Bearer ${token}`);
     }
-    const response = await fetch(`/api${endpoint}`, { ...options, headers });
+    const url = API_BASE_URL ? `${API_BASE_URL}/api${endpoint}` : `/api${endpoint}`;
+    const response = await fetch(url, { ...options, headers });
     if (!response.ok) {
         const errorData = await response.json().catch(() => ({ message: response.statusText }));
         throw new Error(errorData.message || 'Server connection failed.');

@@ -9,6 +9,7 @@ import * as api from '../../services/api';
 import Skeleton from '../common/Skeleton';
 import WebcamCaptureModal from '../common/WebcamCaptureModal';
 import Pagination from '../common/Pagination';
+import { optimizeImage } from '../../utils/imageOptimizer';
 
 const ExpensesView: React.FC = () => {
     const { addNotification, formatCurrency } = useData();
@@ -98,14 +99,21 @@ const ExpensesView: React.FC = () => {
     };
 
     const handleFileUpload = async (file: File) => {
-        const formData = new FormData();
-        formData.append('file', file);
         try {
-            const res = await api.uploadExpenseReceipt(formData);
-            setFormData(prev => ({ ...prev, attachmentUrl: res.url }));
-            addNotification("Receipt uploaded successfully.", "success");
-        } catch (e) {
-            addNotification("Failed to upload receipt.", "error");
+            const optimized = await optimizeImage(file, { preset: 'receipt', maxWidth: 1200, maxHeight: 1200 });
+            const formData = new FormData();
+            formData.append('file', optimized.file);
+            formData.append('dataUrl', optimized.dataUrl);
+            try {
+                const res = await api.uploadExpenseReceipt(formData);
+                setFormData(prev => ({ ...prev, attachmentUrl: res?.url || optimized.dataUrl }));
+                addNotification(`Receipt resized (${optimized.formattedStats}) and uploaded!`, "success");
+            } catch (e) {
+                setFormData(prev => ({ ...prev, attachmentUrl: optimized.dataUrl }));
+                addNotification(`Receipt optimized (${optimized.formattedStats}) and saved locally.`, "info");
+            }
+        } catch (err: any) {
+            addNotification("Failed to optimize receipt image.", "error");
         }
     };
 

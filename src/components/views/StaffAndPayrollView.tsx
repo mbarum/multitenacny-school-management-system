@@ -24,7 +24,7 @@ const StaffAndPayrollView: React.FC = () => {
     const { data: payrollItems = [] } = useQuery({ queryKey: ['payroll-items'], queryFn: api.getPayrollItems });
     const { data: history = [], isLoading: historyLoading } = useQuery({ 
         queryKey: ['payroll-history'], 
-        queryFn: () => api.getPayrollHistory({ limit: 50 }).then(res => res.data) 
+        queryFn: () => api.getPayrollHistory({ limit: 50 }).then(res => Array.isArray(res) ? res : (res?.data || [])) 
     });
 
     const staffMutation = useMutation({

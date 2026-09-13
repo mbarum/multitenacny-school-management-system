@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Modal from './Modal';
 import { useData } from '../../contexts/DataContext';
+import { optimizeImage } from '../../utils/imageOptimizer';
 
 interface UserProfileModalProps {
     isOpen: boolean;
@@ -31,14 +32,24 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onClose }) 
 
     const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
-            const formData = new FormData();
-            formData.append('file', e.target.files[0]);
             try {
-                const res = await uploadUserAvatar(formData);
-                setAvatarUrl(res.avatarUrl);
-                addNotification('Avatar updated successfully', 'success');
-            } catch (error) {
-                addNotification('Failed to upload avatar', 'error');
+                // Resize user avatar to 400x400 WebP for minimal VPS storage footprint
+                const optimized = await optimizeImage(e.target.files[0], { preset: 'avatar', maxWidth: 400, maxHeight: 400 });
+                const formData = new FormData();
+                formData.append('file', optimized.file);
+                formData.append('dataUrl', optimized.dataUrl);
+
+                try {
+                    const res = await uploadUserAvatar(formData);
+                    const finalAvatar = res?.avatarUrl && !res.avatarUrl.includes('undefined') ? res.avatarUrl : optimized.dataUrl;
+                    setAvatarUrl(finalAvatar);
+                    addNotification(`Avatar updated (${optimized.formattedStats})`, 'success');
+                } catch {
+                    setAvatarUrl(optimized.dataUrl);
+                    addNotification(`Avatar resized (${optimized.formattedStats}) and saved locally`, 'info');
+                }
+            } catch (error: any) {
+                addNotification('Failed to process avatar: ' + (error?.message || 'Error processing file'), 'error');
             }
         }
     };

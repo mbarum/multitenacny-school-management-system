@@ -6,12 +6,14 @@ import {
     initialPayrollItems, initialPayrollHistory, initialTransactions,
     initialExpenses, initialAnnouncements, initialCommunicationLogs,
     initialGradingRules, initialFeeStructure, initialDarajaSettings, initialBooks,
-    initialSchools, initialSaasInvoices, initialSaasReceipts
+    initialSchools, initialSaasInvoices, initialSaasReceipts,
+    initialLmsAssignments, initialLmsSubmissions, initialLmsLiveClasses,
+    initialEdTechArticles
 } from '../data/mockData';
 import { EXCHANGE_RATES } from '../utils/currency';
-import { SubscriptionPlan, SubscriptionStatus } from '../types';
+import { SubscriptionPlan, SubscriptionStatus, CommunicationType } from '../types';
 
-export function viteApiPlugin(): Plugin {
+export function viteApiPlugin(options?: { disabled?: boolean }): Plugin {
     // In-memory data store for dev server API
     let schoolInfo = { ...initialSchoolInfo };
     let pricing = { ...initialPricing };
@@ -38,11 +40,19 @@ export function viteApiPlugin(): Plugin {
     let schools = [...initialSchools];
     let saasInvoices = [...initialSaasInvoices];
     let saasReceipts = [...initialSaasReceipts];
+    let lmsAssignments = [...initialLmsAssignments];
+    let lmsSubmissions = [...initialLmsSubmissions];
+    let lmsLiveClasses = [...initialLmsLiveClasses];
+    let edTechArticles = [...initialEdTechArticles];
 
     return {
         name: 'saaslink-mock-api-plugin',
         configureServer(server) {
             server.middlewares.use((req, res, next) => {
+                if (options?.disabled) {
+                    return next();
+                }
+
                 const url = req.url || '';
 
                 if (!url.startsWith('/api')) {
@@ -153,16 +163,39 @@ export function viteApiPlugin(): Plugin {
 
                 if (path === '/api/auth/register-school') {
                     readBody(body => {
+                        const schoolId = `school-${Date.now()}`;
+                        const isWire = body.paymentMethod === 'WIRE';
+                        const isFree = body.plan === SubscriptionPlan.FREE;
+                        const plan = (body.plan || SubscriptionPlan.BASIC) as SubscriptionPlan;
+                        const cycle = (body.billingCycle === 'ANNUALLY' ? 'ANNUALLY' : 'MONTHLY') as 'ANNUALLY' | 'MONTHLY';
+                        
                         const newSchool = {
                             ...schoolInfo,
+                            id: schoolId,
                             name: body.schoolName || schoolInfo.name,
-                            email: body.email || schoolInfo.email,
-                            phone: body.phone || schoolInfo.phone
+                            slug: (body.schoolName || 'school').toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+                            schoolCode: (body.schoolName || 'SCH').substring(0, 3).toUpperCase(),
+                            email: body.adminEmail || body.email || schoolInfo.email,
+                            phone: body.phone || schoolInfo.phone,
+                            address: body.address || 'Nairobi, Kenya',
+                            plan: plan,
+                            subscriptionStatus: isWire ? SubscriptionStatus.PENDING_APPROVAL : (isFree ? SubscriptionStatus.TRIAL : SubscriptionStatus.ACTIVE),
+                            startDate: new Date().toISOString().split('T')[0],
+                            endDate: new Date(Date.now() + (cycle === 'ANNUALLY' ? 365 : 30) * 86400000).toISOString().split('T')[0],
+                            studentCount: Number(body.studentCount) || 50,
+                            staffCount: 10,
+                            billingCycle: cycle,
+                            paymentMethod: body.paymentMethod || (isFree ? 'FREE' : 'MPESA'),
+                            invoiceNumber: body.invoiceNumber || (isWire ? `INV-SAAS-${new Date().getFullYear()}-${String(saasInvoices.length + 1).padStart(3, '0')}` : undefined),
+                            temporaryPassword: body.password || 'Admin@2026',
+                            adminName: body.adminName,
+                            remindersCount: 0
                         };
+
                         const newUser = {
                             id: `user-${Date.now()}`,
                             name: body.adminName || 'School Admin',
-                            email: body.email || 'admin@school.com',
+                            email: body.adminEmail || body.email || 'admin@school.com',
                             role: 'Admin' as any,
                             avatarUrl: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=120',
                             status: 'Active' as const,
@@ -170,7 +203,100 @@ export function viteApiPlugin(): Plugin {
                         };
                         users.push(newUser);
                         schoolInfo = newSchool;
-                        sendJson(200, { user: newUser, token: newUser.id, school: newSchool });
+
+                        // Add to subscribers directory
+                        schools.unshift(newSchool as any);
+
+                        // If wire transfer, create issued proforma invoice and log email
+                        if (isWire) {
+                            const planAnnual = plan === SubscriptionPlan.PREMIUM ? (pricing?.premiumAnnualPrice || 60000) : (pricing?.basicAnnualPrice || 30000);
+                            const planMonthly = plan === SubscriptionPlan.PREMIUM ? (pricing?.premiumMonthlyPrice || 6000) : (pricing?.basicMonthlyPrice || 3000);
+                            const baseAmount = cycle === 'ANNUALLY' ? planAnnual : planMonthly;
+                            const totalAmount = baseAmount + Math.round(baseAmount * 0.16);
+
+                            const newInv = {
+                                id: `inv-saas-${Date.now()}`,
+                                invoiceNumber: newSchool.invoiceNumber || `INV-SAAS-${new Date().getFullYear()}-${String(saasInvoices.length + 1).padStart(3, '0')}`,
+                                schoolId: newSchool.id,
+                                schoolName: newSchool.name,
+                                schoolCode: newSchool.schoolCode,
+                                recipientEmail: newSchool.email,
+                                recipientPhone: newSchool.phone,
+                                plan: newSchool.plan,
+                                billingCycle: newSchool.billingCycle,
+                                amount: totalAmount,
+                                currency: 'KES',
+                                issueDate: new Date().toISOString().split('T')[0],
+                                dueDate: new Date(Date.now() + 14 * 86400000).toISOString().split('T')[0],
+                                status: 'ISSUED',
+                                paymentMethod: 'Bank Wire',
+                                notes: 'Subscription application submitted via Bank Wire. Awaiting manual payment confirmation from Super Administrator.'
+                            };
+                            saasInvoices.unshift(newInv as any);
+
+                            // Email notification log for Wire Transfer Proforma Invoice
+                            const wireSubject = `Subscription Request Received & Proforma Invoice ${newInv.invoiceNumber} - ${newSchool.name}`;
+                            communicationLogs.unshift({
+                                id: `log-${Date.now()}`,
+                                studentId: newSchool.id,
+                                type: CommunicationType.Email,
+                                message: `[${wireSubject}] Subscription request submitted. Wait for an activation email. Proforma Ref: ${newInv.invoiceNumber} | Total: KES ${totalAmount.toLocaleString()} | Bank: ${pricing?.wireBankName || 'NCBA Bank Kenya PLC'} | Acc: ${pricing?.wireAccountNumber || '8809220019'} | Ref Code: ${newInv.invoiceNumber}. Once verified by Super Admin, your login credentials will be dispatched.`,
+                                date: new Date().toISOString(),
+                                sentBy: 'Platform System',
+                                recipient: newSchool.email,
+                                channel: 'Email',
+                                status: 'Delivered',
+                                timestamp: new Date().toISOString()
+                            });
+                        } else if (!isFree) {
+                            // Instant payment via M-Pesa or Card: generate payment receipt and dispatch credentials email
+                            const planAnnual = plan === SubscriptionPlan.PREMIUM ? (pricing?.premiumAnnualPrice || 60000) : (pricing?.basicAnnualPrice || 30000);
+                            const planMonthly = plan === SubscriptionPlan.PREMIUM ? (pricing?.premiumMonthlyPrice || 6000) : (pricing?.basicMonthlyPrice || 3000);
+                            const baseAmount = cycle === 'ANNUALLY' ? planAnnual : planMonthly;
+                            const totalAmount = baseAmount + Math.round(baseAmount * 0.16);
+                            const isCard = body.paymentMethod === 'CARD';
+                            const txnCode = body.paymentIntentId || body.transactionRef || (isCard ? `CARD-STRIPE-${Date.now().toString().slice(-6)}` : `MPESA-QKD-${Date.now().toString().slice(-6)}`);
+
+                            const newReceipt = {
+                                id: `rec-saas-${Date.now()}`,
+                                receiptNumber: `REC-SAAS-${new Date().getFullYear()}-${String(saasReceipts.length + 1).padStart(3, '0')}`,
+                                invoiceId: '',
+                                invoiceNumber: `INV-SAAS-${new Date().getFullYear()}-INSTANT`,
+                                schoolId: newSchool.id,
+                                schoolName: newSchool.name,
+                                amount: totalAmount,
+                                currency: 'KES',
+                                paymentDate: new Date().toISOString().split('T')[0],
+                                paymentMethod: isCard ? 'Stripe / Credit Card' : 'Lipa Na M-Pesa (STK Push)',
+                                transactionCode: txnCode,
+                                plan: newSchool.plan,
+                                provisionedUntil: newSchool.endDate,
+                                verifiedBy: 'Automated Payment Gateway'
+                            };
+                            saasReceipts.unshift(newReceipt as any);
+
+                            // Email notification log for instant payment receipt
+                            const receiptSubject = `Official Payment Receipt & Portal Credentials - ${newSchool.name}`;
+                            communicationLogs.unshift({
+                                id: `log-${Date.now()}`,
+                                studentId: newSchool.id,
+                                type: CommunicationType.Email,
+                                message: `[${receiptSubject}] Payment verified! Receipt: ${newReceipt.receiptNumber} | Txn: ${txnCode} | Amount: KES ${totalAmount.toLocaleString()} | Method: ${newReceipt.paymentMethod} | Admin Login: ${newSchool.email} | Initial Password: ${newSchool.temporaryPassword}`,
+                                date: new Date().toISOString(),
+                                sentBy: 'Automated Payment Gateway',
+                                recipient: newSchool.email,
+                                channel: 'Email',
+                                status: 'Delivered',
+                                timestamp: new Date().toISOString()
+                            });
+                        }
+
+                        sendJson(200, {
+                            user: newUser,
+                            token: newUser.id,
+                            school: newSchool,
+                            status: isWire ? 'PENDING' : 'ACTIVE'
+                        });
                     });
                     return;
                 }
@@ -394,7 +520,17 @@ export function viteApiPlugin(): Plugin {
                     return;
                 }
                 if (path === '/api/payroll/payroll-history') {
-                    sendJson(200, payrollHistory);
+                    const parsedUrl = new URL(url, 'http://localhost');
+                    const staffId = parsedUrl.searchParams.get('staffId');
+                    const month = parsedUrl.searchParams.get('month');
+                    let filtered = [...payrollHistory];
+                    if (staffId) {
+                        filtered = filtered.filter(p => p.staffId === staffId);
+                    }
+                    if (month) {
+                        filtered = filtered.filter(p => p.month && p.month.toLowerCase().includes(month.toLowerCase()));
+                    }
+                    sendJson(200, { data: filtered, total: filtered.length, page: 1, limit: filtered.length, last_page: 1 });
                     return;
                 }
                 if (path === '/api/payroll/generate') {
@@ -548,6 +684,41 @@ export function viteApiPlugin(): Plugin {
                     return;
                 }
                 if (path === '/api/super-admin/schools') {
+                    if (req.method === 'POST') {
+                        readBody(body => {
+                            const newSchool: any = {
+                                id: `school-${Date.now()}`,
+                                name: body.schoolName || body.name || 'New Institution',
+                                slug: (body.schoolName || body.name || 'school').toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+                                schoolCode: body.schoolCode || (body.schoolName || 'SCH').substring(0, 3).toUpperCase(),
+                                email: body.adminEmail || body.email || 'admin@school.com',
+                                phone: body.phone || '',
+                                address: body.address || body.county || 'Nairobi, Kenya',
+                                plan: body.plan || SubscriptionPlan.BASIC,
+                                subscriptionStatus: body.status || SubscriptionStatus.ACTIVE,
+                                billingCycle: body.billingCycle || 'ANNUALLY',
+                                startDate: new Date().toISOString().split('T')[0],
+                                endDate: new Date(Date.now() + (body.billingCycle === 'MONTHLY' ? 30 : 365) * 86400000).toISOString().split('T')[0],
+                                studentCount: Number(body.studentCount) || 0,
+                                staffCount: Number(body.staffCount) || 0,
+                                adminName: body.adminName || 'Admin',
+                                remindersCount: 0
+                            };
+                            const newUser = {
+                                id: `user-${Date.now()}`,
+                                name: body.adminName || 'School Admin',
+                                email: newSchool.email,
+                                role: 'Admin' as any,
+                                avatarUrl: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=120',
+                                status: 'Active' as const,
+                                schoolId: newSchool.id
+                            };
+                            users.push(newUser);
+                            schools = [newSchool, ...schools];
+                            sendJson(201, newSchool);
+                        });
+                        return;
+                    }
                     sendJson(200, schools);
                     return;
                 }
@@ -750,6 +921,80 @@ export function viteApiPlugin(): Plugin {
                     });
                     return;
                 }
+                if (path.startsWith('/api/super-admin/schools/') && path.endsWith('/activate')) {
+                    const parts = path.split('/');
+                    const schoolId = parts[4];
+                    readBody(body => {
+                        const sch = schools.find(s => s.id === schoolId);
+                        if (sch) {
+                            const planAnnual = sch.plan === SubscriptionPlan.PREMIUM ? (pricing?.premiumAnnualPrice || 60000) : (pricing?.basicAnnualPrice || 30000);
+                            const planMonthly = sch.plan === SubscriptionPlan.PREMIUM ? (pricing?.premiumMonthlyPrice || 6000) : (pricing?.basicMonthlyPrice || 3000);
+                            const baseAmount = sch.billingCycle === 'ANNUALLY' ? planAnnual : planMonthly;
+                            const totalAmount = baseAmount + Math.round(baseAmount * 0.16);
+                            const txnRef = body.transactionRef || `WIRE-NCBA-${Date.now().toString().slice(-6)}`;
+                            const paymentDate = new Date().toISOString().split('T')[0];
+                            const provisionedDays = sch.billingCycle === 'ANNUALLY' ? 365 : 30;
+
+                            sch.subscriptionStatus = SubscriptionStatus.ACTIVE;
+                            sch.endDate = new Date(Date.now() + provisionedDays * 86400000).toISOString().split('T')[0];
+                            sch.remindersCount = 0;
+                            sch.lastPaymentDate = paymentDate;
+                            sch.lastPaymentAmount = totalAmount;
+
+                            const inv = saasInvoices.find(i => i.schoolId === schoolId && i.status !== 'PAID');
+                            if (inv) {
+                                inv.status = 'PAID';
+                                inv.paidDate = paymentDate;
+                                inv.transactionRef = txnRef;
+                                inv.paymentMethod = body.paymentMethod || 'Bank Wire';
+                            }
+
+                            const newReceipt = {
+                                id: `rec-saas-${Date.now()}`,
+                                receiptNumber: `REC-SAAS-${new Date().getFullYear()}-${String(saasReceipts.length + 1).padStart(3, '0')}`,
+                                invoiceId: inv?.id || '',
+                                invoiceNumber: inv?.invoiceNumber || sch.invoiceNumber || `INV-SAAS-${new Date().getFullYear()}-ACT`,
+                                schoolId: sch.id,
+                                schoolName: sch.name,
+                                amount: totalAmount,
+                                currency: 'KES',
+                                paymentDate: paymentDate,
+                                paymentMethod: body.paymentMethod || 'Bank Wire',
+                                transactionCode: txnRef,
+                                plan: sch.plan,
+                                provisionedUntil: sch.endDate,
+                                verifiedBy: 'Platform Super Administrator'
+                            };
+                            saasReceipts.unshift(newReceipt as any);
+
+                            // Dispatch School Activation Email with initial login credentials
+                            const initialPassword = sch.temporaryPassword || 'Admin@2026';
+                            const activationSubject = `Account Activated - Official Login Credentials for ${sch.name}`;
+                            communicationLogs.unshift({
+                                id: `log-${Date.now()}`,
+                                studentId: sch.id,
+                                type: CommunicationType.Email,
+                                message: `[${activationSubject}] Congratulations! Your subscription for ${sch.name} has been verified and manually activated by the Super Administrator. Login URL: /login | Username: ${sch.email} | Initial Password: ${initialPassword} | Plan: ${sch.plan} | Valid Until: ${sch.endDate}`,
+                                date: new Date().toISOString(),
+                                sentBy: 'Super Administrator',
+                                recipient: sch.email,
+                                channel: 'Email',
+                                status: 'Delivered',
+                                timestamp: new Date().toISOString()
+                            });
+
+                            sendJson(200, { 
+                                success: true, 
+                                school: sch, 
+                                receipt: newReceipt, 
+                                credentials: { email: sch.email, password: initialPassword } 
+                            });
+                        } else {
+                            sendJson(404, { error: 'School not found' });
+                        }
+                    });
+                    return;
+                }
                 if (path === '/api/super-admin/payments/manual') {
                     readBody(body => {
                         const targetSchool = schools.find(s => s.id === body.schoolId);
@@ -789,7 +1034,266 @@ export function viteApiPlugin(): Plugin {
                     return;
                 }
                 if (path === '/api/super-admin/health') {
-                    sendJson(200, { status: 'healthy', database: 'connected', redis: 'active' });
+                    const onlineUsersList = [
+                        {
+                            id: 'sess-usr-001',
+                            userId: 'super-admin-1',
+                            name: 'Chief Systems Administrator',
+                            email: 'superadmin@saaslink.ac.ke',
+                            role: 'SuperAdmin',
+                            schoolName: 'Central Platform Operations',
+                            schoolCode: 'HQ-OPERATIONS',
+                            ip: '197.237.112.4',
+                            userAgent: 'Chrome 128 (macOS Sonoma)',
+                            connectedAt: new Date(Date.now() - 48 * 60000).toISOString(),
+                            lastActive: new Date(Date.now() - 12000).toISOString(),
+                            currentPath: '/super-admin',
+                            status: 'active'
+                        },
+                        {
+                            id: 'sess-usr-002',
+                            userId: 'usr-admin-alliance',
+                            name: 'Dr. Christopher Kiptoo',
+                            email: 'admin@alliancehigh.ac.ke',
+                            role: 'Admin',
+                            schoolName: 'Alliance High School',
+                            schoolCode: 'AHS',
+                            ip: '102.219.208.15',
+                            userAgent: 'Firefox 129 (Windows 11)',
+                            connectedAt: new Date(Date.now() - 115 * 60000).toISOString(),
+                            lastActive: new Date(Date.now() - 45000).toISOString(),
+                            currentPath: '/finance/fees',
+                            status: 'active'
+                        },
+                        {
+                            id: 'sess-usr-003',
+                            userId: 'usr-tch-004',
+                            name: 'Mwalimu Sarah Mwangi',
+                            email: 's.mwangi@moigirls.ac.ke',
+                            role: 'Teacher',
+                            schoolName: 'Moi Girls Academy',
+                            schoolCode: 'MGA',
+                            ip: '41.89.24.11',
+                            userAgent: 'Safari 17.5 (iOS 17.6)',
+                            connectedAt: new Date(Date.now() - 25 * 60000).toISOString(),
+                            lastActive: new Date(Date.now() - 15000).toISOString(),
+                            currentPath: '/academics/grading',
+                            status: 'active'
+                        },
+                        {
+                            id: 'sess-usr-004',
+                            userId: 'usr-prt-882',
+                            name: 'Faith Odhiambo (Guardian)',
+                            email: 'faith.o@gmail.com',
+                            role: 'Parent',
+                            schoolName: 'Nairobi Greenhill Academy',
+                            schoolCode: 'NGA',
+                            ip: '196.201.214.89',
+                            userAgent: 'Chrome 128 (Android 14)',
+                            connectedAt: new Date(Date.now() - 14 * 60000).toISOString(),
+                            lastActive: new Date(Date.now() - 60000).toISOString(),
+                            currentPath: '/parent/finances',
+                            status: 'active'
+                        },
+                        {
+                            id: 'sess-usr-005',
+                            userId: 'usr-admin-lenana',
+                            name: 'James Gitau (Finance Officer)',
+                            email: 'bursar@lenanaschool.ac.ke',
+                            role: 'Accountant',
+                            schoolName: 'Lenana School',
+                            schoolCode: 'LNA',
+                            ip: '105.163.1.204',
+                            userAgent: 'Edge 127 (Windows 10)',
+                            connectedAt: new Date(Date.now() - 80 * 60000).toISOString(),
+                            lastActive: new Date(Date.now() - 180000).toISOString(),
+                            currentPath: '/payroll',
+                            status: 'idle'
+                        },
+                        {
+                            id: 'sess-usr-006',
+                            userId: 'usr-tch-009',
+                            name: 'David Kiprono',
+                            email: 'd.kiprono@strathmore.ac.ke',
+                            role: 'Teacher',
+                            schoolName: 'Strathmore School',
+                            schoolCode: 'STR',
+                            ip: '197.156.134.12',
+                            userAgent: 'Chrome 128 (macOS)',
+                            connectedAt: new Date(Date.now() - 6 * 60000).toISOString(),
+                            lastActive: new Date(Date.now() - 5000).toISOString(),
+                            currentPath: '/my-class',
+                            status: 'active'
+                        }
+                    ];
+
+                    sendJson(200, {
+                        status: 'healthy',
+                        timestamp: new Date().toISOString(),
+                        uptimeSeconds: Math.floor(process.uptime()),
+                        uptimeFormatted: '14d 6h 32m',
+                        environment: process.env.NODE_ENV || 'development',
+                        strictApiMode: false,
+                        database: {
+                            status: 'up',
+                            engine: 'MySQL',
+                            latencyMs: 2.3,
+                            activeConnections: 4,
+                            maxPoolSize: 10,
+                            databaseName: 'saaslink_production',
+                            details: 'TypeORM pooled connections via MySQL driver'
+                        },
+                        redis: {
+                            status: 'connected',
+                            latencyMs: 0.8,
+                            hitRate: '99.4%',
+                            totalKeys: 348,
+                            usedMemory: '14.2 MB',
+                            host: '127.0.0.1',
+                            port: 6379
+                        },
+                        queues: {
+                            bullmq: {
+                                status: 'operational',
+                                queueName: 'notifications',
+                                waiting: 2,
+                                active: 0,
+                                completed: 2140,
+                                failed: 1,
+                                delayed: 0,
+                                throughputPerMin: 48
+                            }
+                        },
+                        system: {
+                            heapUsedMB: Math.round(process.memoryUsage().heapUsed / 1024 / 1024),
+                            heapTotalMB: Math.round(process.memoryUsage().heapTotal / 1024 / 1024),
+                            rssMB: Math.round(process.memoryUsage().rss / 1024 / 1024),
+                            memoryPercentage: Math.round((process.memoryUsage().heapUsed / process.memoryUsage().heapTotal) * 100),
+                            cpuLoadPercentage: 12,
+                            nodeVersion: process.version,
+                            platform: process.platform
+                        },
+                        onlineUsersSummary: {
+                            totalOnline: onlineUsersList.length,
+                            superAdminsOnline: 1,
+                            schoolAdminsOnline: 2,
+                            teachersOnline: 2,
+                            parentsOnline: 1
+                        },
+                        onlineUsersList
+                    });
+                    return;
+                }
+                if (path === '/api/super-admin/online-users') {
+                    sendJson(200, [
+                        {
+                            id: 'sess-usr-001',
+                            userId: 'super-admin-1',
+                            name: 'Chief Systems Administrator',
+                            email: 'superadmin@saaslink.ac.ke',
+                            role: 'SuperAdmin',
+                            schoolName: 'Central Platform Operations',
+                            schoolCode: 'HQ-OPERATIONS',
+                            ip: '197.237.112.4',
+                            userAgent: 'Chrome 128 (macOS Sonoma)',
+                            connectedAt: new Date(Date.now() - 48 * 60000).toISOString(),
+                            lastActive: new Date(Date.now() - 12000).toISOString(),
+                            currentPath: '/super-admin',
+                            status: 'active'
+                        },
+                        {
+                            id: 'sess-usr-002',
+                            userId: 'usr-admin-alliance',
+                            name: 'Dr. Christopher Kiptoo',
+                            email: 'admin@alliancehigh.ac.ke',
+                            role: 'Admin',
+                            schoolName: 'Alliance High School',
+                            schoolCode: 'AHS',
+                            ip: '102.219.208.15',
+                            userAgent: 'Firefox 129 (Windows 11)',
+                            connectedAt: new Date(Date.now() - 115 * 60000).toISOString(),
+                            lastActive: new Date(Date.now() - 45000).toISOString(),
+                            currentPath: '/finance/fees',
+                            status: 'active'
+                        },
+                        {
+                            id: 'sess-usr-003',
+                            userId: 'usr-tch-004',
+                            name: 'Mwalimu Sarah Mwangi',
+                            email: 's.mwangi@moigirls.ac.ke',
+                            role: 'Teacher',
+                            schoolName: 'Moi Girls Academy',
+                            schoolCode: 'MGA',
+                            ip: '41.89.24.11',
+                            userAgent: 'Safari 17.5 (iOS 17.6)',
+                            connectedAt: new Date(Date.now() - 25 * 60000).toISOString(),
+                            lastActive: new Date(Date.now() - 15000).toISOString(),
+                            currentPath: '/academics/grading',
+                            status: 'active'
+                        },
+                        {
+                            id: 'sess-usr-004',
+                            userId: 'usr-prt-882',
+                            name: 'Faith Odhiambo (Guardian)',
+                            email: 'faith.o@gmail.com',
+                            role: 'Parent',
+                            schoolName: 'Nairobi Greenhill Academy',
+                            schoolCode: 'NGA',
+                            ip: '196.201.214.89',
+                            userAgent: 'Chrome 128 (Android 14)',
+                            connectedAt: new Date(Date.now() - 14 * 60000).toISOString(),
+                            lastActive: new Date(Date.now() - 60000).toISOString(),
+                            currentPath: '/parent/finances',
+                            status: 'active'
+                        },
+                        {
+                            id: 'sess-usr-005',
+                            userId: 'usr-admin-lenana',
+                            name: 'James Gitau (Finance Officer)',
+                            email: 'bursar@lenanaschool.ac.ke',
+                            role: 'Accountant',
+                            schoolName: 'Lenana School',
+                            schoolCode: 'LNA',
+                            ip: '105.163.1.204',
+                            userAgent: 'Edge 127 (Windows 10)',
+                            connectedAt: new Date(Date.now() - 80 * 60000).toISOString(),
+                            lastActive: new Date(Date.now() - 180000).toISOString(),
+                            currentPath: '/payroll',
+                            status: 'idle'
+                        },
+                        {
+                            id: 'sess-usr-006',
+                            userId: 'usr-tch-009',
+                            name: 'David Kiprono',
+                            email: 'd.kiprono@strathmore.ac.ke',
+                            role: 'Teacher',
+                            schoolName: 'Strathmore School',
+                            schoolCode: 'STR',
+                            ip: '197.156.134.12',
+                            userAgent: 'Chrome 128 (macOS)',
+                            connectedAt: new Date(Date.now() - 6 * 60000).toISOString(),
+                            lastActive: new Date(Date.now() - 5000).toISOString(),
+                            currentPath: '/my-class',
+                            status: 'active'
+                        }
+                    ]);
+                    return;
+                }
+                if (path === '/api/super-admin/health/ping-db') {
+                    sendJson(200, { success: true, latencyMs: 2.1, timestamp: new Date().toISOString() });
+                    return;
+                }
+                if (path === '/api/super-admin/health/test-queue') {
+                    sendJson(200, {
+                        success: true,
+                        jobId: `bull-job-${Date.now()}`,
+                        message: 'BullMQ notification worker active and healthy. Test job processed in 14ms.',
+                        latencyMs: 14
+                    });
+                    return;
+                }
+                if (path === '/api/super-admin/health/retry-failed-jobs') {
+                    sendJson(200, { success: true, retriedCount: 1, message: 'All failed BullMQ jobs re-queued' });
                     return;
                 }
                 if (path === '/api/super-admin/pricing') {
@@ -816,6 +1320,283 @@ export function viteApiPlugin(): Plugin {
                 if (path === '/api/library/transactions') {
                     sendJson(200, []);
                     return;
+                }
+
+                // LMS Assignments & Homework
+                if (path === '/api/lms/assignments') {
+                    if (req.method === 'GET') {
+                        const urlObj = new URL(url, 'http://localhost');
+                        const classId = urlObj.searchParams.get('classId');
+                        const subjectId = urlObj.searchParams.get('subjectId');
+                        const teacherId = urlObj.searchParams.get('teacherId');
+                        let filtered = [...lmsAssignments];
+                        if (classId) filtered = filtered.filter(a => a.classId === classId);
+                        if (subjectId) filtered = filtered.filter(a => a.subjectId === subjectId);
+                        if (teacherId) filtered = filtered.filter(a => a.teacherId === teacherId);
+                        sendJson(200, filtered);
+                        return;
+                    }
+                    if (req.method === 'POST') {
+                        readBody(body => {
+                            const newAssign = {
+                                id: `lms-assign-${Date.now()}`,
+                                ...body,
+                                createdAt: new Date().toISOString(),
+                                submittedCount: 0,
+                                gradedCount: 0,
+                                totalAssigned: students.filter(s => s.classId === body.classId).length || 5
+                            };
+                            lmsAssignments = [newAssign, ...lmsAssignments];
+                            sendJson(201, newAssign);
+                        });
+                        return;
+                    }
+                }
+
+                if (path.startsWith('/api/lms/assignments/')) {
+                    const assignId = path.replace('/api/lms/assignments/', '');
+                    if (req.method === 'PATCH' || req.method === 'PUT') {
+                        readBody(body => {
+                            const idx = lmsAssignments.findIndex(a => a.id === assignId);
+                            if (idx >= 0) {
+                                lmsAssignments[idx] = { ...lmsAssignments[idx], ...body, updatedAt: new Date().toISOString() };
+                                sendJson(200, lmsAssignments[idx]);
+                            } else {
+                                sendJson(404, { error: 'Assignment not found' });
+                            }
+                        });
+                        return;
+                    }
+                    if (req.method === 'DELETE') {
+                        lmsAssignments = lmsAssignments.filter(a => a.id !== assignId);
+                        lmsSubmissions = lmsSubmissions.filter(s => s.assignmentId !== assignId);
+                        sendJson(200, { success: true });
+                        return;
+                    }
+                }
+
+                // LMS Submissions
+                if (path === '/api/lms/submissions') {
+                    if (req.method === 'GET') {
+                        const urlObj = new URL(url, 'http://localhost');
+                        const assignmentId = urlObj.searchParams.get('assignmentId');
+                        const studentId = urlObj.searchParams.get('studentId');
+                        let filtered = [...lmsSubmissions];
+                        if (assignmentId) filtered = filtered.filter(s => s.assignmentId === assignmentId);
+                        if (studentId) filtered = filtered.filter(s => s.studentId === studentId);
+                        sendJson(200, filtered);
+                        return;
+                    }
+                    if (req.method === 'POST') {
+                        readBody(body => {
+                            const existingIndex = lmsSubmissions.findIndex(s => s.assignmentId === body.assignmentId && s.studentId === body.studentId);
+                            const newSub = {
+                                id: existingIndex >= 0 ? lmsSubmissions[existingIndex].id : `sub-${Date.now()}`,
+                                ...body,
+                                submittedAt: new Date().toISOString()
+                            };
+                            if (existingIndex >= 0) {
+                                lmsSubmissions[existingIndex] = newSub;
+                            } else {
+                                lmsSubmissions = [newSub, ...lmsSubmissions];
+                            }
+                            // Update assignment counts
+                            const assign = lmsAssignments.find(a => a.id === body.assignmentId);
+                            if (assign) {
+                                assign.submittedCount = lmsSubmissions.filter(s => s.assignmentId === body.assignmentId).length;
+                            }
+                            sendJson(201, newSub);
+                        });
+                        return;
+                    }
+                }
+
+                if (path.startsWith('/api/lms/submissions/') && path.endsWith('/grade')) {
+                    const subId = path.replace('/api/lms/submissions/', '').replace('/grade', '');
+                    readBody(body => {
+                        const sub = lmsSubmissions.find(s => s.id === subId);
+                        if (sub) {
+                            sub.score = body.score;
+                            sub.gradeLetter = body.gradeLetter;
+                            sub.teacherFeedback = body.teacherFeedback;
+                            sub.gradedBy = body.gradedBy || 'Teacher';
+                            sub.gradedAt = new Date().toISOString();
+                            sub.status = body.status || 'Graded';
+                            sub.rubricScores = body.rubricScores;
+                            
+                            // Update assignment gradedCount
+                            const assign = lmsAssignments.find(a => a.id === sub.assignmentId);
+                            if (assign) {
+                                assign.gradedCount = lmsSubmissions.filter(s => s.assignmentId === sub.assignmentId && s.score !== null && s.score !== undefined).length;
+                            }
+                            sendJson(200, sub);
+                        } else {
+                            sendJson(404, { error: 'Submission not found' });
+                        }
+                    });
+                    return;
+                }
+
+                // LMS Live Classes (Google Meet & Zoom)
+                if (path === '/api/lms/live-classes') {
+                    if (req.method === 'GET') {
+                        const urlObj = new URL(url, 'http://localhost');
+                        const classId = urlObj.searchParams.get('classId');
+                        const status = urlObj.searchParams.get('status');
+                        let filtered = [...lmsLiveClasses];
+                        if (classId) filtered = filtered.filter(c => c.classId === classId);
+                        if (status) filtered = filtered.filter(c => c.status === status);
+                        sendJson(200, filtered);
+                        return;
+                    }
+                    if (req.method === 'POST') {
+                        readBody(body => {
+                            const newLive = {
+                                id: `live-${Date.now()}`,
+                                ...body,
+                                attendeesCount: body.attendeesCount || 0,
+                                createdAt: new Date().toISOString()
+                            };
+                            lmsLiveClasses = [newLive, ...lmsLiveClasses];
+                            sendJson(201, newLive);
+                        });
+                        return;
+                    }
+                }
+
+                if (path.startsWith('/api/lms/live-classes/')) {
+                    const liveId = path.replace('/api/lms/live-classes/', '');
+                    if (req.method === 'PATCH' || req.method === 'PUT') {
+                        readBody(body => {
+                            const idx = lmsLiveClasses.findIndex(c => c.id === liveId);
+                            if (idx >= 0) {
+                                lmsLiveClasses[idx] = { ...lmsLiveClasses[idx], ...body };
+                                sendJson(200, lmsLiveClasses[idx]);
+                            } else {
+                                sendJson(404, { error: 'Live class not found' });
+                            }
+                        });
+                        return;
+                    }
+                    if (req.method === 'DELETE') {
+                        lmsLiveClasses = lmsLiveClasses.filter(c => c.id !== liveId);
+                        sendJson(200, { success: true });
+                        return;
+                    }
+                }
+
+                // EdTech News & Articles (Public & Super Admin)
+                if (path === '/api/edtech-news' || path === '/api/super-admin/edtech-news') {
+                    if (req.method === 'GET') {
+                        const urlObj = new URL(url, 'http://localhost');
+                        const status = urlObj.searchParams.get('status');
+                        const category = urlObj.searchParams.get('category');
+                        let results = [...edTechArticles];
+                        if (status) {
+                            results = results.filter(a => a.status === status);
+                        }
+                        if (category && category !== 'ALL') {
+                            results = results.filter(a => a.category.toLowerCase() === category.toLowerCase());
+                        }
+                        sendJson(200, results);
+                        return;
+                    }
+
+                    if (req.method === 'POST') {
+                        readBody(body => {
+                            const newArticle = {
+                                id: body.id || `article-${Date.now()}`,
+                                slug: body.slug || (body.title ? body.title.toLowerCase().replace(/[^a-z0-9]+/g, '-') : `article-${Date.now()}`),
+                                title: body.title || 'Untitled EdTech Article',
+                                category: body.category || 'CBC Curriculum',
+                                date: body.date || new Date().toLocaleDateString('en-KE', { month: 'long', day: 'numeric', year: 'numeric' }),
+                                readTime: body.readTime || '4 min read',
+                                excerpt: body.excerpt || '',
+                                author: body.author || 'SaasLink Editorial Board',
+                                authorRole: body.authorRole || 'Educational Research Division',
+                                authorAvatar: body.authorAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=150',
+                                coverImageUrl: body.coverImageUrl || 'https://images.unsplash.com/photo-1509062522246-3755977927d7?auto=format&fit=crop&q=80&w=1000',
+                                content: Array.isArray(body.content) ? body.content : [body.content || ''],
+                                tags: Array.isArray(body.tags) ? body.tags : [],
+                                status: body.status || 'PUBLISHED',
+                                featured: Boolean(body.featured),
+                                learningObjectives: Array.isArray(body.learningObjectives) ? body.learningObjectives : [],
+                                media: Array.isArray(body.media) ? body.media : [],
+                                viewsCount: body.viewsCount || 0,
+                                createdAt: new Date().toISOString(),
+                                updatedAt: new Date().toISOString()
+                            };
+                            edTechArticles = [newArticle, ...edTechArticles];
+                            sendJson(201, newArticle);
+                        });
+                        return;
+                    }
+                }
+
+                if (path.startsWith('/api/edtech-news/') || path.startsWith('/api/super-admin/edtech-news/')) {
+                    const articleId = path.split('/').pop();
+                    const isToggleStatus = path.endsWith('/toggle-status');
+                    const isToggleFeatured = path.endsWith('/toggle-featured');
+
+                    if (isToggleStatus) {
+                        const targetId = path.split('/')[4];
+                        const idx = edTechArticles.findIndex(a => a.id === targetId || a.slug === targetId);
+                        if (idx >= 0) {
+                            edTechArticles[idx].status = edTechArticles[idx].status === 'PUBLISHED' ? 'DRAFT' : 'PUBLISHED';
+                            edTechArticles[idx].updatedAt = new Date().toISOString();
+                            sendJson(200, edTechArticles[idx]);
+                        } else {
+                            sendJson(404, { error: 'Article not found' });
+                        }
+                        return;
+                    }
+
+                    if (isToggleFeatured) {
+                        const targetId = path.split('/')[4];
+                        const idx = edTechArticles.findIndex(a => a.id === targetId || a.slug === targetId);
+                        if (idx >= 0) {
+                            edTechArticles[idx].featured = !edTechArticles[idx].featured;
+                            edTechArticles[idx].updatedAt = new Date().toISOString();
+                            sendJson(200, edTechArticles[idx]);
+                        } else {
+                            sendJson(404, { error: 'Article not found' });
+                        }
+                        return;
+                    }
+
+                    if (req.method === 'GET') {
+                        const art = edTechArticles.find(a => a.id === articleId || a.slug === articleId);
+                        if (art) {
+                            art.viewsCount = (art.viewsCount || 0) + 1;
+                            sendJson(200, art);
+                        } else {
+                            sendJson(404, { error: 'Article not found' });
+                        }
+                        return;
+                    }
+
+                    if (req.method === 'PUT' || req.method === 'PATCH') {
+                        readBody(body => {
+                            const idx = edTechArticles.findIndex(a => a.id === articleId || a.slug === articleId);
+                            if (idx >= 0) {
+                                edTechArticles[idx] = {
+                                    ...edTechArticles[idx],
+                                    ...body,
+                                    updatedAt: new Date().toISOString()
+                                };
+                                sendJson(200, edTechArticles[idx]);
+                            } else {
+                                sendJson(404, { error: 'Article not found' });
+                            }
+                        });
+                        return;
+                    }
+
+                    if (req.method === 'DELETE') {
+                        edTechArticles = edTechArticles.filter(a => a.id !== articleId && a.slug !== articleId);
+                        sendJson(200, { success: true });
+                        return;
+                    }
                 }
 
                 // AI Financial Summary

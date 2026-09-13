@@ -11,7 +11,8 @@ import type {
     Exam, Grade, Transaction, Expense,
     NewStudent, NewStaff, NewTransaction, NewExpense, NewPayrollItem,
     NewAnnouncement, NewCommunicationLog, NewUser, NewGradingRule, NewFeeItem,
-    Book, NewBook
+    Book, NewBook,
+    LmsAssignment, LmsSubmission, LmsLiveClass
 } from '../types';
 import type { NavItem } from '../constants';
 import { NAVIGATION_ITEMS, TEACHER_NAVIGATION_ITEMS, PARENT_NAVIGATION_ITEMS, SUPER_ADMIN_NAVIGATION_ITEMS } from '../constants';
@@ -104,6 +105,20 @@ interface IDataContext {
     returnBook: (id: string) => Promise<any>;
     markBookLost: (id: string) => Promise<any>;
 
+    // LMS & Virtual Classrooms
+    lmsAssignments: LmsAssignment[];
+    lmsSubmissions: LmsSubmission[];
+    lmsLiveClasses: LmsLiveClass[];
+    refreshLms: () => Promise<void>;
+    addLmsAssignment: (data: Partial<LmsAssignment>) => Promise<LmsAssignment>;
+    updateLmsAssignment: (id: string, data: Partial<LmsAssignment>) => Promise<LmsAssignment>;
+    deleteLmsAssignment: (id: string) => Promise<any>;
+    submitLmsAssignment: (data: Partial<LmsSubmission>) => Promise<LmsSubmission>;
+    gradeLmsSubmission: (id: string, data: { score: number; gradeLetter: string; teacherFeedback?: string; gradedBy?: string; rubricScores?: any[] }) => Promise<LmsSubmission>;
+    addLmsLiveClass: (data: Partial<LmsLiveClass>) => Promise<LmsLiveClass>;
+    updateLmsLiveClass: (id: string, data: Partial<LmsLiveClass>) => Promise<LmsLiveClass>;
+    deleteLmsLiveClass: (id: string) => Promise<any>;
+
     // Batch update actions
     updateClasses: (data: SchoolClass[]) => Promise<any>;
     updateSubjects: (data: any[]) => Promise<any>;
@@ -157,6 +172,92 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [feeStructure, setFeeStructure] = useState<FeeItem[]>([]);
     const [users, setUsers] = useState<User[]>([]);
 
+    const [lmsAssignments, setLmsAssignments] = useState<LmsAssignment[]>([]);
+    const [lmsSubmissions, setLmsSubmissions] = useState<LmsSubmission[]>([]);
+    const [lmsLiveClasses, setLmsLiveClasses] = useState<LmsLiveClass[]>([]);
+
+    const refreshLms = useCallback(async () => {
+        try {
+            const [assigns, subs, lives] = await Promise.all([
+                api.getLmsAssignments().catch(() => []),
+                api.getLmsSubmissions().catch(() => []),
+                api.getLmsLiveClasses().catch(() => [])
+            ]);
+            setLmsAssignments(assigns || []);
+            setLmsSubmissions(subs || []);
+            setLmsLiveClasses(lives || []);
+        } catch (e) {
+            console.error("Context Error: Failed to refresh LMS data", e);
+        }
+    }, []);
+
+    const handleAddLmsAssignment = useCallback(async (data: Partial<LmsAssignment>) => {
+        const res = await api.createLmsAssignment(data);
+        setLmsAssignments(prev => [res, ...prev]);
+        return res;
+    }, []);
+
+    const handleUpdateLmsAssignment = useCallback(async (id: string, data: Partial<LmsAssignment>) => {
+        const res = await api.updateLmsAssignment(id, data);
+        setLmsAssignments(prev => prev.map(a => a.id === id ? res : a));
+        return res;
+    }, []);
+
+    const handleDeleteLmsAssignment = useCallback(async (id: string) => {
+        await api.deleteLmsAssignment(id);
+        setLmsAssignments(prev => prev.filter(a => a.id !== id));
+        setLmsSubmissions(prev => prev.filter(s => s.assignmentId !== id));
+    }, []);
+
+    const handleSubmitLmsAssignment = useCallback(async (data: Partial<LmsSubmission>) => {
+        const res = await api.submitLmsAssignment(data);
+        setLmsSubmissions(prev => {
+            const idx = prev.findIndex(s => s.id === res.id);
+            if (idx >= 0) {
+                const copy = [...prev];
+                copy[idx] = res;
+                return copy;
+            }
+            return [res, ...prev];
+        });
+        setLmsAssignments(prev => prev.map(a => {
+            if (a.id === res.assignmentId) {
+                return { ...a, submittedCount: (a.submittedCount || 0) + 1 };
+            }
+            return a;
+        }));
+        return res;
+    }, []);
+
+    const handleGradeLmsSubmission = useCallback(async (id: string, data: { score: number; gradeLetter: string; teacherFeedback?: string; gradedBy?: string; rubricScores?: any[] }) => {
+        const res = await api.gradeLmsSubmission(id, data);
+        setLmsSubmissions(prev => prev.map(s => s.id === id ? res : s));
+        setLmsAssignments(prev => prev.map(a => {
+            if (a.id === res.assignmentId) {
+                return { ...a, gradedCount: (a.gradedCount || 0) + 1 };
+            }
+            return a;
+        }));
+        return res;
+    }, []);
+
+    const handleAddLmsLiveClass = useCallback(async (data: Partial<LmsLiveClass>) => {
+        const res = await api.createLmsLiveClass(data);
+        setLmsLiveClasses(prev => [res, ...prev]);
+        return res;
+    }, []);
+
+    const handleUpdateLmsLiveClass = useCallback(async (id: string, data: Partial<LmsLiveClass>) => {
+        const res = await api.updateLmsLiveClass(id, data);
+        setLmsLiveClasses(prev => prev.map(c => c.id === id ? res : c));
+        return res;
+    }, []);
+
+    const handleDeleteLmsLiveClass = useCallback(async (id: string) => {
+        await api.deleteLmsLiveClass(id);
+        setLmsLiveClasses(prev => prev.filter(c => c.id !== id));
+    }, []);
+
     const studentFinancials = useMemo(() => {
         const financials: Record<string, { balance: number, lastPaymentDate?: string }> = {};
         students.forEach(s => {
@@ -203,7 +304,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setTransactions(data[2]);
             setExpenses(data[3]);
             setStaff(data[4]);
-            setPayrollHistory(data[5]);
+            setPayrollHistory(Array.isArray(data[5]) ? data[5] : (Array.isArray(data[5]?.data) ? data[5].data : []));
             setSubjects(data[6]);
             setClasses(data[7]);
             setClassSubjectAssignments(data[8]);
@@ -218,6 +319,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setAnnouncements(data[18]);
             setSchoolInfo(data[19]);
             setDarajaSettings(data[20]);
+
+            await refreshLms();
 
             if (user.role === Role.Teacher) {
                 const myClass = (data[7] || []).find((c: any) => c.formTeacherId === user.id);
@@ -348,6 +451,21 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         issueBook: api.issueBook,
         returnBook: api.returnBook,
         markBookLost: api.markBookLost,
+
+        // LMS & Virtual Classrooms
+        lmsAssignments,
+        lmsSubmissions,
+        lmsLiveClasses,
+        refreshLms,
+        addLmsAssignment: handleAddLmsAssignment,
+        updateLmsAssignment: handleUpdateLmsAssignment,
+        deleteLmsAssignment: handleDeleteLmsAssignment,
+        submitLmsAssignment: handleSubmitLmsAssignment,
+        gradeLmsSubmission: handleGradeLmsSubmission,
+        addLmsLiveClass: handleAddLmsLiveClass,
+        updateLmsLiveClass: handleUpdateLmsLiveClass,
+        deleteLmsLiveClass: handleDeleteLmsLiveClass,
+
         updateClasses: (d) => api.updateClasses(d),
         updateSubjects: (d) => api.updateSubjects(d),
         updateAssignments: (d) => api.updateAssignments(d),

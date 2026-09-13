@@ -46,6 +46,7 @@ import Skeleton from '../components/common/Skeleton';
 import Spinner from '../components/common/Spinner';
 import * as api from '../services/api';
 import { sendParentWelcomeEmail } from '../services/emailService';
+import { optimizeImage } from '../utils/imageOptimizer';
 
 const DEFAULT_AVATAR = 'https://i.imgur.com/S5o7W44.png';
 
@@ -596,24 +597,30 @@ const StudentsView: React.FC = () => {
         onError: (e: any) => addNotification(e.message || 'Enrollment rejected.', 'error')
     });
 
-    const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
-            const formData = new FormData();
-            formData.append('file', file);
-            api.uploadStudentPhoto(formData)
-                .then(res => {
-                    setNewStudent((prev: any) => ({ ...prev, profileImage: res.url }));
-                    addNotification('Photo uploaded successfully.', 'success');
-                })
-                .catch(() => {
-                    // Fallback to local FileReader if upload fails
-                    const reader = new FileReader();
-                    reader.onload = (uploadEvent) => {
-                        setNewStudent((prev: any) => ({ ...prev, profileImage: uploadEvent.target?.result as string }));
-                    };
-                    reader.readAsDataURL(file);
-                });
+            try {
+                // Resize and compress portrait to 400x400 WebP for minimal VPS disk space
+                const optimized = await optimizeImage(file, { preset: 'avatar', maxWidth: 400, maxHeight: 400 });
+                const formData = new FormData();
+                formData.append('file', optimized.file);
+                formData.append('dataUrl', optimized.dataUrl);
+
+                api.uploadStudentPhoto(formData)
+                    .then(res => {
+                        const photoUrl = res?.url && !res.url.includes('undefined') ? res.url : optimized.dataUrl;
+                        setNewStudent((prev: any) => ({ ...prev, profileImage: photoUrl }));
+                        addNotification(`Portrait optimized for VPS storage (${optimized.formattedStats}) and uploaded!`, 'success');
+                    })
+                    .catch(() => {
+                        // Fallback to optimized dataUrl if upload fails
+                        setNewStudent((prev: any) => ({ ...prev, profileImage: optimized.dataUrl }));
+                        addNotification(`Portrait resized (${optimized.formattedStats}) and saved locally.`, 'info');
+                    });
+            } catch (err: any) {
+                addNotification('Error optimizing portrait: ' + (err?.message || 'Please choose another photo'), 'error');
+            }
         }
     };
 

@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Download, FileSpreadsheet, FileText } from 'lucide-react';
+import { Download, FileSpreadsheet, FileText, Printer, Calendar, Calculator, Sparkles, CheckCircle2, AlertCircle, Info, RefreshCw, FileCheck } from 'lucide-react';
 import Modal from '../components/common/Modal';
 import WebcamCaptureModal from '../components/common/WebcamCaptureModal';
 import Pagination from '../components/common/Pagination';
@@ -11,6 +11,7 @@ import { PayrollItemType, PayrollItemCategory, CalculationType, Role } from '../
 import { useData } from '../contexts/DataContext';
 import * as api from '../services/api';
 import { generateStaffCSV, generateStaffPDF, triggerDownload } from '../services/exportService';
+import { optimizeImage } from '../utils/imageOptimizer';
 
 const DEFAULT_AVATAR = 'https://i.imgur.com/S5o7W44.png';
 
@@ -124,6 +125,9 @@ const StaffAndPayrollView: React.FC = () => {
     const [isPayslipModalOpen, setIsPayslipModalOpen] = useState(false);
     const [isStaffCaptureModalOpen, setIsStaffCaptureModalOpen] = useState(false);
     const [isP9ModalOpen, setIsP9ModalOpen] = useState(false);
+    const [p9Year, setP9Year] = useState<number>(new Date().getFullYear());
+    const [p9ProjectionMode, setP9ProjectionMode] = useState<boolean>(false);
+    const [isSimulatingYear, setIsSimulatingYear] = useState<boolean>(false);
     
     const [editingStaff, setEditingStaff] = useState<Staff | null>(null);
     const [editingItem, setEditingItem] = useState<PayrollItem | null>(null);
@@ -172,14 +176,28 @@ const StaffAndPayrollView: React.FC = () => {
     });
     
     // 4. Fetch P9 Data (On Demand)
-    const { data: p9Data = [] } = useQuery({
+    const { data: p9RawResponse, isLoading: isP9Loading } = useQuery({
         queryKey: ['p9-history', selectedStaffForP9?.id],
-        queryFn: () => selectedStaffForP9 ? api.getPayrollHistory({ staffId: selectedStaffForP9.id, limit: 50 }).then(res => res.data) : Promise.resolve([]),
+        queryFn: async () => {
+            if (!selectedStaffForP9) return [];
+            const res = await api.getPayrollHistory({ staffId: selectedStaffForP9.id, limit: 100 });
+            if (Array.isArray(res)) return res;
+            if (Array.isArray(res?.data)) return res.data;
+            return [];
+        },
         enabled: !!selectedStaffForP9 && isP9ModalOpen
     });
     
-    const payrollHistory = historyData?.data || [];
-    const historyTotalPages = historyData?.last_page || 1;
+    const payrollHistory: Payroll[] = Array.isArray(historyData) 
+        ? historyData 
+        : (Array.isArray(historyData?.data) ? historyData.data : []);
+    const historyTotalPages = historyData?.last_page || (Array.isArray(historyData) ? Math.max(1, Math.ceil(historyData.length / 10)) : 1);
+
+    const p9HistoryRecords: Payroll[] = useMemo(() => {
+        if (Array.isArray(p9RawResponse)) return p9RawResponse;
+        if (Array.isArray((p9RawResponse as any)?.data)) return (p9RawResponse as any).data;
+        return [];
+    }, [p9RawResponse]);
 
     // --- Mutations ---
 
@@ -227,15 +245,26 @@ const StaffAndPayrollView: React.FC = () => {
         }
     };
     
-    const handleStaffPhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleStaffPhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files?.[0]) {
-            const formData = new FormData();
-            formData.append('file', e.target.files[0]);
-            api.uploadStaffPhoto(formData).then(res => { 
-                 setStaffPhotoUrl(res.url); 
-            }).catch(() => {
-                addNotification('Failed to upload photo', 'error');
-            });
+            try {
+                // Resize staff photo to 400x400 WebP for minimal VPS disk footprint
+                const optimized = await optimizeImage(e.target.files[0], { preset: 'avatar', maxWidth: 400, maxHeight: 400 });
+                const formData = new FormData();
+                formData.append('file', optimized.file);
+                formData.append('dataUrl', optimized.dataUrl);
+
+                api.uploadStaffPhoto(formData).then(res => { 
+                    const finalUrl = res?.url && !res.url.includes('undefined') ? res.url : optimized.dataUrl;
+                    setStaffPhotoUrl(finalUrl);
+                    addNotification(`Staff photo resized (${optimized.formattedStats}) and uploaded!`, 'success');
+                }).catch(() => {
+                    setStaffPhotoUrl(optimized.dataUrl);
+                    addNotification(`Staff photo resized (${optimized.formattedStats}) and saved locally.`, 'info');
+                });
+            } catch (err: any) {
+                addNotification('Failed to optimize photo: ' + (err?.message || 'Error processing file'), 'error');
+            }
         }
     };
     
@@ -314,28 +343,340 @@ const StaffAndPayrollView: React.FC = () => {
     
     const openP9Modal = (staffMember: Staff) => {
         setSelectedStaffForP9(staffMember);
+        setP9Year(new Date().getFullYear());
+        setP9ProjectionMode(false);
         setIsP9ModalOpen(true);
     };
     
     const staffMemberForPayslip = selectedPayroll ? staffList.find((s:Staff) => s.id === selectedPayroll.staffId) : null;
     
-    const p9Aggregates = useMemo(() => {
-        if(!p9Data.length) return null;
-        const year = new Date().getFullYear();
-        const yearData = p9Data.filter((p:any) => new Date(p.payDate).getFullYear() === year);
-        yearData.sort((a:any,b:any) => new Date(a.payDate).getTime() - new Date(b.payDate).getTime());
+    const MONTH_NAMES = [
+        'January', 'February', 'March', 'April', 'May', 'June',
+        'July', 'August', 'September', 'October', 'November', 'December'
+    ];
 
-        const totals = yearData.reduce((acc:any, curr:any) => ({
-            basic: acc.basic + (curr.earnings.find((e:any) => e.name === 'Basic Salary')?.amount || 0),
-            gross: acc.gross + curr.grossPay,
-            paye: acc.paye + (curr.deductions.find((d:any) => d.name === 'PAYE')?.amount || 0),
-            nssf: acc.nssf + (curr.deductions.find((d:any) => d.name === 'NSSF')?.amount || 0),
-            sha: acc.sha + (curr.deductions.find((d:any) => d.name === 'SHA')?.amount || 0),
-            levy: acc.levy + (curr.deductions.find((d:any) => d.name === 'Levy')?.amount || 0),
-        }), { basic: 0, gross: 0, paye: 0, nssf: 0, sha: 0, levy: 0 });
+    const calculateKraMonthlyTax = (taxablePay: number): number => {
+        if (taxablePay <= 0) return 0;
+        let tax = 0;
+        let rem = taxablePay;
 
-        return { yearData, totals };
-    }, [p9Data]);
+        // Band 1: First 24,000 @ 10%
+        const b1 = Math.min(rem, 24000);
+        tax += b1 * 0.10;
+        rem -= b1;
+
+        // Band 2: Next 8,333.33 @ 25% (24,001 - 32,333)
+        if (rem > 0) {
+            const b2 = Math.min(rem, 8333.33);
+            tax += b2 * 0.25;
+            rem -= b2;
+        }
+
+        // Band 3: Next 467,666.67 @ 30% (32,334 - 500,000)
+        if (rem > 0) {
+            const b3 = Math.min(rem, 467666.67);
+            tax += b3 * 0.30;
+            rem -= b3;
+        }
+
+        // Band 4: Next 300,000 @ 32.5% (500,001 - 800,000)
+        if (rem > 0) {
+            const b4 = Math.min(rem, 300000);
+            tax += b4 * 0.325;
+            rem -= b4;
+        }
+
+        // Band 5: Over 800,000 @ 35%
+        if (rem > 0) {
+            tax += rem * 0.35;
+        }
+
+        return Math.round(tax);
+    };
+
+    const p9Rows = useMemo(() => {
+        if (!selectedStaffForP9) return [];
+        const baseSalary = Number(selectedStaffForP9.salary) || 0;
+
+        // Filter records for this staff & year
+        const yearRecords = p9HistoryRecords.filter((p: any) => {
+            if (p.staffId !== selectedStaffForP9.id) return false;
+            if (p.payDate) {
+                const yr = new Date(p.payDate).getFullYear();
+                if (yr === p9Year) return true;
+            }
+            if (p.month && p.month.includes(String(p9Year))) return true;
+            return false;
+        });
+
+        const hasAnyRecords = yearRecords.length > 0;
+        const useProjection = p9ProjectionMode || (!hasAnyRecords && baseSalary > 0);
+
+        return MONTH_NAMES.map((monthName, idx) => {
+            const rec = yearRecords.find((p: any) => {
+                if (p.month && p.month.toLowerCase().startsWith(monthName.toLowerCase())) return true;
+                if (p.payDate) {
+                    const d = new Date(p.payDate);
+                    return !isNaN(d.getTime()) && d.getMonth() === idx;
+                }
+                return false;
+            });
+
+            if (rec) {
+                const basic = rec.earnings?.find((e: any) => e.name?.toLowerCase().includes('basic'))?.amount || rec.grossPay || 0;
+                const benefits = 0;
+                const allowances = Math.max(0, (rec.grossPay || 0) - basic);
+                const gross = rec.grossPay || (basic + allowances);
+                const e1 = Math.round(basic * 0.3);
+                const actualNssf = rec.deductions?.find((d: any) => d.name?.toLowerCase().includes('nssf'))?.amount || 0;
+                const e2 = actualNssf;
+                const e3 = 20000;
+                const interest = 0;
+                const allowableDeduction = Math.min(e1, e2, e3) + interest;
+                const taxablePay = Math.max(0, gross - allowableDeduction);
+                const paye = rec.deductions?.find((d: any) => d.name?.toLowerCase().includes('paye'))?.amount || 0;
+                const sha = rec.deductions?.find((d: any) => d.name?.toLowerCase().includes('sha') || d.name?.toLowerCase().includes('nhif'))?.amount || 0;
+                const levy = rec.deductions?.find((d: any) => d.name?.toLowerCase().includes('levy') || d.name?.toLowerCase().includes('housing'))?.amount || 0;
+                const personalRelief = 2400;
+                const insuranceRelief = Math.round(sha * 0.15);
+                const totalRelief = personalRelief + insuranceRelief;
+                const taxCharged = paye + totalRelief;
+
+                return {
+                    month: monthName,
+                    monthIndex: idx,
+                    hasRecord: true,
+                    isProjected: false,
+                    basic,
+                    benefits,
+                    allowances,
+                    gross,
+                    e1,
+                    e2,
+                    e3,
+                    interest,
+                    allowableDeduction,
+                    taxablePay,
+                    taxCharged,
+                    totalRelief,
+                    paye,
+                    sha,
+                    levy,
+                    netPay: rec.netPay || (gross - (rec.totalDeductions || (paye + e2 + sha + levy)))
+                };
+            }
+
+            if (useProjection && baseSalary > 0) {
+                const basic = baseSalary;
+                const benefits = 0;
+                const allowances = 0;
+                const gross = basic;
+                const e1 = Math.round(basic * 0.3);
+                const e2 = Math.min(2160, Math.round(gross * 0.06));
+                const e3 = 20000;
+                const interest = 0;
+                const allowableDeduction = Math.min(e1, e2, e3) + interest;
+                const taxablePay = Math.max(0, gross - allowableDeduction);
+                const taxCharged = calculateKraMonthlyTax(taxablePay);
+                const sha = Math.max(300, Math.round(gross * 0.0275));
+                const levy = Math.round(gross * 0.015);
+                const personalRelief = 2400;
+                const insuranceRelief = Math.round(sha * 0.15);
+                const totalRelief = personalRelief + insuranceRelief;
+                const paye = Math.max(0, taxCharged - totalRelief);
+                const totalDeductions = paye + e2 + sha + levy;
+                const netPay = gross - totalDeductions;
+
+                return {
+                    month: monthName,
+                    monthIndex: idx,
+                    hasRecord: false,
+                    isProjected: true,
+                    basic,
+                    benefits,
+                    allowances,
+                    gross,
+                    e1,
+                    e2,
+                    e3,
+                    interest,
+                    allowableDeduction,
+                    taxablePay,
+                    taxCharged,
+                    totalRelief,
+                    paye,
+                    sha,
+                    levy,
+                    netPay
+                };
+            }
+
+            return {
+                month: monthName,
+                monthIndex: idx,
+                hasRecord: false,
+                isProjected: false,
+                basic: 0,
+                benefits: 0,
+                allowances: 0,
+                gross: 0,
+                e1: 0,
+                e2: 0,
+                e3: 20000,
+                interest: 0,
+                allowableDeduction: 0,
+                taxablePay: 0,
+                taxCharged: 0,
+                totalRelief: 0,
+                paye: 0,
+                sha: 0,
+                levy: 0,
+                netPay: 0
+            };
+        });
+    }, [selectedStaffForP9, p9HistoryRecords, p9Year, p9ProjectionMode]);
+
+    const p9Totals = useMemo(() => {
+        return p9Rows.reduce((acc, r) => ({
+            basic: acc.basic + r.basic,
+            benefits: acc.benefits + r.benefits,
+            allowances: acc.allowances + r.allowances,
+            gross: acc.gross + r.gross,
+            e1: acc.e1 + r.e1,
+            e2: acc.e2 + r.e2,
+            e3: acc.e3 + r.e3,
+            interest: acc.interest + r.interest,
+            allowableDeduction: acc.allowableDeduction + r.allowableDeduction,
+            taxablePay: acc.taxablePay + r.taxablePay,
+            taxCharged: acc.taxCharged + r.taxCharged,
+            totalRelief: acc.totalRelief + r.totalRelief,
+            paye: acc.paye + r.paye,
+            sha: acc.sha + r.sha,
+            levy: acc.levy + r.levy,
+            netPay: acc.netPay + r.netPay
+        }), {
+            basic: 0, benefits: 0, allowances: 0, gross: 0, e1: 0, e2: 0, e3: 0,
+            interest: 0, allowableDeduction: 0, taxablePay: 0, taxCharged: 0,
+            totalRelief: 0, paye: 0, sha: 0, levy: 0, netPay: 0
+        });
+    }, [p9Rows]);
+
+    const hasRecordedPayrollForYear = useMemo(() => {
+        return p9Rows.some(r => r.hasRecord);
+    }, [p9Rows]);
+
+    const handleSimulate12Months = async () => {
+        if (!selectedStaffForP9) return;
+        setIsSimulatingYear(true);
+        try {
+            const simulatedPayroll: Payroll[] = p9Rows.map(r => ({
+                id: `pr-${selectedStaffForP9.id}-${p9Year}-${r.monthIndex + 1}`,
+                staffId: selectedStaffForP9.id,
+                staffName: selectedStaffForP9.name,
+                month: `${r.month} ${p9Year}`,
+                payDate: `${p9Year}-${String(r.monthIndex + 1).padStart(2, '0')}-28`,
+                grossPay: r.gross,
+                totalDeductions: r.paye + r.e2 + r.sha + r.levy,
+                netPay: r.netPay,
+                earnings: [
+                    { name: 'Basic Salary', amount: r.basic }
+                ],
+                deductions: [
+                    { name: 'PAYE', amount: r.paye },
+                    { name: 'NSSF', amount: r.e2 },
+                    { name: 'SHA', amount: r.sha },
+                    { name: 'Affordable Housing Levy', amount: r.levy }
+                ]
+            }));
+            await api.savePayrollRun(simulatedPayroll);
+            queryClient.invalidateQueries({ queryKey: ['payroll-history'] });
+            queryClient.invalidateQueries({ queryKey: ['p9-history', selectedStaffForP9.id] });
+            addNotification(`Successfully saved 12 payroll entries for ${selectedStaffForP9.name} (${p9Year})!`, 'success');
+        } catch (err: any) {
+            addNotification(`Failed to simulate payroll: ${err.message}`, 'error');
+        } finally {
+            setIsSimulatingYear(false);
+        }
+    };
+
+    const handleExportP9CSV = () => {
+        if (!selectedStaffForP9 || !schoolInfo) return;
+        const headers = [
+            'Month',
+            'Basic Salary (Col A)',
+            'Benefits Non-Cash (Col B)',
+            'Value of Quarters (Col C)',
+            'Total Gross Pay (Col D)',
+            'Defined Contribution 30% (Col E1)',
+            'Actual Pension/NSSF (Col E2)',
+            'Fixed Limit (Col E3)',
+            'Mortgage Interest (Col F)',
+            'Allowable Deduction (Col G)',
+            'Taxable Pay (Col H)',
+            'Tax Charged (Col J)',
+            'Total Relief (Col K)',
+            'P.A.Y.E Tax (Col L)',
+            'SHA (Col M)',
+            'Housing Levy (Col N)',
+            'Net Pay'
+        ];
+
+        const rows = p9Rows.map(r => [
+            r.month,
+            r.basic,
+            r.benefits,
+            r.allowances,
+            r.gross,
+            r.e1,
+            r.e2,
+            r.e3,
+            r.interest,
+            r.allowableDeduction,
+            r.taxablePay,
+            r.taxCharged,
+            r.totalRelief,
+            r.paye,
+            r.sha,
+            r.levy,
+            r.netPay
+        ]);
+
+        const totalRow = [
+            'TOTALS',
+            p9Totals.basic,
+            p9Totals.benefits,
+            p9Totals.allowances,
+            p9Totals.gross,
+            p9Totals.e1,
+            p9Totals.e2,
+            p9Totals.e3,
+            p9Totals.interest,
+            p9Totals.allowableDeduction,
+            p9Totals.taxablePay,
+            p9Totals.taxCharged,
+            p9Totals.totalRelief,
+            p9Totals.paye,
+            p9Totals.sha,
+            p9Totals.levy,
+            p9Totals.netPay
+        ];
+
+        const csvContent = [
+            `"KENYA REVENUE AUTHORITY - DOMESTIC TAXES DEPARTMENT"`,
+            `"TAX DEDUCTION CARD (P9A) - YEAR ${p9Year}"`,
+            `"Employer Name:","${schoolInfo.name}","Employer PIN:","${schoolInfo.taxPin || 'P051234567Z'}"`,
+            `"Employee Name:","${selectedStaffForP9.name}","Employee PIN:","${selectedStaffForP9.kraPin || 'A000000000Z'}"`,
+            '',
+            headers.map(h => `"${h}"`).join(','),
+            ...rows.map(row => row.join(',')),
+            totalRow.join(',')
+        ].join('\n');
+
+        const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+        const filename = `${schoolInfo.schoolCode || 'School'}_P9A_${selectedStaffForP9.name.replace(/\s+/g, '_')}_${p9Year}.csv`;
+        triggerDownload(blob, filename);
+        addNotification(`P9 Tax Deduction Card downloaded for ${selectedStaffForP9.name}.`, 'success');
+    };
 
     if (!schoolInfo) return null;
     
@@ -663,67 +1004,288 @@ const StaffAndPayrollView: React.FC = () => {
                      </div>
                  </Modal>
             )}
-             {isP9ModalOpen && selectedStaffForP9 && p9Aggregates && (
-                <Modal isOpen={isP9ModalOpen} onClose={() => setIsP9ModalOpen(false)} title={`P9 Form: ${selectedStaffForP9.name}`} size="2xl" footer={<button onClick={() => window.print()} className="px-4 py-2 bg-slate-600 text-white rounded no-print">Print</button>}>
-                     <div className="printable-area p-4 border border-slate-200 rounded-lg bg-white">
-                        <h2 className="text-center font-bold text-xl uppercase">P9 A - Tax Deduction Card {new Date().getFullYear()}</h2>
-                        <div className="my-4 text-sm grid grid-cols-2 gap-4">
-                            <div>
-                                <p><strong>Employer Name:</strong> {schoolInfo.name}</p>
-                                <p><strong>Employer PIN:</strong> P000000000A</p>
+             {isP9ModalOpen && selectedStaffForP9 && (
+                <Modal 
+                    isOpen={isP9ModalOpen} 
+                    onClose={() => setIsP9ModalOpen(false)} 
+                    title={`P9A Tax Deduction Card: ${selectedStaffForP9.name}`} 
+                    size="5xl"
+                    footer={
+                        <div className="flex flex-wrap items-center justify-between gap-3 w-full no-print">
+                            <div className="flex items-center gap-2 text-xs text-slate-500">
+                                <Info className="h-4 w-4 text-primary-600 shrink-0" />
+                                <span>Official KRA Form P9A standard format. Ready for annual tax filing.</span>
                             </div>
-                            <div>
-                                <p><strong>Employee Name:</strong> {selectedStaffForP9.name}</p>
-                                <p><strong>Employee PIN:</strong> {selectedStaffForP9.kraPin}</p>
+                            <div className="flex items-center gap-2">
+                                <button 
+                                    type="button"
+                                    onClick={handleExportP9CSV} 
+                                    className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-sm font-medium flex items-center gap-1.5 transition-colors"
+                                >
+                                    <FileSpreadsheet className="h-4 w-4 text-emerald-600" />
+                                    <span>Export CSV</span>
+                                </button>
+                                <button 
+                                    type="button"
+                                    onClick={() => window.print()} 
+                                    className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg text-sm font-medium flex items-center gap-1.5 shadow-sm transition-colors"
+                                >
+                                    <Printer className="h-4 w-4" />
+                                    <span>Print P9 Card</span>
+                                </button>
+                                <button 
+                                    type="button"
+                                    onClick={() => setIsP9ModalOpen(false)} 
+                                    className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg text-sm font-medium transition-colors"
+                                >
+                                    Close
+                                </button>
                             </div>
                         </div>
-                        <table className="w-full text-left text-xs table-auto border-collapse border border-slate-400">
-                            <thead className="bg-slate-100">
-                                <tr className="border border-slate-400 text-center font-bold">
-                                    <th className="p-1 border border-slate-400">Month</th>
-                                    <th className="p-1 border border-slate-400">Basic Pay</th>
-                                    <th className="p-1 border border-slate-400">Benefits</th>
-                                    <th className="p-1 border border-slate-400">Gross Pay</th>
-                                    <th className="p-1 border border-slate-400">PAYE</th>
-                                    <th className="p-1 border border-slate-400">NSSF</th>
-                                    <th className="p-1 border border-slate-400">SHA</th>
-                                    <th className="p-1 border border-slate-400">Housing Levy</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {p9Aggregates.yearData.map((p:any) => {
-                                    const basic = p.earnings.find((e:any) => e.name === 'Basic Salary')?.amount || 0;
-                                    const benefits = p.grossPay - basic;
-                                    const paye = p.deductions.find((d:any) => d.name === 'PAYE')?.amount || 0;
-                                    const nssf = p.deductions.find((d:any) => d.name === 'NSSF')?.amount || 0;
-                                    const sha = p.deductions.find((d:any) => d.name === 'SHA')?.amount || 0;
-                                    const levy = p.deductions.find((d:any) => d.name === 'Levy')?.amount || 0;
+                    }
+                >
+                    <div className="space-y-4">
+                        {/* Interactive Controls (Hidden on Print) */}
+                        <div className="no-print bg-slate-50 p-4 rounded-xl border border-slate-200 flex flex-wrap items-center justify-between gap-4">
+                            <div className="flex flex-wrap items-center gap-3">
+                                <div className="flex items-center gap-2">
+                                    <Calendar className="h-4 w-4 text-slate-500" />
+                                    <span className="text-sm font-semibold text-slate-700">Tax Year:</span>
+                                    <select 
+                                        value={p9Year} 
+                                        onChange={(e) => setP9Year(Number(e.target.value))}
+                                        className="px-3 py-1.5 bg-white border border-slate-300 rounded-lg text-sm font-bold text-slate-800 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                                    >
+                                        {[2027, 2026, 2025, 2024, 2023].map((yr) => (
+                                            <option key={yr} value={yr}>{yr}</option>
+                                        ))}
+                                    </select>
+                                </div>
 
-                                    return (
-                                        <tr key={p.id} className="border border-slate-400 text-right">
-                                            <td className="p-1 border border-slate-400 text-left">{p.month.split(' ')[0]}</td>
-                                            <td className="p-1 border border-slate-400">{formatCurrency(basic)}</td>
-                                            <td className="p-1 border border-slate-400">{formatCurrency(benefits)}</td>
-                                            <td className="p-1 border border-slate-400 font-bold">{formatCurrency(p.grossPay)}</td>
-                                            <td className="p-1 border border-slate-400">{formatCurrency(paye)}</td>
-                                            <td className="p-1 border border-slate-400">{formatCurrency(nssf)}</td>
-                                            <td className="p-1 border border-slate-400">{formatCurrency(sha)}</td>
-                                            <td className="p-1 border border-slate-400">{formatCurrency(levy)}</td>
+                                <div className="h-5 w-px bg-slate-300 hidden sm:block" />
+
+                                <div className="flex items-center gap-1 bg-white p-1 rounded-lg border border-slate-200 text-xs">
+                                    <button 
+                                        type="button"
+                                        onClick={() => setP9ProjectionMode(false)}
+                                        className={`px-3 py-1 rounded-md font-medium transition-colors ${!p9ProjectionMode ? 'bg-primary-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'}`}
+                                    >
+                                        {hasRecordedPayrollForYear ? 'Actual Processed Payroll' : 'Actual (Empty)'}
+                                    </button>
+                                    <button 
+                                        type="button"
+                                        onClick={() => setP9ProjectionMode(true)}
+                                        className={`px-3 py-1 rounded-md font-medium transition-colors flex items-center gap-1 ${p9ProjectionMode ? 'bg-primary-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'}`}
+                                    >
+                                        <Sparkles className="h-3 w-3" />
+                                        <span>Contract Annual Projection</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                                {!hasRecordedPayrollForYear && (
+                                    <button
+                                        type="button"
+                                        onClick={handleSimulate12Months}
+                                        disabled={isSimulatingYear}
+                                        className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-xs"
+                                        title="Generates 12 monthly payroll records for this year based on the contract and saves them to the database"
+                                    >
+                                        <RefreshCw className={`h-3.5 w-3.5 ${isSimulatingYear ? 'animate-spin' : ''}`} />
+                                        <span>{isSimulatingYear ? 'Saving Records...' : 'Save 12-Month Records to DB'}</span>
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Informational Banner if no records recorded */}
+                        {!hasRecordedPayrollForYear && (
+                            <div className="no-print p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-3">
+                                <AlertCircle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+                                <div className="text-xs text-amber-800">
+                                    <p className="font-semibold">No processed payroll history found for {selectedStaffForP9.name} in {p9Year}.</p>
+                                    <p className="mt-0.5 text-amber-700">
+                                        Displaying the statutory 12-month P9 projection calculated from active contracted salary ({formatCurrency(selectedStaffForP9.salary || 0)}/mo). Click <strong>"Save 12-Month Records to DB"</strong> above to record these entries into the payroll history.
+                                    </p>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Printable Area - Form P9A */}
+                        <div className="printable-area p-6 bg-white border border-slate-300 rounded-xl text-slate-900 font-sans shadow-xs">
+                            {/* Official KRA Header */}
+                            <div className="text-center border-b-2 border-slate-900 pb-3">
+                                <div className="inline-block px-3 py-1 bg-emerald-800 text-white text-xs font-bold tracking-widest rounded-md uppercase mb-1.5">
+                                    KENYA REVENUE AUTHORITY
+                                </div>
+                                <p className="text-xs font-semibold uppercase tracking-wider text-slate-600">DOMESTIC TAXES DEPARTMENT</p>
+                                <h2 className="text-lg font-black uppercase tracking-tight text-slate-900 mt-0.5">
+                                    TAX DEDUCTION CARD YEAR {p9Year} (FORM P9A - PRIMARY)
+                                </h2>
+                            </div>
+
+                            {/* Employer & Employee Particulars Box */}
+                            <div className="my-4 border border-slate-800 rounded-lg overflow-hidden text-xs">
+                                <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-slate-800 bg-slate-50/50">
+                                    <div className="p-3 space-y-1.5">
+                                        <div className="flex justify-between">
+                                            <span className="font-bold text-slate-600">Employer's Name:</span>
+                                            <span className="font-bold text-slate-900">{schoolInfo.name}</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span className="font-bold text-slate-600">Employer's PIN:</span>
+                                            <span className="font-mono font-bold text-slate-900">{schoolInfo.taxPin || 'P051234567Z'}</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span className="font-bold text-slate-600">School Code:</span>
+                                            <span className="font-mono text-slate-700">{schoolInfo.schoolCode || 'SCH-001'}</span>
+                                        </div>
+                                    </div>
+                                    <div className="p-3 space-y-1.5">
+                                        <div className="flex justify-between">
+                                            <span className="font-bold text-slate-600">Employee's Name:</span>
+                                            <span className="font-bold text-slate-900">{selectedStaffForP9.name}</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span className="font-bold text-slate-600">Employee's KRA PIN:</span>
+                                            <span className="font-mono font-bold text-slate-900">{selectedStaffForP9.kraPin || 'A000000000Z'}</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span className="font-bold text-slate-600">Designation / Role:</span>
+                                            <span className="text-slate-700">{selectedStaffForP9.role}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* P9A 12-Month Table */}
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-left text-[11px] border-collapse border border-slate-800">
+                                    <thead>
+                                        <tr className="bg-slate-100 text-slate-900 text-center font-bold border-b border-slate-800">
+                                            <th rowSpan={2} className="p-1 border border-slate-800 w-24">MONTH</th>
+                                            <th className="p-1 border border-slate-800">Basic Salary</th>
+                                            <th className="p-1 border border-slate-800">Benefits (Non-Cash)</th>
+                                            <th className="p-1 border border-slate-800">Value of Quarters</th>
+                                            <th className="p-1 border border-slate-800">Total Gross Pay</th>
+                                            <th colSpan={3} className="p-1 border border-slate-800">Defined Contribution Scheme</th>
+                                            <th className="p-1 border border-slate-800">Owner-Occupied Interest</th>
+                                            <th className="p-1 border border-slate-800">Retirement & Interest</th>
+                                            <th className="p-1 border border-slate-800">Taxable Pay</th>
+                                            <th className="p-1 border border-slate-800">Tax Charged</th>
+                                            <th className="p-1 border border-slate-800">Tax Relief (Personal + Ins.)</th>
+                                            <th className="p-1 border border-slate-800">P.A.Y.E. Tax</th>
                                         </tr>
-                                    );
-                                })}
-                                <tr className="bg-slate-200 font-bold text-right">
-                                    <td className="p-2 border border-slate-400 text-left">TOTALS</td>
-                                    <td className="p-2 border border-slate-400">{formatCurrency(p9Aggregates.totals.basic)}</td>
-                                    <td className="p-2 border border-slate-400">{formatCurrency(p9Aggregates.totals.gross - p9Aggregates.totals.basic)}</td>
-                                    <td className="p-2 border border-slate-400">{formatCurrency(p9Aggregates.totals.gross)}</td>
-                                    <td className="p-2 border border-slate-400">{formatCurrency(p9Aggregates.totals.paye)}</td>
-                                    <td className="p-2 border border-slate-400">{formatCurrency(p9Aggregates.totals.nssf)}</td>
-                                    <td className="p-2 border border-slate-400">{formatCurrency(p9Aggregates.totals.sha)}</td>
-                                    <td className="p-2 border border-slate-400">{formatCurrency(p9Aggregates.totals.levy)}</td>
-                                </tr>
-                            </tbody>
-                        </table>
+                                        <tr className="bg-slate-200 text-slate-900 text-center font-mono font-bold text-[10px] border-b border-slate-800">
+                                            <th className="p-1 border border-slate-800">A</th>
+                                            <th className="p-1 border border-slate-800">B</th>
+                                            <th className="p-1 border border-slate-800">C</th>
+                                            <th className="p-1 border border-slate-800">D</th>
+                                            <th className="p-1 border border-slate-800">E1 (30%)</th>
+                                            <th className="p-1 border border-slate-800">E2 (Actual)</th>
+                                            <th className="p-1 border border-slate-800">E3 (20k)</th>
+                                            <th className="p-1 border border-slate-800">F</th>
+                                            <th className="p-1 border border-slate-800">G</th>
+                                            <th className="p-1 border border-slate-800">H</th>
+                                            <th className="p-1 border border-slate-800">J</th>
+                                            <th className="p-1 border border-slate-800">K</th>
+                                            <th className="p-1 border border-slate-800">L</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {p9Rows.map((row) => (
+                                            <tr key={row.monthIndex} className={`text-right border-b border-slate-400 hover:bg-slate-50/80 ${row.monthIndex % 2 === 0 ? 'bg-white' : 'bg-slate-50/40'}`}>
+                                                <td className="p-1.5 border border-slate-800 text-left font-semibold text-slate-800">
+                                                    {row.month}
+                                                    {row.isProjected && <span className="ml-1 text-[9px] text-slate-400 font-normal no-print">*</span>}
+                                                </td>
+                                                <td className="p-1.5 border border-slate-800 font-mono">{formatCurrency(row.basic)}</td>
+                                                <td className="p-1.5 border border-slate-800 font-mono">{formatCurrency(row.benefits)}</td>
+                                                <td className="p-1.5 border border-slate-800 font-mono">{formatCurrency(row.allowances)}</td>
+                                                <td className="p-1.5 border border-slate-800 font-mono font-bold text-slate-900 bg-slate-100/50">{formatCurrency(row.gross)}</td>
+                                                <td className="p-1.5 border border-slate-800 font-mono text-slate-600">{formatCurrency(row.e1)}</td>
+                                                <td className="p-1.5 border border-slate-800 font-mono">{formatCurrency(row.e2)}</td>
+                                                <td className="p-1.5 border border-slate-800 font-mono text-slate-600">{formatCurrency(row.e3)}</td>
+                                                <td className="p-1.5 border border-slate-800 font-mono">{formatCurrency(row.interest)}</td>
+                                                <td className="p-1.5 border border-slate-800 font-mono text-slate-700">{formatCurrency(row.allowableDeduction)}</td>
+                                                <td className="p-1.5 border border-slate-800 font-mono font-bold text-slate-900 bg-slate-100/50">{formatCurrency(row.taxablePay)}</td>
+                                                <td className="p-1.5 border border-slate-800 font-mono">{formatCurrency(row.taxCharged)}</td>
+                                                <td className="p-1.5 border border-slate-800 font-mono">{formatCurrency(row.totalRelief)}</td>
+                                                <td className="p-1.5 border border-slate-800 font-mono font-bold text-emerald-700 bg-emerald-50/40">{formatCurrency(row.paye)}</td>
+                                            </tr>
+                                        ))}
+
+                                        {/* Totals Row */}
+                                        <tr className="bg-slate-200/90 font-bold text-right border-t-2 border-slate-900 text-slate-900">
+                                            <td className="p-2 border border-slate-800 text-left font-black tracking-wider">TOTALS</td>
+                                            <td className="p-2 border border-slate-800 font-mono">{formatCurrency(p9Totals.basic)}</td>
+                                            <td className="p-2 border border-slate-800 font-mono">{formatCurrency(p9Totals.benefits)}</td>
+                                            <td className="p-2 border border-slate-800 font-mono">{formatCurrency(p9Totals.allowances)}</td>
+                                            <td className="p-2 border border-slate-800 font-mono font-black">{formatCurrency(p9Totals.gross)}</td>
+                                            <td className="p-2 border border-slate-800 font-mono">{formatCurrency(p9Totals.e1)}</td>
+                                            <td className="p-2 border border-slate-800 font-mono">{formatCurrency(p9Totals.e2)}</td>
+                                            <td className="p-2 border border-slate-800 font-mono">{formatCurrency(p9Totals.e3 * 12)}</td>
+                                            <td className="p-2 border border-slate-800 font-mono">{formatCurrency(p9Totals.interest)}</td>
+                                            <td className="p-2 border border-slate-800 font-mono">{formatCurrency(p9Totals.allowableDeduction)}</td>
+                                            <td className="p-2 border border-slate-800 font-mono font-black">{formatCurrency(p9Totals.taxablePay)}</td>
+                                            <td className="p-2 border border-slate-800 font-mono">{formatCurrency(p9Totals.taxCharged)}</td>
+                                            <td className="p-2 border border-slate-800 font-mono">{formatCurrency(p9Totals.totalRelief)}</td>
+                                            <td className="p-2 border border-slate-800 font-mono font-black text-emerald-800 bg-emerald-100/50">{formatCurrency(p9Totals.paye)}</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            {/* Statutory Footnote summary: SHA and Housing Levy */}
+                            <div className="mt-3 p-3 bg-slate-50 border border-slate-300 rounded-lg text-xs flex flex-wrap items-center justify-between gap-4">
+                                <div className="flex items-center gap-6">
+                                    <div>
+                                        <span className="text-slate-500 font-medium">Total NSSF (Col E2): </span>
+                                        <span className="font-mono font-bold text-slate-800">{formatCurrency(p9Totals.e2)}</span>
+                                    </div>
+                                    <div>
+                                        <span className="text-slate-500 font-medium">Total SHA (2.75%): </span>
+                                        <span className="font-mono font-bold text-slate-800">{formatCurrency(p9Totals.sha)}</span>
+                                    </div>
+                                    <div>
+                                        <span className="text-slate-500 font-medium">Total Housing Levy (1.5%): </span>
+                                        <span className="font-mono font-bold text-slate-800">{formatCurrency(p9Totals.levy)}</span>
+                                    </div>
+                                </div>
+                                <div>
+                                    <span className="text-slate-500 font-medium">Total Annual Net Pay: </span>
+                                    <span className="font-mono font-bold text-primary-700 text-sm">{formatCurrency(p9Totals.netPay)}</span>
+                                </div>
+                            </div>
+
+                            {/* Official Certification Section (Kenya Revenue Authority Mandate) */}
+                            <div className="mt-4 pt-3 border-t-2 border-slate-800 text-[11px] text-slate-800">
+                                <p className="font-bold uppercase tracking-wider mb-2">To be completed by Employer at end of year:</p>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="space-y-1">
+                                        <p><strong>TOTAL TAX (COL. L):</strong> <span className="font-mono font-bold text-sm text-emerald-700">{formatCurrency(p9Totals.paye)}</span></p>
+                                        <p className="text-[10px] text-slate-600 leading-relaxed">
+                                            I/We certify that the summary of particulars above are correct in all details relating to this employee and that the tax deducted has been remitted to the Commissioner of Domestic Taxes.
+                                        </p>
+                                    </div>
+                                    <div className="space-y-4 border-t md:border-t-0 md:border-l border-slate-300 md:pl-4 pt-2 md:pt-0">
+                                        <div className="flex justify-between items-end border-b border-slate-400 pb-1">
+                                            <span className="text-slate-500">Employer's Name:</span>
+                                            <span className="font-bold">{schoolInfo.name}</span>
+                                        </div>
+                                        <div className="flex justify-between items-end border-b border-slate-400 pb-1">
+                                            <span className="text-slate-500">Signature & Official Rubber Stamp:</span>
+                                            <span className="text-slate-400 italic">___________________</span>
+                                        </div>
+                                        <div className="flex justify-between items-end">
+                                            <span className="text-slate-500">Date:</span>
+                                            <span className="font-mono">{new Date().toLocaleDateString('en-KE', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </Modal>
             )}

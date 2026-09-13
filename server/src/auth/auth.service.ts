@@ -64,12 +64,22 @@ export class AuthService {
 
   async registerSchool(dto: any) {
     const { paymentMethod, paymentIntentId, invoiceNumber, ...baseDto } = dto;
-    
-    this.logger.log(`📥 INCOMING REGISTRATION: ${baseDto.schoolName} (${paymentMethod})`);
+    const schoolName = baseDto.schoolName || baseDto.name || 'New Institution';
+    const adminEmail = baseDto.adminEmail || baseDto.email;
+    const adminName = baseDto.adminName || (baseDto.name ? `${baseDto.name} Admin` : 'School Admin');
+    const password = baseDto.password || 'Admin@2026';
+    const schoolCode = baseDto.schoolCode || baseDto.registrationCode || schoolName.substring(0, 3).toUpperCase();
+    const address = baseDto.address || baseDto.county || '';
 
-    const existingUser = await this.usersService.findOneByEmail(baseDto.adminEmail);
+    if (!adminEmail) {
+      throw new BadRequestException('Administrator email is required for registration.');
+    }
+    
+    this.logger.log(`📥 INCOMING REGISTRATION: ${schoolName} (${paymentMethod})`);
+
+    const existingUser = await this.usersService.findOneByEmail(adminEmail);
     if (existingUser) {
-        this.logger.error(`Registration failed: Email ${baseDto.adminEmail} already exists.`);
+        this.logger.error(`Registration failed: Email ${adminEmail} already exists.`);
         throw new ConflictException('A user with this email address is already registered.');
     }
 
@@ -77,10 +87,12 @@ export class AuthService {
         const result = await this.entityManager.transaction(async manager => {
             // 1. Create School
             const school = manager.create(School, {
-                name: baseDto.schoolName,
-                slug: baseDto.schoolName.toLowerCase().replace(/[^a-z0-9]/g, '-') + '-' + Date.now().toString().slice(-4),
-                email: baseDto.adminEmail,
-                phone: baseDto.phone,
+                name: schoolName,
+                slug: schoolName.toLowerCase().replace(/[^a-z0-9]/g, '-') + '-' + Date.now().toString().slice(-4),
+                schoolCode,
+                email: adminEmail,
+                phone: baseDto.phone || '',
+                address,
                 currency: baseDto.currency || 'KES',
             });
             const savedSchool = await manager.save(school);
@@ -115,16 +127,16 @@ export class AuthService {
 
             // 4. Create Admin User
             const salt = await bcrypt.genSalt();
-            const hashedPassword = await bcrypt.hash(baseDto.password, salt);
+            const hashedPassword = await bcrypt.hash(password, salt);
             
             const user = manager.create(User, {
-                name: baseDto.adminName,
-                email: baseDto.adminEmail,
+                name: adminName,
+                email: adminEmail,
                 password: hashedPassword,
                 role: Role.Admin,
                 school: savedSchool,
                 status: 'Active',
-                avatarUrl: `https://i.pravatar.cc/150?u=${baseDto.adminEmail}`
+                avatarUrl: `https://i.pravatar.cc/150?u=${adminEmail}`
             });
             const savedUser = await manager.save(user);
             

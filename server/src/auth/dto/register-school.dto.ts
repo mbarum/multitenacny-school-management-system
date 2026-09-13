@@ -4,23 +4,52 @@ import { SubscriptionPlan } from '../../entities/subscription.entity';
 
 export class RegisterSchoolDto {
   @IsString()
-  @IsNotEmpty()
-  schoolName!: string;
+  @IsOptional()
+  schoolName?: string;
 
   @IsString()
-  @IsNotEmpty()
-  adminName!: string;
+  @IsOptional()
+  name?: string;
+
+  @IsString()
+  @IsOptional()
+  adminName?: string;
 
   @IsEmail()
-  adminEmail!: string;
+  @IsOptional()
+  adminEmail?: string;
+
+  @IsEmail()
+  @IsOptional()
+  email?: string;
 
   @IsString()
-  @MinLength(8)
-  password!: string;
+  @MinLength(6)
+  @IsOptional()
+  password?: string;
 
   @IsString()
-  @IsNotEmpty()
-  phone!: string;
+  @IsOptional()
+  phone?: string;
+
+  @IsString()
+  @IsOptional()
+  address?: string;
+
+  @IsString()
+  @IsOptional()
+  county?: string;
+
+  @IsString()
+  @IsOptional()
+  registrationCode?: string;
+
+  @IsString()
+  @IsOptional()
+  curriculumType?: string;
+
+  @IsOptional()
+  studentCount?: number | string;
 
   @IsEnum(SubscriptionPlan)
   @IsOptional()

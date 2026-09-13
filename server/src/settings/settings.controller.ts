@@ -46,11 +46,12 @@ export class SettingsController {
       },
     }),
     fileFilter: (req: any, file: any, cb: (error: Error | null, acceptFile: boolean) => void) => {
-        if (!file.originalname.match(/\.(jpg|jpeg|png|gif)$/)) {
-            return cb(new BadRequestException('Only image files are allowed!'), false);
+        if (!file.originalname.match(/\.(jpg|jpeg|png|gif|webp|svg)$/i)) {
+            return cb(new BadRequestException('Only image files are allowed! (PNG, JPG, SVG, WebP)'), false);
         }
         cb(null, true);
     },
+    limits: { fileSize: 5 * 1024 * 1024 }
   }))
   async uploadLogo(@UploadedFile() file: any, @Request() req: any) {
     if (!file) {

@@ -27,7 +27,8 @@ import {
     Lock,
     ExternalLink,
     AlertCircle,
-    HardDriveDownload
+    HardDriveDownload,
+    Image as ImageIcon
 } from 'lucide-react';
 import Modal from '../components/common/Modal';
 import UpgradeModal from '../components/common/UpgradeModal';
@@ -37,6 +38,7 @@ import { GradingSystem, Role, Currency, SubscriptionPlan, CbetScore } from '../t
 import { useData } from '../contexts/DataContext';
 import * as api from '../services/api';
 import Spinner from '../components/common/Spinner';
+import { optimizeImage } from '../utils/imageOptimizer';
 
 // =================================================================================
 // Sub-Modals with Expert UI Refinement
@@ -347,6 +349,8 @@ const SettingsView: React.FC = () => {
     const [localSchoolInfo, setLocalSchoolInfo] = useState<SchoolInfo | null>(null);
     const [userSearchQuery, setUserSearchQuery] = useState('');
     const [userRoleFilter, setUserRoleFilter] = useState('ALL');
+    const [isDraggingLogo, setIsDraggingLogo] = useState(false);
+    const [isUploadingLogo, setIsUploadingLogo] = useState(false);
 
     // Queries
     const { data: users = [] } = useQuery({ 
@@ -456,6 +460,50 @@ const SettingsView: React.FC = () => {
     }, [users, userSearchQuery, userRoleFilter]);
 
     if (!localSchoolInfo) return <div className="p-20 text-center"><Spinner /></div>;
+
+    const handleLogoFile = async (file: File) => {
+        if (!file.type.startsWith('image/')) {
+            addNotification('Please select a valid image file (PNG, JPG, SVG, WebP).', 'error');
+            return;
+        }
+
+        setIsUploadingLogo(true);
+        try {
+            // Automatically resize and compress image to 512x512 max for minimal VPS storage footprint
+            const optimized = await optimizeImage(file, { preset: 'logo', maxWidth: 512, maxHeight: 512 });
+            setLocalSchoolInfo(prev => prev ? { ...prev, logoUrl: optimized.dataUrl } : null);
+
+            const fd = new FormData();
+            fd.append('logo', optimized.file);
+            fd.append('dataUrl', optimized.dataUrl);
+
+            uploadLogo(fd)
+                .then(async (res) => {
+                    const finalLogo = res?.logoUrl && !res.logoUrl.includes('unsplash') ? res.logoUrl : optimized.dataUrl;
+                    setLocalSchoolInfo(prev => prev ? { ...prev, logoUrl: finalLogo } : null);
+                    await updateSchoolInfo({ ...(localSchoolInfo || schoolInfo), logoUrl: finalLogo });
+                    addNotification(`School Crest updated! Resized perfectly for VPS storage (${optimized.formattedStats}).`, 'success');
+                })
+                .catch(async (err) => {
+                    console.warn('Backend upload returned fallback, persisting image locally:', err);
+                    await updateSchoolInfo({ ...(localSchoolInfo || schoolInfo), logoUrl: optimized.dataUrl });
+                    addNotification(`School Crest saved (${optimized.formattedStats}).`, 'success');
+                })
+                .finally(() => {
+                    setIsUploadingLogo(false);
+                });
+        } catch (err: any) {
+            setIsUploadingLogo(false);
+            addNotification('Failed to optimize image: ' + (err?.message || 'Please try another file'), 'error');
+        }
+    };
+
+    const handleResetLogo = async () => {
+        const defaultLogo = 'https://i.imgur.com/S5o7W44.png';
+        setLocalSchoolInfo(prev => prev ? { ...prev, logoUrl: defaultLogo } : null);
+        await updateSchoolInfo({ ...(localSchoolInfo || schoolInfo), logoUrl: defaultLogo });
+        addNotification('Institutional Logo reset to default emblem.', 'info');
+    };
 
     const handleSaveInfo = (e: React.FormEvent) => {
         e.preventDefault();
@@ -684,47 +732,129 @@ const SettingsView: React.FC = () => {
             {activeSection === 'info' && (
                 <div className="bg-white dark:bg-slate-900 p-6 md:p-8 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs max-w-4xl">
                     <form onSubmit={handleSaveInfo} className="space-y-8">
-                        {/* Crest / Logo Uploader */}
-                        <div className="flex flex-col sm:flex-row items-center gap-6 pb-6 border-b border-slate-200 dark:border-slate-800">
-                            <div 
-                                id="btn-upload-logo-trigger"
-                                className="relative group cursor-pointer" 
-                                onClick={() => logoInputRef.current?.click()}
-                            >
-                                <img 
-                                    src={localSchoolInfo.logoUrl || 'https://i.imgur.com/S5o7W44.png'} 
-                                    className="h-24 w-24 rounded-2xl object-cover border-2 border-slate-200 dark:border-slate-700 shadow-xs group-hover:opacity-80 transition-all" 
-                                    alt="School Crest"
-                                />
-                                <div className="absolute inset-0 bg-black/40 rounded-2xl flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-all text-white">
-                                    <Upload className="w-5 h-5 mb-1" />
-                                    <span className="text-[9px] font-bold uppercase tracking-wider">Change</span>
-                                </div>
-                                <input 
-                                    type="file" 
-                                    ref={logoInputRef} 
-                                    className="hidden" 
-                                    accept="image/*"
-                                    onChange={e => {
-                                        if (e.target.files?.[0]) {
-                                            const fd = new FormData(); 
-                                            fd.append('logo', e.target.files[0]);
-                                            uploadLogo(fd).then(res => setLocalSchoolInfo({ ...localSchoolInfo, logoUrl: res.logoUrl }));
+                        {/* Crest / Logo Uploader with Drag-and-Drop */}
+                        <div className="pb-6 border-b border-slate-200 dark:border-slate-800">
+                            <div className="flex flex-col md:flex-row items-start md:items-center gap-6">
+                                {/* Logo Preview & Drop Area */}
+                                <div 
+                                    id="logo-dropzone"
+                                    onDragOver={(e) => {
+                                        e.preventDefault();
+                                        setIsDraggingLogo(true);
+                                    }}
+                                    onDragLeave={(e) => {
+                                        e.preventDefault();
+                                        setIsDraggingLogo(false);
+                                    }}
+                                    onDrop={(e) => {
+                                        e.preventDefault();
+                                        setIsDraggingLogo(false);
+                                        if (e.dataTransfer.files?.[0]) {
+                                            handleLogoFile(e.dataTransfer.files[0]);
                                         }
-                                    }} 
-                                />
-                            </div>
+                                    }}
+                                    onClick={() => logoInputRef.current?.click()}
+                                    className={`relative group cursor-pointer flex-shrink-0 w-28 h-28 rounded-2xl border-2 border-dashed flex items-center justify-center p-1.5 transition-all ${
+                                        isDraggingLogo 
+                                            ? 'border-emerald-500 bg-emerald-50/50 dark:bg-emerald-950/20 scale-105 shadow-md shadow-emerald-500/10' 
+                                            : 'border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 hover:border-slate-400 dark:hover:border-slate-600'
+                                    }`}
+                                    title="Click to select or drag and drop a logo here"
+                                >
+                                    <img 
+                                        src={localSchoolInfo.logoUrl || 'https://i.imgur.com/S5o7W44.png'} 
+                                        className="w-full h-full rounded-xl object-contain bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 shadow-xs group-hover:opacity-85 transition-opacity" 
+                                        alt="Official School Crest"
+                                        onError={(e) => {
+                                            (e.currentTarget as HTMLImageElement).src = 'https://i.imgur.com/S5o7W44.png';
+                                        }}
+                                    />
+                                    <div className="absolute inset-0 bg-black/50 rounded-2xl flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-all text-white backdrop-blur-[1px]">
+                                        {isUploadingLogo ? (
+                                            <div className="flex flex-col items-center">
+                                                <RefreshCw className="w-5 h-5 animate-spin mb-1 text-emerald-400" />
+                                                <span className="text-[9px] font-bold uppercase tracking-wider">Saving...</span>
+                                            </div>
+                                        ) : (
+                                            <>
+                                                <Upload className="w-5 h-5 mb-1" />
+                                                <span className="text-[9px] font-bold uppercase tracking-wider">Change Crest</span>
+                                            </>
+                                        )}
+                                    </div>
 
-                            <div className="text-center sm:text-left">
-                                <h3 className="text-xl font-bold text-slate-900 dark:text-white">
-                                    {localSchoolInfo.name || "Institutional Identity"}
-                                </h3>
-                                <p className="text-xs text-slate-400 mt-1">
-                                    Institutional Registration Code: <span className="font-mono font-bold text-primary-600">{localSchoolInfo.schoolCode}</span>
-                                </p>
-                                <p className="text-[11px] text-slate-500 mt-1">
-                                    Recommended format: PNG or SVG with transparent background, minimum 300x300px.
-                                </p>
+                                    <input 
+                                        type="file" 
+                                        ref={logoInputRef} 
+                                        className="hidden" 
+                                        accept="image/png,image/jpeg,image/svg+xml,image/webp"
+                                        onChange={e => {
+                                            if (e.target.files?.[0]) {
+                                                handleLogoFile(e.target.files[0]);
+                                            }
+                                        }} 
+                                    />
+                                </div>
+
+                                {/* Logo Info & Controls */}
+                                <div className="flex-1">
+                                    <div className="flex flex-wrap items-center justify-between gap-3">
+                                        <div>
+                                            <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                                                <span>{localSchoolInfo.name || "Institutional Identity"}</span>
+                                                <span className="text-xs px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-mono font-bold">
+                                                    {localSchoolInfo.schoolCode || 'SCH'}
+                                                </span>
+                                            </h3>
+                                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                                                Drag and drop an image or click the crest to upload. Supports PNG, JPG, SVG, and WebP (up to 5MB).
+                                            </p>
+                                        </div>
+
+                                        <div className="flex items-center gap-2">
+                                            <button
+                                                type="button"
+                                                id="btn-upload-logo-action"
+                                                onClick={() => logoInputRef.current?.click()}
+                                                disabled={isUploadingLogo}
+                                                className="px-3.5 py-1.5 bg-slate-900 hover:bg-black text-white dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 shadow-xs disabled:opacity-50"
+                                            >
+                                                <Upload className="w-3.5 h-3.5" />
+                                                <span>Upload Crest</span>
+                                            </button>
+                                            {localSchoolInfo.logoUrl && localSchoolInfo.logoUrl !== 'https://i.imgur.com/S5o7W44.png' && (
+                                                <button
+                                                    type="button"
+                                                    onClick={handleResetLogo}
+                                                    disabled={isUploadingLogo}
+                                                    className="px-3 py-1.5 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 text-xs font-semibold rounded-lg transition-colors"
+                                                    title="Reset to default emblem"
+                                                >
+                                                    Reset
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Where Logo Appears Badges */}
+                                    <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800/80 flex flex-wrap items-center gap-2">
+                                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                                            Synchronized Across:
+                                        </span>
+                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                                            <Check className="w-3 h-3 text-emerald-500" /> A4 Invoices & Receipts
+                                        </span>
+                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                                            <Check className="w-3 h-3 text-emerald-500" /> Student ID Cards
+                                        </span>
+                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                                            <Check className="w-3 h-3 text-emerald-500" /> Academic Report Cards
+                                        </span>
+                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                                            <Check className="w-3 h-3 text-emerald-500" /> Portal Header & Statements
+                                        </span>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 

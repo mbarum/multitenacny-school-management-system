@@ -44,13 +44,39 @@ const WebcamCaptureModal: React.FC<WebcamCaptureModalProps> = ({ isOpen, onClose
         if (videoRef.current && canvasRef.current) {
             const video = videoRef.current;
             const canvas = canvasRef.current;
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
+            
+            // Calculate square center crop for passport photo
+            const vWidth = video.videoWidth || 640;
+            const vHeight = video.videoHeight || 480;
+            const cropSize = Math.min(vWidth, vHeight);
+            const startX = (vWidth - cropSize) / 2;
+            const startY = (vHeight - cropSize) / 2;
+
+            // Target dimensions: 400x400 for minimal VPS storage footprint
+            const targetDim = 400;
+            canvas.width = targetDim;
+            canvas.height = targetDim;
+
             const context = canvas.getContext('2d');
-            context?.drawImage(video, 0, 0, video.videoWidth, video.videoHeight);
-            const dataUrl = canvas.toDataURL('image/jpeg');
-            onCapture(dataUrl);
-            onClose();
+            if (context) {
+                context.imageSmoothingEnabled = true;
+                context.imageSmoothingQuality = 'high';
+                context.drawImage(video, startX, startY, cropSize, cropSize, 0, 0, targetDim, targetDim);
+
+                // Use WebP if supported, fallback to JPEG with 0.82 quality (~25-35KB)
+                let dataUrl: string;
+                try {
+                    dataUrl = canvas.toDataURL('image/webp', 0.82);
+                    if (!dataUrl.startsWith('data:image/webp')) {
+                        dataUrl = canvas.toDataURL('image/jpeg', 0.82);
+                    }
+                } catch {
+                    dataUrl = canvas.toDataURL('image/jpeg', 0.82);
+                }
+
+                onCapture(dataUrl);
+                onClose();
+            }
         }
     };
     

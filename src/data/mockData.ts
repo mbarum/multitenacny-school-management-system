@@ -6,9 +6,14 @@ import {
     type TimetableEntry, type Exam, type Grade, type AttendanceRecord, type Staff,
     type Payroll, type PayrollItem, type Transaction, type Expense, type Announcement,
     type CommunicationLog, type GradingRule, type FeeItem, type SchoolInfo, type PlatformPricing,
-    type DarajaSettings, type Book, type SubscriberSchool, type SaasInvoice, type SaasReceipt
+    type DarajaSettings, type Book, type SubscriberSchool, type SaasInvoice, type SaasReceipt,
+    LmsAssignmentType, LmsAssignmentStatus, LmsSubmissionStatus, LmsMeetingPlatform, LmsLiveClassStatus,
+    type LmsAssignment, type LmsSubmission, type LmsLiveClass, type EdTechArticle
 } from '../types';
 import { EXCHANGE_RATES } from '../utils/currency';
+import { initialEdTechArticles } from './edtechNewsData';
+
+export { initialEdTechArticles };
 
 export const initialSchoolInfo: SchoolInfo = {
     id: 'school-1',
@@ -967,6 +972,257 @@ export const initialSaasReceipts: SaasReceipt[] = [
     }
 ];
 
+export const initialLmsAssignments: LmsAssignment[] = [
+    {
+        id: 'lms-assign-1',
+        title: 'CBC Mathematics: Fractions & Real-World Word Problems',
+        description: 'Complete exercises 4.1 to 4.4 from Chapter 4 of the CBC Mathematics Workbook. Draw clear fraction bar models for questions 3 and 7 to represent mixed numbers and improper fractions. Show all step-by-step arithmetic operations clearly.',
+        subjectId: 'subj-1',
+        subjectName: 'Mathematics',
+        classId: 'class-1',
+        className: 'Grade 1',
+        teacherId: 'user-teacher-1',
+        teacherName: 'Alice Teacher',
+        dueDate: new Date(Date.now() + 3 * 86400000).toISOString().split('T')[0],
+        totalPoints: 50,
+        passPoints: 25,
+        type: LmsAssignmentType.Homework,
+        status: LmsAssignmentStatus.Published,
+        resources: [
+            {
+                id: 'res-1',
+                title: 'Fractions Visual Model Practice Worksheet.pdf',
+                url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+                type: 'worksheet'
+            },
+            {
+                id: 'res-2',
+                title: 'Khan Academy Fraction Representation Guide',
+                url: 'https://www.khanacademy.org/math/arithmetic/fraction-arithmetic',
+                type: 'link'
+            }
+        ],
+        createdAt: new Date(Date.now() - 2 * 86400000).toISOString(),
+        totalAssigned: 3,
+        submittedCount: 2,
+        gradedCount: 1
+    },
+    {
+        id: 'lms-assign-2',
+        title: 'Integrated Science: Plant Photosynthesis & Leaf Pigments Lab Report',
+        description: 'Conduct the starch iodine experiment on variegated hibiscus leaves as demonstrated in the virtual science lab. Document your observations in a structured 2-page lab report including diagrams, apparatus listing, chemical reactions, and conclusions.',
+        subjectId: 'subj-3',
+        subjectName: 'Integrated Science',
+        classId: 'class-2',
+        className: 'Grade 2',
+        teacherId: 'user-teacher-2',
+        teacherName: 'Bob Teacher',
+        dueDate: new Date(Date.now() + 5 * 86400000).toISOString().split('T')[0],
+        totalPoints: 100,
+        passPoints: 50,
+        type: LmsAssignmentType.LabPractical,
+        status: LmsAssignmentStatus.Published,
+        resources: [
+            {
+                id: 'res-3',
+                title: 'Photosynthesis Laboratory Safety & Protocol.pdf',
+                url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+                type: 'pdf'
+            }
+        ],
+        createdAt: new Date(Date.now() - 3 * 86400000).toISOString(),
+        totalAssigned: 4,
+        submittedCount: 2,
+        gradedCount: 1
+    },
+    {
+        id: 'lms-assign-3',
+        title: 'Creative Writing: Kenyan Cultural Heritage & Folktales',
+        description: 'Write an original narrative essay (400-600 words) drawing inspiration from African folklore. Focus on developing vivid character descriptions, moral dilemmas, authentic dialogue punctuation, and clear paragraph transitions.',
+        subjectId: 'subj-2',
+        subjectName: 'English Language',
+        classId: 'class-1',
+        className: 'Grade 1',
+        teacherId: 'user-teacher-1',
+        teacherName: 'Alice Teacher',
+        dueDate: new Date(Date.now() + 6 * 86400000).toISOString().split('T')[0],
+        totalPoints: 40,
+        passPoints: 20,
+        type: LmsAssignmentType.Essay,
+        status: LmsAssignmentStatus.Published,
+        resources: [
+            {
+                id: 'res-4',
+                title: 'Folktale Elements & Rubric Guide.pdf',
+                url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+                type: 'pdf'
+            }
+        ],
+        createdAt: new Date(Date.now() - 1 * 86400000).toISOString(),
+        totalAssigned: 3,
+        submittedCount: 1,
+        gradedCount: 0
+    },
+    {
+        id: 'lms-assign-4',
+        title: 'Social Studies CBC Project: Topographical Map of Kenya',
+        description: 'Construct a relief map of Kenya highlighting the Great Rift Valley, Mt. Kenya, Lake Victoria basin, and 5 major national parks. Include an accurate legend, scale indicator, and compass rose.',
+        subjectId: 'subj-4',
+        subjectName: 'Social Studies',
+        classId: 'class-3',
+        className: 'Grade 3',
+        teacherId: 'user-teacher-1',
+        teacherName: 'Alice Teacher',
+        dueDate: new Date(Date.now() + 9 * 86400000).toISOString().split('T')[0],
+        totalPoints: 50,
+        passPoints: 25,
+        type: LmsAssignmentType.CbcActivity,
+        status: LmsAssignmentStatus.Published,
+        resources: [
+            {
+                id: 'res-5',
+                title: 'Atlas of Kenya Physical Geography Reference.pdf',
+                url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+                type: 'pdf'
+            }
+        ],
+        createdAt: new Date(Date.now() - 4 * 86400000).toISOString(),
+        totalAssigned: 3,
+        submittedCount: 0,
+        gradedCount: 0
+    }
+];
+
+export const initialLmsSubmissions: LmsSubmission[] = [
+    {
+        id: 'sub-1',
+        assignmentId: 'lms-assign-1',
+        studentId: 'stud-1',
+        studentName: 'Liam Smith',
+        studentAdmissionNumber: '2026-0001',
+        classId: 'class-1',
+        submittedAt: new Date(Date.now() - 1 * 86400000).toISOString(),
+        status: LmsSubmissionStatus.Graded,
+        submissionText: 'I completed questions 4.1 through 4.4. I drew bar models for problems 3 and 7 using colored pencils as requested. All workings are attached in the scanned worksheet PDF.',
+        attachmentUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+        attachmentName: 'Liam_Smith_Math_Fractions_Homework.pdf',
+        score: 46,
+        gradeLetter: 'A',
+        teacherFeedback: 'Outstanding work Liam! Your bar models are exceptionally clear and your steps for converting improper fractions to mixed numbers are flawless. Well done!',
+        gradedBy: 'Alice Teacher',
+        gradedAt: new Date().toISOString(),
+        rubricScores: [
+            { name: 'Accuracy & Calculations', maxScore: 25, awardedScore: 24 },
+            { name: 'Bar Modeling & Diagrams', maxScore: 15, awardedScore: 14 },
+            { name: 'Neatness & Organization', maxScore: 10, awardedScore: 8 }
+        ]
+    },
+    {
+        id: 'sub-2',
+        assignmentId: 'lms-assign-1',
+        studentId: 'stud-2',
+        studentName: 'Emma Johnson',
+        studentAdmissionNumber: '2026-0002',
+        classId: 'class-1',
+        submittedAt: new Date(Date.now() - 6 * 3600000).toISOString(),
+        status: LmsSubmissionStatus.Submitted,
+        submissionText: 'Here is my fraction homework submission. I enjoyed drawing the fraction strips for problem 7!',
+        attachmentUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+        attachmentName: 'Emma_Johnson_Fraction_Assignment.pdf',
+        score: null
+    },
+    {
+        id: 'sub-3',
+        assignmentId: 'lms-assign-2',
+        studentId: 'stud-4',
+        studentName: 'Noah Brown',
+        studentAdmissionNumber: '2026-0004',
+        classId: 'class-2',
+        submittedAt: new Date(Date.now() - 12 * 3600000).toISOString(),
+        status: LmsSubmissionStatus.Graded,
+        submissionText: 'Attached is my complete lab report on the starch iodine leaf test, with photo documentation and analysis of chlorophyll distribution.',
+        attachmentUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+        attachmentName: 'Noah_Brown_Photosynthesis_Lab_Report.pdf',
+        score: 92,
+        gradeLetter: 'A',
+        teacherFeedback: 'Comprehensive scientific write-up Noah! Excellent methodology section and keen observations on light-exposed vs darkened leaf sectors.',
+        gradedBy: 'Bob Teacher',
+        gradedAt: new Date().toISOString(),
+        rubricScores: [
+            { name: 'Scientific Method & Hypothesis', maxScore: 25, awardedScore: 23 },
+            { name: 'Experimental Data & Diagrams', maxScore: 35, awardedScore: 33 },
+            { name: 'Analysis & Conclusions', maxScore: 40, awardedScore: 36 }
+        ]
+    }
+];
+
+export const initialLmsLiveClasses: LmsLiveClass[] = [
+    {
+        id: 'live-1',
+        title: 'Grade 1 Math: Visual Fractions & Problem Solving Masterclass',
+        topic: 'Mastering Bar Modeling & Mixed Numbers with Live Interactive Examples',
+        description: 'Join Teacher Alice for an interactive walkthrough of challenging fraction word problems. Have your ruler, notebook, and colored pencils ready.',
+        subjectId: 'subj-1',
+        subjectName: 'Mathematics',
+        classId: 'class-1',
+        className: 'Grade 1',
+        teacherId: 'user-teacher-1',
+        teacherName: 'Alice Teacher',
+        platform: LmsMeetingPlatform.GoogleMeet,
+        meetingUrl: 'https://meet.google.com/qnk-gtyx-vwa',
+        meetingId: 'qnk-gtyx-vwa',
+        date: new Date().toISOString().split('T')[0],
+        startTime: '10:30',
+        durationMinutes: 45,
+        status: LmsLiveClassStatus.LiveNow,
+        attendeesCount: 14,
+        createdAt: new Date(Date.now() - 24 * 3600000).toISOString()
+    },
+    {
+        id: 'live-2',
+        title: 'Grade 2 Science: Photosynthesis Lab Q&A & Virtual Microscopy',
+        topic: 'Observing Chloroplasts, Stomata Guard Cells & Leaf Anatomy in Real-Time',
+        description: 'Virtual microscopic demonstration of chlorophyll pigments and real-time Q&A on experimental variables.',
+        subjectId: 'subj-3',
+        subjectName: 'Integrated Science',
+        classId: 'class-2',
+        className: 'Grade 2',
+        teacherId: 'user-teacher-2',
+        teacherName: 'Bob Teacher',
+        platform: LmsMeetingPlatform.Zoom,
+        meetingUrl: 'https://zoom.us/j/84920491823?pwd=SlZ5c2Z0UmpkVzUwd25JMGt5Ykl1QT09',
+        meetingId: '849 2049 1823',
+        passcode: '948210',
+        date: new Date(Date.now() + 86400000).toISOString().split('T')[0],
+        startTime: '14:00',
+        durationMinutes: 60,
+        status: LmsLiveClassStatus.Upcoming,
+        attendeesCount: 0,
+        createdAt: new Date(Date.now() - 12 * 3600000).toISOString()
+    },
+    {
+        id: 'live-3',
+        title: 'Grade 1 English: Storytelling, Diphthongs & Phonetics Clinic',
+        topic: 'Oral Narrative Artistry & Pronunciation Practice',
+        description: 'Practice reading African folklore folktales aloud with expression, correct pauses, and vowel phonetic mastery.',
+        subjectId: 'subj-2',
+        subjectName: 'English Language',
+        classId: 'class-1',
+        className: 'Grade 1',
+        teacherId: 'user-teacher-1',
+        teacherName: 'Alice Teacher',
+        platform: LmsMeetingPlatform.GoogleMeet,
+        meetingUrl: 'https://meet.google.com/mzy-wpxq-dfr',
+        meetingId: 'mzy-wpxq-dfr',
+        date: new Date(Date.now() + 2 * 86400000).toISOString().split('T')[0],
+        startTime: '11:15',
+        durationMinutes: 40,
+        status: LmsLiveClassStatus.Upcoming,
+        attendeesCount: 0,
+        createdAt: new Date(Date.now() - 6 * 3600000).toISOString()
+    }
+];
+
 // Helper to load or initialize LocalStorage store
 const STORAGE_KEY = 'saaslink_app_data_v1';
 
@@ -997,6 +1253,10 @@ export interface AppMockStore {
     schools: SubscriberSchool[];
     saasInvoices: SaasInvoice[];
     saasReceipts: SaasReceipt[];
+    lmsAssignments: LmsAssignment[];
+    lmsSubmissions: LmsSubmission[];
+    lmsLiveClasses: LmsLiveClass[];
+    edTechArticles: EdTechArticle[];
 }
 
 export const getInitialMockStore = (): AppMockStore => ({
@@ -1025,7 +1285,11 @@ export const getInitialMockStore = (): AppMockStore => ({
     books: [...initialBooks],
     schools: [...initialSchools],
     saasInvoices: [...initialSaasInvoices],
-    saasReceipts: [...initialSaasReceipts]
+    saasReceipts: [...initialSaasReceipts],
+    lmsAssignments: [...initialLmsAssignments],
+    lmsSubmissions: [...initialLmsSubmissions],
+    lmsLiveClasses: [...initialLmsLiveClasses],
+    edTechArticles: [...initialEdTechArticles]
 });
 
 export const loadMockStore = (): AppMockStore => {
@@ -1038,6 +1302,22 @@ export const loadMockStore = (): AppMockStore => {
                 ...initial,
                 ...parsed
             };
+
+            // Ensure EdTech articles are populated
+            if (!store.edTechArticles || !Array.isArray(store.edTechArticles) || store.edTechArticles.length === 0) {
+                store.edTechArticles = [...initialEdTechArticles];
+            }
+
+            // Ensure LMS collections are populated
+            if (!store.lmsAssignments || !Array.isArray(store.lmsAssignments) || store.lmsAssignments.length === 0) {
+                store.lmsAssignments = [...initialLmsAssignments];
+            }
+            if (!store.lmsSubmissions || !Array.isArray(store.lmsSubmissions) || store.lmsSubmissions.length === 0) {
+                store.lmsSubmissions = [...initialLmsSubmissions];
+            }
+            if (!store.lmsLiveClasses || !Array.isArray(store.lmsLiveClasses) || store.lmsLiveClasses.length === 0) {
+                store.lmsLiveClasses = [...initialLmsLiveClasses];
+            }
 
             // Ensure subscriber schools are populated
             if (!store.schools || !Array.isArray(store.schools) || store.schools.length === 0) {

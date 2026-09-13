@@ -34,6 +34,7 @@ export interface Student {
   admissionNumber: string;
   name: string;
   class: string; 
+  className?: string;
   classId: string;
   status: StudentStatus;
   profileImage: string;
@@ -578,3 +579,255 @@ export const CBC_LEVEL_MAP: Record<string, { points: number, description: string
     'BE1': { points: 2, description: 'Below Expectation (High)' },
     'BE2': { points: 1, description: 'Below Expectation (Low)' },
 };
+
+// ==================== LEARNING MANAGEMENT SYSTEM (LMS) ====================
+export enum LmsAssignmentType {
+    Homework = 'Homework',
+    Project = 'Project',
+    Quiz = 'Quiz',
+    Essay = 'Essay',
+    LabPractical = 'Lab Practical',
+    CbcActivity = 'CBC Practical Activity'
+}
+
+export enum LmsAssignmentStatus {
+    Draft = 'Draft',
+    Published = 'Published',
+    Closed = 'Closed'
+}
+
+export enum LmsSubmissionStatus {
+    Pending = 'Pending',
+    Submitted = 'Submitted',
+    Graded = 'Graded',
+    Late = 'Late',
+    ResubmissionRequested = 'Resubmission Requested'
+}
+
+export interface LmsResource {
+    id: string;
+    title: string;
+    url: string;
+    type: 'pdf' | 'link' | 'video' | 'worksheet';
+    name?: string;
+    size?: string;
+}
+
+export interface LmsAssignment {
+    id: string;
+    title: string;
+    description: string;
+    instructions?: string;
+    subjectId: string;
+    subjectName: string;
+    classId: string;
+    className: string;
+    teacherId: string;
+    teacherName: string;
+    dueDate: string;
+    totalPoints: number;
+    passPoints: number;
+    passingPoints?: number;
+    type: LmsAssignmentType | string;
+    status: LmsAssignmentStatus | string;
+    resources?: LmsResource[];
+    attachments?: Array<{ name: string; url: string; size?: string }>;
+    cbcCompetencies?: string[];
+    allowLateSubmission?: boolean;
+    createdAt: string;
+    updatedAt?: string;
+    totalAssigned?: number;
+    submittedCount?: number;
+    gradedCount?: number;
+}
+
+export interface LmsRubricCriterion {
+    name?: string;
+    criterion?: string;
+    maxScore: number;
+    awardedScore?: number;
+    score?: number;
+}
+
+export interface LmsSubmission {
+    id: string;
+    assignmentId: string;
+    studentId: string;
+    studentName: string;
+    studentAdmissionNumber: string;
+    classId?: string;
+    submittedAt?: string;
+    status: LmsSubmissionStatus | string;
+    submissionText?: string;
+    content?: string;
+    attachmentUrl?: string;
+    attachmentName?: string;
+    attachments?: Array<{ name: string; url: string; size?: string }>;
+    score?: number | null;
+    gradeLetter?: string;
+    teacherFeedback?: string;
+    gradedBy?: string;
+    gradedAt?: string;
+    rubricScores?: LmsRubricCriterion[];
+}
+
+export enum LmsMeetingPlatform {
+    GoogleMeet = 'Google Meet',
+    Zoom = 'Zoom'
+}
+
+export enum LmsLiveClassStatus {
+    Scheduled = 'Scheduled',
+    Live = 'Live',
+    Upcoming = 'Upcoming',
+    LiveNow = 'LiveNow',
+    Completed = 'Completed',
+    Cancelled = 'Cancelled'
+}
+
+export interface LmsLiveClass {
+    id: string;
+    title: string;
+    topic?: string;
+    description?: string;
+    agenda?: string;
+    subjectId: string;
+    subjectName: string;
+    classId: string;
+    className: string;
+    teacherId: string;
+    teacherName: string;
+    platform: LmsMeetingPlatform | 'Zoom' | 'Google Meet' | 'GoogleMeet' | string;
+    meetingUrl?: string;
+    joinUrl?: string;
+    meetingId?: string;
+    passcode?: string;
+    hostStartUrl?: string;
+    date?: string;
+    startTime?: string;
+    scheduledStartTime?: string;
+    durationMinutes: number;
+    status: LmsLiveClassStatus | 'Scheduled' | 'Live' | 'Completed' | 'Cancelled' | string;
+    recordingUrl?: string;
+    attendeesCount?: number;
+    createdAt?: string;
+}
+
+export type ArticleMediaType = 'IMAGE' | 'VIDEO' | 'PDF';
+
+export interface ArticleMediaItem {
+    id: string;
+    type: ArticleMediaType;
+    title: string;
+    url: string; // direct URL, base64 data URI, or video embed link
+    thumbnailUrl?: string;
+    fileName?: string;
+    fileSize?: string;
+    duration?: string; // e.g. "05:20" for video
+    caption?: string;
+    description?: string;
+}
+
+export interface EdTechArticle {
+    id: string;
+    title: string;
+    slug?: string;
+    category: string;
+    date: string;
+    readTime: string;
+    excerpt: string;
+    author: string;
+    authorRole: string;
+    authorAvatar?: string;
+    coverImageUrl?: string;
+    content: string[];
+    tags?: string[];
+    status: 'PUBLISHED' | 'DRAFT' | 'ARCHIVED';
+    featured?: boolean;
+    learningObjectives?: string[];
+    media: ArticleMediaItem[];
+    viewsCount?: number;
+    createdAt?: string;
+    updatedAt?: string;
+}
+
+export interface OnlineUserSession {
+    id: string;
+    userId: string;
+    name: string;
+    email: string;
+    role: Role | string;
+    schoolName: string;
+    schoolId?: string;
+    schoolCode?: string;
+    ip: string;
+    userAgent: string;
+    connectedAt: string;
+    lastActive: string;
+    currentPath: string;
+    status: 'active' | 'idle';
+}
+
+export interface DatabaseHealthStats {
+    status: 'up' | 'degraded' | 'down';
+    engine: 'MySQL' | 'PostgreSQL' | 'In-Memory';
+    latencyMs: number;
+    activeConnections: number;
+    maxPoolSize: number;
+    databaseName: string;
+    details?: string;
+}
+
+export interface RedisHealthStats {
+    status: 'connected' | 'standalone' | 'degraded' | 'disconnected';
+    latencyMs: number;
+    hitRate: string;
+    totalKeys: number;
+    usedMemory: string;
+    host?: string;
+    port?: number;
+}
+
+export interface QueueHealthStats {
+    status: 'operational' | 'paused' | 'degraded';
+    queueName: string;
+    waiting: number;
+    active: number;
+    completed: number;
+    failed: number;
+    delayed: number;
+    throughputPerMin: number;
+}
+
+export interface SystemHealthData {
+    status: 'healthy' | 'degraded' | 'critical';
+    timestamp: string;
+    uptimeSeconds: number;
+    uptimeFormatted: string;
+    environment: string;
+    strictApiMode?: boolean;
+    database: DatabaseHealthStats;
+    redis: RedisHealthStats;
+    queues: {
+        bullmq: QueueHealthStats;
+        smsWorker?: QueueHealthStats;
+    };
+    system: {
+        heapUsedMB: number;
+        heapTotalMB: number;
+        rssMB: number;
+        memoryPercentage: number;
+        cpuLoadPercentage: number;
+        nodeVersion: string;
+        platform: string;
+    };
+    onlineUsersSummary: {
+        totalOnline: number;
+        superAdminsOnline: number;
+        schoolAdminsOnline: number;
+        teachersOnline: number;
+        parentsOnline: number;
+    };
+    onlineUsersList: OnlineUserSession[];
+}
+
