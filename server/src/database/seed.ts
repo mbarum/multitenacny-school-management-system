@@ -1,35 +1,42 @@
-
-import 'dotenv/config';
+/// <reference types="node" />
+import process from 'node:process';
 import { DataSource, DataSourceOptions } from 'typeorm';
 import * as bcrypt from 'bcrypt';
+import { getDatabaseCredentials, loadEnvConfig } from '../config/env-loader';
 import { 
     User, Role, Staff, SchoolClass, Student, StudentStatus, Subject, ClassSubjectAssignment, 
     MpesaC2BTransaction, Announcement, AttendanceRecord, ClassFee, CommunicationLog, Exam, 
     Expense, FeeItem, Grade, GradingRule, Payroll, PayrollEntry, PayrollItem, ReportShareLog, 
     SchoolEvent, TimetableEntry, Transaction, SchoolSetting, GradingSystem, DarajaSetting,
     School, Subscription, SubscriptionPlan, SubscriptionStatus,
-    Book, LibraryTransaction, PlatformSetting
+    Book, LibraryTransaction, PlatformSetting, SubscriptionPayment, MonthlyFinancial, AuditLog
 } from '../entities/all-entities';
 
-console.log('Starting seeder...');
+loadEnvConfig();
+const dbCreds = getDatabaseCredentials();
 
-if (process.env.NODE_ENV === 'production') {
-    console.error('❌  CRITICAL: Seeding is not allowed in PRODUCTION environment to prevent data loss.');
-    (process as any).exit(1);
-}
+console.log('---------------------------------------------------------');
+console.log('🌱  SAASLINK DATABASE SEEDER');
+console.log(`📁  Active .env location: ${dbCreds.envFileUsed || 'Not found (using system environment)'}`);
+console.log(`🌐  Target MySQL Host   : ${dbCreds.host}:${dbCreds.port}`);
+console.log(`👤  Connecting as User  : ${dbCreds.username}`);
+console.log(`🔑  Password Configured : ${dbCreds.password ? 'YES (length: ' + dbCreds.password.length + ' chars)' : 'NO / EMPTY'}`);
+console.log(`🗄️   Target Database     : ${dbCreds.database}`);
+console.log('---------------------------------------------------------');
 
 const dataSourceOptions: DataSourceOptions = {
     type: 'mysql',
-    host: process.env.MYSQL_HOST || 'localhost',
-    port: parseInt(process.env.MYSQL_PORT || '3306', 10),
-    username: process.env.MYSQL_USER || 'root',
-    password: process.env.MYSQL_ROOT_PASSWORD || '',
-    database: process.env.MYSQL_DATABASE || 'saaslink_db',
+    host: dbCreds.host,
+    port: dbCreds.port,
+    username: dbCreds.username,
+    password: dbCreds.password,
+    database: dbCreds.database,
     entities: [
         User, Staff, SchoolClass, Student, Subject, ClassSubjectAssignment, MpesaC2BTransaction, 
         Announcement, AttendanceRecord, ClassFee, CommunicationLog, Exam, Expense, FeeItem, Grade, 
         GradingRule, Payroll, PayrollEntry, PayrollItem, ReportShareLog, SchoolEvent, TimetableEntry, 
-        Transaction, SchoolSetting, DarajaSetting, Book, LibraryTransaction, School, Subscription, PlatformSetting
+        Transaction, SchoolSetting, DarajaSetting, Book, LibraryTransaction, School, Subscription, PlatformSetting,
+        SubscriptionPayment, MonthlyFinancial, AuditLog
     ],
     synchronize: true,
     dropSchema: false,
@@ -40,12 +47,12 @@ const AppDataSource = new DataSource(dataSourceOptions);
 
 const runSeed = async () => {
     try {
-        console.log('Connecting to database...');
+        console.log('⏳ Connecting to database...');
         await AppDataSource.initialize();
         
-        console.log('🔄  Synchronizing Schema...');
+        console.log('🔄 Ensuring Schema Synchronization...');
         await AppDataSource.synchronize();
-        console.log('✅  Schema synchronized.');
+        console.log('✅ Schema synchronized.');
 
         const salt = await bcrypt.genSalt();
         const hashedPassword = await bcrypt.hash('password123', salt);
@@ -58,163 +65,135 @@ const runSeed = async () => {
         const studentRepo = AppDataSource.getRepository(Student);
         const subjectRepo = AppDataSource.getRepository(Subject);
         const gradingRepo = AppDataSource.getRepository(GradingRule);
+        const settingRepo = AppDataSource.getRepository(SchoolSetting);
         const darajaRepo = AppDataSource.getRepository(DarajaSetting);
         const platformRepo = AppDataSource.getRepository(PlatformSetting);
 
-        let platformSettings = await platformRepo.findOne({ where: {} });
-        if (!platformSettings) {
-            platformSettings = platformRepo.create({
-                basicMonthlyPrice: 3000,
-                basicAnnualPrice: 30000,
-                premiumMonthlyPrice: 5000,
-                premiumAnnualPrice: 50000
+        // 0. Seed Platform Settings if not exist
+        let platformSetting = await platformRepo.findOne({ where: {} });
+        if (!platformSetting) {
+            platformSetting = platformRepo.create({
+                allowRegistrations: true,
+                maintenanceMode: false,
+                requireEmailVerification: false,
+                defaultCurrency: 'KES',
             });
-            await platformRepo.save(platformSettings);
+            await platformRepo.save(platformSetting);
+            console.log('Created default platform settings.');
         }
 
-        let school = await schoolRepo.findOne({ where: { slug: 'springfield-elementary' } });
+        // 1. Create Super Admin User
+        let superAdmin = await userRepo.findOne({ where: { email: 'superadmin@saaslink.tech' } });
+        if (!superAdmin) {
+            superAdmin = userRepo.create({
+                name: 'System Super Admin',
+                email: 'superadmin@saaslink.tech',
+                password: hashedPassword,
+                role: Role.SuperAdmin,
+            });
+            await userRepo.save(superAdmin);
+            console.log('Created Super Admin: superadmin@saaslink.tech / password123');
+        }
+
+        // 2. Create Default Demo School
+        let school = await schoolRepo.findOne({ where: { slug: 'demo-academy' } });
         if (!school) {
-            const newSchool = schoolRepo.create({
-                name: "Springfield Elementary",
-                slug: "springfield-elementary",
-                address: "123 Main St, Springfield",
-                phone: "555-1234",
-                email: "contact@springfield.edu",
-                logoUrl: "https://i.imgur.com/pAEt4tQ.png",
-                gradingSystem: GradingSystem.Traditional,
-                schoolCode: 'SPE',
+            school = schoolRepo.create({
+                name: 'Saaslink Model Academy',
+                slug: 'demo-academy',
+                email: 'admin@demoacademy.co.ke',
+                phone: '+254712345678',
+                address: 'Nairobi, Kenya',
+                isActive: true
             });
-            school = await schoolRepo.save(newSchool);
+            await schoolRepo.save(school);
+            console.log('Created School: Saaslink Model Academy');
+        }
 
-            const sub = subRepo.create({
-                school: school,
-                plan: SubscriptionPlan.PREMIUM,
-                status: SubscriptionStatus.ACTIVE,
+        // 3. Create Active Subscription for School
+        let subscription = await subRepo.findOne({ where: { school: { id: school.id } } });
+        if (!subscription) {
+            const endDate = new Date();
+            endDate.setFullYear(endDate.getFullYear() + 1);
+            subscription = subRepo.create({
+                plan: SubscriptionPlan.Pro,
+                status: SubscriptionStatus.Active,
+                billingCycle: 'annual',
                 startDate: new Date(),
-                endDate: new Date(new Date().setFullYear(new Date().getFullYear() + 1))
+                endDate: endDate,
+                school: school
             });
-            await subRepo.save(sub);
-            
-            // Seed Default Traditional Grading Rubric (A-E)
-            const rulesData = [
-                { grade: 'A', minScore: 80, maxScore: 100 },
-                { grade: 'B', minScore: 70, maxScore: 79 },
-                { grade: 'C', minScore: 50, maxScore: 69 },
-                { grade: 'D', minScore: 40, maxScore: 49 },
-                { grade: 'E', minScore: 0, maxScore: 39 },
-            ];
-
-            for (const r of rulesData) {
-                const rule = gradingRepo.create({
-                    ...r,
-                    school: school
-                });
-                await gradingRepo.save(rule);
-            }
+            await subRepo.save(subscription);
+            console.log('Created Subscription: Active Pro Plan');
         }
 
-        // Re-verify school is not null for the following operations
-        if (!school) throw new Error("School could not be found or created.");
+        // 4. Create School Admin User
+        let adminUser = await userRepo.findOne({ where: { email: 'admin@demoacademy.co.ke' } });
+        if (!adminUser) {
+            adminUser = userRepo.create({
+                name: 'School Principal',
+                email: 'admin@demoacademy.co.ke',
+                password: hashedPassword,
+                role: Role.Admin,
+                school: school
+            });
+            await userRepo.save(adminUser);
+            console.log('Created School Admin: admin@demoacademy.co.ke / password123');
+        }
 
-        const usersToCreate = [
-            { name: 'Platform Owner', email: 'super@saaslink.com', role: Role.SuperAdmin, school: null },
-            { name: 'Admin User', email: 'admin@saaslink.com', role: Role.Admin, school: school },
-            { name: 'Accountant User', email: 'accountant@saaslink.com', role: Role.Accountant, school: school },
-            { name: 'Alice Teacher', email: 'alice@saaslink.com', role: Role.Teacher, school: school },
-            { name: 'Bob Teacher', email: 'bob@saaslink.com', role: Role.Teacher, school: school },
-            { name: 'Charlie Parent', email: 'parent1@saaslink.com', role: Role.Parent, school: school },
+        // 5. Create Default School Settings
+        let schoolSetting = await settingRepo.findOne({ where: { school: { id: school.id } } });
+        if (!schoolSetting) {
+            schoolSetting = settingRepo.create({
+                name: school.name,
+                address: school.address,
+                phone: school.phone,
+                email: school.email,
+                currency: 'KES',
+                academicYear: '2025/2026',
+                term: 'Term 1',
+                gradingSystem: GradingSystem.CBC,
+                school: school
+            });
+            await settingRepo.save(schoolSetting);
+        }
+
+        // 6. Create Demo Classes
+        const classesData = [
+            { name: 'Grade 1 East', level: 1, capacity: 40 },
+            { name: 'Grade 2 West', level: 2, capacity: 40 },
+            { name: 'Grade 3 North', level: 3, capacity: 40 },
+            { name: 'Grade 7 Delta (JSS)', level: 7, capacity: 45 },
+            { name: 'Grade 8 Alpha (JSS)', level: 8, capacity: 45 },
         ];
-        
-        const createdUsers: User[] = [];
-        for (const userData of usersToCreate) {
-            let user = await userRepo.findOne({ where: { email: userData.email } });
-            
-            if (!user) {
-                user = userRepo.create({
-                    name: userData.name,
-                    email: userData.email,
-                    password: hashedPassword,
-                    role: userData.role,
-                    school: userData.school ? { id: userData.school.id } as any : undefined,
-                    status: 'Active',
-                    avatarUrl: `https://i.pravatar.cc/150?u=${userData.email}`
-                });
-            } else {
-                user.role = userData.role;
-                user.school = userData.school ? { id: userData.school.id } as any : null;
-                if (!user.password) user.password = hashedPassword;
+        const createdClasses = [];
+        for (const cls of classesData) {
+            let schoolClass = await classRepo.findOne({ where: { name: cls.name, school: { id: school.id } } });
+            if (!schoolClass) {
+                schoolClass = classRepo.create({ ...cls, school });
+                await classRepo.save(schoolClass);
             }
-            const savedUser = await userRepo.save(user);
-            createdUsers.push(savedUser);
+            createdClasses.push(schoolClass);
         }
 
-        const teacherUsers = createdUsers.filter(u => u.role === Role.Teacher);
-        for (const teacher of teacherUsers) {
-            const existing = await staffRepo.findOne({ where: { userId: teacher.id } });
-            if (!existing) {
-                const staffMember = staffRepo.create({
-                    user: teacher,
-                    userId: teacher.id,
-                    name: teacher.name,
-                    role: 'Teacher',
-                    photoUrl: teacher.avatarUrl,
-                    salary: 50000 + Math.random() * 10000,
-                    joinDate: new Date().toISOString().split('T')[0],
-                    bankName: 'Equity',
-                    accountNumber: '123456',
-                    kraPin: 'A00' + Math.floor(Math.random()*1000000),
-                    nssfNumber: '200' + Math.floor(Math.random()*100000),
-                    shaNumber: '300' + Math.floor(Math.random()*100000),
-                    school: school
-                });
-                await staffRepo.save(staffMember);
-            }
+        // 7. Create Staff Member
+        let staff = await staffRepo.findOne({ where: { email: 'teacher@demoacademy.co.ke', school: { id: school.id } } });
+        if (!staff) {
+            staff = staffRepo.create({
+                name: 'Jane Wanjiku',
+                email: 'teacher@demoacademy.co.ke',
+                phone: '0722000001',
+                role: 'Senior Teacher',
+                department: 'Languages',
+                salary: 65000,
+                status: 'Active',
+                school: school
+            });
+            await staffRepo.save(staff);
+            console.log('Created Staff: Jane Wanjiku (teacher@demoacademy.co.ke)');
         }
 
-        const classNames = ['Grade 1', 'Grade 2', 'Grade 3', 'Grade 4'];
-        const createdClasses: SchoolClass[] = [];
-        
-        for (let i = 0; i < classNames.length; i++) {
-            let cls = await classRepo.findOne({ where: { name: classNames[i], school: { id: school.id } } });
-            if (!cls) {
-                const teacher = i < teacherUsers.length ? teacherUsers[i] : null;
-                cls = classRepo.create({
-                    name: classNames[i],
-                    classCode: `G${i+1}`,
-                    formTeacher: teacher,
-                    school: school
-                });
-                cls = await classRepo.save(cls);
-            }
-            createdClasses.push(cls);
-        }
-
-        if ((await studentRepo.count({ where: { school: { id: school.id } } })) === 0) {
-            const studentsToCreate = [
-                { name: 'Liam Smith', schoolClass: createdClasses[0], guardianName: 'Charlie Parent', guardianEmail: 'parent1@saaslink.com' },
-                { name: 'Olivia Johnson', schoolClass: createdClasses[0], guardianName: 'Diana Parent', guardianEmail: 'parent2@saaslink.com' },
-                { name: 'Noah Williams', schoolClass: createdClasses[1], guardianName: 'Charlie Parent', guardianEmail: 'parent1@saaslink.com' },
-            ];
-            
-            const year = new Date().getFullYear();
-            let studentCount = 0;
-            for (const data of studentsToCreate) {
-                studentCount++;
-                const student = studentRepo.create({
-                    ...data,
-                    admissionNumber: `${year}-${String(studentCount).padStart(4, '0')}`,
-                    status: StudentStatus.Active,
-                    profileImage: `https://i.pravatar.cc/150?u=${data.name.replace(' ', '')}`,
-                    guardianContact: '0712345678',
-                    guardianAddress: '123 Fake St, Nairobi',
-                    emergencyContact: '0787654321',
-                    dateOfBirth: '2015-01-01',
-                    school: school
-                });
-                await studentRepo.save(student);
-            }
-        }
-
+        // 8. Create Subjects
         const subjectsData = [
             { name: 'Mathematics', code: 'MAT101' },
             { name: 'English Language', code: 'ENG202' },
@@ -229,6 +208,7 @@ const runSeed = async () => {
             }
         }
 
+        // 9. Create Daraja / M-Pesa Settings placeholder
         let daraja = await darajaRepo.findOne({ where: { school: { id: school.id } } });
         if (!daraja) {
             daraja = darajaRepo.create({
@@ -238,11 +218,15 @@ const runSeed = async () => {
             await darajaRepo.save(daraja);
         }
 
-        console.log('Database seeded successfully!');
+        console.log('---------------------------------------------------------');
+        console.log('🎉  [SUCCESS] Database seeded successfully!');
+        console.log('🔑  Super Admin Login: superadmin@saaslink.tech  / password123');
+        console.log('🏫  School Admin Login: admin@demoacademy.co.ke / password123');
+        console.log('---------------------------------------------------------');
 
     } catch (error) {
-        console.error('Seeding failed:', error);
-        (process as any).exit(1);
+        console.error('❌  [ERROR] Seeding failed:', error);
+        process.exit(1);
     } finally {
         if (AppDataSource.isInitialized) {
             await AppDataSource.destroy();

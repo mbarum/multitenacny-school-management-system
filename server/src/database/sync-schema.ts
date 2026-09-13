@@ -1,7 +1,7 @@
 /// <reference types="node" />
-import 'dotenv/config';
 import process from 'node:process';
 import { DataSource, DataSourceOptions } from 'typeorm';
+import { getDatabaseCredentials, loadEnvConfig } from '../config/env-loader';
 import { 
     User, Staff, SchoolClass, Student, Subject, ClassSubjectAssignment, 
     MpesaC2BTransaction, Announcement, AttendanceRecord, ClassFee, CommunicationLog, Exam, 
@@ -11,19 +11,25 @@ import {
     SubscriptionPayment, MonthlyFinancial, AuditLog
 } from '../entities/all-entities';
 
-const host = process.env.MYSQL_HOST || 'localhost';
-const port = parseInt(process.env.MYSQL_PORT || '3306', 10);
-const username = process.env.MYSQL_USER || process.env.DB_USER || 'root';
-const password = process.env.MYSQL_PASSWORD || process.env.MYSQL_ROOT_PASSWORD || '';
-const database = process.env.MYSQL_DATABASE || process.env.DB_NAME || 'saaslink_db';
+loadEnvConfig();
+const dbCreds = getDatabaseCredentials();
+
+console.log('---------------------------------------------------------');
+console.log('⚡  SAASLINK DATABASE SYNC TOOL');
+console.log(`📁  Active .env location: ${dbCreds.envFileUsed || 'Not found (using system environment)'}`);
+console.log(`🌐  Target MySQL Host   : ${dbCreds.host}:${dbCreds.port}`);
+console.log(`👤  Connecting as User  : ${dbCreds.username}`);
+console.log(`🔑  Password Configured : ${dbCreds.password ? 'YES (length: ' + dbCreds.password.length + ' chars)' : 'NO / EMPTY'}`);
+console.log(`🗄️   Target Database     : ${dbCreds.database}`);
+console.log('---------------------------------------------------------');
 
 const dataSourceOptions: DataSourceOptions = {
     type: 'mysql',
-    host,
-    port,
-    username,
-    password,
-    database,
+    host: dbCreds.host,
+    port: dbCreds.port,
+    username: dbCreds.username,
+    password: dbCreds.password,
+    database: dbCreds.database,
     entities: [
         User, Staff, SchoolClass, Student, Subject, ClassSubjectAssignment, MpesaC2BTransaction, 
         Announcement, AttendanceRecord, ClassFee, CommunicationLog, Exam, Expense, FeeItem, Grade, 
@@ -33,26 +39,37 @@ const dataSourceOptions: DataSourceOptions = {
     ],
     synchronize: true,
     dropSchema: false,
-    logging: ['error', 'warn', 'schema'],
+    logging: ['error', 'warn'],
 };
 
 const AppDataSource = new DataSource(dataSourceOptions);
 
 async function sync() {
     try {
-        console.log(`[DB SYNC] Connecting to MySQL database "${database}" on ${host}:${port} as ${username}...`);
+        console.log(`⏳ Connecting to MySQL...`);
         await AppDataSource.initialize();
-        console.log('[DB SYNC] Connected successfully.');
+        console.log('✅ Connected to MySQL successfully.');
         
-        console.log('[DB SYNC] Synchronizing entity tables with MySQL database...');
+        console.log('🔄 Synchronizing all database tables (creating missing tables and columns)...');
         await AppDataSource.synchronize();
-        console.log('✅  [DB SYNC] All database tables have been successfully created/updated!');
+        console.log('🎉 [SUCCESS] All entity tables are created and synchronized in MySQL!');
         
         await AppDataSource.destroy();
         process.exit(0);
     } catch (error: any) {
-        console.error('❌  [DB SYNC] Database schema synchronization failed:');
+        console.error('❌ [ERROR] Database schema synchronization failed:');
         console.error(error.message || error);
+        console.log('\n💡 Troubleshooting hint:');
+        if (error.code === 'ER_ACCESS_DENIED_ERROR') {
+            console.log(`👉 MySQL rejected access for user "${dbCreds.username}".`);
+            console.log(`   Please verify MYSQL_USER and MYSQL_PASSWORD in your .env file at:`);
+            console.log(`   ${dbCreds.envFileUsed || 'server/.env'}`);
+            console.log(`   If your MySQL user is "saaslink_user", make sure MYSQL_USER=saaslink_user and not root.`);
+        }
+        if (error.code === 'ER_BAD_DB_ERROR') {
+            console.log(`👉 Database "${dbCreds.database}" does not exist in MySQL.`);
+            console.log(`   Run this in mysql: CREATE DATABASE ${dbCreds.database} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;`);
+        }
         process.exit(1);
     }
 }
