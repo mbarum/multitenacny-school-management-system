@@ -1,4 +1,3 @@
-
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe, Logger } from '@nestjs/common';
@@ -11,24 +10,10 @@ import compression from 'compression';
 import cookieParser from 'cookie-parser';
 import { AllExceptionsFilter } from './common/filters/http-exception.filter';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import * as dotenv from 'dotenv';
+import { loadEnvConfig } from './config/env-loader';
 
-// Automatically discover .env file across potential working directories (current, root, parent)
-const candidateEnvPaths = [
-  join(process.cwd(), '.env'),
-  join(process.cwd(), 'server', '.env'),
-  join(process.cwd(), '..', '.env'),
-  join(__dirname, '..', '.env'),
-  join(__dirname, '..', '..', '.env'),
-];
-
-for (const envPath of candidateEnvPaths) {
-  if (fs.existsSync(envPath)) {
-    dotenv.config({ path: envPath });
-    break;
-  }
-}
-dotenv.config(); // fallback to default dotenv resolution
+// Force load and override process.env from the nearest .env file before anything else boots
+loadEnvConfig();
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
@@ -43,79 +28,90 @@ async function bootstrap() {
     contentSecurityPolicy: false, // Disable CSP to allow inline scripts/styles from React if needed
   }));
 
-  // Performance: Compression
+  // Performance: Gzip Compression
   app.use(compression());
 
-  // CORS: Dynamic Configuration
-  const configuredFrontend = process.env.FRONTEND_URL;
-  const allowedOrigins = [
-    'http://localhost:3000',
-    'http://localhost:5173',
-    'http://localhost:5000',
-    'http://127.0.0.1:3000',
-    'http://127.0.0.1:5173',
-    'http://127.0.0.1:5000',
-  ];
-  if (configuredFrontend) {
-    configuredFrontend.split(',').forEach(url => allowedOrigins.push(url.trim()));
+  // Body Parsing limits
+  app.use(json({ limit: '10mb' }));
+  app.use(urlencoded({ extended: true, limit: '10mb' }));
+
+  // Global Input Validation & Sanitization
+  app.useGlobalPipes(new ValidationPipe({
+    whitelist: true,
+    transform: true,
+    forbidNonWhitelisted: true,
+    transformOptions: {
+      enableImplicitConversion: true,
+    },
+  }));
+
+  // Global Exception Handling (Standardized JSON Responses)
+  app.useGlobalFilters(new AllExceptionsFilter());
+
+  // Global API Prefix
+  app.setGlobalPrefix('api');
+
+  // Serve static assets from uploads directory
+  const uploadsPath = resolve(process.cwd(), 'uploads');
+  if (!fs.existsSync(uploadsPath)) {
+    try {
+      fs.mkdirSync(uploadsPath, { recursive: true });
+    } catch {
+      // Directory creation will be attempted on upload if needed
+    }
   }
+  app.use('/uploads', express.static(uploadsPath));
+
+  // CORS Configuration
+  const allowedOrigins = [
+    'http://localhost:5173',
+    'http://localhost:3000',
+    'http://localhost:4173',
+    process.env.FRONTEND_URL,
+    process.env.APP_URL,
+  ].filter(Boolean) as string[];
 
   app.enableCors({
     origin: (origin, callback) => {
+      // Allow requests with no origin (like mobile apps, curl, server-to-server)
       if (!origin) return callback(null, true);
-      if (process.env.NODE_ENV !== 'production' || allowedOrigins.includes(origin) || allowedOrigins.includes('*')) {
+      
+      // In development or if explicitly allowed
+      if (process.env.NODE_ENV !== 'production' || allowedOrigins.includes(origin)) {
         return callback(null, true);
       }
-      return callback(null, true);
+      
+      // Allow subdomains of the primary domain if configured
+      if (process.env.ALLOWED_DOMAIN) {
+        const domainRegex = new RegExp(`^https?:\\/\\/([a-z0-9-]+\\.)*${process.env.ALLOWED_DOMAIN.replace('.', '\\.')}$`);
+        if (domainRegex.test(origin)) {
+          return callback(null, true);
+        }
+      }
+
+      callback(null, true); // Fallback permissive for smooth multi-tenant subdomains
     },
-    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
-    credentials: true, // Essential for Cookies
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-School-Id', 'X-Requested-With'],
   });
 
-  // Global Prefix for API versioning
-  app.setGlobalPrefix('api');
-
-  // Increase payload size limits
-  app.use(json({ limit: '50mb' }));
-  app.use(urlencoded({ extended: true, limit: '50mb' }));
-  
-  // Ensure public/uploads directory exists
-  const uploadDir = join(resolve('.'), 'public', 'uploads');
-  if (!fs.existsSync(uploadDir)) {
-    fs.mkdirSync(uploadDir, { recursive: true });
-  }
-
-  // Serve static assets (uploads)
-  app.use('/public', express.static(join(resolve('.'), 'public')));
-
-  // Enable global validation pipe (non-whitelisted fields gracefully ignored rather than 400 rejection)
-  app.useGlobalPipes(new ValidationPipe({
-    whitelist: true,
-    forbidNonWhitelisted: false,
-    transform: true,
-  }));
-
-  // Register Global Exception Filter
-  app.useGlobalFilters(new AllExceptionsFilter());
-
-  // --- Swagger Configuration ---
-  if (process.env.NODE_ENV !== 'production') {
+  // Swagger OpenAPI Documentation (enabled if not strictly disabled)
+  if (process.env.ENABLE_SWAGGER !== 'false') {
     const config = new DocumentBuilder()
-      .setTitle('Saaslink API')
-      .setDescription('The Saaslink School Management System API')
+      .setTitle('Saaslink School Management Platform API')
+      .setDescription('Enterprise multi-tenant core API documentation including Auth, Academics, M-Pesa, Daraja & Billing')
       .setVersion('1.0')
       .addBearerAuth()
       .build();
     const document = SwaggerModule.createDocument(app, config);
     SwaggerModule.setup('api/docs', app, document);
-    logger.log('Swagger UI available at /api/docs');
+    logger.log('Swagger API Documentation available at /api/docs');
   }
 
   const port = process.env.PORT || 3000;
-  await app.listen(port);
-  
-  logger.log(`Application is running on: ${await app.getUrl()}`);
-  logger.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
-  logger.log(`Frontend URL configured as: ${configuredFrontend || 'All origins allowed in dev'}`);
+  await app.listen(port, '0.0.0.0');
+  logger.log(`Saaslink Backend successfully listening on port ${port} in ${process.env.NODE_ENV || 'development'} mode`);
 }
+
 bootstrap();

@@ -1,6 +1,6 @@
-
 import { TypeOrmModuleAsyncOptions, TypeOrmModuleOptions } from '@nestjs/typeorm';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { getDatabaseCredentials, loadEnvConfig } from './env-loader';
 import { 
     User, Staff, SchoolClass, Student, Subject, ClassSubjectAssignment, MpesaC2BTransaction, 
     Announcement, AttendanceRecord, ClassFee, CommunicationLog, Exam, Expense, FeeItem, Grade, 
@@ -13,10 +13,13 @@ export const typeOrmAsyncConfig: TypeOrmModuleAsyncOptions = {
   imports: [ConfigModule],
   inject: [ConfigService],
   useFactory: async (configService: ConfigService): Promise<TypeOrmModuleOptions> => {
-    const isProduction = configService.get<string>('NODE_ENV') === 'production';
-    const forceSync = configService.get<string>('DB_SYNCHRONIZE') === 'true';
+    // 1. Ensure env file is parsed directly from disk
+    loadEnvConfig();
+    const dbCreds = getDatabaseCredentials();
+
+    const isProduction = (configService.get<string>('NODE_ENV') || process.env.NODE_ENV) === 'production';
+    const forceSync = (configService.get<string>('DB_SYNCHRONIZE') || process.env.DB_SYNCHRONIZE) === 'true';
     const shouldSynchronize = forceSync || !isProduction;
-    const databaseUrl = configService.get<string>('DATABASE_URL');
 
     const commonEntities = [
       User, Staff, SchoolClass, Student, Subject, ClassSubjectAssignment, MpesaC2BTransaction, 
@@ -34,10 +37,19 @@ export const typeOrmAsyncConfig: TypeOrmModuleAsyncOptions = {
       connectTimeout: 20000,
     };
 
-    if (databaseUrl) {
+    console.log('---------------------------------------------------------');
+    console.log('🔌  [NESTJS TYPEORM] Initializing Database Connection...');
+    console.log(`📁  Active .env location: ${dbCreds.envFileUsed || 'Not found'}`);
+    console.log(`🌐  Target MySQL Host   : ${dbCreds.host}:${dbCreds.port}`);
+    console.log(`👤  Connecting as User  : ${dbCreds.username}`);
+    console.log(`🔑  Password Configured : ${dbCreds.password ? 'YES (' + dbCreds.password.length + ' chars)' : 'NO'}`);
+    console.log(`🗄️   Target Database     : ${dbCreds.database}`);
+    console.log('---------------------------------------------------------');
+
+    if (dbCreds.url) {
       return {
         type: 'mysql',
-        url: databaseUrl,
+        url: dbCreds.url,
         entities: commonEntities,
         synchronize: shouldSynchronize,
         logging: ['error', 'warn'],
@@ -48,11 +60,11 @@ export const typeOrmAsyncConfig: TypeOrmModuleAsyncOptions = {
     
     return {
       type: 'mysql',
-      host: configService.get<string>('MYSQL_HOST', '127.0.0.1'),
-      port: Number(configService.get<number | string>('MYSQL_PORT', 3306)),
-      username: configService.get<string>('MYSQL_USER') || configService.get<string>('DB_USER', 'root'),
-      password: configService.get<string>('MYSQL_PASSWORD') || configService.get<string>('MYSQL_ROOT_PASSWORD', ''),
-      database: configService.get<string>('MYSQL_DATABASE') || configService.get<string>('DB_NAME', 'saaslink_db'),
+      host: dbCreds.host,
+      port: dbCreds.port,
+      username: dbCreds.username,
+      password: dbCreds.password,
+      database: dbCreds.database,
       entities: commonEntities,
       synchronize: shouldSynchronize, 
       logging: ['error', 'warn'],
