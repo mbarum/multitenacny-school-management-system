@@ -43,7 +43,15 @@ import { TenancyModule } from './tenancy/tenancy.module';
   imports: [
     ConfigModule.forRoot({ 
       isGlobal: true, 
-      envFilePath: ['.env', '../.env', join((process as any).cwd(), '.env'), join((process as any).cwd(), '..', '.env')] 
+      envFilePath: [
+        '.env',
+        'server/.env',
+        '../.env',
+        '../../.env',
+        join(process.cwd(), '.env'),
+        join(process.cwd(), 'server', '.env'),
+        join(process.cwd(), '..', '.env'),
+      ] 
     }),
     TypeOrmModule.forRootAsync(typeOrmAsyncConfig),
     TypeOrmModule.forFeature([School]),

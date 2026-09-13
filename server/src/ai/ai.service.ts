@@ -15,11 +15,15 @@ export class AiService {
     @InjectRepository(Transaction) private transactionRepo: Repository<Transaction>,
     @InjectRepository(Expense) private expenseRepo: Repository<Expense>,
   ) {
-    // Fix: Obtained API key exclusively from process.env.API_KEY directly as per guidelines.
-    if (process.env.API_KEY) {
-      this.ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const apiKey = this.configService.get<string>('GEMINI_API_KEY') 
+      || this.configService.get<string>('API_KEY') 
+      || process.env.GEMINI_API_KEY 
+      || process.env.API_KEY;
+
+    if (apiKey) {
+      this.ai = new GoogleGenAI({ apiKey });
     } else {
-      this.logger.warn("API_KEY environment variable is not set. AI features (Financial Summary) will be disabled.");
+      this.logger.warn("Neither GEMINI_API_KEY nor API_KEY is set in .env. AI financial features will run in manual fallback mode.");
     }
   }
 

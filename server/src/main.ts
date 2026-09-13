@@ -11,6 +11,24 @@ import compression from 'compression';
 import cookieParser from 'cookie-parser';
 import { AllExceptionsFilter } from './common/filters/http-exception.filter';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import * as dotenv from 'dotenv';
+
+// Automatically discover .env file across potential working directories (current, root, parent)
+const candidateEnvPaths = [
+  join(process.cwd(), '.env'),
+  join(process.cwd(), 'server', '.env'),
+  join(process.cwd(), '..', '.env'),
+  join(__dirname, '..', '.env'),
+  join(__dirname, '..', '..', '.env'),
+];
+
+for (const envPath of candidateEnvPaths) {
+  if (fs.existsSync(envPath)) {
+    dotenv.config({ path: envPath });
+    break;
+  }
+}
+dotenv.config(); // fallback to default dotenv resolution
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
@@ -98,6 +116,6 @@ async function bootstrap() {
   
   logger.log(`Application is running on: ${await app.getUrl()}`);
   logger.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
-  logger.log(`Frontend URL configured as: ${frontendUrl}`);
+  logger.log(`Frontend URL configured as: ${configuredFrontend || 'All origins allowed in dev'}`);
 }
 bootstrap();
