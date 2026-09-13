@@ -1,4 +1,3 @@
-
 {
   "compilerOptions": {
     "module": "commonjs",
@@ -15,6 +14,7 @@
     "incremental": true,
     "skipLibCheck": true,
     "strict": true,
+    "strictPropertyInitialization": false,
     "strictNullChecks": true,
     "noImplicitAny": false,
     "strictBindCallApply": true,
@@ -29,5 +29,6 @@
   "ts-node": {
     "transpileOnly": true
   },
-  "include": ["src/**/*"]
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist", "src/database/seed.ts", "src/database/sync-schema.ts", "src/database/test-connection.js", "src/database/inspect-env.js"]
 }

@@ -4,7 +4,7 @@ import { DataSource, DataSourceOptions } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { getDatabaseCredentials, loadEnvConfig } from '../config/env-loader';
 import { 
-    User, Role, Staff, SchoolClass, Student, StudentStatus, Subject, ClassSubjectAssignment, 
+    User, Role, Staff, SchoolClass, Student, Subject, ClassSubjectAssignment, 
     MpesaC2BTransaction, Announcement, AttendanceRecord, ClassFee, CommunicationLog, Exam, 
     Expense, FeeItem, Grade, GradingRule, Payroll, PayrollEntry, PayrollItem, ReportShareLog, 
     SchoolEvent, TimetableEntry, Transaction, SchoolSetting, GradingSystem, DarajaSetting,
@@ -62,9 +62,7 @@ const runSeed = async () => {
         const userRepo = AppDataSource.getRepository(User);
         const staffRepo = AppDataSource.getRepository(Staff);
         const classRepo = AppDataSource.getRepository(SchoolClass);
-        const studentRepo = AppDataSource.getRepository(Student);
         const subjectRepo = AppDataSource.getRepository(Subject);
-        const gradingRepo = AppDataSource.getRepository(GradingRule);
         const settingRepo = AppDataSource.getRepository(SchoolSetting);
         const darajaRepo = AppDataSource.getRepository(DarajaSetting);
         const platformRepo = AppDataSource.getRepository(PlatformSetting);
@@ -73,10 +71,10 @@ const runSeed = async () => {
         let platformSetting = await platformRepo.findOne({ where: {} });
         if (!platformSetting) {
             platformSetting = platformRepo.create({
-                allowRegistrations: true,
-                maintenanceMode: false,
-                requireEmailVerification: false,
-                defaultCurrency: 'KES',
+                basicMonthlyPrice: 3000,
+                basicAnnualPrice: 30000,
+                premiumMonthlyPrice: 5000,
+                premiumAnnualPrice: 50000,
             });
             await platformRepo.save(platformSetting);
             console.log('Created default platform settings.');
@@ -104,7 +102,9 @@ const runSeed = async () => {
                 email: 'admin@demoacademy.co.ke',
                 phone: '+254712345678',
                 address: 'Nairobi, Kenya',
-                isActive: true
+                schoolCode: 'SMA01',
+                currency: 'KES',
+                gradingSystem: GradingSystem.CBC,
             });
             await schoolRepo.save(school);
             console.log('Created School: Saaslink Model Academy');
@@ -116,15 +116,15 @@ const runSeed = async () => {
             const endDate = new Date();
             endDate.setFullYear(endDate.getFullYear() + 1);
             subscription = subRepo.create({
-                plan: SubscriptionPlan.Pro,
-                status: SubscriptionStatus.Active,
-                billingCycle: 'annual',
+                plan: SubscriptionPlan.PREMIUM,
+                status: SubscriptionStatus.ACTIVE,
+                billingCycle: 'ANNUALLY',
                 startDate: new Date(),
                 endDate: endDate,
-                school: school
+                school: school,
             });
             await subRepo.save(subscription);
-            console.log('Created Subscription: Active Pro Plan');
+            console.log('Created Subscription: Active Premium Plan');
         }
 
         // 4. Create School Admin User
@@ -135,62 +135,65 @@ const runSeed = async () => {
                 email: 'admin@demoacademy.co.ke',
                 password: hashedPassword,
                 role: Role.Admin,
-                school: school
+                school: school,
             });
             await userRepo.save(adminUser);
             console.log('Created School Admin: admin@demoacademy.co.ke / password123');
         }
 
-        // 5. Create Default School Settings
-        let schoolSetting = await settingRepo.findOne({ where: { school: { id: school.id } } });
+        // 5. Seed SchoolSetting
+        let schoolSetting = await settingRepo.findOne({ where: { name: school.name } });
         if (!schoolSetting) {
             schoolSetting = settingRepo.create({
                 name: school.name,
-                address: school.address,
-                phone: school.phone,
-                email: school.email,
-                currency: 'KES',
-                academicYear: '2025/2026',
-                term: 'Term 1',
+                address: school.address || 'Nairobi, Kenya',
+                phone: school.phone || '+254712345678',
+                email: school.email || 'admin@demoacademy.co.ke',
+                schoolCode: 'SMA01',
                 gradingSystem: GradingSystem.CBC,
-                school: school
             });
             await settingRepo.save(schoolSetting);
+            console.log('Created School Setting record.');
         }
 
         // 6. Create Demo Classes
         const classesData = [
-            { name: 'Grade 1 East', level: 1, capacity: 40 },
-            { name: 'Grade 2 West', level: 2, capacity: 40 },
-            { name: 'Grade 3 North', level: 3, capacity: 40 },
-            { name: 'Grade 7 Delta (JSS)', level: 7, capacity: 45 },
-            { name: 'Grade 8 Alpha (JSS)', level: 8, capacity: 45 },
+            { name: 'Grade 1 East', classCode: 'G1E' },
+            { name: 'Grade 2 West', classCode: 'G2W' },
+            { name: 'Grade 3 North', classCode: 'G3N' },
+            { name: 'Grade 7 Delta (JSS)', classCode: 'G7D' },
+            { name: 'Grade 8 Alpha (JSS)', classCode: 'G8A' },
         ];
-        const createdClasses = [];
         for (const cls of classesData) {
-            let schoolClass = await classRepo.findOne({ where: { name: cls.name, school: { id: school.id } } });
+            let schoolClass = await classRepo.findOne({ 
+                where: { 
+                    name: cls.name, 
+                    school: { id: school.id } 
+                } 
+            });
             if (!schoolClass) {
-                schoolClass = classRepo.create({ ...cls, school });
+                schoolClass = classRepo.create({
+                    name: cls.name,
+                    classCode: cls.classCode,
+                    school: school,
+                });
                 await classRepo.save(schoolClass);
             }
-            createdClasses.push(schoolClass);
         }
+        console.log('Created demo classes.');
 
         // 7. Create Staff Member
-        let staff = await staffRepo.findOne({ where: { email: 'teacher@demoacademy.co.ke', school: { id: school.id } } });
+        let staff = await staffRepo.findOne({ where: { name: 'Jane Wanjiku', school: { id: school.id } } });
         if (!staff) {
             staff = staffRepo.create({
                 name: 'Jane Wanjiku',
-                email: 'teacher@demoacademy.co.ke',
-                phone: '0722000001',
                 role: 'Senior Teacher',
-                department: 'Languages',
                 salary: 65000,
-                status: 'Active',
-                school: school
+                joinDate: '2024-01-10',
+                school: school,
             });
             await staffRepo.save(staff);
-            console.log('Created Staff: Jane Wanjiku (teacher@demoacademy.co.ke)');
+            console.log('Created Staff: Jane Wanjiku');
         }
 
         // 8. Create Subjects
@@ -207,15 +210,22 @@ const runSeed = async () => {
                 await subjectRepo.save(subj);
             }
         }
+        console.log('Created demo subjects.');
 
         // 9. Create Daraja / M-Pesa Settings placeholder
         let daraja = await darajaRepo.findOne({ where: { school: { id: school.id } } });
         if (!daraja) {
             daraja = darajaRepo.create({
-                consumerKey: '', consumerSecret: '', shortCode: '', passkey: '', paybillNumber: '',
-                school: school
+                consumerKey: '', 
+                consumerSecret: '', 
+                shortCode: '', 
+                passkey: '', 
+                paybillNumber: '',
+                environment: 'sandbox',
+                school: school,
             });
             await darajaRepo.save(daraja);
+            console.log('Created Daraja/M-Pesa placeholder config.');
         }
 
         console.log('---------------------------------------------------------');
