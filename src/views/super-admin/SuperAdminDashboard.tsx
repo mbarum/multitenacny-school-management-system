@@ -502,7 +502,7 @@ export const SuperAdminDashboard: React.FC = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 sm:gap-6">
                 <StatCard
                     title="Realized Platform Revenue"
-                    value={formatCurrency(stats?.totalRevenue || 120000, 'KES')}
+                    value={formatCurrency(stats?.totalRevenue ?? 0, 'KES')}
                     icon={<DollarSign className="w-6 h-6 text-emerald-600" />}
                     onClick={() => setActiveTab('revenue')}
                     isSelected={activeTab === 'revenue'}
@@ -536,7 +536,7 @@ export const SuperAdminDashboard: React.FC = () => {
 
                 <StatCard
                     title="Active Users Online"
-                    value={`${healthData?.onlineUsersSummary?.totalOnline ?? (healthData?.onlineUsersList?.length || 6)} Connected`}
+                    value={`${healthData?.onlineUsersSummary?.totalOnline ?? (healthData?.onlineUsersList?.length || 0)} Connected`}
                     icon={<Wifi className="w-6 h-6 text-indigo-600" />}
                     colorClass="bg-indigo-50 text-indigo-700"
                     onClick={() => setActiveTab('system-pulse')}
@@ -1082,29 +1082,28 @@ export const SuperAdminDashboard: React.FC = () => {
                 <div className="space-y-8">
                     {/* Revenue Snapshot Cards */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <div className="p-6 bg-white rounded-3xl border border-slate-200 shadow-sm space-y-2 min-w-0 overflow-hidden">
-                            <span className="text-xs font-black uppercase tracking-wider text-slate-400 block truncate" title="Monthly Recurring Revenue (MRR)">Monthly Recurring Revenue (MRR)</span>
-                            <div className="text-2xl sm:text-3xl font-black text-slate-900 truncate" title={formatCurrency(stats?.monthlyRecurringRevenue || 12500, 'KES')}>
-                                {formatCurrency(stats?.monthlyRecurringRevenue || 12500, 'KES')}
-                            </div>
-                            <p className="text-[11px] text-slate-500 truncate">Calculated from active subscribing schools</p>
-                        </div>
+                        <StatCard
+                            title="Monthly Recurring Revenue (MRR)"
+                            value={formatCurrency(stats?.monthlyRecurringRevenue ?? 0, 'KES')}
+                            icon={<DollarSign className="w-5 h-5 text-primary-600" />}
+                            subtitle="Calculated from active subscribing schools"
+                        />
 
-                        <div className="p-6 bg-white rounded-3xl border border-slate-200 shadow-sm space-y-2 min-w-0 overflow-hidden">
-                            <span className="text-xs font-black uppercase tracking-wider text-slate-400 block truncate" title="Annual Run-Rate (ARR)">Annual Run-Rate (ARR)</span>
-                            <div className="text-2xl sm:text-3xl font-black text-emerald-600 truncate" title={formatCurrency(stats?.annualRecurringRevenue || 150000, 'KES')}>
-                                {formatCurrency(stats?.annualRecurringRevenue || 150000, 'KES')}
-                            </div>
-                            <p className="text-[11px] text-slate-500 truncate">Projected annualized subscription revenue</p>
-                        </div>
+                        <StatCard
+                            title="Annual Run-Rate (ARR)"
+                            value={formatCurrency(stats?.annualRecurringRevenue ?? 0, 'KES')}
+                            icon={<TrendingUp className="w-5 h-5 text-emerald-600" />}
+                            colorClass="bg-emerald-50 text-emerald-700"
+                            subtitle="Projected annualized subscription revenue"
+                        />
 
-                        <div className="p-6 bg-white rounded-3xl border border-slate-200 shadow-sm space-y-2 min-w-0 overflow-hidden">
-                            <span className="text-xs font-black uppercase tracking-wider text-slate-400 block truncate">Total Settled Invoices</span>
-                            <div className="text-2xl sm:text-3xl font-black text-slate-900 truncate">
-                                {safeReceipts.length}
-                            </div>
-                            <p className="text-[11px] text-slate-500 truncate">Verified official payment transactions</p>
-                        </div>
+                        <StatCard
+                            title="Total Settled Invoices"
+                            value={String(safeReceipts.length)}
+                            icon={<Receipt className="w-5 h-5 text-indigo-600" />}
+                            colorClass="bg-indigo-50 text-indigo-700"
+                            subtitle="Verified official payment transactions"
+                        />
                     </div>
 
                     {/* Automated Reminder & Enforcement Cadence Map */}

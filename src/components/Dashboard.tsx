@@ -3,29 +3,9 @@ import { useQuery } from '@tanstack/react-query';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import * as api from '../services/api';
 import Skeleton from './common/Skeleton';
+import StatCard from './common/StatCard';
 import { useData } from '../contexts/DataContext';
 import { useNavigate } from 'react-router-dom';
-
-const StatCard: React.FC<{ title: string; value: string; icon: React.ReactElement, loading?: boolean, onClick?: () => void, colorClass?: string }> = ({ title, value, icon, loading, onClick, colorClass }) => (
-    <div 
-        onClick={onClick}
-        className={`bg-white p-6 rounded-xl shadow-lg flex items-center space-x-4 transition-transform transform hover:-translate-y-1 h-32 cursor-pointer hover:shadow-xl border border-transparent hover:border-slate-100`}
-        role="button"
-        tabIndex={0}
-    >
-        <div className={`p-4 rounded-full shrink-0 ${colorClass || 'bg-primary-100 text-primary-600'}`}>
-            {icon}
-        </div>
-        <div className="w-full">
-            <p className="text-sm font-medium text-slate-500">{title}</p>
-            {loading ? (
-                <Skeleton className="h-8 w-3/4 mt-1" />
-            ) : (
-                <p className={`text-2xl font-bold text-slate-800 ${value.includes('-') ? 'text-red-600' : ''}`}>{value}</p>
-            )}
-        </div>
-    </div>
-);
 
 const Dashboard: React.FC = () => {
     const { formatCurrency, convertCurrency, schoolInfo } = useData();

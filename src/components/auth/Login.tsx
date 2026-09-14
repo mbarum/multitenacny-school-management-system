@@ -1,24 +1,48 @@
 
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useData } from '../../contexts/DataContext';
 import Modal from '../common/Modal';
 import { sendPasswordResetEmail } from '../../services/emailService';
 import * as api from '../../services/api';
 import { validateEmail } from '../../utils/validation';
+import { ShieldCheck, ShieldAlert, KeyRound, UserCheck, AlertTriangle, LogOut, ArrowRight, Database } from 'lucide-react';
+import { Role } from '../../types';
 
 const Login: React.FC = () => {
-    const { schoolInfo, handleLogin: onLogin, addNotification } = useData();
+    const { currentUser, handleLogout, schoolInfo, handleLogin: onLogin, addNotification } = useData();
+    const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [error, setError] = useState('');
     const [formErrors, setFormErrors] = useState<{ email?: string | null }>({});
     const [isLoading, setIsLoading] = useState(false);
+    const [sessionTimeoutNotice, setSessionTimeoutNotice] = useState<string | null>(null);
     
     const [isResetModalOpen, setIsResetModalOpen] = useState(false);
     const [resetEmail, setResetEmail] = useState('');
     const [isSubmittingReset, setIsSubmittingReset] = useState(false);
+
+    useEffect(() => {
+        // If explicit switch or logout requested via URL, clear session
+        if (searchParams.get('switch') === 'true' || searchParams.get('logout') === 'true') {
+            handleLogout();
+        }
+
+        try {
+            const storedNotice = sessionStorage.getItem('saaslink_session_expired');
+            if (storedNotice) {
+                setSessionTimeoutNotice(storedNotice);
+                sessionStorage.removeItem('saaslink_session_expired');
+            } else if (searchParams.get('sessionExpired') === 'true' || searchParams.get('reason') === 'timeout') {
+                setSessionTimeoutNotice('Your session timed out after 15 minutes of inactivity. Please sign in again.');
+            }
+        } catch {
+            // ignore
+        }
+    }, [searchParams, handleLogout]);
 
     const validateForm = () => {
         const emailError = validateEmail(email);
@@ -34,17 +58,27 @@ const Login: React.FC = () => {
         setIsLoading(true);
 
         try {
-            // API call sets the cookie
-            const { user } = await api.login({ email, password });
+            const { user, token } = await api.login({ email, password });
             
             if (user.status === 'Disabled') {
                 setError('Your account has been disabled. Please contact the administrator.');
                 setIsLoading(false);
                 return;
             }
-            onLogin(user);
+            onLogin(user, token);
+            
+            // Navigate directly to role-appropriate dashboard
+            if (user.role === Role.SuperAdmin) {
+                navigate('/super-admin', { replace: true });
+            } else if (user.role === Role.Teacher) {
+                navigate('/teacher', { replace: true });
+            } else if (user.role === Role.Parent) {
+                navigate('/parent', { replace: true });
+            } else {
+                navigate('/', { replace: true });
+            }
         } catch (err) {
-            const errorMessage = err instanceof Error ? err.message : "An unknown error occurred.";
+            const errorMessage = err instanceof Error ? err.message : "Invalid credentials or database connection error.";
             setError(errorMessage);
             setIsLoading(false);
         }
@@ -62,6 +96,15 @@ const Login: React.FC = () => {
             setIsSubmittingReset(false);
             setIsResetModalOpen(false);
             setResetEmail('');
+        }
+    };
+
+    const getDashboardPath = (userRole?: Role) => {
+        switch (userRole) {
+            case Role.SuperAdmin: return '/super-admin';
+            case Role.Teacher: return '/teacher';
+            case Role.Parent: return '/parent';
+            default: return '/';
         }
     };
 
@@ -114,73 +157,139 @@ const Login: React.FC = () => {
                              <h1 className="mt-6 text-3xl font-extrabold text-slate-900">Welcome Back</h1>
                              <p className="mt-2 text-slate-600 text-sm">Please sign in to access the portal.</p>
                         </div>
+
+                        {sessionTimeoutNotice && (
+                            <div className="mb-6 p-4 rounded-xl bg-amber-50 border border-amber-300 text-amber-900 text-xs sm:text-sm flex items-start gap-3 shadow-sm animate-fade-in">
+                                <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                                <div>
+                                    <strong className="font-bold block text-amber-950">Session Expired</strong>
+                                    <span className="text-amber-800">{sessionTimeoutNotice}</span>
+                                </div>
+                            </div>
+                        )}
                         
-                        <form onSubmit={handleLoginSubmit} className="space-y-6">
-                            <div className="relative group">
-                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary-600 transition-colors">
-                                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207" /></svg>
-                                </span>
-                                <input 
-                                    type="email" 
-                                    id="email" 
-                                    value={email} 
-                                    onChange={(e) => {
-                                        setEmail(e.target.value);
-                                        if (formErrors.email) validateForm();
-                                    }} 
-                                    onBlur={validateForm}
-                                    required 
-                                    className={`peer block w-full px-10 py-3.5 border rounded-xl shadow-sm placeholder-transparent focus:outline-none focus:ring-2 focus:ring-offset-1 focus:border-primary-500 transition ${formErrors.email ? 'border-red-500 focus:ring-red-500' : 'border-slate-300 focus:ring-primary-500'}`} 
-                                    placeholder="you@example.com"
-                                />
-                                 <label htmlFor="email" className="absolute left-10 -top-2.5 text-sm text-slate-500 bg-white px-1 transition-all peer-placeholder-shown:text-base peer-placeholder-shown:text-slate-400 peer-placeholder-shown:top-3.5 peer-focus:-top-2.5 peer-focus:text-sm peer-focus:text-primary-600">Email Address</label>
-                                {formErrors.email && <p className="mt-1 text-xs text-red-600">{formErrors.email}</p>}
+                        {currentUser ? (
+                            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6 shadow-sm text-center mb-6 animate-fade-in">
+                                <div className="w-12 h-12 rounded-full bg-primary-100 text-primary-700 mx-auto flex items-center justify-center mb-3">
+                                    <UserCheck className="w-6 h-6" />
+                                </div>
+                                <h3 className="text-base font-bold text-slate-900">Active Session Detected</h3>
+                                <p className="text-xs text-slate-600 mt-1">
+                                    You are currently authenticated as:
+                                </p>
+                                <div className="my-3 py-2 px-3 bg-white rounded-xl border border-slate-200 inline-block text-left max-w-full">
+                                    <p className="text-xs font-bold text-slate-800 truncate">{currentUser.name}</p>
+                                    <p className="text-[11px] text-slate-500 font-mono truncate">{currentUser.email}</p>
+                                    <span className="inline-block mt-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary-50 text-primary-700 border border-primary-200">
+                                        {currentUser.role}
+                                    </span>
+                                </div>
+                                <div className="flex flex-col gap-2 mt-4">
+                                    <button
+                                        type="button"
+                                        onClick={() => navigate(getDashboardPath(currentUser.role))}
+                                        className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-bold shadow-md shadow-primary-500/20 transition"
+                                    >
+                                        <span>Continue to Portal</span>
+                                        <ArrowRight className="w-4 h-4" />
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={async () => {
+                                            await handleLogout();
+                                            setEmail('');
+                                            setPassword('');
+                                        }}
+                                        className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-white hover:bg-slate-100 border border-slate-300 text-slate-700 text-xs font-semibold transition"
+                                    >
+                                        <LogOut className="w-3.5 h-3.5 text-slate-500" />
+                                        <span>Sign Out to Switch Account</span>
+                                    </button>
+                                </div>
                             </div>
+                        ) : (
+                            <form onSubmit={handleLoginSubmit} className="space-y-6">
+                                <div className="relative group">
+                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary-600 transition-colors">
+                                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207" /></svg>
+                                    </span>
+                                    <input 
+                                        type="email" 
+                                        id="email" 
+                                        value={email} 
+                                        onChange={(e) => {
+                                            setEmail(e.target.value);
+                                            if (formErrors.email) validateForm();
+                                        }} 
+                                        onBlur={validateForm}
+                                        required 
+                                        className={`peer block w-full px-10 py-3.5 border rounded-xl shadow-sm placeholder-transparent focus:outline-none focus:ring-2 focus:ring-offset-1 focus:border-primary-500 transition ${formErrors.email ? 'border-red-500 focus:ring-red-500' : 'border-slate-300 focus:ring-primary-500'}`} 
+                                        placeholder="you@example.com"
+                                    />
+                                     <label htmlFor="email" className="absolute left-10 -top-2.5 text-sm text-slate-500 bg-white px-1 transition-all peer-placeholder-shown:text-base peer-placeholder-shown:text-slate-400 peer-placeholder-shown:top-3.5 peer-focus:-top-2.5 peer-focus:text-sm peer-focus:text-primary-600">Email Address</label>
+                                    {formErrors.email && <p className="mt-1 text-xs text-red-600">{formErrors.email}</p>}
+                                </div>
 
-                             <div className="relative group">
-                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary-600 transition-colors">
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
-                                </span>
-                                <input 
-                                    type={showPassword ? "text" : "password"} 
-                                    id="password" 
-                                    value={password} 
-                                    onChange={(e) => setPassword(e.target.value)} 
-                                    required 
-                                    className="peer block w-full px-10 py-3.5 border border-slate-300 rounded-xl shadow-sm placeholder-transparent focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-primary-500 focus:border-primary-500 transition"
-                                    placeholder="••••••••"
-                                />
-                                <label htmlFor="password" className="absolute left-10 -top-2.5 text-sm text-slate-500 bg-white px-1 transition-all peer-placeholder-shown:text-base peer-placeholder-shown:text-slate-400 peer-placeholder-shown:top-3.5 peer-focus:-top-2.5 peer-focus:text-sm peer-focus:text-primary-600">Password</label>
-                                <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1">
-                                    {showPassword ? 
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
-                                        : 
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a10.05 10.05 0 015.393-6.218l-2.717-2.717m5.058 5.058a3 3 0 014.242 0M9.879 9.879a3 3 0 01-4.242 0M9.879 9.879L6.12 6.12m9.759 9.759l3.75-3.75M3 3l3.75 3.75M9.879 9.879L14.12 14.12" /></svg>
-                                    }
-                                </button>
-                            </div>
-                            
-                            {error && <p className="text-red-600 bg-red-50 p-3 rounded-lg text-sm text-center border border-red-200">{error}</p>}
+                                 <div className="relative group">
+                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary-600 transition-colors">
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                                    </span>
+                                    <input 
+                                        type={showPassword ? "text" : "password"} 
+                                        id="password" 
+                                        value={password} 
+                                        onChange={(e) => setPassword(e.target.value)} 
+                                        required 
+                                        className="peer block w-full px-10 py-3.5 border border-slate-300 rounded-xl shadow-sm placeholder-transparent focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-primary-500 focus:border-primary-500 transition"
+                                        placeholder="••••••••"
+                                    />
+                                    <label htmlFor="password" className="absolute left-10 -top-2.5 text-sm text-slate-500 bg-white px-1 transition-all peer-placeholder-shown:text-base peer-placeholder-shown:text-slate-400 peer-placeholder-shown:top-3.5 peer-focus:-top-2.5 peer-focus:text-sm peer-focus:text-primary-600">Password</label>
+                                    <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1">
+                                        {showPassword ? 
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                                            : 
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a10.05 10.05 0 015.393-6.218l-2.717-2.717m5.058 5.058a3 3 0 014.242 0M9.879 9.879a3 3 0 01-4.242 0M9.879 9.879L6.12 6.12m9.759 9.759l3.75-3.75M3 3l3.75 3.75M9.879 9.879L14.12 14.12" /></svg>
+                                        }
+                                    </button>
+                                </div>
+                                
+                                {error && (
+                                    <div className="p-3.5 bg-red-50 border border-red-200 rounded-xl text-red-700 text-xs sm:text-sm flex items-start gap-2.5 animate-fade-in">
+                                        <ShieldAlert className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+                                        <span className="font-medium">{error}</span>
+                                    </div>
+                                )}
 
-                            <div className="flex justify-between items-center text-sm">
-                                <label className="flex items-center space-x-2 cursor-pointer">
-                                    <input type="checkbox" className="rounded text-primary-600 focus:ring-primary-500 w-4 h-4 border-slate-300"/>
-                                    <span className="text-slate-600">Remember me</span>
-                                </label>
-                                <a href="#" onClick={(e) => {e.preventDefault(); setIsResetModalOpen(true)}} className="font-semibold text-primary-600 hover:text-primary-700 transition-colors">Forgot Password?</a>
-                            </div>
+                                <div className="flex justify-between items-center text-sm">
+                                    <label className="flex items-center space-x-2 cursor-pointer">
+                                        <input type="checkbox" className="rounded text-primary-600 focus:ring-primary-500 w-4 h-4 border-slate-300"/>
+                                        <span className="text-slate-600">Remember me</span>
+                                    </label>
+                                    <a href="#" onClick={(e) => {e.preventDefault(); setIsResetModalOpen(true)}} className="font-semibold text-primary-600 hover:text-primary-700 transition-colors">Forgot Password?</a>
+                                </div>
 
-                            <div>
-                                <button type="submit" disabled={isLoading} className="w-full flex justify-center items-center py-3.5 px-4 border border-transparent rounded-xl shadow-lg shadow-primary-500/30 text-lg font-bold text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-all transform hover:-translate-y-0.5 disabled:bg-slate-400 disabled:shadow-none h-[54px]">
-                                    {isLoading ? 
-                                        <svg className="animate-spin h-6 w-6 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                        </svg>
-                                        : 'Sign In'}
-                                </button>
-                            </div>
-                        </form>
+                                <div>
+                                    <button type="submit" disabled={isLoading} className="w-full flex justify-center items-center py-3.5 px-4 border border-transparent rounded-xl shadow-lg shadow-primary-500/30 text-lg font-bold text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-all transform hover:-translate-y-0.5 disabled:bg-slate-400 disabled:shadow-none h-[54px]">
+                                        {isLoading ? 
+                                            <svg className="animate-spin h-6 w-6 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                            </svg>
+                                            : 'Sign In'}
+                                    </button>
+                                </div>
+
+                                {/* Security Verification Notice */}
+                                <div className="mt-6 pt-5 border-t border-slate-200">
+                                    <div className="flex items-center gap-2 p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-600">
+                                        <Database className="w-4 h-4 text-emerald-600 shrink-0" />
+                                        <span>
+                                            <strong className="text-slate-800 font-semibold">MySQL Secure Authentication:</strong> Passwords are encrypted with bcrypt. Mock access and fallback accounts are disabled.
+                                        </span>
+                                    </div>
+                                </div>
+                            </form>
+                        )}
 
                         {/* Dedicated Return to Website Button */}
                         <div className="mt-8 pt-6 border-t border-slate-200/80 text-center">

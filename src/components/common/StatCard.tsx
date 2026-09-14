@@ -26,43 +26,50 @@ const StatCard: React.FC<StatCardProps> = ({
     // Dynamically calculate font size so lengthy currency amounts or values never overflow the card
     const getValueFontSize = (val: string) => {
         if (!val) return 'text-xl sm:text-2xl lg:text-3xl';
-        const str = String(val);
-        if (str.length > 16) return 'text-base sm:text-lg xl:text-xl';
-        if (str.length > 12) return 'text-lg sm:text-xl xl:text-2xl';
-        if (str.length > 8) return 'text-xl sm:text-2xl xl:text-2xl';
-        return 'text-2xl sm:text-3xl';
+        const str = String(val).trim();
+        if (str.length > 22) return 'text-xs sm:text-sm lg:text-base';
+        if (str.length > 17) return 'text-sm sm:text-base lg:text-lg';
+        if (str.length > 13) return 'text-base sm:text-lg lg:text-xl';
+        if (str.length > 9) return 'text-lg sm:text-xl lg:text-2xl';
+        if (str.length > 6) return 'text-xl sm:text-2xl lg:text-3xl';
+        return 'text-2xl sm:text-3xl lg:text-4xl';
     };
 
     return (
         <div 
             onClick={onClick}
-            className={`bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-sm flex items-center gap-3 sm:gap-4 transition-all duration-200 min-w-0 overflow-hidden
+            className={`bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/90 shadow-sm flex flex-col justify-between transition-all duration-200 min-w-0 overflow-hidden group
             ${onClick ? 'cursor-pointer hover:shadow-md hover:-translate-y-0.5' : ''}
-            ${isSelected ? 'ring-2 ring-primary-500 ring-offset-2 border-transparent' : ''}
+            ${isSelected ? 'ring-2 ring-primary-500 ring-offset-2 border-transparent bg-primary-50/10' : ''}
             `}
         >
-            <div className={`p-3 rounded-xl shrink-0 flex items-center justify-center ${colorClass}`}>
-                {icon}
-            </div>
-            <div className="min-w-0 flex-1 overflow-hidden">
+            {/* Top row: Title and Icon badge */}
+            <div className="flex items-start justify-between gap-2.5 min-w-0">
                 <p 
-                    className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-slate-500 truncate" 
+                    className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-slate-500 line-clamp-2 leading-tight flex-1" 
                     title={title}
                 >
                     {title}
                 </p>
+                <div className={`p-2 sm:p-2.5 rounded-xl shrink-0 flex items-center justify-center [&>svg]:w-4 [&>svg]:h-4 sm:[&>svg]:w-5 sm:[&>svg]:h-5 ${colorClass}`}>
+                    {icon}
+                </div>
+            </div>
+
+            {/* Bottom section: Full width for Value and Subtitle */}
+            <div className="mt-3 pt-1 min-w-0">
                 {loading ? (
-                    <Skeleton className="h-7 w-24 mt-1" />
+                    <Skeleton className="h-8 w-28 rounded-lg" />
                 ) : (
-                    <p 
-                        className={`font-black text-slate-800 tracking-tight truncate mt-0.5 ${getValueFontSize(value)}`}
+                    <div 
+                        className={`font-black text-slate-900 tracking-tight tabular-nums leading-tight break-words ${getValueFontSize(value)}`}
                         title={value}
                     >
                         {value}
-                    </p>
+                    </div>
                 )}
                 {subtitle && (
-                    <p className="text-[11px] text-slate-400 truncate mt-0.5" title={subtitle}>
+                    <p className="text-[11px] text-slate-400 truncate mt-1" title={subtitle}>
                         {subtitle}
                     </p>
                 )}

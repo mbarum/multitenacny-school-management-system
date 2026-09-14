@@ -68,32 +68,10 @@ const handleLocalFallback = (endpoint: string, options: RequestInit): any => {
         }
         return { logoUrl: newLogo || store.schoolInfo.logoUrl || 'https://i.imgur.com/S5o7W44.png' };
     }
-    if (cleanEndpoint === '/auth/me') {
-        const token = localStorage.getItem('authToken');
-        const user = store.users.find(u => u.id === token) || store.users[0];
-        return user;
-    }
-    if (cleanEndpoint === '/auth/login') {
-        const email = (body.email || '').toLowerCase().trim();
-        let user = store.users.find(u => u.email.toLowerCase() === email);
-        if (!user && email.includes('@')) {
-            const matchedStudent = store.students.find(s => s.guardianEmail && s.guardianEmail.toLowerCase().trim() === email);
-            if (matchedStudent) {
-                user = {
-                    id: `user-parent-${matchedStudent.id}`,
-                    name: matchedStudent.guardianName || `Guardian of ${matchedStudent.name}`,
-                    email: email,
-                    role: Role.Parent,
-                    avatarUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=120',
-                    status: 'Active',
-                    schoolId: store.schoolInfo?.id || 'school-1'
-                };
-                store.users.push(user);
-                saveMockStore(store);
-            }
-        }
-        if (!user) user = store.users[0];
-        return { user, token: user.id };
+    // Authentication MUST always be validated against the real backend & MySQL database.
+    // Absolutely no mock login, backdoor password, or local fallback is permitted.
+    if (cleanEndpoint.startsWith('/auth')) {
+        throw new Error('Authentication requires a live connection to the backend and MySQL database. Mock authentication fallback is strictly disabled for security.');
     }
     if (cleanEndpoint === '/auth/logout') return { success: true };
     if (cleanEndpoint === '/auth/register-school') {
@@ -1253,10 +1231,11 @@ const handleLocalFallback = (endpoint: string, options: RequestInit): any => {
 };
 
 const API_BASE_URL = ((import.meta as any).env?.VITE_API_URL || '').replace(/\/+$/, '');
-const DISABLE_MOCK_FALLBACK = Boolean(
-    (import.meta as any).env?.VITE_DISABLE_MOCK_FALLBACK === 'true' || 
-    (import.meta as any).env?.VITE_STRICT_API === 'true'
-);
+// Strict mode: MySQL database is the only source of truth.
+// Mock fallback is strictly disabled unless explicitly enabled for isolated tests.
+const DISABLE_MOCK_FALLBACK = (import.meta as any).env?.VITE_ENABLE_MOCK_FALLBACK === 'true' 
+    ? false 
+    : true;
 
 // Generic API fetch wrapper for JSON responses with automatic resilient fallback
 const apiFetch = async (endpoint: string, options: RequestInit = {}) => {
@@ -1272,20 +1251,25 @@ const apiFetch = async (endpoint: string, options: RequestInit = {}) => {
     try {
         const response = await fetch(url, { ...options, headers });
         if (!response.ok) {
-            if (DISABLE_MOCK_FALLBACK) {
-                const errorData = await response.json().catch(() => ({ message: response.statusText }));
-                throw new Error(errorData.message || `API error (${response.status}) on ${endpoint}`);
+            const errorData = await response.json().catch(() => ({ message: response.statusText }));
+            const errorMessage = errorData.message || `API error (${response.status}) on ${endpoint}`;
+            // Auth endpoints and all errors in strict mode must throw the real error to the caller
+            if (DISABLE_MOCK_FALLBACK || endpoint.startsWith('/auth') || response.status >= 400) {
+                throw new Error(errorMessage);
             }
-            // If endpoint is not found or returns an error status, use graceful local fallback
+            // If endpoint is not found or returns an error status, use graceful local fallback only if explicitly enabled
             return handleLocalFallback(endpoint, options);
         }
         if (response.status === 204) return null;
         return await response.json();
     } catch (err: any) {
-        if (DISABLE_MOCK_FALLBACK) {
+        if (DISABLE_MOCK_FALLBACK || endpoint.startsWith('/auth')) {
+            if (err instanceof TypeError && err.message.includes('fetch')) {
+                throw new Error(`Unable to connect to the backend server (${url}). Please ensure the backend and MySQL database are running.`);
+            }
             throw err;
         }
-        // Fallback gracefully instead of throwing "Server connection failed."
+        // Fallback gracefully only if mock mode was explicitly enabled
         return handleLocalFallback(endpoint, options);
     }
 };
@@ -1298,21 +1282,28 @@ const apiFetchBlob = async (endpoint: string, options: RequestInit = {}) => {
         headers.set('Authorization', `Bearer ${token}`);
     }
     const url = API_BASE_URL ? `${API_BASE_URL}/api${endpoint}` : `/api${endpoint}`;
-    try {
-        const response = await fetch(url, { ...options, headers });
-        if (!response.ok) {
-            return new Blob(["Mock export data"], { type: "text/csv" });
-        }
-        return await response.blob();
-    } catch {
-        return new Blob(["Mock export data"], { type: "text/csv" });
+    const response = await fetch(url, { ...options, headers });
+    if (!response.ok) {
+        throw new Error(`Export failed (${response.status})`);
     }
+    return await response.blob();
 };
 
 // --- Auth ---
 export const login = (credentials: {email: string, password: string}): Promise<{user: User, token: string}> => apiFetch('/auth/login', { method: 'POST', body: JSON.stringify(credentials) });
 export const logout = (): Promise<void> => apiFetch('/auth/logout', { method: 'POST' });
-export const getAuthenticatedUser = (): Promise<User> => apiFetch('/auth/me');
+export const getAuthenticatedUser = async (): Promise<User | null> => {
+    const token = localStorage.getItem('authToken');
+    if (!token || token === 'null' || token === 'undefined') {
+        return null;
+    }
+    try {
+        return await apiFetch('/auth/me');
+    } catch (err) {
+        localStorage.removeItem('authToken');
+        return null;
+    }
+};
 export const registerSchool = (data: any): Promise<any> => apiFetch('/auth/register-school', { method: 'POST', body: JSON.stringify(data) });
 export const createPaymentIntent = (data: { plan: string, billingCycle: string, email: string }): Promise<{ clientSecret: string, amount: number }> => apiFetch('/auth/create-payment-intent', { method: 'POST', body: JSON.stringify(data) });
 

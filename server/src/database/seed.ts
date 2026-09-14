@@ -80,7 +80,7 @@ const runSeed = async () => {
             console.log('Created default platform settings.');
         }
 
-        // 1. Create Super Admin User
+        // 1. Create Super Admin Users
         let superAdmin = await userRepo.findOne({ where: { email: 'superadmin@saaslink.tech' } });
         if (!superAdmin) {
             superAdmin = userRepo.create({
@@ -91,6 +91,18 @@ const runSeed = async () => {
             });
             await userRepo.save(superAdmin);
             console.log('Created Super Admin: superadmin@saaslink.tech / password123');
+        }
+
+        let superAdminAlt = await userRepo.findOne({ where: { email: 'super@saaslink.com' } });
+        if (!superAdminAlt) {
+            superAdminAlt = userRepo.create({
+                name: 'Platform Owner',
+                email: 'super@saaslink.com',
+                password: hashedPassword,
+                role: Role.SuperAdmin,
+            });
+            await userRepo.save(superAdminAlt);
+            console.log('Created Super Admin: super@saaslink.com / password123');
         }
 
         // 2. Create Default Demo School
@@ -127,7 +139,7 @@ const runSeed = async () => {
             console.log('Created Subscription: Active Premium Plan');
         }
 
-        // 4. Create School Admin User
+        // 4. Create School Admin Users
         let adminUser = await userRepo.findOne({ where: { email: 'admin@demoacademy.co.ke' } });
         if (!adminUser) {
             adminUser = userRepo.create({
@@ -139,6 +151,19 @@ const runSeed = async () => {
             });
             await userRepo.save(adminUser);
             console.log('Created School Admin: admin@demoacademy.co.ke / password123');
+        }
+
+        let adminUserAlt = await userRepo.findOne({ where: { email: 'admin@saaslink.com' } });
+        if (!adminUserAlt) {
+            adminUserAlt = userRepo.create({
+                name: 'School Admin',
+                email: 'admin@saaslink.com',
+                password: hashedPassword,
+                role: Role.Admin,
+                school: school,
+            });
+            await userRepo.save(adminUserAlt);
+            console.log('Created School Admin: admin@saaslink.com / password123');
         }
 
         // 5. Seed SchoolSetting

@@ -1,5 +1,5 @@
 
-import React, { lazy, Suspense, useEffect } from 'react';
+import React, { Suspense, useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import Sidebar from './components/layout/Sidebar';
 import Header from './components/layout/Header';
@@ -11,41 +11,43 @@ import SubscriptionLocked from './components/auth/SubscriptionLocked';
 import PrivacyPolicy from './views/PrivacyPolicy';
 import TermsOfService from './views/TermsOfService';
 import CookiePolicy from './views/CookiePolicy';
+import SessionTimeoutManager from './components/auth/SessionTimeoutManager';
 import { useData } from './contexts/DataContext';
-import { Notification, SubscriptionStatus } from './types';
+import { Notification, SubscriptionStatus, Role } from './types';
 import { identifySocketUser, sendSocketHeartbeat } from './services/socket';
+import { retryLazy } from './utils/retryLazy';
 
 // Admin Views
-const Dashboard = lazy(() => import('./views/Dashboard'));
-const StudentsView = lazy(() => import('./views/StudentsView'));
-const FeeManagementView = lazy(() => import('./views/FeeManagementView'));
-const ExpensesView = lazy(() => import('./views/ExpensesView'));
-const StaffAndPayrollView = lazy(() => import('./views/StaffAndPayrollView'));
-const SettingsView = lazy(() => import('./views/SettingsView'));
-const AcademicsView = lazy(() => import('./views/AcademicsView'));
-const TimetableView = lazy(() => import('./views/TimetableView'));
-const AttendanceView = lazy(() => import('./views/AttendanceView'));
-const CalendarView = lazy(() => import('./views/CalendarView'));
-const ExaminationsView = lazy(() => import('./views/ExaminationsView'));
-const ReportCardsView = lazy(() => import('./views/ReportCardsView'));
-const CommunicationView = lazy(() => import('./views/CommunicationView'));
-const Reporting = lazy(() => import('./views/Reporting'));
-const LibraryView = lazy(() => import('./views/LibraryView'));
+const Dashboard = retryLazy(() => import('./views/Dashboard'));
+const StudentsView = retryLazy(() => import('./views/StudentsView'));
+const FeeManagementView = retryLazy(() => import('./views/FeeManagementView'));
+const ExpensesView = retryLazy(() => import('./views/ExpensesView'));
+const StaffAndPayrollView = retryLazy(() => import('./views/StaffAndPayrollView'));
+const SettingsView = retryLazy(() => import('./views/SettingsView'));
+const AcademicsView = retryLazy(() => import('./views/AcademicsView'));
+const TimetableView = retryLazy(() => import('./views/TimetableView'));
+const AttendanceView = retryLazy(() => import('./views/AttendanceView'));
+const CalendarView = retryLazy(() => import('./views/CalendarView'));
+const ExaminationsView = retryLazy(() => import('./views/ExaminationsView'));
+const ReportCardsView = retryLazy(() => import('./views/ReportCardsView'));
+const CommunicationView = retryLazy(() => import('./views/CommunicationView'));
+const Reporting = retryLazy(() => import('./views/Reporting'));
+const LibraryView = retryLazy(() => import('./views/LibraryView'));
 
 // Role-Specific Views
-const SuperAdminDashboard = lazy(() => import('./views/super-admin/SuperAdminDashboard'));
-const TeacherDashboard = lazy(() => import('./views/teacher/TeacherDashboard'));
-const MyClassView = lazy(() => import('./views/teacher/MyClassView'));
-const TeacherAttendanceView = lazy(() => import('./views/teacher/TeacherAttendanceView'));
-const TeacherExaminationsView = lazy(() => import('./views/teacher/TeacherExaminationsView'));
-const TeacherCommunicationView = lazy(() => import('./views/teacher/TeacherCommunicationView'));
+const SuperAdminDashboard = retryLazy(() => import('./views/super-admin/SuperAdminDashboard'));
+const TeacherDashboard = retryLazy(() => import('./views/teacher/TeacherDashboard'));
+const MyClassView = retryLazy(() => import('./views/teacher/MyClassView'));
+const TeacherAttendanceView = retryLazy(() => import('./views/teacher/TeacherAttendanceView'));
+const TeacherExaminationsView = retryLazy(() => import('./views/teacher/TeacherExaminationsView'));
+const TeacherCommunicationView = retryLazy(() => import('./views/teacher/TeacherCommunicationView'));
 
-const ParentDashboard = lazy(() => import('./views/parent/ParentDashboard'));
-const ParentChildDetails = lazy(() => import('./views/parent/ParentChildDetails'));
-const ParentFinances = lazy(() => import('./views/parent/ParentFinances'));
-const ParentAnnouncementsView = lazy(() => import('./views/parent/ParentAnnouncementsView'));
-const ParentLmsView = lazy(() => import('./views/parent/ParentLmsView'));
-const LmsView = lazy(() => import('./views/lms/LmsView'));
+const ParentDashboard = retryLazy(() => import('./views/parent/ParentDashboard'));
+const ParentChildDetails = retryLazy(() => import('./views/parent/ParentChildDetails'));
+const ParentFinances = retryLazy(() => import('./views/parent/ParentFinances'));
+const ParentAnnouncementsView = retryLazy(() => import('./views/parent/ParentAnnouncementsView'));
+const ParentLmsView = retryLazy(() => import('./views/parent/ParentLmsView'));
+const LmsView = retryLazy(() => import('./views/lms/LmsView'));
 
 const App: React.FC = () => {
     const {
@@ -134,6 +136,7 @@ const App: React.FC = () => {
     // 3. AUTHENTICATED LAYOUT
     return (
         <div className="flex h-screen bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors duration-200">
+            <SessionTimeoutManager />
             <NotificationContainer notifications={notifications} />
             <Sidebar />
             <div className={`flex-1 flex flex-col transition-all duration-300 ease-in-out ${isSidebarCollapsed ? 'lg:ml-20' : 'lg:ml-64'}`}>
@@ -141,7 +144,12 @@ const App: React.FC = () => {
                 <main className="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar bg-slate-100 dark:bg-slate-950">
                     <Suspense fallback={<div className="h-full w-full flex items-center justify-center"><Spinner /></div>}>
                         <Routes>
-                            <Route path="/" element={<Dashboard />} />
+                            <Route path="/" element={
+                                currentUser.role === Role.SuperAdmin ? <Navigate to="/super-admin" replace /> :
+                                currentUser.role === Role.Teacher ? <Navigate to="/teacher" replace /> :
+                                currentUser.role === Role.Parent ? <Navigate to="/parent" replace /> :
+                                <Dashboard />
+                            } />
                             <Route path="/super-admin" element={<SuperAdminDashboard />} />
                             <Route path="/students" element={<StudentsView />} />
                             <Route path="/fees" element={<FeeManagementView />} />
@@ -171,6 +179,7 @@ const App: React.FC = () => {
                             <Route path="/privacy" element={<PrivacyPolicy />} />
                             <Route path="/terms" element={<TermsOfService />} />
                             <Route path="/cookies" element={<CookiePolicy />} />
+                            <Route path="/login" element={<Login />} />
                             <Route path="*" element={<Navigate to="/" replace />} />
                         </Routes>
                     </Suspense>

@@ -123,7 +123,11 @@ export function viteApiPlugin(options?: { disabled?: boolean }): Plugin {
                         sendJson(401, { message: 'Unauthorized' });
                         return;
                     }
-                    const user = users.find(u => u.id === token) || users[0];
+                    const user = users.find(u => u.id === token);
+                    if (!user) {
+                        sendJson(401, { message: 'Session expired or user not found' });
+                        return;
+                    }
                     sendJson(200, user);
                     return;
                 }
@@ -131,23 +135,34 @@ export function viteApiPlugin(options?: { disabled?: boolean }): Plugin {
                 if (path === '/api/auth/login') {
                     readBody(body => {
                         const email = (body.email || '').toLowerCase().trim();
-                        let user = users.find(u => u.email.toLowerCase() === email);
-                        if (!user && email.includes('@')) {
-                            const matchedStudent = students.find(s => s.guardianEmail && s.guardianEmail.toLowerCase().trim() === email);
-                            if (matchedStudent) {
-                                user = {
-                                    id: `user-parent-${matchedStudent.id}`,
-                                    name: matchedStudent.guardianName || `Guardian of ${matchedStudent.name}`,
-                                    email: email,
-                                    role: 'Parent' as any,
-                                    avatarUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=120',
-                                    status: 'Active' as const,
-                                    schoolId: schoolInfo.id || 'school-1'
-                                };
-                                users.push(user);
-                            }
+                        const password = (body.password || '').trim();
+
+                        if (!email || !password) {
+                            sendJson(400, { message: 'Please enter both your email address and password.' });
+                            return;
                         }
-                        if (!user) user = users[0];
+
+                        const user = users.find(u => u.email.toLowerCase() === email);
+
+                        // Strictly reject non-existent users
+                        if (!user) {
+                            sendJson(401, { message: 'Invalid email or password. Please verify your credentials and try again.' });
+                            return;
+                        }
+
+                        // Strictly verify password against user's specific stored password (no backdoor passwords)
+                        const validPassword = user.password;
+                        const isPasswordValid = validPassword && password === validPassword;
+                        if (!isPasswordValid) {
+                            sendJson(401, { message: 'Invalid email or password. Please verify your credentials and try again.' });
+                            return;
+                        }
+
+                        if (user.status === 'Disabled') {
+                            sendJson(403, { message: 'Your account has been disabled. Please contact the system administrator.' });
+                            return;
+                        }
+
                         sendJson(200, {
                             user,
                             token: user.id

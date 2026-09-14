@@ -292,12 +292,20 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setSchoolInfo(null);
         localStorage.removeItem('authToken');
         localStorage.removeItem('currentUser');
+        localStorage.removeItem('saaslink_last_activity');
         queryClient.clear();
         navigate('/login');
     }, [navigate, queryClient]);
 
     const loadCoreSettings = async (user: User) => {
         try {
+            if (user.role === Role.SuperAdmin) {
+                // Platform SuperAdmin manages schools across the platform
+                const publicInfo = await api.getPublicSchoolInfo().catch(() => null);
+                if (publicInfo) setSchoolInfo(publicInfo);
+                return;
+            }
+
             const data = await api.fetchInitialData();
             setUsers(data[0]);
             setStudents(data[1]);
@@ -359,7 +367,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const handleLogin = useCallback(async (user: User, token?: string) => {
         if (user && user.id) {
-            if (token) localStorage.setItem('authToken', token);
+            const sessionToken = token || (user as any).token || user.id;
+            localStorage.setItem('authToken', sessionToken);
+            localStorage.setItem('saaslink_last_activity', Date.now().toString());
             setCurrentUser(user);
             setIsLoading(true);
             await loadCoreSettings(user);
