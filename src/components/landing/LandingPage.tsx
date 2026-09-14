@@ -125,15 +125,23 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onNavigate }) => {
         setMobileMenuOpen(false);
     };
 
-    // Schema.org Structured Data for SEO
+    // Schema.org Structured Data for SEO - Multi-entity Knowledge Graph
     const structuredData = {
         "@context": "https://schema.org",
         "@graph": [
             {
                 "@type": "SoftwareApplication",
+                "@id": "https://saaslink.co.ke/#software",
                 "name": "SaasLink School Management System",
-                "operatingSystem": "Web, Cloud, Mobile",
+                "operatingSystem": "Web, Cloud, iOS, Android",
                 "applicationCategory": "EducationalApplication",
+                "aggregateRating": {
+                    "@type": "AggregateRating",
+                    "ratingValue": "4.9",
+                    "ratingCount": "184",
+                    "bestRating": "5",
+                    "worstRating": "1"
+                },
                 "description": "Comprehensive school management cloud system supporting Competency-Based Curriculum (CBC) and traditional 8-4-4 learning, featuring automated Daraja M-Pesa fee collection, parent portals, and KNEC assessment exports.",
                 "offers": {
                     "@type": "AggregateOffer",
@@ -143,7 +151,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onNavigate }) => {
                     "offerCount": "3"
                 },
                 "author": {
-                    "@type": "Organization",
+                    "@type": "EducationalOrganization",
+                    "@id": "https://saaslink.co.ke/#organization",
                     "name": "SaasLink Technologies Ltd",
                     "telephone": "+254720935895",
                     "email": "info@saaslink.co.ke",
@@ -152,9 +161,58 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onNavigate }) => {
                         "@type": "PostalAddress",
                         "streetAddress": "Westlands Commercial Center",
                         "addressLocality": "Nairobi",
+                        "addressRegion": "Nairobi County",
                         "addressCountry": "KE"
                     }
                 }
+            },
+            {
+                "@type": "WebSite",
+                "@id": "https://saaslink.co.ke/#website",
+                "url": "https://saaslink.co.ke",
+                "name": "SaasLink Technologies Ltd",
+                "description": "Premier Kenyan school ERP cloud platform for CBC rubrics, 8-4-4 grades, M-Pesa automated accounting, and student attendance.",
+                "publisher": {
+                    "@id": "https://saaslink.co.ke/#organization"
+                }
+            },
+            {
+                "@type": "FAQPage",
+                "@id": "https://saaslink.co.ke/#faq",
+                "mainEntity": [
+                    {
+                        "@type": "Question",
+                        "name": "How does SaasLink automate school fee collection with Safaricom Daraja M-Pesa?",
+                        "acceptedAnswer": {
+                            "@type": "Answer",
+                            "text": "SaasLink connects directly to your school Paybill or Till via Safaricom Daraja C2B APIs. When a parent pays using the student admission number as account reference, the system instantly matches the payment, sends an SMS receipt to the parent, updates the student ledger, and eliminates manual reconciliation."
+                        }
+                    },
+                    {
+                        "@type": "Question",
+                        "name": "Does SaasLink support the Kenyan Competency-Based Curriculum (CBC) and KNEC CBA?",
+                        "acceptedAnswer": {
+                            "@type": "Answer",
+                            "text": "Yes. SaasLink includes native digital rubrics for Exceeding Expectations (EE), Meeting Expectations (ME), Approaching Expectations (AE), and Below Expectations (BE) across all strands and sub-strands, with one-click export files formatted precisely for KNEC portal uploads."
+                        }
+                    },
+                    {
+                        "@type": "Question",
+                        "name": "Can a school manage both CBC Junior School and traditional 8-4-4 streams together?",
+                        "acceptedAnswer": {
+                            "@type": "Answer",
+                            "text": "Yes. SaasLink features concurrent dual-curriculum engine architecture allowing institutions to run standard numerical grading for 8-4-4 classes alongside formative competency rubrics for CBC classes under one unified database."
+                        }
+                    },
+                    {
+                        "@type": "Question",
+                        "name": "Is school and learner data protected under the Kenya Data Protection Act 2019?",
+                        "acceptedAnswer": {
+                            "@type": "Answer",
+                            "text": "Yes. SaasLink enforces strict multi-tenant data isolation, AES-256 encrypted backups, role-based access control, and complete audit logging compliant with the Office of the Data Protection Commissioner (ODPC) guidelines."
+                        }
+                    }
+                ]
             }
         ]
     };

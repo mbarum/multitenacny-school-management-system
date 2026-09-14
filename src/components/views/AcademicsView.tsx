@@ -85,7 +85,10 @@ const AcademicsView: React.FC = () => {
         setIsModalOpen(true);
     };
 
-    const teachers = staff.filter(s => s.userRole === Role.Teacher);
+    const teachers = (Array.isArray(staff) ? staff : []).filter(s => {
+        if (!s || typeof s !== 'object') return false;
+        return s.userRole === Role.Teacher || s.role === 'Teacher' || s.role === Role.Teacher;
+    });
 
     return (
         <div className="p-6 md:p-8">
@@ -140,16 +143,25 @@ const AcademicsView: React.FC = () => {
                         <h3 className="text-xl font-bold">Subject & Teacher Assignments</h3>
                         <button onClick={() => openModal('assignment')} className="px-4 py-2 bg-primary-600 text-white rounded-lg">New Assignment</button>
                     </div>
-                     <table className="w-full text-left table-auto">
+                      <table className="w-full text-left table-auto">
                         <thead><tr className="bg-slate-50 border-b"><th className="p-2">Class</th><th className="p-2">Subject</th><th className="p-2">Teacher</th><th className="p-2">Actions</th></tr></thead>
-                        <tbody>{classSubjectAssignments.map(a => (<tr key={a.id} className="border-b">
-                            <td className="p-2">{classes.find(c=>c.id === a.classId)?.name}</td>
-                            <td className="p-2">{subjects.find(s=>s.id === a.subjectId)?.name}</td>
-                            <td className="p-2">{staff.find(s=>s.userId === a.teacherId)?.name}</td>
-                            <td className="p-2 space-x-2">
-                                <button onClick={() => openModal('assignment', a)} className="text-blue-600 hover:underline">Edit</button>
-                                <button onClick={() => handleDeleteAssignment(a.id)} className="text-red-600 hover:underline">Delete</button>
-                            </td></tr>))}</tbody>
+                        <tbody>{(Array.isArray(classSubjectAssignments) ? classSubjectAssignments : []).map(a => {
+                            if (!a) return null;
+                            const assignedClass = (Array.isArray(classes) ? classes : []).find(c => c?.id === a.classId);
+                            const assignedSubject = (Array.isArray(subjects) ? subjects : []).find(s => s?.id === a.subjectId);
+                            const assignedTeacher = (Array.isArray(staff) ? staff : []).find(s => (s?.userId && s.userId === a.teacherId) || (s?.id && s.id === a.teacherId));
+                            return (
+                                <tr key={a.id || Math.random()} className="border-b">
+                                    <td className="p-2">{assignedClass?.name || 'Unknown Class'}</td>
+                                    <td className="p-2">{assignedSubject?.name || 'Unknown Subject'}</td>
+                                    <td className="p-2">{assignedTeacher?.name || 'Unknown Teacher'}</td>
+                                    <td className="p-2 space-x-2">
+                                        <button onClick={() => openModal('assignment', a)} className="text-blue-600 hover:underline">Edit</button>
+                                        <button onClick={() => handleDeleteAssignment(a.id)} className="text-red-600 hover:underline">Delete</button>
+                                    </td>
+                                </tr>
+                            );
+                        })}</tbody>
                     </table>
                 </div>
             )}
@@ -181,7 +193,11 @@ const ClassModal: React.FC<any> = ({ isOpen, onClose, onSave, data, teachers }) 
             <input type="text" value={classCode} onChange={e => setClassCode(e.target.value)} placeholder="Class Code (e.g., 001)" className="w-full p-2 border rounded" required />
             <select value={formTeacherId} onChange={e => setFormTeacherId(e.target.value)} className="w-full p-2 border rounded">
                 <option value="">Select Form Teacher</option>
-                {teachers.map((t:Staff) => <option key={t.userId} value={t.userId}>{t.name}</option>)}
+                {teachers.map((t: Staff) => {
+                    if (!t) return null;
+                    const value = t.userId || t.id;
+                    return <option key={value} value={value}>{t.name || 'Unnamed Teacher'}</option>;
+                })}
             </select>
             <div className="flex justify-end">
                 <button type="submit" className="px-4 py-2 bg-primary-600 text-white rounded">Save</button>
@@ -199,7 +215,29 @@ const AssignmentModal: React.FC<any> = ({ isOpen, onClose, onSave, data, classes
     const [classId, setClassId] = useState(data?.classId || '');
     const [subjectId, setSubjectId] = useState(data?.subjectId || '');
     const [teacherId, setTeacherId] = useState(data?.teacherId || '');
-    return <Modal isOpen={isOpen} onClose={onClose} title={data ? "Edit Assignment" : "New Assignment"}><form onSubmit={e => {e.preventDefault(); onSave({classId, subjectId, teacherId})}} className="space-y-4"><select value={classId} onChange={e => setClassId(e.target.value)} className="w-full p-2 border rounded" required><option value="">Select Class</option>{classes.map((c:SchoolClass) => <option key={c.id} value={c.id}>{c.name}</option>)}</select><select value={subjectId} onChange={e => setSubjectId(e.target.value)} className="w-full p-2 border rounded" required><option value="">Select Subject</option>{subjects.map((s:Subject) => <option key={s.id} value={s.id}>{s.name}</option>)}</select><select value={teacherId} onChange={e => setTeacherId(e.target.value)} className="w-full p-2 border rounded" required><option value="">Select Teacher</option>{teachers.map((t:Staff) => <option key={t.userId} value={t.userId}>{t.name}</option>)}</select><div className="flex justify-end"><button type="submit" className="px-4 py-2 bg-primary-600 text-white rounded">Save</button></div></form></Modal>
-}
+    return (
+        <Modal isOpen={isOpen} onClose={onClose} title={data ? "Edit Assignment" : "New Assignment"}>
+            <form onSubmit={e => {e.preventDefault(); onSave({classId, subjectId, teacherId});}} className="space-y-4">
+                <select value={classId} onChange={e => setClassId(e.target.value)} className="w-full p-2 border rounded" required>
+                    <option value="">Select Class</option>
+                    {(Array.isArray(classes) ? classes : []).map((c: SchoolClass) => c?.id ? <option key={c.id} value={c.id}>{c.name || c.id}</option> : null)}
+                </select>
+                <select value={subjectId} onChange={e => setSubjectId(e.target.value)} className="w-full p-2 border rounded" required>
+                    <option value="">Select Subject</option>
+                    {(Array.isArray(subjects) ? subjects : []).map((s: Subject) => s?.id ? <option key={s.id} value={s.id}>{s.name || s.id}</option> : null)}
+                </select>
+                <select value={teacherId} onChange={e => setTeacherId(e.target.value)} className="w-full p-2 border rounded" required>
+                    <option value="">Select Teacher</option>
+                    {(Array.isArray(teachers) ? teachers : []).map((t: Staff) => {
+                        if (!t) return null;
+                        const value = t.userId || t.id;
+                        return <option key={value} value={value}>{t.name || 'Unnamed Teacher'}</option>;
+                    })}
+                </select>
+                <div className="flex justify-end"><button type="submit" className="px-4 py-2 bg-primary-600 text-white rounded">Save</button></div>
+            </form>
+        </Modal>
+    );
+};
 
 export default AcademicsView;

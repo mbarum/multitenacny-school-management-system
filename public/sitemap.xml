@@ -1,22 +1,57 @@
-
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
    <url>
-      <loc>https://saaslink.com/</loc>
-      <lastmod>2023-10-27</lastmod>
-      <changefreq>weekly</changefreq>
+      <loc>https://saaslink.co.ke/</loc>
+      <lastmod>2026-03-01</lastmod>
+      <changefreq>daily</changefreq>
       <priority>1.0</priority>
    </url>
    <url>
-      <loc>https://saaslink.com/login</loc>
-      <lastmod>2023-10-27</lastmod>
+      <loc>https://saaslink.co.ke/#features</loc>
+      <lastmod>2026-03-01</lastmod>
+      <changefreq>weekly</changefreq>
+      <priority>0.9</priority>
+   </url>
+   <url>
+      <loc>https://saaslink.co.ke/#news</loc>
+      <lastmod>2026-03-01</lastmod>
+      <changefreq>daily</changefreq>
+      <priority>0.95</priority>
+   </url>
+   <url>
+      <loc>https://saaslink.co.ke/#pricing</loc>
+      <lastmod>2026-03-01</lastmod>
+      <changefreq>weekly</changefreq>
+      <priority>0.85</priority>
+   </url>
+   <url>
+      <loc>https://saaslink.co.ke/#edtech-cbc-assessment-matrix</loc>
+      <lastmod>2026-02-24</lastmod>
+      <changefreq>monthly</changefreq>
+      <priority>0.9</priority>
+   </url>
+   <url>
+      <loc>https://saaslink.co.ke/#edtech-daraja-mpesa-reconciliation</loc>
+      <lastmod>2026-02-20</lastmod>
+      <changefreq>monthly</changefreq>
+      <priority>0.9</priority>
+   </url>
+   <url>
+      <loc>https://saaslink.co.ke/#edtech-data-protection-schools</loc>
+      <lastmod>2026-02-15</lastmod>
+      <changefreq>monthly</changefreq>
+      <priority>0.9</priority>
+   </url>
+   <url>
+      <loc>https://saaslink.co.ke/login</loc>
+      <lastmod>2026-03-01</lastmod>
       <changefreq>monthly</changefreq>
       <priority>0.8</priority>
    </url>
    <url>
-      <loc>https://saaslink.com/register</loc>
-      <lastmod>2023-10-27</lastmod>
+      <loc>https://saaslink.co.ke/register</loc>
+      <lastmod>2026-03-01</lastmod>
       <changefreq>monthly</changefreq>
-      <priority>0.9</priority>
+      <priority>0.85</priority>
    </url>
 </urlset>

@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import type { TimetableEntry, SchoolClass, Subject, Staff } from '../../types';
+import type { TimetableEntry, SchoolClass, Subject, Staff, ClassSubjectAssignment } from '../../types';
 import { DayOfWeek } from '../../types';
 import Modal from '../common/Modal';
 import { useData } from '../../contexts/DataContext';
@@ -13,11 +13,17 @@ const TimetableView: React.FC = () => {
     
     // Queries
     // Fix: Added explicit (res: any) type to then callbacks to resolve type inference issues.
-    const { data: classes = [] } = useQuery({ queryKey: ['classes'], queryFn: () => api.getClasses().then((res: any) => Array.isArray(res) ? res : res.data) });
-    const { data: subjects = [] } = useQuery({ queryKey: ['subjects'], queryFn: () => api.getSubjects().then((res: any) => Array.isArray(res) ? res : res.data) });
-    const { data: staff = [] } = useQuery({ queryKey: ['staff'], queryFn: () => api.getStaff() });
-    const { data: timetableEntries = [] } = useQuery({ queryKey: ['timetable'], queryFn: () => api.findAllTimetableEntries() });
-    const { data: assignments = [] } = useQuery({ queryKey: ['assignments'], queryFn: () => api.findAllAssignments() });
+    const { data: rawClasses = [] } = useQuery({ queryKey: ['classes'], queryFn: () => api.getClasses().then((res: any) => Array.isArray(res) ? res : (Array.isArray(res?.data) ? res.data : [])) });
+    const { data: rawSubjects = [] } = useQuery({ queryKey: ['subjects'], queryFn: () => api.getSubjects().then((res: any) => Array.isArray(res) ? res : (Array.isArray(res?.data) ? res.data : [])) });
+    const { data: rawStaff = [] } = useQuery({ queryKey: ['staff'], queryFn: () => api.getStaff().then((res: any) => Array.isArray(res) ? res : (Array.isArray(res?.data) ? res.data : [])) });
+    const { data: rawTimetableEntries = [] } = useQuery({ queryKey: ['timetable'], queryFn: () => api.findAllTimetableEntries().then((res: any) => Array.isArray(res) ? res : (Array.isArray(res?.data) ? res.data : [])) });
+    const { data: rawAssignments = [] } = useQuery({ queryKey: ['assignments'], queryFn: () => api.findAllAssignments().then((res: any) => Array.isArray(res) ? res : (Array.isArray(res?.data) ? res.data : [])) });
+
+    const classes: SchoolClass[] = useMemo(() => (Array.isArray(rawClasses) ? rawClasses : []).filter((c: any) => Boolean(c && typeof c === 'object' && c.id)), [rawClasses]);
+    const subjects: Subject[] = useMemo(() => (Array.isArray(rawSubjects) ? rawSubjects : []).filter((s: any) => Boolean(s && typeof s === 'object' && s.id)), [rawSubjects]);
+    const staff: Staff[] = useMemo(() => (Array.isArray(rawStaff) ? rawStaff : []).filter((s: any): s is Staff => Boolean(s && typeof s === 'object' && s.id)), [rawStaff]);
+    const timetableEntries: TimetableEntry[] = useMemo(() => (Array.isArray(rawTimetableEntries) ? rawTimetableEntries : []).filter((e: any) => Boolean(e && typeof e === 'object' && e.id)), [rawTimetableEntries]);
+    const assignments: ClassSubjectAssignment[] = useMemo(() => (Array.isArray(rawAssignments) ? rawAssignments : []).filter((a: any) => Boolean(a && typeof a === 'object' && a.id)), [rawAssignments]);
 
     const [selectedClassId, setSelectedClassId] = useState<string>(classes[0]?.id || '');
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -92,8 +98,8 @@ const TimetableView: React.FC = () => {
                                     return (
                                         <td key={day} className="p-1 border text-center align-top h-20" onClick={() => entry && (setEditingEntry(entry), setIsModalOpen(true))}>
                                             {entry && <div className="bg-primary-100 p-2 rounded h-full cursor-pointer hover:bg-primary-200">
-                                                <p className="font-bold text-primary-800">{subjects.find((s:any)=>s.id === entry.subjectId)?.name}</p>
-                                                <p className="text-sm text-slate-600">{staff.find((s:any)=>s.id === entry.teacherId)?.name}</p>
+                                                <p className="font-bold text-primary-800">{subjects.find((s: any) => s && s.id === entry.subjectId)?.name || 'Subject'}</p>
+                                                <p className="text-sm text-slate-600">{staff.find((s: any) => s && (s.id === entry.teacherId || s.userId === entry.teacherId))?.name || 'Assigned Staff'}</p>
                                             </div>}
                                         </td>
                                     )
@@ -137,7 +143,7 @@ const TimetableEntryModal: React.FC<any> = ({ isOpen, onClose, onSave, data, sel
         <form onSubmit={e => {e.preventDefault(); onSave(formData)}} className="space-y-4">
             <select name="classId" value={formData.classId} onChange={handleChange} className="w-full p-2 border rounded"><option value="">Select Class</option>{classes.map((c:SchoolClass) => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
             <select name="subjectId" value={formData.subjectId} onChange={handleChange} className="w-full p-2 border rounded"><option value="">Select Subject</option>{subjectsForClass.map((s:Subject) => <option key={s.id} value={s.id}>{s.name}</option>)}</select>
-            <input type="text" value={staff.find((s:Staff) => s.id === formData.teacherId)?.name || 'Auto-assigned'} readOnly className="w-full p-2 border rounded bg-slate-100" />
+            <input type="text" value={staff.find((s: Staff) => s && (s.id === formData.teacherId || s.userId === formData.teacherId))?.name || 'Auto-assigned'} readOnly className="w-full p-2 border rounded bg-slate-100" />
             <select name="day" value={formData.day} onChange={handleChange} className="w-full p-2 border rounded">{Object.values(DayOfWeek).map(d => <option key={d} value={d}>{d}</option>)}</select>
             <div className="grid grid-cols-2 gap-4">
                 <input type="time" name="startTime" value={formData.startTime} onChange={handleChange} className="w-full p-2 border rounded" />

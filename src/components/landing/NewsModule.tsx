@@ -30,6 +30,40 @@ export const NewsModule: React.FC = () => {
         fetchArticles();
     }, []);
 
+    // Deep-link support: Automatically open article if URL contains #edtech-[id]
+    useEffect(() => {
+        const handleHashChange = () => {
+            const hash = window.location.hash;
+            if (hash && (hash.startsWith('#edtech-') || hash.startsWith('#article-'))) {
+                const articleId = hash.replace(/^#(edtech|article)-/, '');
+                const match = articles.find(a => a.id === articleId || a.slug === articleId);
+                if (match) {
+                    setSelectedArticle(match);
+                }
+            }
+        };
+
+        handleHashChange();
+        window.addEventListener('hashchange', handleHashChange);
+        return () => window.removeEventListener('hashchange', handleHashChange);
+    }, [articles]);
+
+    const handleSelectArticle = (art: EdTechArticle) => {
+        setSelectedArticle(art);
+        try {
+            history.replaceState(null, '', `#edtech-${art.id}`);
+        } catch {}
+    };
+
+    const handleCloseArticle = () => {
+        setSelectedArticle(null);
+        try {
+            if (window.location.hash.startsWith('#edtech-') || window.location.hash.startsWith('#article-')) {
+                history.replaceState(null, '', window.location.pathname + window.location.search);
+            }
+        } catch {}
+    };
+
     // Extract unique categories
     const categories = ['ALL', ...Array.from(new Set(articles.map(a => a.category)))];
 
@@ -200,7 +234,7 @@ export const NewsModule: React.FC = () => {
                                     </div>
 
                                     <button
-                                        onClick={() => setSelectedArticle(art)}
+                                        onClick={() => handleSelectArticle(art)}
                                         className="text-xs font-black uppercase tracking-wider text-primary-600 hover:text-primary-700 flex items-center gap-1.5 group-hover:translate-x-1 transition-transform"
                                     >
                                         <span>Read & Learn</span>
@@ -216,7 +250,7 @@ export const NewsModule: React.FC = () => {
             {/* Read Article & Media Viewer Modal */}
             <EdTechArticleViewerModal
                 isOpen={Boolean(selectedArticle)}
-                onClose={() => setSelectedArticle(null)}
+                onClose={handleCloseArticle}
                 article={selectedArticle}
             />
         </section>

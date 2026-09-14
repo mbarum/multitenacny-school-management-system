@@ -1,5 +1,4 @@
-
 User-agent: *
 Allow: /
 
-Sitemap: https://saaslink.com/sitemap.xml
+Sitemap: https://saaslink.co.ke/sitemap.xml

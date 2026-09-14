@@ -41,13 +41,14 @@ export const IDCardFrontView: React.FC<IDCardProps> = ({
         if (url && url !== 'undefined' && url !== 'null' && url.trim() !== '') {
             return url;
         }
-        return generateInitialsAvatar(person.name, theme.primaryHex);
+        return generateInitialsAvatar(person?.name || 'User', theme.primaryHex);
     });
 
     const [qrCodeUrl, setQrCodeUrl] = useState<string>('');
 
     // Generate authentic QR code
     useEffect(() => {
+        if (!person) return;
         let isMounted = true;
         generateStudentQRCode(person, isStudent, safeSchoolInfo).then((url) => {
             if (isMounted && url) {
@@ -65,13 +66,13 @@ export const IDCardFrontView: React.FC<IDCardProps> = ({
         if (rawUrl && rawUrl !== 'undefined' && rawUrl !== 'null' && rawUrl.trim() !== '') {
             setPhotoSrc(rawUrl);
         } else {
-            setPhotoSrc(generateInitialsAvatar(person.name, theme.primaryHex));
+            setPhotoSrc(generateInitialsAvatar(person?.name || 'User', theme.primaryHex));
         }
     }, [person, isStudent, student?.profileImage, staff?.photoUrl, theme.primaryHex]);
 
     const admissionNumber = student?.admissionNumber || 'ADM-PENDING';
     const className = student?.class || 'Standard Grade';
-    const staffId = staff ? `STF-${staff.id.substring(0, 6).toUpperCase()}` : '';
+    const staffId = staff?.id ? `STF-${staff.id.substring(0, 6).toUpperCase()}` : '';
     const barcodeSvg = generateBarcodeSVG(isStudent ? admissionNumber : staffId, 240, 36);
 
     return (

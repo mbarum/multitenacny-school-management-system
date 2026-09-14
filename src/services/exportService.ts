@@ -129,6 +129,7 @@ export function generateFeesCSV(transactions: Transaction[], schoolInfo?: School
 }
 
 export function generateStaffCSV(staff: Staff[], schoolInfo?: SchoolInfo | null): string {
+    const safeStaff = (Array.isArray(staff) ? staff : []).filter((st): st is Staff => Boolean(st && typeof st === 'object' && st.id));
     const headers = [
         'Staff ID',
         'Full Name',
@@ -144,7 +145,7 @@ export function generateStaffCSV(staff: Staff[], schoolInfo?: SchoolInfo | null)
         'SHA / NHIF Number'
     ];
 
-    const rows = staff.map(st => [
+    const rows = safeStaff.map(st => [
         escapeCSVCell(st.id || ''),
         escapeCSVCell(st.name || ''),
         escapeCSVCell(st.email || ''),
@@ -458,6 +459,7 @@ export function generateFeesPDF(transactions: Transaction[], schoolInfo?: School
 }
 
 export function generateStaffPDF(staff: Staff[], schoolInfo?: SchoolInfo | null): jsPDF {
+    const safeStaff = (Array.isArray(staff) ? staff : []).filter((st): st is Staff => Boolean(st && typeof st === 'object' && st.id));
     const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
     const schoolName = schoolInfo?.name || 'School Management System';
     const schoolCode = schoolInfo?.schoolCode || 'SCH-001';
@@ -474,16 +476,16 @@ export function generateStaffPDF(staff: Staff[], schoolInfo?: SchoolInfo | null)
         { header: 'Salary (KES)', width: 40, align: 'right' }
     ];
 
-    const totalPayroll = staff.reduce((sum, s) => sum + (s.salary || 0), 0);
+    const totalPayroll = safeStaff.reduce((sum, s) => sum + (s.salary || 0), 0);
 
     const summaryStats = [
-        { label: 'Total Personnel', value: `${staff.length} Staff` },
+        { label: 'Total Personnel', value: `${safeStaff.length} Staff` },
         { label: 'Monthly Payroll', value: `KES ${totalPayroll.toLocaleString()}` },
-        { label: 'Average Remuneration', value: staff.length > 0 ? `KES ${Math.round(totalPayroll / staff.length).toLocaleString()}` : '0' },
+        { label: 'Average Remuneration', value: safeStaff.length > 0 ? `KES ${Math.round(totalPayroll / safeStaff.length).toLocaleString()}` : '0' },
         { label: 'Backup Archive ID', value: `STF-${Date.now().toString().slice(-6)}` }
     ];
 
-    const rows = staff.map((st, idx) => [
+    const rows = safeStaff.map((st, idx) => [
         idx + 1,
         st.id || '',
         st.name || '',

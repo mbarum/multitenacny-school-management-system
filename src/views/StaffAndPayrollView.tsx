@@ -149,18 +149,42 @@ const StaffAndPayrollView: React.FC = () => {
     // --- Queries ---
 
     // 1. Fetch Staff (Roster)
-    const { data: staffList = [] } = useQuery({
+    const { data: rawStaffList = [] } = useQuery({
         queryKey: ['staff'],
-        queryFn: () => api.getStaff(),
+        queryFn: async () => {
+            const res = await api.getStaff();
+            if (Array.isArray(res)) return res;
+            if (Array.isArray((res as any)?.data)) return (res as any).data;
+            return [];
+        },
         enabled: activeTab === 'roster' || activeTab === 'history' 
     });
 
+    const staffList: Staff[] = useMemo(() => {
+        const list = Array.isArray(rawStaffList) 
+            ? rawStaffList 
+            : (Array.isArray((rawStaffList as any)?.data) ? (rawStaffList as any).data : []);
+        return list.filter((s): s is Staff => Boolean(s && typeof s === 'object' && s.id));
+    }, [rawStaffList]);
+
     // 2. Fetch Payroll Items
-    const { data: payrollItems = [] } = useQuery({
+    const { data: rawPayrollItems = [] } = useQuery({
         queryKey: ['payroll-items'],
-        queryFn: () => api.getPayrollItems(),
+        queryFn: async () => {
+            const res = await api.getPayrollItems();
+            if (Array.isArray(res)) return res;
+            if (Array.isArray((res as any)?.data)) return (res as any).data;
+            return [];
+        },
         enabled: activeTab === 'items' || activeTab === 'roster' 
     });
+
+    const payrollItems: PayrollItem[] = useMemo(() => {
+        const list = Array.isArray(rawPayrollItems)
+            ? rawPayrollItems
+            : (Array.isArray((rawPayrollItems as any)?.data) ? (rawPayrollItems as any).data : []);
+        return list.filter((i): i is PayrollItem => Boolean(i && typeof i === 'object' && i.id));
+    }, [rawPayrollItems]);
 
     // 3. Fetch Payroll History
     const { data: historyData, isLoading: historyLoading } = useQuery({
@@ -279,42 +303,44 @@ const StaffAndPayrollView: React.FC = () => {
     
     const generatePayrollWorksheet = () => {
         const month = new Date().toLocaleString('en-US', { month: 'long', year: 'numeric' });
-        const worksheet = staffList.map((s: any) => {
-            const earnings: any[] = [{ name: 'Basic Salary', amount: Number(s.salary) }];
-            // Add recurring earnings
-            payrollItems.filter((i:any) => i.type === PayrollItemType.Earning && i.isRecurring).forEach((i:any) => {
-                const amt = i.calculationType === CalculationType.Percentage ? (i.value/100)*s.salary : i.value;
-                earnings.push({ name: i.name, amount: amt });
+        const worksheet = staffList
+            .filter((s): s is Staff => Boolean(s && typeof s === 'object' && s.id))
+            .map((s: any) => {
+                const earnings: any[] = [{ name: 'Basic Salary', amount: Number(s.salary || 0) }];
+                // Add recurring earnings
+                payrollItems.filter((i:any) => i && i.type === PayrollItemType.Earning && i.isRecurring).forEach((i:any) => {
+                    const amt = i.calculationType === CalculationType.Percentage ? (i.value/100)*(s.salary || 0) : i.value;
+                    earnings.push({ name: i.name, amount: amt });
+                });
+                
+                const gross = earnings.reduce((sum, i) => sum + i.amount, 0);
+                
+                const deductions: any[] = [
+                    { name: 'PAYE', amount: calculatePAYE(gross) },
+                    { name: 'SHA', amount: gross * 0.0275 },
+                    { name: 'NSSF', amount: Math.min(gross, 18000) * 0.06 },
+                    { name: 'Levy', amount: gross * 0.015 },
+                ];
+                 // Add recurring deductions
+                payrollItems.filter((i:any) => i && i.type === PayrollItemType.Deduction && i.isRecurring).forEach((i:any) => {
+                     const amt = i.calculationType === CalculationType.Percentage ? (i.value/100)*(s.salary || 0) : i.value;
+                     deductions.push({ name: i.name, amount: amt });
+                });
+                
+                const totalDed = deductions.reduce((sum, d) => sum + d.amount, 0);
+                return {
+                    id: `temp-${s.id}`,
+                    staffId: s.id,
+                    staffName: s.name,
+                    month,
+                    payDate: new Date().toISOString().split('T')[0],
+                    grossPay: gross,
+                    totalDeductions: totalDed,
+                    netPay: gross - totalDed,
+                    earnings,
+                    deductions
+                };
             });
-            
-            const gross = earnings.reduce((sum, i) => sum + i.amount, 0);
-            
-            const deductions: any[] = [
-                { name: 'PAYE', amount: calculatePAYE(gross) },
-                { name: 'SHA', amount: gross * 0.0275 },
-                { name: 'NSSF', amount: Math.min(gross, 18000) * 0.06 },
-                { name: 'Levy', amount: gross * 0.015 },
-            ];
-             // Add recurring deductions
-            payrollItems.filter((i:any) => i.type === PayrollItemType.Deduction && i.isRecurring).forEach((i:any) => {
-                 const amt = i.calculationType === CalculationType.Percentage ? (i.value/100)*s.salary : i.value;
-                 deductions.push({ name: i.name, amount: amt });
-            });
-            
-            const totalDed = deductions.reduce((sum, d) => sum + d.amount, 0);
-            return {
-                id: `temp-${s.id}`,
-                staffId: s.id,
-                staffName: s.name,
-                month,
-                payDate: new Date().toISOString().split('T')[0],
-                grossPay: gross,
-                totalDeductions: totalDed,
-                netPay: gross - totalDed,
-                earnings,
-                deductions
-            };
-        });
         setPayrollWorksheet(worksheet as any);
         setIsRunPayrollModalOpen(true);
     };
@@ -348,7 +374,7 @@ const StaffAndPayrollView: React.FC = () => {
         setIsP9ModalOpen(true);
     };
     
-    const staffMemberForPayslip = selectedPayroll ? staffList.find((s:Staff) => s.id === selectedPayroll.staffId) : null;
+    const staffMemberForPayslip = selectedPayroll ? staffList.find((s:Staff) => s?.id === selectedPayroll.staffId) : null;
     
     const MONTH_NAMES = [
         'January', 'February', 'March', 'April', 'May', 'June',
@@ -740,22 +766,39 @@ const StaffAndPayrollView: React.FC = () => {
                 <div className="mt-6 bg-white rounded-xl shadow-lg overflow-x-auto">
                     <table className="w-full text-left table-auto">
                         <thead><tr className="bg-slate-50 border-b border-slate-200"><th className="px-4 py-3 font-semibold text-slate-600">Photo</th><th className="px-4 py-3 font-semibold text-slate-600">Name</th><th className="px-4 py-3 font-semibold text-slate-600">Role</th><th className="px-4 py-3 font-semibold text-slate-600">Basic Salary</th><th className="px-4 py-3 font-semibold text-slate-600">Actions</th></tr></thead>
-                        <tbody>{staffList.map((s: any) => (
-                            <tr key={s.id} className="border-b border-slate-100 hover:bg-slate-50">
-                                <td className="px-4 py-3">
-                                    <img 
-                                        src={s.photoUrl || DEFAULT_AVATAR} 
-                                        onError={(e) => { e.currentTarget.src = DEFAULT_AVATAR; }}
-                                        alt="staff" 
-                                        className="h-10 w-10 rounded-full object-cover"
-                                    />
-                                </td>
-                                <td className="px-4 py-3 text-slate-800 font-medium">{s.name}</td>
-                                <td className="px-4 py-3 text-slate-500">{s.role}</td>
-                                <td className="px-4 py-3 text-slate-500">{formatCurrency(s.salary)}</td>
-                                <td className="px-4 py-3 space-x-4"><button onClick={() => openStaffModal(s)} className="text-blue-600 hover:underline">Edit</button><button onClick={() => openIdCardModal(s, 'staff')} className="text-purple-600 hover:underline">ID Card</button><button onClick={() => openP9Modal(s)} className="text-green-600 hover:underline">View P9</button></td>
-                            </tr>
-                        ))}</tbody>
+                        <tbody>
+                            {staffList.length === 0 ? (
+                                <tr>
+                                    <td colSpan={5} className="px-4 py-8 text-center text-slate-400">
+                                        No staff members found. Click "Add New Staff" to create one.
+                                    </td>
+                                </tr>
+                            ) : (
+                                staffList.map((s: any) => {
+                                    if (!s) return null;
+                                    return (
+                                        <tr key={s.id || Math.random()} className="border-b border-slate-100 hover:bg-slate-50">
+                                            <td className="px-4 py-3">
+                                                <img 
+                                                    src={s?.photoUrl || DEFAULT_AVATAR} 
+                                                    onError={(e) => { e.currentTarget.src = DEFAULT_AVATAR; }}
+                                                    alt={s?.name || 'staff'} 
+                                                    className="h-10 w-10 rounded-full object-cover"
+                                                />
+                                            </td>
+                                            <td className="px-4 py-3 text-slate-800 font-medium">{s?.name || 'Unnamed Staff'}</td>
+                                            <td className="px-4 py-3 text-slate-500">{s?.role || 'Staff'}</td>
+                                            <td className="px-4 py-3 text-slate-500">{formatCurrency(s?.salary || 0)}</td>
+                                            <td className="px-4 py-3 space-x-4">
+                                                <button onClick={() => openStaffModal(s)} className="text-blue-600 hover:underline">Edit</button>
+                                                <button onClick={() => openIdCardModal(s, 'staff')} className="text-purple-600 hover:underline">ID Card</button>
+                                                <button onClick={() => openP9Modal(s)} className="text-green-600 hover:underline">View P9</button>
+                                            </td>
+                                        </tr>
+                                    );
+                                })
+                            )}
+                        </tbody>
                     </table>
                 </div>
             )}
@@ -788,7 +831,7 @@ const StaffAndPayrollView: React.FC = () => {
                      <div className="flex gap-4 p-4">
                          <select value={selectedStaffFilter} onChange={e => { setSelectedStaffFilter(e.target.value); setHistoryPage(1); }} className="p-2 border rounded">
                              <option value="">All Staff</option>
-                             {staffList.map((s:Staff) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                             {staffList.map((s: Staff) => s?.id ? <option key={s.id} value={s.id}>{s.name || s.id}</option> : null)}
                          </select>
                          <input placeholder="Month (e.g. October)" value={selectedMonthFilter} onChange={e => { setSelectedMonthFilter(e.target.value); setHistoryPage(1); }} className="p-2 border rounded"/>
                      </div>

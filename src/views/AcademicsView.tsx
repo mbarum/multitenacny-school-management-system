@@ -16,10 +16,30 @@ const AcademicsView: React.FC = () => {
     const [modalType, setModalType] = useState('');
     const [editingData, setEditingData] = useState<any>(null);
 
-    const { data: classes = [] } = useQuery({ queryKey: ['classes'], queryFn: () => api.getClasses().then((res: any) => Array.isArray(res) ? res : res.data) });
-    const { data: subjects = [] } = useQuery({ queryKey: ['subjects'], queryFn: () => api.getSubjects().then((res: any) => Array.isArray(res) ? res : res.data) });
-    const { data: assignments = [] } = useQuery({ queryKey: ['assignments'], queryFn: () => api.findAllAssignments().then((res: any) => Array.isArray(res) ? res : res.data) });
-    const { data: staff = [] } = useQuery({ queryKey: ['staff'], queryFn: () => api.getStaff() });
+    const { data: rawClasses = [] } = useQuery({ queryKey: ['classes'], queryFn: () => api.getClasses().then((res: any) => Array.isArray(res) ? res : (Array.isArray(res?.data) ? res.data : [])) });
+    const { data: rawSubjects = [] } = useQuery({ queryKey: ['subjects'], queryFn: () => api.getSubjects().then((res: any) => Array.isArray(res) ? res : (Array.isArray(res?.data) ? res.data : [])) });
+    const { data: rawAssignments = [] } = useQuery({ queryKey: ['assignments'], queryFn: () => api.findAllAssignments().then((res: any) => Array.isArray(res) ? res : (Array.isArray(res?.data) ? res.data : [])) });
+    const { data: rawStaff = [] } = useQuery({ queryKey: ['staff'], queryFn: () => api.getStaff().then((res: any) => Array.isArray(res) ? res : (Array.isArray(res?.data) ? res.data : [])) });
+
+    const classes: SchoolClass[] = React.useMemo(() => {
+        const list = Array.isArray(rawClasses) ? rawClasses : [];
+        return list.filter((c: any) => Boolean(c && typeof c === 'object' && c.id));
+    }, [rawClasses]);
+
+    const subjects: Subject[] = React.useMemo(() => {
+        const list = Array.isArray(rawSubjects) ? rawSubjects : [];
+        return list.filter((s: any) => Boolean(s && typeof s === 'object' && s.id));
+    }, [rawSubjects]);
+
+    const assignments: ClassSubjectAssignment[] = React.useMemo(() => {
+        const list = Array.isArray(rawAssignments) ? rawAssignments : [];
+        return list.filter((a: any) => Boolean(a && typeof a === 'object' && a.id));
+    }, [rawAssignments]);
+
+    const staffList: Staff[] = React.useMemo(() => {
+        const list = Array.isArray(rawStaff) ? rawStaff : [];
+        return list.filter((s: any): s is Staff => Boolean(s && typeof s === 'object' && s.id));
+    }, [rawStaff]);
 
     const createClassMutation = useMutation({ mutationFn: api.createClass, onSuccess: () => { queryClient.invalidateQueries({queryKey:['classes']}); setIsModalOpen(false); addNotification('Class created', 'success'); } });
     const updateClassMutation = useMutation({ mutationFn: (d:any) => api.updateClass(d.id, d.data), onSuccess: () => { queryClient.invalidateQueries({queryKey:['classes']}); setIsModalOpen(false); addNotification('Class updated', 'success'); } });
@@ -52,7 +72,12 @@ const AcademicsView: React.FC = () => {
         createAssignMutation.mutate(formData);
     };
 
-    const teachers = staff.filter((s:any) => s.userRole === Role.Teacher);
+    const teachers = React.useMemo(() => {
+        return staffList.filter((s: any) => {
+            if (!s || typeof s !== 'object') return false;
+            return s.userRole === Role.Teacher || s.role === 'Teacher' || s.role === Role.Teacher;
+        });
+    }, [staffList]);
 
     return (
         <div className="p-4 sm:p-6">
@@ -112,13 +137,33 @@ const AcademicsView: React.FC = () => {
                     </div>
                      <table className="w-full text-left table-auto">
                         <thead><tr className="bg-slate-50 border-b border-slate-200"><th className="px-4 py-3 font-semibold text-slate-600">Class</th><th className="px-4 py-3 font-semibold text-slate-600">Subject</th><th className="px-4 py-3 font-semibold text-slate-600">Teacher</th><th className="px-4 py-3 font-semibold text-slate-600">Actions</th></tr></thead>
-                        <tbody>{assignments.map((a:any) => (<tr key={a.id} className="border-b border-slate-100 hover:bg-slate-50">
-                            <td className="px-4 py-3 font-medium text-slate-800">{classes.find((c:any)=>c.id === a.classId)?.name}</td>
-                            <td className="px-4 py-3 text-slate-600">{subjects.find((s:any)=>s.id === a.subjectId)?.name}</td>
-                            <td className="px-4 py-3 text-slate-600 font-bold">{staff.find((s:any)=>s.userId === a.teacherId)?.name}</td>
-                            <td className="px-4 py-3 space-x-2">
-                                <button onClick={() => { if(confirm('Remove assignment?')) deleteAssignMutation.mutate(a.id); }} className="text-red-600 hover:underline text-sm font-bold">Delete</button>
-                            </td></tr>))}</tbody>
+                        <tbody>
+                            {assignments.length === 0 ? (
+                                <tr>
+                                    <td colSpan={4} className="px-4 py-8 text-center text-slate-400">
+                                        No teacher assignments found. Click "New Assignment" to assign a teacher to a class subject.
+                                    </td>
+                                </tr>
+                            ) : (
+                                assignments.map((a: any) => {
+                                    if (!a) return null;
+                                    const assignedClass = classes.find((c: any) => c?.id === a.classId);
+                                    const assignedSubject = subjects.find((s: any) => s?.id === a.subjectId);
+                                    const assignedTeacher = staffList.find((s: any) => (s?.userId && s.userId === a.teacherId) || (s?.id && s.id === a.teacherId));
+
+                                    return (
+                                        <tr key={a.id || Math.random()} className="border-b border-slate-100 hover:bg-slate-50">
+                                            <td className="px-4 py-3 font-medium text-slate-800">{assignedClass?.name || 'Unknown Class'}</td>
+                                            <td className="px-4 py-3 text-slate-600">{assignedSubject?.name || 'Unknown Subject'}</td>
+                                            <td className="px-4 py-3 text-slate-600 font-bold">{assignedTeacher?.name || 'Unknown Teacher'}</td>
+                                            <td className="px-4 py-3 space-x-2">
+                                                <button onClick={() => { if(confirm('Remove assignment?')) deleteAssignMutation.mutate(a.id); }} className="text-red-600 hover:underline text-sm font-bold">Delete</button>
+                                            </td>
+                                        </tr>
+                                    );
+                                })
+                            )}
+                        </tbody>
                     </table>
                 </div>
             )}
@@ -143,7 +188,14 @@ const ClassModal: React.FC<any> = ({ isOpen, onClose, onSave, data, teachers }) 
     return <Modal isOpen={isOpen} onClose={onClose} title={data ? "Edit Class" : "Add Class"}><form onSubmit={handleSubmit} className="space-y-4">
         <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Class Name" className="w-full p-2 border rounded" required />
         <input type="text" value={classCode} onChange={e => setClassCode(e.target.value)} placeholder="Class Code (e.g., 001)" className="w-full p-2 border rounded" required />
-        <select value={formTeacherId} onChange={e => setFormTeacherId(e.target.value)} className="w-full p-2 border rounded"><option value="">Select Form Teacher</option>{teachers.map((t:Staff) => <option key={t.userId} value={t.userId}>{t.name}</option>)}</select>
+        <select value={formTeacherId} onChange={e => setFormTeacherId(e.target.value)} className="w-full p-2 border rounded">
+            <option value="">Select Form Teacher</option>
+            {teachers.map((t: Staff) => {
+                if (!t) return null;
+                const value = t.userId || t.id;
+                return <option key={value} value={value}>{t.name || 'Unnamed Teacher'}</option>;
+            })}
+        </select>
         <div className="flex justify-end"><button type="submit" className="px-4 py-2 bg-primary-600 text-white rounded">Save</button></div>
     </form></Modal>
 }
@@ -162,7 +214,29 @@ const AssignmentModal: React.FC<any> = ({ isOpen, onClose, onSave, data, classes
     const [classId, setClassId] = useState(data?.classId || '');
     const [subjectId, setSubjectId] = useState(data?.subjectId || '');
     const [teacherId, setTeacherId] = useState(data?.teacherId || '');
-    return <Modal isOpen={isOpen} onClose={onClose} title={data ? "Edit Assignment" : "New Assignment"}><form onSubmit={e => {e.preventDefault(); onSave({classId, subjectId, teacherId})}} className="space-y-4"><select value={classId} onChange={e => setClassId(e.target.value)} className="w-full p-2 border rounded" required><option value="">Select Class</option>{classes.map((c:SchoolClass) => <option key={c.id} value={c.id}>{c.name}</option>)}</select><select value={subjectId} onChange={e => setSubjectId(e.target.value)} className="w-full p-2 border rounded" required><option value="">Select Subject</option>{subjects.map((s:Subject) => <option key={s.id} value={s.id}>{s.name}</option>)}</select><select value={teacherId} onChange={e => setTeacherId(e.target.value)} className="w-full p-2 border rounded" required><option value="">Select Teacher</option>{teachers.map((t:Staff) => <option key={t.userId} value={t.userId}>{t.name}</option>)}</select><div className="flex justify-end"><button type="submit" className="px-4 py-2 bg-primary-600 text-white rounded">Save</button></div></form></Modal>
-}
+    return (
+        <Modal isOpen={isOpen} onClose={onClose} title={data ? "Edit Assignment" : "New Assignment"}>
+            <form onSubmit={e => { e.preventDefault(); onSave({ classId, subjectId, teacherId }); }} className="space-y-4">
+                <select value={classId} onChange={e => setClassId(e.target.value)} className="w-full p-2 border rounded" required>
+                    <option value="">Select Class</option>
+                    {classes.map((c: SchoolClass) => c?.id ? <option key={c.id} value={c.id}>{c.name || c.id}</option> : null)}
+                </select>
+                <select value={subjectId} onChange={e => setSubjectId(e.target.value)} className="w-full p-2 border rounded" required>
+                    <option value="">Select Subject</option>
+                    {subjects.map((s: Subject) => s?.id ? <option key={s.id} value={s.id}>{s.name || s.id}</option> : null)}
+                </select>
+                <select value={teacherId} onChange={e => setTeacherId(e.target.value)} className="w-full p-2 border rounded" required>
+                    <option value="">Select Teacher</option>
+                    {teachers.map((t: Staff) => {
+                        if (!t) return null;
+                        const value = t.userId || t.id;
+                        return <option key={value} value={value}>{t.name || 'Unnamed Teacher'}</option>;
+                    })}
+                </select>
+                <div className="flex justify-end"><button type="submit" className="px-4 py-2 bg-primary-600 text-white rounded">Save</button></div>
+            </form>
+        </Modal>
+    );
+};
 
 export default AcademicsView;

@@ -137,7 +137,8 @@ const DataExportBackupView: React.FC = () => {
     }, [transactions, feeTypeFilter, feeStartDate, feeEndDate]);
 
     const filteredStaff = useMemo(() => {
-        return staff.filter(st => {
+        const safeStaff = (Array.isArray(staff) ? staff : []).filter((st): st is Staff => Boolean(st && typeof st === 'object' && st.id));
+        return safeStaff.filter(st => {
             const matchesRole = staffRoleFilter === 'ALL' || st.role === staffRoleFilter || st.userRole === staffRoleFilter;
             return matchesRole;
         });
