@@ -51,7 +51,7 @@ async function bootstrap() {
   // Global API Prefix
   app.setGlobalPrefix('api');
 
-  // Serve static assets from uploads directory
+  // Serve static assets from uploads and public directories
   const uploadsPath = resolve(process.cwd(), 'uploads');
   if (!fs.existsSync(uploadsPath)) {
     try {
@@ -61,6 +61,19 @@ async function bootstrap() {
     }
   }
   app.use('/uploads', express.static(uploadsPath));
+
+  const publicUploadsPath = resolve(process.cwd(), 'public', 'uploads');
+  if (!fs.existsSync(publicUploadsPath)) {
+    try {
+      fs.mkdirSync(publicUploadsPath, { recursive: true });
+    } catch {}
+  }
+  app.use('/public/uploads', express.static(publicUploadsPath));
+
+  const publicPath = resolve(process.cwd(), 'public');
+  if (fs.existsSync(publicPath)) {
+    app.use('/public', express.static(publicPath));
+  }
 
   // CORS Configuration
   const allowedOrigins = [

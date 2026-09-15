@@ -33,17 +33,17 @@ export class Student extends BaseEntity {
   @Column({ type: 'enum', enum: StudentStatus, default: StudentStatus.Active })
   status!: StudentStatus;
 
-  @Column({ nullable: true })
+  @Column({ type: 'text', nullable: true })
   profileImage!: string;
 
-  @Column()
+  @Column({ nullable: true, default: '' })
   guardianName!: string;
 
   @Index() // Optimize phone lookups for M-Pesa
-  @Column()
+  @Column({ nullable: true, default: '' })
   guardianContact!: string;
 
-  @Column()
+  @Column({ nullable: true, default: '' })
   guardianAddress!: string;
 
   @Column({ nullable: true })

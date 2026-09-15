@@ -62,7 +62,7 @@ const CookiePolicy: React.FC = () => {
                             <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
                                 <h3 className="font-bold text-slate-900">B. Operational & Financial Security Cookies</h3>
                                 <p className="text-sm text-slate-600 mt-1">
-                                    Used during fee payments, invoice verification, and M-Pesa Daraja callbacks to validate idempotency and avoid duplicate ledger entries.
+                                    Used during fee payments, invoice verification, and M-Pesa callbacks to validate idempotency and avoid duplicate ledger entries.
                                 </p>
                             </div>
                             <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">

@@ -62,7 +62,7 @@ export const initialEdTechArticles: EdTechArticle[] = [
     {
         id: 'daraja-mpesa-school-fees',
         slug: 'daraja-mpesa-school-fees',
-        title: 'The Death of Paper Receipts: How Real-Time Daraja M-Pesa Integration Stops Fee Pilferage',
+        title: 'The Death of Paper Receipts: How Real-Time M-Pesa Integration Stops Fee Pilferage',
         category: 'School Finance',
         date: 'January 18, 2026',
         readTime: '5 min read',
@@ -73,7 +73,7 @@ export const initialEdTechArticles: EdTechArticle[] = [
         coverImageUrl: 'https://images.unsplash.com/photo-1554224155-6726b3ff858f?auto=format&fit=crop&q=80&w=1000',
         status: 'PUBLISHED',
         featured: false,
-        tags: ['M-Pesa Daraja', 'School Accounts', 'Fee Collection', 'Fraud Prevention', 'Bursar Operations'],
+        tags: ['M-Pesa Automation', 'School Accounts', 'Fee Collection', 'Fraud Prevention', 'Bursar Operations'],
         learningObjectives: [
             'Recognize the top 3 financial leakage vectors in physical school bursar offices',
             'Learn how instant C2B webhooks eliminate forged bank deposit slips',
@@ -82,7 +82,7 @@ export const initialEdTechArticles: EdTechArticle[] = [
         content: [
             'Every term, school finance offices across Kenya face the same chaotic phenomenon: long cashier queues of parents clutching paper bank deposit slips, faded M-Pesa SMS messages forwarded from third parties, and hours spent manually scouring bank statements to locate missing transaction reference codes.',
             'Manual receipting creates two severe vulnerabilities: human error in ledger posting and deliberate presentation of fabricated or recycled deposit slips. School audits regularly reveal between 3% and 7% uncollected revenue due to slip reconciliation gaps.',
-            'With SaasLink’s direct Safaricom Daraja API integration, parents pay directly to the school’s official Paybill quoting their scholar’s admission number as the account reference. Within 800 milliseconds, Safaricom sends a verified server-to-server webhook.',
+            'With SaasLink’s direct M-Pesa API integration, parents pay directly to the school’s official Paybill quoting their scholar’s admission number as the account reference. Within 800 milliseconds, a verified server-to-server webhook is dispatched.',
             'The student’s digital fee ledger is credited instantly, the parent receives an automated SMS confirmation with a cryptographically verified receipt link, and the Bursar’s dashboard reflects the balance in real-time. No slips, no cash handling, and zero leakage.'
         ],
         media: [
@@ -100,16 +100,16 @@ export const initialEdTechArticles: EdTechArticle[] = [
                 type: 'PDF',
                 title: 'School Financial Control & Anti-Pilferage Audit Whitepaper',
                 url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
-                fileName: 'School_Financial_Control_Daraja_Audit_Guide.pdf',
+                fileName: 'School_Financial_Control_Mpesa_Audit_Guide.pdf',
                 fileSize: '1.8 MB',
                 description: 'A comprehensive checklist for School Boards of Management (BOM) to eliminate cash handling risks.'
             },
             {
                 id: 'media-mpesa-img-1',
                 type: 'IMAGE',
-                title: 'Safaricom Daraja API Webhook Flowchart',
+                title: 'Automated M-Pesa API Webhook Flowchart',
                 url: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&q=80&w=800',
-                caption: 'Architectural schematic showing end-to-end ledger validation between Safaricom and the SaasLink Cloud.'
+                caption: 'Architectural schematic showing end-to-end ledger validation between M-Pesa and the SaasLink Cloud.'
             }
         ],
         viewsCount: 980,

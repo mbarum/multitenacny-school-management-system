@@ -542,7 +542,7 @@ const SettingsView: React.FC = () => {
             id: 'mpesa' as const, 
             title: 'Secure Gateway', 
             group: 'Tuition & Billing',
-            desc: 'Configure Lipa Na M-Pesa Daraja API v2.0 credentials for instant, automated fee reconciliation.',
+            desc: 'Configure Lipa Na M-Pesa automated credentials for instant, verified fee reconciliation.',
             icon: KeyRound,
             badge: localDaraja.environment === 'production' ? 'Production' : 'Sandbox'
         },
@@ -1386,7 +1386,7 @@ const SettingsView: React.FC = () => {
                         </div>
                         <div>
                             <h3 className="text-lg font-bold text-slate-900 dark:text-white">Lipa Na M-Pesa Gateway</h3>
-                            <p className="text-xs text-slate-400">Daraja API v2.0 REST Webhook Integration</p>
+                            <p className="text-xs text-slate-400">Automated REST Webhook Integration</p>
                         </div>
                     </div>
 

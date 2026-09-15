@@ -27,7 +27,7 @@ export class StudentsController {
   @UseInterceptors(FileInterceptor('file', {
     storage: diskStorage({
       destination: (req, file, cb) => {
-        const path = join(resolve('.'), 'public', 'uploads', 'students');
+        const path = join(resolve(process.cwd()), 'public', 'uploads', 'students');
         if (!fs.existsSync(path)) {
           fs.mkdirSync(path, { recursive: true });
         }

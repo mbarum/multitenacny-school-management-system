@@ -33,8 +33,16 @@ export class StudentsService {
         const admissionNumber = `ADM-${year}-${String(count + 1).padStart(4, '0')}`;
 
         // 2. Persist Student Profile
+        const { notifyGuardianEmail, classId, ...studentFields } = dto;
         const student = manager.create(Student, {
-            ...dto,
+            ...studentFields,
+            guardianName: studentFields.guardianName?.trim() || '',
+            guardianContact: studentFields.guardianContact?.trim() || '',
+            guardianAddress: studentFields.guardianAddress?.trim() || '',
+            guardianEmail: studentFields.guardianEmail?.trim() || null as any,
+            emergencyContact: studentFields.emergencyContact?.trim() || studentFields.guardianContact?.trim() || '',
+            dateOfBirth: studentFields.dateOfBirth?.trim() || null as any,
+            profileImage: studentFields.profileImage || null as any,
             admissionNumber,
             status: StudentStatus.Active,
             schoolClass,

@@ -1252,7 +1252,8 @@ const apiFetch = async (endpoint: string, options: RequestInit = {}) => {
         const response = await fetch(url, { ...options, headers });
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({ message: response.statusText }));
-            const errorMessage = errorData.message || `API error (${response.status}) on ${endpoint}`;
+            const rawMsg = errorData?.message || response.statusText;
+            const errorMessage = Array.isArray(rawMsg) ? rawMsg.join(', ') : (rawMsg || `API error (${response.status}) on ${endpoint}`);
             // Auth endpoints and all errors in strict mode must throw the real error to the caller
             if (DISABLE_MOCK_FALLBACK || endpoint.startsWith('/auth') || response.status >= 400) {
                 throw new Error(errorMessage);

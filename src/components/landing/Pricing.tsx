@@ -4,6 +4,7 @@ import * as api from '../../services/api';
 import Skeleton from '../common/Skeleton';
 import { useData } from '../../contexts/DataContext';
 import SubscriptionModal from './SubscriptionModal';
+import { Smartphone, ShieldCheck, Sparkles, Check } from 'lucide-react';
 
 interface PricingProps {
     onSelectPlan?: (plan: SubscriptionPlan, billing: 'MONTHLY' | 'ANNUALLY') => void;
@@ -70,7 +71,7 @@ const Pricing: React.FC<PricingProps> = ({ onSelectPlan }) => {
                 'Standard A4 PDF Report Cards'
             ],
             notIncluded: [
-                'Automated Safaricom Daraja M-Pesa Hook',
+                'Automated M-Pesa Fee Reconciliation',
                 'Parent SMS & Real-time Portal',
                 'Gemini AI Fee Defaulter Predictions',
                 'Bulk WhatsApp Broadcasts'
@@ -85,12 +86,12 @@ const Pricing: React.FC<PricingProps> = ({ onSelectPlan }) => {
             description: 'The definitive cloud operating system for primary, junior, and secondary schools seeking zero cash leakage.',
             features: [
                 'Up to 650 Students Enrolled',
-                'Real-Time Safaricom Daraja M-Pesa Paybill Hook',
+                'Automated M-Pesa Fee Reconciliation',
                 'Instant Parent SMS Receipt Confirmations',
                 'Automated Defaulter Statements & Balance Reminders',
-                'Full Competency-Based (CBC) Learning Area Portfolio',
+                'Competency-Based Education (CBE) & 8-4-4 Grading',
                 'Unlimited Teacher & Staff Accounts',
-                'Parent Online Portal with Fee Balances',
+                'Parent Online Portal with Real-Time Fee Balances',
                 'Official Stamped Financial Receipts with QR'
             ],
             notIncluded: [
@@ -248,25 +249,31 @@ const Pricing: React.FC<PricingProps> = ({ onSelectPlan }) => {
                 {/* Assurance Badges */}
                 <div className="mt-14 p-6 bg-white rounded-2xl border border-slate-200 shadow-sm text-center">
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 text-xs text-slate-700">
-                        <div className="flex items-center justify-center gap-2">
-                            <span className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center font-bold shrink-0">&check;</span>
+                        <div className="flex items-center justify-center gap-3">
+                            <span className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 shadow-xs border border-emerald-200/50">
+                                <Smartphone className="w-5 h-5" />
+                            </span>
                             <div className="text-left">
-                                <div className="font-bold text-slate-900">Official Safaricom Daraja Partner</div>
-                                <div className="text-slate-500 text-[11px]">Direct automated Paybill webhook clearing</div>
+                                <div className="font-bold text-slate-900 text-sm">Automated M-Pesa Fee Reconciliation</div>
+                                <div className="text-slate-500 text-xs">Direct automated mobile money webhook clearing & instant receipts</div>
                             </div>
                         </div>
-                        <div className="flex items-center justify-center gap-2">
-                            <span className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold shrink-0">&check;</span>
+                        <div className="flex items-center justify-center gap-3">
+                            <span className="w-10 h-10 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center shrink-0 shadow-xs border border-blue-200/50">
+                                <ShieldCheck className="w-5 h-5" />
+                            </span>
                             <div className="text-left">
-                                <div className="font-bold text-slate-900">Kenya Data Protection Act 2019</div>
-                                <div className="text-slate-500 text-[11px]">Strict institutional data sovereignty</div>
+                                <div className="font-bold text-slate-900 text-sm">Institutional Data Privacy & Sovereignty</div>
+                                <div className="text-slate-500 text-xs">Encrypted cloud multi-tenancy compliant with regional Data Protection acts</div>
                             </div>
                         </div>
-                        <div className="flex items-center justify-center gap-2">
-                            <span className="w-8 h-8 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center font-bold shrink-0">&check;</span>
+                        <div className="flex items-center justify-center gap-3">
+                            <span className="w-10 h-10 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center shrink-0 shadow-xs border border-purple-200/50">
+                                <Sparkles className="w-5 h-5" />
+                            </span>
                             <div className="text-left">
-                                <div className="font-bold text-slate-900">Free Staff Training & Data Migration</div>
-                                <div className="text-slate-500 text-[11px]">Assisted import from Excel or paper ledgers</div>
+                                <div className="font-bold text-slate-900 text-sm">Free Guided Onboarding & Rapid Migration</div>
+                                <div className="text-slate-500 text-xs">Complimentary historical Excel ledger import & comprehensive staff training</div>
                             </div>
                         </div>
                     </div>

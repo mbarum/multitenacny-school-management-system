@@ -87,7 +87,7 @@ const AcademicsView: React.FC = () => {
 
     const teachers = (Array.isArray(staff) ? staff : []).filter(s => {
         if (!s || typeof s !== 'object') return false;
-        return s.userRole === Role.Teacher || s.role === 'Teacher' || s.role === Role.Teacher;
+        return s?.userRole === Role.Teacher || s?.role === 'Teacher' || s?.role === Role.Teacher;
     });
 
     return (

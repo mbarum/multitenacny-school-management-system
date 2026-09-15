@@ -238,8 +238,26 @@ const StudentsView: React.FC = () => {
     const totalPages = registry?.last_page || Math.max(1, Math.ceil(students.length / 12)) || 1;
 
     const enrollMutation = useMutation({
-        mutationFn: async (payload: any) => {
-            const shouldNotify = payload.notifyGuardianEmail !== false;
+        mutationFn: async (rawPayload: any) => {
+            const shouldNotify = rawPayload.notifyGuardianEmail !== false;
+            const payload: any = {
+                name: rawPayload.name?.trim(),
+                classId: rawPayload.classId,
+                profileImage: rawPayload.profileImage || DEFAULT_AVATAR,
+                notifyGuardianEmail: shouldNotify
+            };
+
+            if (rawPayload.guardianName?.trim()) payload.guardianName = rawPayload.guardianName.trim();
+            if (rawPayload.guardianContact?.trim()) payload.guardianContact = rawPayload.guardianContact.trim();
+            if (rawPayload.guardianAddress?.trim()) payload.guardianAddress = rawPayload.guardianAddress.trim();
+            if (rawPayload.guardianEmail?.trim()) payload.guardianEmail = rawPayload.guardianEmail.trim();
+            if (rawPayload.emergencyContact?.trim()) {
+                payload.emergencyContact = rawPayload.emergencyContact.trim();
+            } else if (rawPayload.guardianContact?.trim()) {
+                payload.emergencyContact = rawPayload.guardianContact.trim();
+            }
+            if (rawPayload.dateOfBirth?.trim()) payload.dateOfBirth = rawPayload.dateOfBirth.trim();
+
             const created = await api.createStudent(payload);
             return { student: created, shouldNotify, guardianEmail: payload.guardianEmail, guardianName: payload.guardianName };
         },

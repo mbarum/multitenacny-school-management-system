@@ -463,7 +463,7 @@ const FeeManagementView: React.FC = () => {
 
                 <div className="bg-white dark:bg-slate-800/80 p-4 sm:p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs">
                     <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 mb-2">
-                        <span className="text-[11px] font-bold uppercase tracking-wider">M-Pesa Daraja Gateway</span>
+                        <span className="text-[11px] font-bold uppercase tracking-wider">M-Pesa Gateway</span>
                         <Smartphone className="w-4 h-4 text-emerald-600" />
                     </div>
                     <div className="flex items-center gap-2 mt-1">

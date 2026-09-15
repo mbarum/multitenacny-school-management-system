@@ -89,10 +89,6 @@ export const ContactModule: React.FC = () => {
                                     <strong className="text-slate-900">Headquarters:</strong>
                                     <span>SaasLink Technologies Ltd, Westlands, Nairobi, Kenya</span>
                                 </div>
-                                <div className="flex items-center gap-2">
-                                    <strong className="text-slate-900">Company Reg:</strong>
-                                    <span>CPR/2023/102941 (Republic of Kenya)</span>
-                                </div>
                             </div>
                         </div>
                     </div>

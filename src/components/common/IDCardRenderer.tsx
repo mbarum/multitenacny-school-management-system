@@ -37,7 +37,7 @@ export const IDCardFrontView: React.FC<IDCardProps> = ({
     const staff = !isStudent ? (person as Staff) : null;
 
     const [photoSrc, setPhotoSrc] = useState<string>(() => {
-        const url = isStudent ? student?.profileImage : staff?.photoUrl;
+        const url = isStudent ? student?.profileImage : (staff ? staff?.photoUrl : null);
         if (url && url !== 'undefined' && url !== 'null' && url.trim() !== '') {
             return url;
         }
@@ -62,13 +62,13 @@ export const IDCardFrontView: React.FC<IDCardProps> = ({
 
     // Handle photo change or fallback
     useEffect(() => {
-        const rawUrl = isStudent ? student?.profileImage : staff?.photoUrl;
+        const rawUrl = isStudent ? student?.profileImage : (staff ? staff?.photoUrl : null);
         if (rawUrl && rawUrl !== 'undefined' && rawUrl !== 'null' && rawUrl.trim() !== '') {
             setPhotoSrc(rawUrl);
         } else {
             setPhotoSrc(generateInitialsAvatar(person?.name || 'User', theme.primaryHex));
         }
-    }, [person, isStudent, student?.profileImage, staff?.photoUrl, theme.primaryHex]);
+    }, [person, isStudent, student?.profileImage, staff, theme.primaryHex]);
 
     const admissionNumber = student?.admissionNumber || 'ADM-PENDING';
     const className = student?.class || 'Standard Grade';

@@ -7,6 +7,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import App from './App';
 import { DataProvider } from './contexts/DataContext';
 import { ThemeProvider } from './contexts/ThemeContext';
+import { LanguageProvider } from './contexts/LanguageContext';
 import ErrorBoundary from './components/common/ErrorBoundary';
 import './index.css';
 
@@ -33,9 +34,11 @@ root.render(
         <QueryClientProvider client={queryClient}>
           <BrowserRouter>
             <ThemeProvider>
-              <DataProvider>
-                <App />
-              </DataProvider>
+              <LanguageProvider>
+                <DataProvider>
+                  <App />
+                </DataProvider>
+              </LanguageProvider>
             </ThemeProvider>
           </BrowserRouter>
         </QueryClientProvider>

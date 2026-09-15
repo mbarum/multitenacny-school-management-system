@@ -118,7 +118,8 @@ export const NewsModule: React.FC = () => {
                         return (
                             <article
                                 key={art.id}
-                                className="bg-white rounded-3xl border border-slate-200/90 shadow-sm hover:shadow-md transition-all flex flex-col justify-between group overflow-hidden"
+                                onClick={() => handleSelectArticle(art)}
+                                className="bg-white rounded-3xl border border-slate-200/90 shadow-sm hover:shadow-lg hover:border-primary-300 transition-all flex flex-col justify-between group overflow-hidden cursor-pointer"
                             >
                                 <div>
                                     {/* Cover Image Banner if present */}
@@ -234,11 +235,15 @@ export const NewsModule: React.FC = () => {
                                     </div>
 
                                     <button
-                                        onClick={() => handleSelectArticle(art)}
-                                        className="text-xs font-black uppercase tracking-wider text-primary-600 hover:text-primary-700 flex items-center gap-1.5 group-hover:translate-x-1 transition-transform"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleSelectArticle(art);
+                                        }}
+                                        className="px-3.5 py-1.5 rounded-full bg-primary-50 hover:bg-primary-600 text-primary-700 hover:text-white text-xs font-black uppercase tracking-wider flex items-center gap-1.5 transition-all shadow-xs"
+                                        aria-label={`Read article: ${art.title}`}
                                     >
                                         <span>Read & Learn</span>
-                                        <ArrowRight className="w-3.5 h-3.5" />
+                                        <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
                                     </button>
                                 </div>
                             </article>

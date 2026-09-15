@@ -4,6 +4,7 @@ import { Link, useLocation } from 'react-router-dom';
 import type { NavItem } from '../../constants';
 import { Role } from '../../types';
 import { useData } from '../../contexts/DataContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 const SaaslinkLogo: React.FC<{ schoolName: string; logoUrl?: string; isCollapsed: boolean; }> = ({ schoolName, logoUrl, isCollapsed }) => (
     <div className="flex items-center justify-center py-5 px-4 border-b border-slate-200 dark:border-slate-800 h-16 bg-white dark:bg-slate-900 transition-colors">
@@ -35,6 +36,7 @@ const Sidebar: React.FC = () => {
         isMobileSidebarOpen,
         setIsMobileSidebarOpen
     } = useData();
+    const { t } = useLanguage();
     
     const location = useLocation();
 
@@ -118,6 +120,7 @@ const Sidebar: React.FC = () => {
                 <nav className="flex-1 px-4 py-4 space-y-2 overflow-y-auto custom-scrollbar">
                     {navigationItems.filter(isAllowed).map(item => {
                         const path = getPath(item.view);
+                        const label = t(`nav.${item.view}`, item.label);
                         return (
                             <Link
                                 key={item.view}
@@ -131,10 +134,10 @@ const Sidebar: React.FC = () => {
                                 }`}
                             >
                                 <div className="flex-shrink-0">{item.icon}</div>
-                                <span className={`ml-4 whitespace-nowrap transition-opacity duration-300 ease-in-out ${isSidebarCollapsed ? 'opacity-0 w-0 hidden' : 'opacity-100'}`}>{item.label}</span>
+                                <span className={`ml-4 whitespace-nowrap transition-opacity duration-300 ease-in-out ${isSidebarCollapsed ? 'opacity-0 w-0 hidden' : 'opacity-100'}`}>{label}</span>
                                 {isSidebarCollapsed && (
                                     <span className="absolute left-full ml-4 w-auto p-2 min-w-max rounded-md shadow-md text-white bg-slate-800 dark:bg-slate-700 text-xs font-bold transition-all duration-100 scale-0 group-hover:scale-100 origin-left z-50">
-                                        {item.label}
+                                        {label}
                                     </span>
                                 )}
                             </Link>

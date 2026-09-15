@@ -1,8 +1,8 @@
-import { IsString, IsOptional, IsEmail, IsDateString, IsEnum, IsUUID } from 'class-validator';
+import { IsString, IsOptional, IsEmail, IsDateString, IsEnum, ValidateIf } from 'class-validator';
 import { StudentStatus } from '../../entities/student.entity';
 
 export class UpdateStudentDto {
-  @IsUUID()
+  @IsString()
   @IsOptional() // Required for batch updates, but optional for single patch
   id?: string;
 
@@ -34,6 +34,7 @@ export class UpdateStudentDto {
   @IsOptional()
   guardianAddress?: string;
 
+  @ValidateIf((o, v) => v !== null && v !== undefined && v !== '')
   @IsEmail()
   @IsOptional()
   guardianEmail?: string;
@@ -42,6 +43,7 @@ export class UpdateStudentDto {
   @IsOptional()
   emergencyContact?: string;
 
+  @ValidateIf((o, v) => v !== null && v !== undefined && v !== '')
   @IsDateString()
   @IsOptional()
   dateOfBirth?: string;

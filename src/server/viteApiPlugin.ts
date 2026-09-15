@@ -56,10 +56,22 @@ export function viteApiPlugin(options?: { disabled?: boolean }): Plugin {
                 const url = req.url || '';
 
                 if (!url.startsWith('/api')) {
-                    if (url.startsWith('/public/uploads/')) {
-                        res.writeHead(200, { 'Content-Type': 'image/png' });
-                        res.end('');
-                        return;
+                    if (url.startsWith('/public/uploads/') || url.startsWith('/uploads/')) {
+                        const localPath = path.join(process.cwd(), url.replace(/^\//, ''));
+                        const serverLocalPath = path.join(process.cwd(), 'server', url.replace(/^\//, ''));
+                        const fsPath = fs.existsSync(localPath) ? localPath : (fs.existsSync(serverLocalPath) ? serverLocalPath : null);
+                        if (fsPath) {
+                            const ext = path.extname(fsPath).toLowerCase();
+                            const mimeMap: Record<string, string> = {
+                                '.png': 'image/png',
+                                '.jpg': 'image/jpeg',
+                                '.jpeg': 'image/jpeg',
+                                '.webp': 'image/webp',
+                                '.gif': 'image/gif'
+                            };
+                            res.writeHead(200, { 'Content-Type': mimeMap[ext] || 'image/jpeg' });
+                            return fs.createReadStream(fsPath).pipe(res);
+                        }
                     }
                     return next();
                 }
@@ -72,7 +84,13 @@ export function viteApiPlugin(options?: { disabled?: boolean }): Plugin {
                         try {
                             callback(data ? JSON.parse(data) : {});
                         } catch {
-                            callback({});
+                            // Support multipart boundary extraction of dataUrl
+                            const dataUrlMatch = data.match(/name="dataUrl"[\r\n\s]+(data:image\/[^\r\n]+)/);
+                            if (dataUrlMatch && dataUrlMatch[1]) {
+                                callback({ dataUrl: dataUrlMatch[1].trim() });
+                            } else {
+                                callback({});
+                            }
                         }
                     });
                 };
@@ -396,6 +414,17 @@ export function viteApiPlugin(options?: { disabled?: boolean }): Plugin {
                             };
                             users.push(newUser);
                             sendJson(201, newUser);
+                        });
+                        return;
+                    }
+                }
+
+                // Students Photo Upload
+                if (path === '/api/students/upload-photo') {
+                    if (req.method === 'POST') {
+                        readBody(body => {
+                            const photoUrl = body?.dataUrl || body?.url || 'https://images.unsplash.com/photo-1544717305-2782549b5136?auto=format&fit=crop&q=80&w=120';
+                            sendJson(200, { url: photoUrl });
                         });
                         return;
                     }

@@ -1670,7 +1670,7 @@ export const SuperAdminDashboard: React.FC = () => {
                     <div className="p-4 bg-white border border-slate-200 rounded-2xl space-y-4">
                         <h4 className="font-bold text-slate-800 text-xs uppercase tracking-wider flex items-center gap-2">
                             <CreditCard className="w-4 h-4 text-emerald-600" />
-                            Safaricom Daraja M-Pesa C2B Paybill
+                            M-Pesa C2B Paybill
                         </h4>
                         <div className="grid grid-cols-2 gap-4">
                             <div>

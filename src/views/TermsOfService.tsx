@@ -74,7 +74,7 @@ const TermsOfService: React.FC = () => {
                         <ul className="space-y-3 text-sm text-slate-200">
                             <li className="flex items-start gap-2">
                                 <span className="text-emerald-400 font-bold">&bull;</span>
-                                <strong>M-Pesa & Bank Gateway Dependency:</strong> SaasLink Technologies Ltd facilitates direct API communication with Safaricom Daraja and designated commercial banks. We shall NOT be held liable for delayed transaction notifications or network outages caused by Safaricom downtime, mobile network failure, or incorrect Paybill configurations input by school clerks.
+                                <strong>M-Pesa & Bank Gateway Dependency:</strong> SaasLink Technologies Ltd facilitates direct API communication with M-Pesa and designated commercial banks. We shall NOT be held liable for delayed transaction notifications or network outages caused by mobile network downtime, infrastructure failure, or incorrect Paybill configurations input by school clerks.
                             </li>
                             <li className="flex items-start gap-2">
                                 <span className="text-emerald-400 font-bold">&bull;</span>

@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { Check } from 'lucide-react';
 
 const PrivacyPolicy: React.FC = () => {
     return (
@@ -31,7 +32,7 @@ const PrivacyPolicy: React.FC = () => {
                     </div>
                     <h1 className="text-3xl md:text-5xl font-extrabold text-slate-900 tracking-tight mb-4">Data Privacy & Protection Policy</h1>
                     <p className="text-slate-500 text-sm">
-                        Owner & Proprietary Operator: <strong className="text-slate-800">SaasLink Technologies Ltd</strong> &bull; Registration: CPR/2023/102941 &bull; Nairobi, Kenya &bull; Last Revised: 2024
+                        Owner & Proprietary Operator: <strong className="text-slate-800">SaasLink Technologies Ltd</strong> &bull; Nairobi, Kenya &bull; Last Revised: 2024
                     </p>
                 </header>
 
@@ -64,7 +65,7 @@ const PrivacyPolicy: React.FC = () => {
                             </div>
                             <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
                                 <h3 className="font-bold text-slate-900 text-sm mb-1">Financial & Ledger Metadata</h3>
-                                <p className="text-xs text-slate-600">Fee structures, payment receipts, Safaricom Daraja M-Pesa transaction reference codes, bank deposit references, and termly fee arrears.</p>
+                                <p className="text-xs text-slate-600">Fee structures, payment receipts, M-Pesa transaction reference codes, bank deposit references, and termly fee arrears.</p>
                             </div>
                             <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
                                 <h3 className="font-bold text-slate-900 text-sm mb-1">Institutional Credentials</h3>
@@ -92,20 +93,20 @@ const PrivacyPolicy: React.FC = () => {
                         </p>
                         <ul className="space-y-2 text-sm text-slate-200">
                             <li className="flex items-start gap-2">
-                                <span className="text-emerald-400 font-bold">&check;</span>
-                                <strong>End-to-End Encryption:</strong> TLS 1.3 in transit with HSTS enforcement; AES-256 for all stored database records and automated backups.
+                                <Check className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                                <div><strong>End-to-End Encryption:</strong> TLS 1.3 in transit with HSTS enforcement; AES-256 for all stored database records and automated backups.</div>
                             </li>
                             <li className="flex items-start gap-2">
-                                <span className="text-emerald-400 font-bold">&check;</span>
-                                <strong>Role-Based Access Control (RBAC):</strong> Strict granular permissions separating Bursar, Class Teacher, Principal, and Parent privileges.
+                                <Check className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                                <div><strong>Role-Based Access Control (RBAC):</strong> Strict granular permissions separating Bursar, Class Teacher, Principal, and Parent privileges.</div>
                             </li>
                             <li className="flex items-start gap-2">
-                                <span className="text-emerald-400 font-bold">&check;</span>
-                                <strong>Immutable Audit Trails:</strong> Every financial ledger adjustment, mark modification, or report export is time-stamped and logged.
+                                <Check className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                                <div><strong>Immutable Audit Trails:</strong> Every financial ledger adjustment, mark modification, or report export is time-stamped and logged.</div>
                             </li>
                             <li className="flex items-start gap-2">
-                                <span className="text-emerald-400 font-bold">&check;</span>
-                                <strong>Automated Disaster Recovery:</strong> Geo-redundant snapshots executed every 6 hours with verified 15-minute point-in-time recovery.
+                                <Check className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                                <div><strong>Automated Disaster Recovery:</strong> Geo-redundant snapshots executed every 6 hours with verified 15-minute point-in-time recovery.</div>
                             </li>
                         </ul>
                     </section>
@@ -122,9 +123,9 @@ const PrivacyPolicy: React.FC = () => {
                     </section>
 
                     <section>
-                        <h2 className="text-xl font-bold text-slate-900 mb-3">6. Third-Party Integrations & Safaricom Daraja API</h2>
+                        <h2 className="text-xl font-bold text-slate-900 mb-3">6. Third-Party Integrations & M-Pesa API</h2>
                         <p>
-                            To automate fee collection, SaasLink communicates directly with the Safaricom Daraja M-Pesa API. We store only official transaction confirmation tokens, amounts, and parent phone numbers for reconciliation. We never possess nor store parent M-Pesa PIN numbers or personal financial credentials.
+                            To automate fee collection, SaasLink communicates directly with the automated M-Pesa API. We store only official transaction confirmation tokens, amounts, and parent phone numbers for reconciliation. We never possess nor store parent M-Pesa PIN numbers or personal financial credentials.
                         </p>
                     </section>
 

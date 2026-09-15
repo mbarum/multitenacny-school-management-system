@@ -569,8 +569,27 @@ const StudentsView: React.FC = () => {
     const enrollMutation = useMutation({
         mutationFn: async (studentPayload: any) => {
             const shouldNotify = studentPayload.notifyGuardianEmail !== false;
-            const created = await api.createStudent(studentPayload);
-            return { student: created, shouldNotify, guardianEmail: studentPayload.guardianEmail, guardianName: studentPayload.guardianName };
+            // Clean payload before sending to backend to prevent any 400 Bad Request
+            const payload: any = {
+                name: studentPayload.name?.trim(),
+                classId: studentPayload.classId,
+                profileImage: studentPayload.profileImage || DEFAULT_AVATAR,
+                notifyGuardianEmail: shouldNotify
+            };
+
+            if (studentPayload.guardianName?.trim()) payload.guardianName = studentPayload.guardianName.trim();
+            if (studentPayload.guardianContact?.trim()) payload.guardianContact = studentPayload.guardianContact.trim();
+            if (studentPayload.guardianAddress?.trim()) payload.guardianAddress = studentPayload.guardianAddress.trim();
+            if (studentPayload.guardianEmail?.trim()) payload.guardianEmail = studentPayload.guardianEmail.trim();
+            if (studentPayload.emergencyContact?.trim()) {
+                payload.emergencyContact = studentPayload.emergencyContact.trim();
+            } else if (studentPayload.guardianContact?.trim()) {
+                payload.emergencyContact = studentPayload.guardianContact.trim();
+            }
+            if (studentPayload.dateOfBirth?.trim()) payload.dateOfBirth = studentPayload.dateOfBirth.trim();
+
+            const created = await api.createStudent(payload);
+            return { student: created, shouldNotify, guardianEmail: payload.guardianEmail, guardianName: payload.guardianName };
         },
         onSuccess: async ({ student, shouldNotify, guardianEmail, guardianName }) => {
             queryClient.invalidateQueries({ queryKey: ['students'] });
@@ -603,20 +622,23 @@ const StudentsView: React.FC = () => {
             try {
                 // Resize and compress portrait to 400x400 WebP for minimal VPS disk space
                 const optimized = await optimizeImage(file, { preset: 'avatar', maxWidth: 400, maxHeight: 400 });
+                // Immediately set local dataUrl so preview is crystal clear and never broken
+                setNewStudent((prev: any) => ({ ...prev, profileImage: optimized.dataUrl }));
+
                 const formData = new FormData();
                 formData.append('file', optimized.file);
                 formData.append('dataUrl', optimized.dataUrl);
 
                 api.uploadStudentPhoto(formData)
                     .then(res => {
-                        const photoUrl = res?.url && !res.url.includes('undefined') ? res.url : optimized.dataUrl;
-                        setNewStudent((prev: any) => ({ ...prev, profileImage: photoUrl }));
-                        addNotification(`Portrait optimized for VPS storage (${optimized.formattedStats}) and uploaded!`, 'success');
+                        if (res?.url && !res.url.includes('undefined')) {
+                            setNewStudent((prev: any) => ({ ...prev, profileImage: res.url }));
+                        }
+                        addNotification(`Portrait optimized (${optimized.formattedStats}) and uploaded!`, 'success');
                     })
                     .catch(() => {
-                        // Fallback to optimized dataUrl if upload fails
-                        setNewStudent((prev: any) => ({ ...prev, profileImage: optimized.dataUrl }));
-                        addNotification(`Portrait resized (${optimized.formattedStats}) and saved locally.`, 'info');
+                        // Fallback stays as optimized.dataUrl
+                        addNotification(`Portrait resized (${optimized.formattedStats}) and cached.`, 'info');
                     });
             } catch (err: any) {
                 addNotification('Error optimizing portrait: ' + (err?.message || 'Please choose another photo'), 'error');
@@ -1104,18 +1126,31 @@ const StudentsView: React.FC = () => {
             >
                 <div className="space-y-5">
                     {/* Scholar Photo Selection */}
-                    <div className="flex items-center gap-4 p-3 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-200 dark:border-slate-700">
-                        <img 
-                            src={newStudent.profileImage || DEFAULT_AVATAR} 
-                            alt="Scholar Preview" 
-                            className="w-16 h-16 rounded-2xl object-cover border-2 border-white dark:border-slate-700 shadow-xs"
-                        />
+                    <div className="flex items-center gap-4 p-3.5 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-200 dark:border-slate-700">
+                        <div className="relative w-16 h-16 rounded-2xl overflow-hidden border-2 border-primary-500/40 bg-slate-200 dark:bg-slate-700 shrink-0 shadow-sm">
+                            <img 
+                                src={newStudent.profileImage || DEFAULT_AVATAR} 
+                                alt="Scholar Preview" 
+                                onError={(e) => { (e.target as HTMLImageElement).src = DEFAULT_AVATAR; }}
+                                className="w-full h-full object-cover"
+                            />
+                            {newStudent.profileImage && newStudent.profileImage !== DEFAULT_AVATAR && (
+                                <button
+                                    type="button"
+                                    onClick={() => setNewStudent((prev: any) => ({ ...prev, profileImage: DEFAULT_AVATAR }))}
+                                    className="absolute top-0 right-0 p-1 bg-red-600 hover:bg-red-700 text-white rounded-bl-lg text-[10px] leading-none transition-colors"
+                                    title="Reset photo"
+                                >
+                                    ✕
+                                </button>
+                            )}
+                        </div>
                         <div className="space-y-1">
                             <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider">
                                 Scholar Passport Photo
                             </h4>
                             <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                                Attach official ID portrait via file upload or live camera.
+                                Attach official ID portrait via file upload or live camera viewfinder.
                             </p>
                             <div className="flex items-center gap-2 pt-1">
                                 <input 
@@ -1128,17 +1163,17 @@ const StudentsView: React.FC = () => {
                                 <button 
                                     type="button" 
                                     onClick={() => fileInputRef.current?.click()} 
-                                    className="px-3 py-1 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-600 rounded-lg text-xs font-semibold hover:bg-slate-100 transition-colors"
+                                    className="px-3 py-1.5 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-600 rounded-xl text-xs font-semibold hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors shadow-2xs"
                                 >
-                                    <Upload className="w-3 h-3 mr-1 inline" />
+                                    <Upload className="w-3.5 h-3.5 mr-1 inline" />
                                     Upload Photo
                                 </button>
                                 <button 
                                     type="button" 
                                     onClick={() => setIsCaptureModalOpen(true)} 
-                                    className="px-3 py-1 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-600 rounded-lg text-xs font-semibold hover:bg-slate-100 transition-colors"
+                                    className="px-3 py-1.5 bg-primary-50 dark:bg-primary-950/60 text-primary-700 dark:text-primary-300 border border-primary-200 dark:border-primary-800 rounded-xl text-xs font-semibold hover:bg-primary-100 dark:hover:bg-primary-900/60 transition-colors shadow-2xs"
                                 >
-                                    <Camera className="w-3 h-3 mr-1 inline" />
+                                    <Camera className="w-3.5 h-3.5 mr-1 inline" />
                                     Take Webcam Photo
                                 </button>
                             </div>
@@ -1197,6 +1232,18 @@ const StudentsView: React.FC = () => {
                                 onChange={e => setNewStudent({ ...newStudent, guardianContact: e.target.value })} 
                                 className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-semibold focus:outline-hidden focus:border-primary-500" 
                                 placeholder="07XXXXXXXX"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
+                                Emergency Contact Phone
+                            </label>
+                            <input 
+                                id="input-enroll-emergency"
+                                value={newStudent.emergencyContact} 
+                                onChange={e => setNewStudent({ ...newStudent, emergencyContact: e.target.value })} 
+                                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-semibold focus:outline-hidden focus:border-primary-500" 
+                                placeholder="e.g. 07XXXXXXXX (Secondary / Relative)"
                             />
                         </div>
                         <div>
@@ -1283,7 +1330,10 @@ const StudentsView: React.FC = () => {
             <WebcamCaptureModal 
                 isOpen={isCaptureModalOpen} 
                 onClose={() => setIsCaptureModalOpen(false)} 
-                onCapture={url => setNewStudent((prev: any) => ({ ...prev, profileImage: url }))} 
+                onCapture={url => {
+                    setNewStudent((prev: any) => ({ ...prev, profileImage: url }));
+                    addNotification('Passport portrait captured successfully!', 'success');
+                }} 
             />
 
             <BatchIDCardModal

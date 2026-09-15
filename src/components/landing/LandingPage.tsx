@@ -6,6 +6,7 @@ import SubscriptionModal from './SubscriptionModal';
 import DualCurriculumShowcase from './DualCurriculumShowcase';
 import NewsModule from './NewsModule';
 import ContactModule from './ContactModule';
+import LanguageSelector from './LanguageSelector';
 import { SubscriptionPlan } from '../../types';
 
 interface LandingPageProps {
@@ -37,7 +38,7 @@ const CookieBanner: React.FC = () => {
         >
             <div className="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4 text-xs sm:text-sm">
                 <div className="text-slate-300 max-w-4xl leading-relaxed">
-                    <strong className="text-white">SaasLink Technologies Ltd Notice:</strong> We use functional and analytical cookies to safeguard session integrity, streamline M-Pesa Daraja payment callbacks, and personalize your administrative experience. Review our{' '}
+                    <strong className="text-white">SaasLink Technologies Ltd Notice:</strong> We use functional and analytical cookies to safeguard session integrity, streamline M-Pesa payment callbacks, and personalize your administrative experience. Review our{' '}
                     <Link to="/cookies" className="text-primary-400 font-semibold hover:underline">
                         Cookies Policy
                     </Link>{' '}
@@ -89,8 +90,8 @@ const faqs = [
         answer: "Yes. SaasLink was engineered specifically for the Kenyan curriculum transition. Our hybrid academic engine lets schools run CBC formative assessments (EE, ME, AE, BE rubrics across sub-strands) for Pre-Primary and Primary/Junior Secondary cohorts, while concurrently running traditional percentage-based marks, mean grades (A to E), and rankings for 8-4-4 candidate classes on the same platform."
     },
     {
-        question: "How does the direct Safaricom Daraja M-Pesa integration prevent school fee leakage?",
-        answer: "We connect directly to Safaricom's Daraja gateway. When a parent pays via your school Paybill with the student admission number as reference, Safaricom delivers an encrypted webhook callback within 800 milliseconds. The student ledger is credited instantly, an automated SMS receipt is dispatched to the parent, and the Bursar sees the live transaction. Zero manual receipt books, zero fake bank deposit slips."
+        question: "How does the direct M-Pesa integration prevent school fee leakage?",
+        answer: "We connect directly to the automated M-Pesa gateway. When a parent pays via your school Paybill or Till with the student admission number as reference, an encrypted webhook callback is delivered within 800 milliseconds. The student ledger is credited instantly, an automated SMS receipt is dispatched to the parent, and the Bursar sees the live transaction. Zero manual receipt books, zero fake bank deposit slips."
     },
     {
         question: "What legal agreements govern our school's data on SaasLink?",
@@ -142,7 +143,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onNavigate }) => {
                     "bestRating": "5",
                     "worstRating": "1"
                 },
-                "description": "Comprehensive school management cloud system supporting Competency-Based Curriculum (CBC) and traditional 8-4-4 learning, featuring automated Daraja M-Pesa fee collection, parent portals, and KNEC assessment exports.",
+                "description": "Comprehensive school management cloud system supporting Competency-Based Curriculum (CBC) and traditional 8-4-4 learning, featuring automated M-Pesa fee collection, parent portals, and KNEC assessment exports.",
                 "offers": {
                     "@type": "AggregateOffer",
                     "priceCurrency": "KES",
@@ -182,10 +183,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onNavigate }) => {
                 "mainEntity": [
                     {
                         "@type": "Question",
-                        "name": "How does SaasLink automate school fee collection with Safaricom Daraja M-Pesa?",
+                        "name": "How does SaasLink automate school fee collection with M-Pesa?",
                         "acceptedAnswer": {
                             "@type": "Answer",
-                            "text": "SaasLink connects directly to your school Paybill or Till via Safaricom Daraja C2B APIs. When a parent pays using the student admission number as account reference, the system instantly matches the payment, sends an SMS receipt to the parent, updates the student ledger, and eliminates manual reconciliation."
+                            "text": "SaasLink connects directly to your school Paybill or Till via automated M-Pesa C2B APIs. When a parent pays using the student admission number as account reference, the system instantly matches the payment, sends an SMS receipt to the parent, updates the student ledger, and eliminates manual reconciliation."
                         }
                     },
                     {
@@ -221,11 +222,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onNavigate }) => {
         <div className="min-h-screen w-full overflow-x-hidden bg-white text-slate-900 font-sans selection:bg-primary-500 selection:text-white">
             <Helmet>
                 <title>SaasLink Technologies Ltd | School Management System for Kenyan Schools</title>
-                <meta name="description" content="SaasLink is the premier school management cloud platform for Kenyan schools. Seamlessly manage CBC formative rubrics, traditional 8-4-4 marks, Safaricom Daraja M-Pesa fee reconciliation, and parent SMS. Call 0720935895." />
-                <meta name="keywords" content="CBC school system Kenya, Competency Based Curriculum software, KNEC CBA report cards, M-Pesa Daraja school fees automation, 8-4-4 school management system, SaasLink Technologies Ltd" />
+                <meta name="description" content="SaasLink is the premier school management cloud platform for Kenyan schools. Seamlessly manage CBC formative rubrics, traditional 8-4-4 marks, automated M-Pesa fee reconciliation, and parent SMS. Call 0720935895." />
+                <meta name="keywords" content="CBC school system Kenya, Competency Based Curriculum software, KNEC CBA report cards, M-Pesa school fees automation, 8-4-4 school management system, SaasLink Technologies Ltd" />
                 <link rel="canonical" href="https://saaslink.co.ke" />
                 <meta property="og:title" content="SaasLink School Management Cloud | CBC & Traditional Learning Suite" />
-                <meta property="og:description" content="Automate school fee collection with Safaricom Daraja M-Pesa, grade CBC and traditional streams concurrently, and generate instant report cards." />
+                <meta property="og:description" content="Automate school fee collection with M-Pesa, grade CBC and traditional streams concurrently, and generate instant report cards." />
                 <script type="application/ld+json">
                     {JSON.stringify(structuredData)}
                 </script>
@@ -256,18 +257,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onNavigate }) => {
                         <span className="text-[11px] text-slate-400 hidden md:inline">
                             Proprietor: <strong>SaasLink Technologies Ltd</strong> (Kenya DPA 2019 Certified)
                         </span>
-                        {/* Direct Switch to Log In Button in Top Bar */}
-                        <Link
-                            to="/login"
-                            id="topbar-switch-to-login"
-                            className="inline-flex items-center gap-1.5 px-3 py-1 bg-white hover:bg-slate-100 text-slate-900 font-bold text-xs rounded-lg transition-all shadow-sm"
-                            title="Go to School Administrative Portal"
-                        >
-                            <svg className="w-3.5 h-3.5 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
-                            </svg>
-                            <span>Switch to Log In &rarr;</span>
-                        </Link>
+                        <LanguageSelector variant="dark" />
                     </div>
                 </div>
             </div>
@@ -302,23 +292,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onNavigate }) => {
 
                     {/* Action Buttons (Desktop & Mobile) */}
                     <div className="flex items-center gap-2 sm:gap-3">
-                        {/* Primary Switch to Log In */}
-                        <Link 
-                            to="/login"
-                            id="nav-switch-to-login"
-                            className="px-3 sm:px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs sm:text-sm font-bold shadow-sm transition-all flex items-center gap-1.5"
-                        >
-                            <svg className="w-4 h-4 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
-                            </svg>
-                            <span>Switch to Log In</span>
-                        </Link>
-
-                        {/* Subscribe School Button (Desktop) */}
+                        {/* Subscribe School Button */}
                         <button
                             onClick={() => openSubscription(SubscriptionPlan.BASIC)}
                             id="nav-subscribe-school"
-                            className="hidden sm:inline-flex items-center gap-1.5 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-xl text-xs sm:text-sm font-bold shadow-sm shadow-primary-600/30 hover:scale-[1.02] transition-all"
+                            className="inline-flex items-center gap-1.5 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-xl text-xs sm:text-sm font-bold shadow-sm shadow-primary-600/30 hover:scale-[1.02] transition-all"
                         >
                             <span>Subscribe School</span>
                         </button>
@@ -383,22 +361,16 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onNavigate }) => {
                         </nav>
 
                         <div className="pt-3 border-t border-slate-100 flex flex-col gap-2.5">
+                            <div className="flex items-center justify-between py-1">
+                                <span className="text-xs font-semibold text-slate-500">Language:</span>
+                                <LanguageSelector variant="light" />
+                            </div>
                             <button
                                 onClick={() => openSubscription(SubscriptionPlan.BASIC)}
                                 className="w-full py-3 bg-primary-600 text-white rounded-xl font-bold text-sm text-center shadow-md"
                             >
                                 Subscribe School Now
                             </button>
-                            <Link
-                                to="/login"
-                                onClick={() => setMobileMenuOpen(false)}
-                                className="w-full py-3 bg-slate-900 text-white rounded-xl font-bold text-sm text-center flex items-center justify-center gap-2"
-                            >
-                                <svg className="w-4 h-4 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
-                                </svg>
-                                <span>Switch to Log In Page</span>
-                            </Link>
                         </div>
                     </div>
                 )}
@@ -423,7 +395,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onNavigate }) => {
 
                     {/* Subhead */}
                     <p className="text-base sm:text-xl text-slate-600 leading-relaxed max-w-3xl mx-auto mb-10">
-                        Designed for Kenyan Primary, Junior Secondary, and High Schools. Seamlessly unify KICD-compliant Competency-Based formative rubrics, 8-4-4 numeric examinations, automated Safaricom Daraja M-Pesa fee reconciliation, and instant parent SMS. Managed by <strong>SaasLink Technologies Ltd</strong>.
+                        Designed for Kenyan Primary, Junior Secondary, and High Schools. Seamlessly unify KICD-compliant Competency-Based formative rubrics, 8-4-4 numeric examinations, automated M-Pesa fee reconciliation, and instant parent SMS. Managed by <strong>SaasLink Technologies Ltd</strong>.
                     </p>
 
                     {/* Mobile-Friendly CTAs */}
@@ -438,17 +410,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onNavigate }) => {
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
                             </svg>
                         </button>
-
-                        <Link
-                            to="/login"
-                            id="hero-switch-to-login"
-                            className="w-full sm:w-auto px-8 py-4 bg-slate-900 hover:bg-slate-800 text-white rounded-2xl text-base font-bold shadow-lg transition-all flex items-center justify-center gap-2 hover:scale-[1.02]"
-                        >
-                            <svg className="w-5 h-5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
-                            </svg>
-                            <span>Switch to Log In Page</span>
-                        </Link>
 
                         <a
                             href="tel:0720935895"
@@ -516,7 +477,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onNavigate }) => {
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                 </svg>
                             </div>
-                            <h3 className="text-xl font-bold text-slate-900 mb-3">Direct Safaricom Daraja M-Pesa Hook</h3>
+                            <h3 className="text-xl font-bold text-slate-900 mb-3">Direct M-Pesa Hook</h3>
                             <p className="text-sm text-slate-600 leading-relaxed">
                                 Link your institutional Paybill or Till number directly. When parents pay using the student's admission number, our webhook credits the ledger within 800 milliseconds and sends an immediate SMS receipt. Eliminates teller slips and prevents financial leakage.
                             </p>
@@ -635,15 +596,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onNavigate }) => {
                         >
                             Subscribe Your School
                         </button>
-                        <Link
-                            to="/login"
-                            className="w-full sm:w-auto px-8 py-4 bg-slate-800 hover:bg-slate-700 text-white rounded-2xl text-base font-bold border border-slate-700 transition-all text-center flex items-center justify-center gap-2"
-                        >
-                            <svg className="w-5 h-5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
-                            </svg>
-                            <span>Switch to Log In Page</span>
-                        </Link>
                         <a
                             href="tel:0720935895"
                             className="w-full sm:w-auto px-6 py-4 bg-transparent hover:bg-slate-800/80 text-slate-200 rounded-2xl text-base font-bold border border-slate-700 transition-all text-center flex items-center justify-center gap-2"
@@ -685,10 +637,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onNavigate }) => {
                             <ul className="space-y-2 text-xs text-slate-600">
                                 <li><a href="#curriculum" className="hover:text-primary-600">CBC Formative Rubrics</a></li>
                                 <li><a href="#curriculum" className="hover:text-primary-600">8-4-4 Numeric Examinations</a></li>
-                                <li><a href="#features" className="hover:text-primary-600">Daraja M-Pesa Fee Hook</a></li>
+                                <li><a href="#features" className="hover:text-primary-600">M-Pesa Fee Hook</a></li>
                                 <li><a href="#features" className="hover:text-primary-600">Parent Communications Portal</a></li>
                                 <li><a href="#pricing" className="hover:text-primary-600">Subscription Plans</a></li>
-                                <li><Link to="/login" className="hover:text-primary-600 font-bold text-slate-900">Switch to Log In</Link></li>
+                                <li><a href="#contact" className="hover:text-primary-600">Support & Inquiries</a></li>
                             </ul>
                         </div>
 
