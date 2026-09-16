@@ -591,12 +591,74 @@ const handleLocalFallback = (endpoint: string, options: RequestInit): any => {
     }
     if (cleanEndpoint === '/staff') {
         if (method === 'POST') {
-            const newStaff = { id: `staff-${Date.now()}`, photoUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=120', ...body };
+            const newStaffId = `staff-${Date.now()}`;
+            const staffEmail = (body.email || '').toLowerCase().trim();
+            const rawPassword = (body.password || '').trim() || 'password123';
+            const userRole = body.userRole || Role.Teacher;
+
+            const newStaff = {
+                id: newStaffId,
+                photoUrl: body.photoUrl || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=120',
+                ...body
+            };
             store.staff.push(newStaff);
+
+            if (staffEmail) {
+                const existingUserIndex = store.users.findIndex(u => u.email.toLowerCase() === staffEmail);
+                if (existingUserIndex >= 0) {
+                    store.users[existingUserIndex] = {
+                        ...store.users[existingUserIndex],
+                        name: body.name || store.users[existingUserIndex].name,
+                        role: userRole,
+                        password: rawPassword,
+                        status: 'Active'
+                    };
+                } else {
+                    const newUser: User = {
+                        id: `user-${newStaffId}`,
+                        name: body.name || 'Staff Member',
+                        email: staffEmail,
+                        password: rawPassword,
+                        role: userRole,
+                        avatarUrl: newStaff.photoUrl,
+                        status: 'Active',
+                        schoolId: store.schoolInfo.id || 'school-1'
+                    };
+                    store.users.push(newUser);
+                }
+            }
+
             saveMockStore(store);
             return newStaff;
         }
         return store.staff;
+    }
+    if (cleanEndpoint.startsWith('/staff/')) {
+        const staffId = cleanEndpoint.replace('/staff/', '');
+        if (method === 'PATCH' || method === 'PUT') {
+            const idx = store.staff.findIndex(s => s.id === staffId);
+            if (idx >= 0) {
+                store.staff[idx] = { ...store.staff[idx], ...body };
+                const staffEmail = (store.staff[idx].email || '').toLowerCase().trim();
+                if (staffEmail) {
+                    const uIdx = store.users.findIndex(u => u.email.toLowerCase() === staffEmail);
+                    if (uIdx >= 0) {
+                        store.users[uIdx] = {
+                            ...store.users[uIdx],
+                            name: store.staff[idx].name || store.users[uIdx].name,
+                            role: body.userRole || store.users[uIdx].role
+                        };
+                    }
+                }
+                saveMockStore(store);
+                return store.staff[idx];
+            }
+        }
+        if (method === 'DELETE') {
+            store.staff = store.staff.filter(s => s.id !== staffId);
+            saveMockStore(store);
+            return { success: true };
+        }
     }
     if (cleanEndpoint === '/payroll/payroll-items') return store.payrollItems;
     if (cleanEndpoint === '/payroll/payroll-history') {
@@ -619,16 +681,193 @@ const handleLocalFallback = (endpoint: string, options: RequestInit): any => {
         }
         return store.payrollHistory;
     }
-    if (cleanEndpoint === '/academics/classes') return store.classes;
-    if (cleanEndpoint === '/academics/subjects') return store.subjects;
-    if (cleanEndpoint === '/academics/class-subject-assignments') return store.assignments;
+    // Academics - Classes
+    if (cleanEndpoint === '/academics/classes') {
+        if (method === 'POST') {
+            const newClass = { id: `class-${Date.now()}`, ...body };
+            store.classes.push(newClass);
+            saveMockStore(store);
+            return newClass;
+        }
+        return store.classes;
+    }
+    if (cleanEndpoint === '/academics/classes/batch' && method === 'PUT') {
+        if (Array.isArray(body)) {
+            store.classes = body;
+            saveMockStore(store);
+            return store.classes;
+        }
+    }
+    if (cleanEndpoint.startsWith('/academics/classes/')) {
+        const classId = cleanEndpoint.replace('/academics/classes/', '');
+        if (method === 'PATCH' || method === 'PUT') {
+            const idx = store.classes.findIndex(c => c.id === classId);
+            if (idx >= 0) {
+                store.classes[idx] = { ...store.classes[idx], ...body };
+                saveMockStore(store);
+                return store.classes[idx];
+            }
+        }
+        if (method === 'DELETE') {
+            store.classes = store.classes.filter(c => c.id !== classId);
+            saveMockStore(store);
+            return { success: true };
+        }
+    }
+
+    // Academics - Subjects
+    if (cleanEndpoint === '/academics/subjects') {
+        if (method === 'POST') {
+            const newSubject = {
+                id: `sub-${Date.now()}`,
+                code: (body.code || 'SUB').toUpperCase().trim(),
+                name: (body.name || '').trim()
+            };
+            store.subjects.push(newSubject);
+            saveMockStore(store);
+            return newSubject;
+        }
+        return store.subjects;
+    }
+    if (cleanEndpoint === '/academics/subjects/batch' && method === 'PUT') {
+        if (Array.isArray(body)) {
+            store.subjects = body;
+            saveMockStore(store);
+            return store.subjects;
+        }
+    }
+    if (cleanEndpoint.startsWith('/academics/subjects/')) {
+        const subjectId = cleanEndpoint.replace('/academics/subjects/', '');
+        if (method === 'PATCH' || method === 'PUT') {
+            const idx = store.subjects.findIndex(s => s.id === subjectId);
+            if (idx >= 0) {
+                store.subjects[idx] = { ...store.subjects[idx], ...body };
+                saveMockStore(store);
+                return store.subjects[idx];
+            }
+        }
+        if (method === 'DELETE') {
+            store.subjects = store.subjects.filter(s => s.id !== subjectId);
+            saveMockStore(store);
+            return { success: true };
+        }
+    }
+
+    // Academics - Class-Subject Assignments
+    if (cleanEndpoint === '/academics/class-subject-assignments') {
+        if (method === 'POST') {
+            const newAssign = { id: `csa-${Date.now()}`, ...body };
+            store.assignments.push(newAssign);
+            saveMockStore(store);
+            return newAssign;
+        }
+        return store.assignments;
+    }
+    if (cleanEndpoint === '/academics/class-subject-assignments/batch' && method === 'PUT') {
+        if (Array.isArray(body)) {
+            store.assignments = body;
+            saveMockStore(store);
+            return store.assignments;
+        }
+    }
+    if (cleanEndpoint.startsWith('/academics/class-subject-assignments/')) {
+        const assignId = cleanEndpoint.replace('/academics/class-subject-assignments/', '');
+        if (method === 'DELETE') {
+            store.assignments = store.assignments.filter(a => a.id !== assignId);
+            saveMockStore(store);
+            return { success: true };
+        }
+    }
+
     if (cleanEndpoint === '/academics/timetable-entries') return store.timetable;
+    if (cleanEndpoint === '/academics/timetable-entries/batch' && method === 'PUT') {
+        if (Array.isArray(body)) {
+            store.timetable = body;
+            saveMockStore(store);
+            return store.timetable;
+        }
+    }
+
     if (cleanEndpoint === '/academics/exams') return store.exams;
+    if (cleanEndpoint === '/academics/exams/batch' && method === 'PUT') {
+        if (Array.isArray(body)) {
+            store.exams = body;
+            saveMockStore(store);
+            return store.exams;
+        }
+    }
+
     if (cleanEndpoint === '/academics/grades') return store.grades;
+    if (cleanEndpoint === '/academics/grades/batch' && method === 'PUT') {
+        if (Array.isArray(body)) {
+            store.grades = body;
+            saveMockStore(store);
+            return store.grades;
+        }
+    }
+
     if (cleanEndpoint === '/academics/attendance-records') return store.attendance;
+    if (cleanEndpoint === '/academics/attendance-records/batch' && method === 'PUT') {
+        if (Array.isArray(body)) {
+            store.attendance = body;
+            saveMockStore(store);
+            return store.attendance;
+        }
+    }
+
     if (cleanEndpoint === '/academics/events') return [];
-    if (cleanEndpoint === '/academics/grading-scale') return store.gradingScale;
-    if (cleanEndpoint === '/academics/fee-structure') return store.feeStructure;
+
+    if (cleanEndpoint === '/academics/grading-scale') {
+        if (method === 'POST') {
+            const newRule = { id: `rule-${Date.now()}`, ...body };
+            store.gradingScale.push(newRule);
+            saveMockStore(store);
+            return newRule;
+        }
+        return store.gradingScale;
+    }
+    if (cleanEndpoint.startsWith('/academics/grading-scale/')) {
+        const ruleId = cleanEndpoint.replace('/academics/grading-scale/', '');
+        if (method === 'PATCH' || method === 'PUT') {
+            const idx = store.gradingScale.findIndex(r => r.id === ruleId);
+            if (idx >= 0) {
+                store.gradingScale[idx] = { ...store.gradingScale[idx], ...body };
+                saveMockStore(store);
+                return store.gradingScale[idx];
+            }
+        }
+        if (method === 'DELETE') {
+            store.gradingScale = store.gradingScale.filter(r => r.id !== ruleId);
+            saveMockStore(store);
+            return { success: true };
+        }
+    }
+
+    if (cleanEndpoint === '/academics/fee-structure') {
+        if (method === 'POST') {
+            const newItem = { id: `fee-${Date.now()}`, ...body };
+            store.feeStructure.push(newItem);
+            saveMockStore(store);
+            return newItem;
+        }
+        return store.feeStructure;
+    }
+    if (cleanEndpoint.startsWith('/academics/fee-structure/')) {
+        const feeId = cleanEndpoint.replace('/academics/fee-structure/', '');
+        if (method === 'PATCH' || method === 'PUT') {
+            const idx = store.feeStructure.findIndex(f => f.id === feeId);
+            if (idx >= 0) {
+                store.feeStructure[idx] = { ...store.feeStructure[idx], ...body };
+                saveMockStore(store);
+                return store.feeStructure[idx];
+            }
+        }
+        if (method === 'DELETE') {
+            store.feeStructure = store.feeStructure.filter(f => f.id !== feeId);
+            saveMockStore(store);
+            return { success: true };
+        }
+    }
     if (cleanEndpoint === '/communications/announcements') {
         if (method === 'POST') {
             const newAnn = { id: `ann-${Date.now()}`, ...body };
@@ -1031,10 +1270,20 @@ const handleLocalFallback = (endpoint: string, options: RequestInit): any => {
         const schoolId = parts[3];
         const school = (store.schools || []).find(s => s.id === schoolId);
         if (school) {
-            const totalAmount = school.plan === SubscriptionPlan.PREMIUM ? 69600 : 34800;
-            const txnRef = body.transactionRef || `WIRE-NCBA-${Date.now().toString().slice(-6)}`;
+            if (!school.schoolCode || school.schoolCode === 'PENDING-VERIFICATION') {
+                school.schoolCode = (school.name || 'SCH').substring(0, 3).toUpperCase();
+            }
+            const inv = (store.saasInvoices || []).find(i => i.schoolId === schoolId && i.status !== 'PAID');
+            const targetPlan = body?.plan || (school as any).pendingUpgradePlan || inv?.plan || (school.plan !== SubscriptionPlan.FREE ? school.plan : SubscriptionPlan.PREMIUM);
+            school.plan = targetPlan;
+
+            const cycle = body?.billingCycle || (school as any).billingCycle || inv?.billingCycle || school.billingCycle || 'MONTHLY';
+            school.billingCycle = cycle;
+
+            const totalAmount = inv?.amount || (school.plan === SubscriptionPlan.PREMIUM ? 69600 : 34800);
+            const txnRef = body?.transactionRef || inv?.invoiceNumber || `WIRE-NCBA-${Date.now().toString().slice(-6)}`;
             const paymentDate = new Date().toISOString().split('T')[0];
-            const provisionedDays = school.billingCycle === 'ANNUALLY' ? 365 : 30;
+            const provisionedDays = cycle === 'ANNUALLY' ? 365 : 30;
 
             school.subscriptionStatus = SubscriptionStatus.ACTIVE;
             school.endDate = new Date(Date.now() + provisionedDays * 86400000).toISOString().split('T')[0];
@@ -1042,13 +1291,23 @@ const handleLocalFallback = (endpoint: string, options: RequestInit): any => {
             school.lastPaymentDate = paymentDate;
             school.lastPaymentAmount = totalAmount;
             school.autoLockoutGraceDaysRemaining = undefined;
+            delete (school as any).pendingUpgradePlan;
 
-            const inv = (store.saasInvoices || []).find(i => i.schoolId === schoolId && i.status !== 'PAID');
+            if (store.schoolInfo && store.schoolInfo.id === school.id) {
+                store.schoolInfo.plan = targetPlan;
+                store.schoolInfo.subscriptionStatus = SubscriptionStatus.ACTIVE;
+                store.schoolInfo.billingCycle = cycle;
+                store.schoolInfo.endDate = school.endDate;
+                if (!store.schoolInfo.schoolCode || store.schoolInfo.schoolCode === 'PENDING-VERIFICATION') {
+                    store.schoolInfo.schoolCode = school.schoolCode;
+                }
+            }
+
             if (inv) {
                 inv.status = 'PAID';
                 inv.paidDate = paymentDate;
                 inv.transactionRef = txnRef;
-                inv.paymentMethod = body.paymentMethod || 'Bank Wire';
+                inv.paymentMethod = body?.paymentMethod || 'Bank Wire';
             }
 
             const newReceipt: SaasReceipt = {
@@ -1061,7 +1320,7 @@ const handleLocalFallback = (endpoint: string, options: RequestInit): any => {
                 amount: totalAmount,
                 currency: 'KES',
                 paymentDate: paymentDate,
-                paymentMethod: body.paymentMethod || 'Bank Wire',
+                paymentMethod: body?.paymentMethod || 'Bank Wire',
                 transactionCode: txnRef,
                 plan: school.plan,
                 provisionedUntil: school.endDate,
@@ -1092,6 +1351,61 @@ const handleLocalFallback = (endpoint: string, options: RequestInit): any => {
                 receipt: newReceipt, 
                 credentials: { email: school.email, password: initialPassword } 
             };
+        }
+        return { success: false, message: 'School not found' };
+    }
+
+    if (cleanEndpoint === '/super-admin/payments/initiate') {
+        const schoolId = body?.schoolId || store.schoolInfo?.id;
+        const school: any = (store.schools || []).find(s => s.id === schoolId || s.email === body?.email) || store.schoolInfo;
+        if (school) {
+            const requestedPlan = body?.plan || SubscriptionPlan.PREMIUM;
+            const requestedCycle = body?.billingCycle || school.billingCycle || 'MONTHLY';
+            if (!school.schoolCode || school.schoolCode === 'PENDING-VERIFICATION') {
+                school.schoolCode = (school.name || 'SCH').substring(0, 3).toUpperCase();
+            }
+
+            school.subscriptionStatus = SubscriptionStatus.PENDING_APPROVAL;
+            (school as any).pendingUpgradePlan = requestedPlan;
+            (school as any).paymentMethod = body?.method || 'WIRE';
+            (school as any).billingCycle = requestedCycle;
+
+            const txnRef = body?.transactionCode || `WIRE-NCBA-${Date.now().toString().slice(-6)}`;
+            school.invoiceNumber = txnRef;
+
+            if (store.schoolInfo && store.schoolInfo.id === school.id) {
+                store.schoolInfo.subscriptionStatus = SubscriptionStatus.PENDING_APPROVAL;
+                (store.schoolInfo as any).pendingUpgradePlan = requestedPlan;
+                (store.schoolInfo as any).paymentMethod = body?.method || 'WIRE';
+                (store.schoolInfo as any).invoiceNumber = txnRef;
+                if (!store.schoolInfo.schoolCode || store.schoolInfo.schoolCode === 'PENDING-VERIFICATION') {
+                    store.schoolInfo.schoolCode = school.schoolCode;
+                }
+            }
+
+            const newInv: SaasInvoice = {
+                id: `inv-saas-${Date.now()}`,
+                invoiceNumber: txnRef,
+                schoolId: school.id,
+                schoolName: school.name,
+                schoolCode: school.schoolCode,
+                recipientEmail: school.email,
+                recipientPhone: school.phone,
+                plan: requestedPlan,
+                billingCycle: requestedCycle,
+                amount: Number(body?.amount) || 5800,
+                currency: 'KES',
+                issueDate: new Date().toISOString().split('T')[0],
+                dueDate: new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0],
+                status: 'UNPAID',
+                paymentMethod: 'Bank Wire',
+                notes: `Proforma Invoice for ${requestedPlan} subscription (${requestedCycle}). Super Admin wire transfer verification required.`
+            };
+            if (!store.saasInvoices) store.saasInvoices = [];
+            store.saasInvoices.unshift(newInv);
+
+            saveMockStore(store);
+            return { success: true, message: 'Wire transfer order recorded. Super Administrator verification pending.', invoice: newInv, school };
         }
         return { success: false, message: 'School not found' };
     }
@@ -1434,7 +1748,7 @@ export const getSubscriptionPayments = () => apiFetch('/super-admin/payments');
 export const recordManualSubscriptionPayment = (data: any) => apiFetch('/super-admin/payments/manual', { method: 'POST', body: JSON.stringify(data) });
 export const updateSchoolEmail = (id: string, email: string) => apiFetch(`/super-admin/schools/${id}/email`, { method: 'PATCH', body: JSON.stringify({ email }) });
 export const updateSchoolPhone = (id: string, phone: string) => apiFetch(`/super-admin/schools/${id}/phone`, { method: 'PATCH', body: JSON.stringify({ phone }) });
-export const initiateSubscriptionPayment = (data: { amount: number, method: string, plan: string, transactionCode: string }): Promise<any> => apiFetch('/super-admin/payments/initiate', { method: 'POST', body: JSON.stringify(data) });
+export const initiateSubscriptionPayment = (data: { schoolId?: string; amount: number; method: string; plan: string; billingCycle?: string; transactionCode: string; email?: string }): Promise<any> => apiFetch('/super-admin/payments/initiate', { method: 'POST', body: JSON.stringify(data) });
 
 export const getSaasInvoices = async (): Promise<SaasInvoice[]> => {
     const res = await apiFetch('/super-admin/invoices');
@@ -1454,7 +1768,7 @@ export const runLifecycleSweep = (): Promise<LifecycleSweepResult> => apiFetch('
 export const sendSchoolReminder = (schoolId: string, message?: string): Promise<any> => apiFetch(`/super-admin/schools/${schoolId}/reminder`, { method: 'POST', body: JSON.stringify({ message }) });
 export const toggleSchoolAccess = (schoolId: string, enabled: boolean): Promise<any> => apiFetch(`/super-admin/schools/${schoolId}/toggle-access`, { method: 'PATCH', body: JSON.stringify({ enabled }) });
 export const extendSchoolSubscription = (schoolId: string, days: number): Promise<any> => apiFetch(`/super-admin/schools/${schoolId}/extend`, { method: 'POST', body: JSON.stringify({ days }) });
-export const activateSchoolSubscription = (schoolId: string, payload: { paymentMethod?: string; transactionRef?: string } = {}): Promise<any> => apiFetch(`/super-admin/schools/${schoolId}/activate`, { method: 'POST', body: JSON.stringify(payload) });
+export const activateSchoolSubscription = (schoolId: string, payload: { paymentMethod?: string; transactionRef?: string; plan?: string; billingCycle?: string } = {}): Promise<any> => apiFetch(`/super-admin/schools/${schoolId}/activate`, { method: 'POST', body: JSON.stringify(payload) });
 
 // --- Library ---
 export const getBooks = (params: any = {}): Promise<any> => apiFetch(`/library/books?${new URLSearchParams(cleanParams(params)).toString()}`);

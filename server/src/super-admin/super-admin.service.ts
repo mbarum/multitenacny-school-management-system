@@ -118,7 +118,7 @@ export class SuperAdminService {
       id: s.id,
       name: s.name,
       slug: s.slug,
-      schoolCode: s.schoolCode,
+      schoolCode: (s.schoolCode && s.schoolCode !== 'PENDING-VERIFICATION') ? s.schoolCode : (s.name || 'SCH').substring(0, 3).toUpperCase(),
       email: s.email || '',
       phone: s.phone || '',
       address: s.address || '',
@@ -221,17 +221,28 @@ export class SuperAdminService {
     });
     if (!school) throw new NotFoundException('School not found');
 
+    if (!school.schoolCode || school.schoolCode === 'PENDING-VERIFICATION') {
+      school.schoolCode = (school.name || 'SCH').substring(0, 3).toUpperCase();
+      await this.schoolRepo.save(school);
+    }
+
+    const targetPlan = payload?.plan || (school.subscription?.plan !== SubscriptionPlan.FREE ? school.subscription?.plan : SubscriptionPlan.PREMIUM) || SubscriptionPlan.BASIC;
+
     if (!school.subscription) {
       school.subscription = this.subRepo.create({
         school,
-        plan: SubscriptionPlan.BASIC,
+        plan: targetPlan,
         status: SubscriptionStatus.ACTIVE,
-        billingCycle: 'MONTHLY',
+        billingCycle: payload?.billingCycle || 'MONTHLY',
         startDate: new Date(),
         endDate: new Date(Date.now() + 30 * 86400000)
       });
     } else {
       school.subscription.status = SubscriptionStatus.ACTIVE;
+      school.subscription.plan = targetPlan;
+      if (payload?.billingCycle) {
+        school.subscription.billingCycle = payload.billingCycle;
+      }
       const cycle = school.subscription.billingCycle === 'ANNUALLY' ? 365 : 30;
       school.subscription.startDate = new Date();
       school.subscription.endDate = new Date(Date.now() + cycle * 86400000);
@@ -245,6 +256,7 @@ export class SuperAdminService {
         id: school.id,
         name: school.name,
         email: school.email,
+        schoolCode: school.schoolCode,
         subscriptionStatus: SubscriptionStatus.ACTIVE,
         plan: school.subscription.plan
       }
@@ -387,8 +399,21 @@ export class SuperAdminService {
 
   // Fix: Implemented missing initiatePayment method
   async initiatePayment(schoolId: string, data: any) {
-    const school = await this.schoolRepo.findOne({ where: { id: schoolId } });
+    const school = await this.schoolRepo.findOne({ where: { id: schoolId }, relations: ['subscription'] });
     if (!school) throw new NotFoundException('School not found');
+
+    if (!school.schoolCode || school.schoolCode === 'PENDING-VERIFICATION') {
+      school.schoolCode = (school.name || 'SCH').substring(0, 3).toUpperCase();
+      await this.schoolRepo.save(school);
+    }
+
+    if (school.subscription) {
+      school.subscription.status = SubscriptionStatus.PENDING_APPROVAL;
+      if (data.plan) {
+        school.subscription.plan = data.plan;
+      }
+      await this.subRepo.save(school.subscription);
+    }
 
     const payment = this.paymentRepo.create({
         school,

@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { SchoolClass, Subject, ClassSubjectAssignment, Staff } from '../types';
 import { Role } from '../types';
@@ -41,16 +41,48 @@ const AcademicsView: React.FC = () => {
         return list.filter((s: any): s is Staff => Boolean(s && typeof s === 'object' && s.id));
     }, [rawStaff]);
 
-    const createClassMutation = useMutation({ mutationFn: api.createClass, onSuccess: () => { queryClient.invalidateQueries({queryKey:['classes']}); setIsModalOpen(false); addNotification('Class created', 'success'); } });
-    const updateClassMutation = useMutation({ mutationFn: (d:any) => api.updateClass(d.id, d.data), onSuccess: () => { queryClient.invalidateQueries({queryKey:['classes']}); setIsModalOpen(false); addNotification('Class updated', 'success'); } });
-    const deleteClassMutation = useMutation({ mutationFn: api.deleteClass, onSuccess: () => { queryClient.invalidateQueries({queryKey:['classes']}); addNotification('Class deleted', 'success'); } });
+    const createClassMutation = useMutation({ 
+        mutationFn: api.createClass, 
+        onSuccess: () => { queryClient.invalidateQueries({queryKey:['classes']}); setIsModalOpen(false); addNotification('Class created successfully', 'success'); },
+        onError: (err: any) => addNotification(`Failed to create class: ${err?.message || 'Unknown error'}`, 'error')
+    });
+    const updateClassMutation = useMutation({ 
+        mutationFn: (d:any) => api.updateClass(d.id, d.data), 
+        onSuccess: () => { queryClient.invalidateQueries({queryKey:['classes']}); setIsModalOpen(false); addNotification('Class updated successfully', 'success'); },
+        onError: (err: any) => addNotification(`Failed to update class: ${err?.message || 'Unknown error'}`, 'error')
+    });
+    const deleteClassMutation = useMutation({ 
+        mutationFn: api.deleteClass, 
+        onSuccess: () => { queryClient.invalidateQueries({queryKey:['classes']}); addNotification('Class deleted successfully', 'success'); },
+        onError: (err: any) => addNotification(`Failed to delete class: ${err?.message || 'Unknown error'}`, 'error')
+    });
 
-    const createSubjectMutation = useMutation({ mutationFn: api.createSubject, onSuccess: () => { queryClient.invalidateQueries({queryKey:['subjects']}); setIsModalOpen(false); addNotification('Subject created', 'success'); } });
-    const updateSubjectMutation = useMutation({ mutationFn: (d:any) => api.updateSubject(d.id, d.data), onSuccess: () => { queryClient.invalidateQueries({queryKey:['subjects']}); setIsModalOpen(false); addNotification('Subject updated', 'success'); } });
-    const deleteSubjectMutation = useMutation({ mutationFn: api.deleteSubject, onSuccess: () => { queryClient.invalidateQueries({queryKey:['subjects']}); addNotification('Subject deleted', 'success'); } });
+    const createSubjectMutation = useMutation({ 
+        mutationFn: api.createSubject, 
+        onSuccess: () => { queryClient.invalidateQueries({queryKey:['subjects']}); setIsModalOpen(false); addNotification('Subject created successfully', 'success'); },
+        onError: (err: any) => addNotification(`Failed to create subject: ${err?.message || 'Unknown error'}`, 'error')
+    });
+    const updateSubjectMutation = useMutation({ 
+        mutationFn: (d:any) => api.updateSubject(d.id, d.data), 
+        onSuccess: () => { queryClient.invalidateQueries({queryKey:['subjects']}); setIsModalOpen(false); addNotification('Subject updated successfully', 'success'); },
+        onError: (err: any) => addNotification(`Failed to update subject: ${err?.message || 'Unknown error'}`, 'error')
+    });
+    const deleteSubjectMutation = useMutation({ 
+        mutationFn: api.deleteSubject, 
+        onSuccess: () => { queryClient.invalidateQueries({queryKey:['subjects']}); addNotification('Subject deleted successfully', 'success'); },
+        onError: (err: any) => addNotification(`Failed to delete subject: ${err?.message || 'Unknown error'}`, 'error')
+    });
 
-    const createAssignMutation = useMutation({ mutationFn: api.createAssignment, onSuccess: () => { queryClient.invalidateQueries({queryKey:['assignments']}); setIsModalOpen(false); addNotification('Assignment created', 'success'); } });
-    const deleteAssignMutation = useMutation({ mutationFn: api.deleteAssignment, onSuccess: () => { queryClient.invalidateQueries({queryKey:['assignments']}); addNotification('Assignment removed', 'success'); } });
+    const createAssignMutation = useMutation({ 
+        mutationFn: api.createAssignment, 
+        onSuccess: () => { queryClient.invalidateQueries({queryKey:['assignments']}); setIsModalOpen(false); addNotification('Assignment created successfully', 'success'); },
+        onError: (err: any) => addNotification(`Failed to create assignment: ${err?.message || 'Unknown error'}`, 'error')
+    });
+    const deleteAssignMutation = useMutation({ 
+        mutationFn: api.deleteAssignment, 
+        onSuccess: () => { queryClient.invalidateQueries({queryKey:['assignments']}); addNotification('Assignment removed successfully', 'success'); },
+        onError: (err: any) => addNotification(`Failed to remove assignment: ${err?.message || 'Unknown error'}`, 'error')
+    });
 
     const openModal = (type: string, data: any = null) => {
         setModalType(type);
@@ -168,72 +200,163 @@ const AcademicsView: React.FC = () => {
                 </div>
             )}
 
-            {isModalOpen && modalType === 'class' && <ClassModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSave={handleSaveClass} data={editingData} teachers={teachers} />}
-            {isModalOpen && modalType === 'subject' && <SubjectModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSave={handleSaveSubject} data={editingData} />}
-            {isModalOpen && modalType === 'assignment' && <AssignmentModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSave={handleSaveAssignment} data={editingData} classes={classes} subjects={subjects} teachers={teachers} />}
+            {isModalOpen && modalType === 'class' && (
+                <ClassModal 
+                    isOpen={isModalOpen} 
+                    onClose={() => setIsModalOpen(false)} 
+                    onSave={handleSaveClass} 
+                    data={editingData} 
+                    teachers={teachers} 
+                    isPending={createClassMutation.isPending || updateClassMutation.isPending} 
+                />
+            )}
+            {isModalOpen && modalType === 'subject' && (
+                <SubjectModal 
+                    isOpen={isModalOpen} 
+                    onClose={() => setIsModalOpen(false)} 
+                    onSave={handleSaveSubject} 
+                    data={editingData} 
+                    isPending={createSubjectMutation.isPending || updateSubjectMutation.isPending} 
+                />
+            )}
+            {isModalOpen && modalType === 'assignment' && (
+                <AssignmentModal 
+                    isOpen={isModalOpen} 
+                    onClose={() => setIsModalOpen(false)} 
+                    onSave={handleSaveAssignment} 
+                    data={editingData} 
+                    classes={classes} 
+                    subjects={subjects} 
+                    teachers={teachers} 
+                    isPending={createAssignMutation.isPending} 
+                />
+            )}
         </div>
     );
 };
 
-const ClassModal: React.FC<any> = ({ isOpen, onClose, onSave, data, teachers }) => {
+const ClassModal: React.FC<any> = ({ isOpen, onClose, onSave, data, teachers, isPending }) => {
     const [name, setName] = useState(data?.name || '');
     const [classCode, setClassCode] = useState(data?.classCode || '');
     const [formTeacherId, setFormTeacherId] = useState(data?.formTeacherId || '');
+
+    useEffect(() => {
+        setName(data?.name || '');
+        setClassCode(data?.classCode || '');
+        setFormTeacherId(data?.formTeacherId || '');
+    }, [data, isOpen]);
     
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        onSave({ name, classCode, formTeacherId: formTeacherId || null });
+        onSave({ name: name.trim(), classCode: classCode.trim(), formTeacherId: formTeacherId || null });
     };
 
     return <Modal isOpen={isOpen} onClose={onClose} title={data ? "Edit Class" : "Add Class"}><form onSubmit={handleSubmit} className="space-y-4">
-        <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Class Name" className="w-full p-2 border rounded" required />
-        <input type="text" value={classCode} onChange={e => setClassCode(e.target.value)} placeholder="Class Code (e.g., 001)" className="w-full p-2 border rounded" required />
-        <select value={formTeacherId} onChange={e => setFormTeacherId(e.target.value)} className="w-full p-2 border rounded">
-            <option value="">Select Form Teacher</option>
-            {teachers.map((t: Staff) => {
-                if (!t) return null;
-                const value = t.userId || t.id;
-                return <option key={value} value={value}>{t.name || 'Unnamed Teacher'}</option>;
-            })}
-        </select>
-        <div className="flex justify-end"><button type="submit" className="px-4 py-2 bg-primary-600 text-white rounded">Save</button></div>
+        <div>
+            <label className="block text-xs font-semibold text-slate-600 mb-1">Class Name</label>
+            <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Grade 1 East" className="w-full p-2 border rounded" required />
+        </div>
+        <div>
+            <label className="block text-xs font-semibold text-slate-600 mb-1">Class Code</label>
+            <input type="text" value={classCode} onChange={e => setClassCode(e.target.value)} placeholder="e.g. G1-E or 001" className="w-full p-2 border rounded" required />
+        </div>
+        <div>
+            <label className="block text-xs font-semibold text-slate-600 mb-1">Form Teacher</label>
+            <select value={formTeacherId} onChange={e => setFormTeacherId(e.target.value)} className="w-full p-2 border rounded">
+                <option value="">Select Form Teacher (Optional)</option>
+                {teachers.map((t: Staff) => {
+                    if (!t) return null;
+                    const value = t.userId || t.id;
+                    return <option key={value} value={value}>{t.name || 'Unnamed Teacher'}</option>;
+                })}
+            </select>
+        </div>
+        <div className="flex justify-end gap-2 pt-2">
+            <button type="button" onClick={onClose} className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded">Cancel</button>
+            <button type="submit" disabled={isPending} className="px-4 py-2 bg-primary-600 text-white rounded font-medium disabled:opacity-50">
+                {isPending ? 'Saving...' : 'Save Class'}
+            </button>
+        </div>
     </form></Modal>
 }
 
-const SubjectModal: React.FC<any> = ({ isOpen, onClose, onSave, data }) => {
+const SubjectModal: React.FC<any> = ({ isOpen, onClose, onSave, data, isPending }) => {
     const [name, setName] = useState(data?.name || '');
     const [code, setCode] = useState(data?.code || '');
-    return <Modal isOpen={isOpen} onClose={onClose} title={data ? "Edit Subject" : "Add Subject"}><form onSubmit={e => {e.preventDefault(); onSave({name, code})}} className="space-y-4">
-        <input type="text" value={code} onChange={e => setCode(e.target.value)} placeholder="Subject Code (e.g., 901)" className="w-full p-2 border rounded" required />
-        <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Subject Name" className="w-full p-2 border rounded" required />
-        <div className="flex justify-end"><button type="submit" className="px-4 py-2 bg-primary-600 text-white rounded">Save</button></div>
+
+    useEffect(() => {
+        setName(data?.name || '');
+        setCode(data?.code || '');
+    }, [data, isOpen]);
+
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        onSave({ name: name.trim(), code: code.trim().toUpperCase() });
+    };
+
+    return <Modal isOpen={isOpen} onClose={onClose} title={data ? "Edit Subject" : "Add Subject"}><form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+            <label className="block text-xs font-semibold text-slate-600 mb-1">Subject Code</label>
+            <input type="text" value={code} onChange={e => setCode(e.target.value)} placeholder="e.g. 901 or ENG" className="w-full p-2 border rounded uppercase" required />
+        </div>
+        <div>
+            <label className="block text-xs font-semibold text-slate-600 mb-1">Subject Name</label>
+            <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Mathematics" className="w-full p-2 border rounded" required />
+        </div>
+        <div className="flex justify-end gap-2 pt-2">
+            <button type="button" onClick={onClose} className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded">Cancel</button>
+            <button type="submit" disabled={isPending} className="px-4 py-2 bg-primary-600 text-white rounded font-medium disabled:opacity-50">
+                {isPending ? 'Saving...' : 'Save Subject'}
+            </button>
+        </div>
     </form></Modal>
 }
 
-const AssignmentModal: React.FC<any> = ({ isOpen, onClose, onSave, data, classes, subjects, teachers }) => {
+const AssignmentModal: React.FC<any> = ({ isOpen, onClose, onSave, data, classes, subjects, teachers, isPending }) => {
     const [classId, setClassId] = useState(data?.classId || '');
     const [subjectId, setSubjectId] = useState(data?.subjectId || '');
     const [teacherId, setTeacherId] = useState(data?.teacherId || '');
+
+    useEffect(() => {
+        setClassId(data?.classId || '');
+        setSubjectId(data?.subjectId || '');
+        setTeacherId(data?.teacherId || '');
+    }, [data, isOpen]);
+
     return (
         <Modal isOpen={isOpen} onClose={onClose} title={data ? "Edit Assignment" : "New Assignment"}>
             <form onSubmit={e => { e.preventDefault(); onSave({ classId, subjectId, teacherId }); }} className="space-y-4">
-                <select value={classId} onChange={e => setClassId(e.target.value)} className="w-full p-2 border rounded" required>
-                    <option value="">Select Class</option>
-                    {classes.map((c: SchoolClass) => c?.id ? <option key={c.id} value={c.id}>{c.name || c.id}</option> : null)}
-                </select>
-                <select value={subjectId} onChange={e => setSubjectId(e.target.value)} className="w-full p-2 border rounded" required>
-                    <option value="">Select Subject</option>
-                    {subjects.map((s: Subject) => s?.id ? <option key={s.id} value={s.id}>{s.name || s.id}</option> : null)}
-                </select>
-                <select value={teacherId} onChange={e => setTeacherId(e.target.value)} className="w-full p-2 border rounded" required>
-                    <option value="">Select Teacher</option>
-                    {teachers.map((t: Staff) => {
-                        if (!t) return null;
-                        const value = t.userId || t.id;
-                        return <option key={value} value={value}>{t.name || 'Unnamed Teacher'}</option>;
-                    })}
-                </select>
-                <div className="flex justify-end"><button type="submit" className="px-4 py-2 bg-primary-600 text-white rounded">Save</button></div>
+                <div>
+                    <label className="block text-xs font-semibold text-slate-600 mb-1">Class</label>
+                    <select value={classId} onChange={e => setClassId(e.target.value)} className="w-full p-2 border rounded" required>
+                        <option value="">Select Class</option>
+                        {classes.map((c: SchoolClass) => c?.id ? <option key={c.id} value={c.id}>{c.name || c.id}</option> : null)}
+                    </select>
+                </div>
+                <div>
+                    <label className="block text-xs font-semibold text-slate-600 mb-1">Subject</label>
+                    <select value={subjectId} onChange={e => setSubjectId(e.target.value)} className="w-full p-2 border rounded" required>
+                        <option value="">Select Subject</option>
+                        {subjects.map((s: Subject) => s?.id ? <option key={s.id} value={s.id}>{s.name || s.id}</option> : null)}
+                    </select>
+                </div>
+                <div>
+                    <label className="block text-xs font-semibold text-slate-600 mb-1">Teacher</label>
+                    <select value={teacherId} onChange={e => setTeacherId(e.target.value)} className="w-full p-2 border rounded" required>
+                        <option value="">Select Teacher</option>
+                        {teachers.map((t: Staff) => {
+                            if (!t) return null;
+                            const value = t.userId || t.id;
+                            return <option key={value} value={value}>{t.name || 'Unnamed Teacher'}</option>;
+                        })}
+                    </select>
+                </div>
+                <div className="flex justify-end gap-2 pt-2">
+                    <button type="button" onClick={onClose} className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded">Cancel</button>
+                    <button type="submit" disabled={isPending} className="px-4 py-2 bg-primary-600 text-white rounded font-medium disabled:opacity-50">
+                        {isPending ? 'Saving...' : 'Save Assignment'}
+                    </button>
+                </div>
             </form>
         </Modal>
     );

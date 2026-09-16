@@ -332,6 +332,10 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
 
         setIsSubmitting(true);
 
+        const effectiveRegistrationCode = (registrationCode?.trim() && registrationCode.trim() !== 'PENDING-VERIFICATION')
+            ? registrationCode.trim().toUpperCase()
+            : ((schoolName?.trim() || 'SCH').substring(0, 3).toUpperCase() + '-' + Math.floor(100 + Math.random() * 900));
+
         const bankName = pricing?.wireBankName || 'NCBA Bank Kenya PLC';
         const accountName = pricing?.wireAccountName || 'SAASLINK TECHNOLOGIES LIMITED';
         const accountNumber = pricing?.wireAccountNumber || '8809220019';
@@ -343,7 +347,8 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
             if (paymentMethod === 'WIRE') {
                 const payload = {
                     schoolName,
-                    registrationCode: registrationCode || 'PENDING-VERIFICATION',
+                    registrationCode: effectiveRegistrationCode,
+                    schoolCode: effectiveRegistrationCode,
                     curriculumType,
                     county,
                     studentCount,
@@ -413,7 +418,8 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
 
                 const payload = {
                     schoolName,
-                    registrationCode: registrationCode || 'PENDING-VERIFICATION',
+                    registrationCode: effectiveRegistrationCode,
+                    schoolCode: effectiveRegistrationCode,
                     curriculumType,
                     county,
                     studentCount,
@@ -464,7 +470,8 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
 
                 const payload = {
                     schoolName,
-                    registrationCode: registrationCode || 'PENDING-VERIFICATION',
+                    registrationCode: effectiveRegistrationCode,
+                    schoolCode: effectiveRegistrationCode,
                     curriculumType,
                     county,
                     studentCount,

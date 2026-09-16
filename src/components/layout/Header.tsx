@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Sun, Moon, Globe } from 'lucide-react';
+import { Sun, Moon, Globe, LogOut } from 'lucide-react';
 import { Role, SubscriptionStatus } from '../../types';
 import { useData } from '../../contexts/DataContext';
 import { useTheme } from '../../contexts/ThemeContext';
@@ -146,6 +146,21 @@ const Header: React.FC = () => {
                             </div>
                             
                             <div className="relative h-8 border-l border-slate-200 dark:border-slate-800 hidden sm:block"></div>
+
+                            {/* Direct Sign Out Action Button */}
+                            <button
+                                id="header-direct-sign-out-btn"
+                                type="button"
+                                onClick={handleLogout}
+                                className="p-2 sm:px-3 sm:py-2 rounded-xl text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 hover:text-red-700 dark:hover:text-red-300 transition-all focus:outline-none focus:ring-2 focus:ring-red-500/30 flex items-center gap-1.5 border border-red-200/70 dark:border-red-900/40 bg-white/80 dark:bg-slate-900/80 shadow-xs"
+                                title={t('header.signOut', 'Sign Out')}
+                                aria-label={t('header.signOut', 'Sign Out')}
+                            >
+                                <LogOut className="w-4 h-4 text-red-500 shrink-0" />
+                                <span className="hidden lg:inline text-xs font-bold text-red-600 dark:text-red-400">
+                                    {t('header.signOut', 'Sign Out')}
+                                </span>
+                            </button>
 
                             <div className="relative" ref={menuRef}>
                                 <button 

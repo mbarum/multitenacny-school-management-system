@@ -196,7 +196,11 @@ export const SuperAdminDashboard: React.FC = () => {
     });
 
     const activateSchoolMutation = useMutation({
-        mutationFn: (schoolId: string) => api.activateSchoolSubscription(schoolId),
+        mutationFn: (schoolId: string) => {
+            const targetSchool = schools.find((s: any) => s.id === schoolId);
+            const targetPlan = (targetSchool as any)?.pendingUpgradePlan || (targetSchool?.plan !== 'FREE' ? targetSchool?.plan : 'PREMIUM');
+            return api.activateSchoolSubscription(schoolId, { plan: targetPlan });
+        },
         onSuccess: (data) => {
             queryClient.invalidateQueries({ queryKey: ['super-schools'] });
             queryClient.invalidateQueries({ queryKey: ['platform-stats'] });
@@ -721,7 +725,11 @@ export const SuperAdminDashboard: React.FC = () => {
                                                         <div>
                                                             <div className="font-bold text-slate-900 text-sm">{school.name}</div>
                                                             <div className="text-slate-400 text-[11px] flex items-center gap-2 mt-0.5">
-                                                                <span className="font-mono font-bold text-slate-600">{school.schoolCode || 'SCH'}</span>
+                                                                <span className="font-mono font-bold text-slate-600">
+                                                                    {(!school.schoolCode || school.schoolCode === 'PENDING-VERIFICATION')
+                                                                        ? (school.name ? school.name.substring(0, 3).toUpperCase() : 'SCH')
+                                                                        : school.schoolCode}
+                                                                </span>
                                                                 <span>•</span>
                                                                 <span>{school.email}</span>
                                                             </div>
@@ -731,10 +739,17 @@ export const SuperAdminDashboard: React.FC = () => {
 
                                                 {/* Plan & Cycle */}
                                                 <td className="px-6 py-4">
-                                                    <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-slate-100 text-slate-800">
-                                                        <span>{school.plan}</span>
-                                                        <span className="text-slate-400">•</span>
-                                                        <span className="text-slate-500">{school.billingCycle}</span>
+                                                    <div className="inline-flex flex-col gap-1">
+                                                        <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-slate-100 text-slate-800">
+                                                            <span>{school.plan}</span>
+                                                            <span className="text-slate-400">•</span>
+                                                            <span className="text-slate-500">{school.billingCycle}</span>
+                                                        </div>
+                                                        {isPending && ((school as any).pendingUpgradePlan || school.plan === SubscriptionPlan.FREE) && (
+                                                            <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                                                                Target: {(school as any).pendingUpgradePlan || SubscriptionPlan.PREMIUM}
+                                                            </span>
+                                                        )}
                                                     </div>
                                                 </td>
 

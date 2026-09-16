@@ -225,14 +225,78 @@ const StaffAndPayrollView: React.FC = () => {
 
     // --- Mutations ---
 
-    const addStaffMutation = useMutation({ mutationFn: api.createStaff, onSuccess: () => { queryClient.invalidateQueries({queryKey:['staff']}); setIsStaffModalOpen(false); addNotification('Staff added', 'success'); } });
-    const updateStaffMutation = useMutation({ mutationFn: (d: any) => api.updateStaff(d.id, d.data), onSuccess: () => { queryClient.invalidateQueries({queryKey:['staff']}); setIsStaffModalOpen(false); addNotification('Staff updated', 'success'); } });
+    const addStaffMutation = useMutation({
+        mutationFn: api.createStaff,
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['staff'] });
+            setIsStaffModalOpen(false);
+            addNotification('Staff member enrolled and login account created successfully', 'success');
+        },
+        onError: (err: any) => {
+            console.error('Failed to add staff member:', err);
+            addNotification(`Failed to save staff member: ${err?.message || 'Server error'}`, 'error');
+        }
+    });
+
+    const updateStaffMutation = useMutation({
+        mutationFn: (d: any) => api.updateStaff(d.id, d.data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['staff'] });
+            setIsStaffModalOpen(false);
+            addNotification('Staff updated successfully', 'success');
+        },
+        onError: (err: any) => {
+            console.error('Failed to update staff member:', err);
+            addNotification(`Failed to update staff member: ${err?.message || 'Server error'}`, 'error');
+        }
+    });
     
-    const addItemMutation = useMutation({ mutationFn: api.createPayrollItem, onSuccess: () => { queryClient.invalidateQueries({queryKey:['payroll-items']}); setIsItemModalOpen(false); } });
-    const updateItemMutation = useMutation({ mutationFn: (d: any) => api.updatePayrollItem(d.id, d.data), onSuccess: () => { queryClient.invalidateQueries({queryKey:['payroll-items']}); setIsItemModalOpen(false); } });
-    const deleteItemMutation = useMutation({ mutationFn: api.deletePayrollItem, onSuccess: () => { queryClient.invalidateQueries({queryKey:['payroll-items']}); } });
+    const addItemMutation = useMutation({
+        mutationFn: api.createPayrollItem,
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['payroll-items'] });
+            setIsItemModalOpen(false);
+            addNotification('Payroll item added', 'success');
+        },
+        onError: (err: any) => {
+            addNotification(`Failed to add payroll item: ${err?.message || 'Server error'}`, 'error');
+        }
+    });
+
+    const updateItemMutation = useMutation({
+        mutationFn: (d: any) => api.updatePayrollItem(d.id, d.data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['payroll-items'] });
+            setIsItemModalOpen(false);
+            addNotification('Payroll item updated', 'success');
+        },
+        onError: (err: any) => {
+            addNotification(`Failed to update payroll item: ${err?.message || 'Server error'}`, 'error');
+        }
+    });
+
+    const deleteItemMutation = useMutation({
+        mutationFn: api.deletePayrollItem,
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['payroll-items'] });
+            addNotification('Payroll item deleted', 'success');
+        },
+        onError: (err: any) => {
+            addNotification(`Failed to delete payroll item: ${err?.message || 'Server error'}`, 'error');
+        }
+    });
     
-    const savePayrollMutation = useMutation({ mutationFn: api.savePayrollRun, onSuccess: () => { queryClient.invalidateQueries({queryKey:['payroll-history']}); setIsRunPayrollModalOpen(false); addNotification('Payroll saved', 'success'); } });
+    const savePayrollMutation = useMutation({
+        mutationFn: api.savePayrollRun,
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['payroll-history'] });
+            setIsRunPayrollModalOpen(false);
+            addNotification('Payroll saved', 'success');
+        },
+        onError: (err: any) => {
+            addNotification(`Failed to save payroll: ${err?.message || 'Server error'}`, 'error');
+        }
+    });
 
     // --- Form State ---
     const initialStaffState: NewStaff & { photoUrl: string } = {
@@ -902,7 +966,19 @@ const StaffAndPayrollView: React.FC = () => {
                         </div>
                     </div>
 
-                    <div className="flex justify-end pt-4"><button type="submit" className="px-6 py-2 bg-primary-600 text-white font-semibold rounded-lg shadow-md hover:bg-primary-700">Save Staff</button></div>
+                    <div className="flex justify-end pt-4">
+                        <button
+                            id="save-staff-submit-btn"
+                            type="submit"
+                            disabled={addStaffMutation.isPending || updateStaffMutation.isPending}
+                            className="px-6 py-2 bg-primary-600 text-white font-semibold rounded-lg shadow-md hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                        >
+                            {(addStaffMutation.isPending || updateStaffMutation.isPending) && (
+                                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                            )}
+                            <span>{editingStaff ? (updateStaffMutation.isPending ? 'Updating...' : 'Update Staff') : (addStaffMutation.isPending ? 'Saving & Creating Account...' : 'Save Staff')}</span>
+                        </button>
+                    </div>
                 </form>
             </Modal>
             

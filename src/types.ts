@@ -303,6 +303,12 @@ export interface SchoolInfo {
         status: SubscriptionStatus;
         endDate: string;
     };
+    plan?: SubscriptionPlan;
+    subscriptionStatus?: SubscriptionStatus;
+    billingCycle?: string;
+    endDate?: string;
+    invoiceNumber?: string;
+    pendingUpgradePlan?: string;
 }
 
 export interface School extends SchoolInfo {
@@ -458,7 +464,7 @@ export interface SaasInvoice {
     currency: string;
     issueDate: string;
     dueDate: string;
-    status: 'DRAFT' | 'ISSUED' | 'PAID' | 'OVERDUE' | 'CANCELLED';
+    status: 'DRAFT' | 'ISSUED' | 'UNPAID' | 'PAID' | 'OVERDUE' | 'CANCELLED';
     paidDate?: string;
     transactionRef?: string;
     paymentMethod?: string;

@@ -68,7 +68,8 @@ export class AuthService {
     const adminEmail = baseDto.adminEmail || baseDto.email;
     const adminName = baseDto.adminName || (baseDto.name ? `${baseDto.name} Admin` : 'School Admin');
     const password = baseDto.password || 'Admin@2026';
-    const schoolCode = baseDto.schoolCode || baseDto.registrationCode || schoolName.substring(0, 3).toUpperCase();
+    const rawCode = baseDto.schoolCode || baseDto.registrationCode;
+    const schoolCode = (rawCode && rawCode !== 'PENDING-VERIFICATION') ? rawCode : schoolName.substring(0, 3).toUpperCase();
     const address = baseDto.address || baseDto.county || '';
 
     if (!adminEmail) {

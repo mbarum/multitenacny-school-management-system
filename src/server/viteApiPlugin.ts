@@ -546,14 +546,79 @@ export function viteApiPlugin(options?: { disabled?: boolean }): Plugin {
                     }
                     if (req.method === 'POST') {
                         readBody(body => {
+                            const newStaffId = `staff-${Date.now()}`;
+                            const staffEmail = (body.email || '').toLowerCase().trim();
+                            const rawPassword = (body.password || '').trim() || 'password123';
+                            const userRole = body.userRole || Role.Teacher;
+
                             const newStaff = {
-                                id: `staff-${Date.now()}`,
-                                photoUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=120',
+                                id: newStaffId,
+                                photoUrl: body.photoUrl || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=120',
                                 ...body
                             };
                             staff.push(newStaff);
+
+                            // Auto-provision corresponding user login account so staff can immediately log in
+                            if (staffEmail) {
+                                const existingUserIndex = users.findIndex(u => u.email.toLowerCase() === staffEmail);
+                                if (existingUserIndex >= 0) {
+                                    users[existingUserIndex] = {
+                                        ...users[existingUserIndex],
+                                        name: body.name || users[existingUserIndex].name,
+                                        role: userRole,
+                                        password: rawPassword,
+                                        status: 'Active'
+                                    };
+                                } else {
+                                    const newUser: User = {
+                                        id: `user-${newStaffId}`,
+                                        name: body.name || 'Staff Member',
+                                        email: staffEmail,
+                                        password: rawPassword,
+                                        role: userRole,
+                                        avatarUrl: newStaff.photoUrl,
+                                        status: 'Active',
+                                        schoolId: schoolInfo.id || 'school-1'
+                                    };
+                                    users.push(newUser);
+                                }
+                            }
+
                             sendJson(201, newStaff);
                         });
+                        return;
+                    }
+                }
+
+                if (path.startsWith('/api/staff/')) {
+                    const staffId = path.replace('/api/staff/', '');
+                    if (req.method === 'PATCH' || req.method === 'PUT') {
+                        readBody(body => {
+                            const idx = staff.findIndex(s => s.id === staffId);
+                            if (idx >= 0) {
+                                staff[idx] = { ...staff[idx], ...body };
+                                // Update linked user if email or name changed
+                                const staffEmail = (staff[idx].email || '').toLowerCase().trim();
+                                if (staffEmail) {
+                                    const uIdx = users.findIndex(u => u.email.toLowerCase() === staffEmail);
+                                    if (uIdx >= 0) {
+                                        users[uIdx] = {
+                                            ...users[uIdx],
+                                            name: staff[idx].name || users[uIdx].name,
+                                            role: body.userRole || users[uIdx].role
+                                        };
+                                    }
+                                }
+                                sendJson(200, staff[idx]);
+                            } else {
+                                sendJson(404, { error: 'Staff member not found' });
+                            }
+                        });
+                        return;
+                    }
+                    if (req.method === 'DELETE') {
+                        staff = staff.filter(s => s.id !== staffId);
+                        sendJson(200, { success: true });
                         return;
                     }
                 }
@@ -585,46 +650,275 @@ export function viteApiPlugin(options?: { disabled?: boolean }): Plugin {
                     return;
                 }
 
-                // Academics
+                // Academics - Classes
                 if (path === '/api/academics/classes') {
-                    sendJson(200, classes);
+                    if (req.method === 'GET') {
+                        sendJson(200, classes);
+                        return;
+                    }
+                    if (req.method === 'POST') {
+                        readBody(body => {
+                            const newClass = {
+                                id: `class-${Date.now()}`,
+                                ...body
+                            };
+                            classes.push(newClass);
+                            sendJson(201, newClass);
+                        });
+                        return;
+                    }
+                }
+                if (path === '/api/academics/classes/batch' && req.method === 'PUT') {
+                    readBody(body => {
+                        if (Array.isArray(body)) {
+                            classes = body;
+                            sendJson(200, classes);
+                        } else {
+                            sendJson(400, { error: 'Expected array of classes' });
+                        }
+                    });
                     return;
                 }
+                if (path.startsWith('/api/academics/classes/')) {
+                    const classId = path.replace('/api/academics/classes/', '');
+                    if (req.method === 'PATCH' || req.method === 'PUT') {
+                        readBody(body => {
+                            const idx = classes.findIndex(c => c.id === classId);
+                            if (idx >= 0) {
+                                classes[idx] = { ...classes[idx], ...body };
+                                sendJson(200, classes[idx]);
+                            } else {
+                                sendJson(404, { error: 'Class not found' });
+                            }
+                        });
+                        return;
+                    }
+                    if (req.method === 'DELETE') {
+                        classes = classes.filter(c => c.id !== classId);
+                        sendJson(200, { success: true });
+                        return;
+                    }
+                }
+
+                // Academics - Subjects
                 if (path === '/api/academics/subjects') {
-                    sendJson(200, subjects);
+                    if (req.method === 'GET') {
+                        sendJson(200, subjects);
+                        return;
+                    }
+                    if (req.method === 'POST') {
+                        readBody(body => {
+                            const newSubject = {
+                                id: `sub-${Date.now()}`,
+                                code: (body.code || 'SUB').toUpperCase().trim(),
+                                name: (body.name || '').trim()
+                            };
+                            subjects.push(newSubject);
+                            sendJson(201, newSubject);
+                        });
+                        return;
+                    }
+                }
+                if (path === '/api/academics/subjects/batch' && req.method === 'PUT') {
+                    readBody(body => {
+                        if (Array.isArray(body)) {
+                            subjects = body;
+                            sendJson(200, subjects);
+                        } else {
+                            sendJson(400, { error: 'Expected array of subjects' });
+                        }
+                    });
                     return;
                 }
+                if (path.startsWith('/api/academics/subjects/')) {
+                    const subjectId = path.replace('/api/academics/subjects/', '');
+                    if (req.method === 'PATCH' || req.method === 'PUT') {
+                        readBody(body => {
+                            const idx = subjects.findIndex(s => s.id === subjectId);
+                            if (idx >= 0) {
+                                subjects[idx] = { ...subjects[idx], ...body };
+                                sendJson(200, subjects[idx]);
+                            } else {
+                                sendJson(404, { error: 'Subject not found' });
+                            }
+                        });
+                        return;
+                    }
+                    if (req.method === 'DELETE') {
+                        subjects = subjects.filter(s => s.id !== subjectId);
+                        sendJson(200, { success: true });
+                        return;
+                    }
+                }
+
+                // Academics - Class-Subject Assignments
                 if (path === '/api/academics/class-subject-assignments') {
-                    sendJson(200, assignments);
+                    if (req.method === 'GET') {
+                        sendJson(200, assignments);
+                        return;
+                    }
+                    if (req.method === 'POST') {
+                        readBody(body => {
+                            const newAssign = {
+                                id: `csa-${Date.now()}`,
+                                ...body
+                            };
+                            assignments.push(newAssign);
+                            sendJson(201, newAssign);
+                        });
+                        return;
+                    }
+                }
+                if (path === '/api/academics/class-subject-assignments/batch' && req.method === 'PUT') {
+                    readBody(body => {
+                        if (Array.isArray(body)) {
+                            assignments = body;
+                            sendJson(200, assignments);
+                        } else {
+                            sendJson(400, { error: 'Expected array of assignments' });
+                        }
+                    });
                     return;
                 }
+                if (path.startsWith('/api/academics/class-subject-assignments/')) {
+                    const assignmentId = path.replace('/api/academics/class-subject-assignments/', '');
+                    if (req.method === 'DELETE') {
+                        assignments = assignments.filter(a => a.id !== assignmentId);
+                        sendJson(200, { success: true });
+                        return;
+                    }
+                }
+
+                // Academics - Timetable, Exams, Grades, Attendance, Grading Scale, Fee Structure
                 if (path === '/api/academics/timetable-entries') {
                     sendJson(200, timetable);
                     return;
                 }
+                if (path === '/api/academics/timetable-entries/batch' && req.method === 'PUT') {
+                    readBody(body => {
+                        if (Array.isArray(body)) {
+                            timetable = body;
+                            sendJson(200, timetable);
+                        }
+                    });
+                    return;
+                }
+
                 if (path === '/api/academics/exams') {
                     sendJson(200, exams);
                     return;
                 }
+                if (path === '/api/academics/exams/batch' && req.method === 'PUT') {
+                    readBody(body => {
+                        if (Array.isArray(body)) {
+                            exams = body;
+                            sendJson(200, exams);
+                        }
+                    });
+                    return;
+                }
+
                 if (path === '/api/academics/grades') {
                     sendJson(200, grades);
                     return;
                 }
+                if (path === '/api/academics/grades/batch' && req.method === 'PUT') {
+                    readBody(body => {
+                        if (Array.isArray(body)) {
+                            grades = body;
+                            sendJson(200, grades);
+                        }
+                    });
+                    return;
+                }
+
                 if (path === '/api/academics/attendance-records') {
                     sendJson(200, attendance);
                     return;
                 }
+                if (path === '/api/academics/attendance-records/batch' && req.method === 'PUT') {
+                    readBody(body => {
+                        if (Array.isArray(body)) {
+                            attendance = body;
+                            sendJson(200, attendance);
+                        }
+                    });
+                    return;
+                }
+
                 if (path === '/api/academics/events') {
                     sendJson(200, []);
                     return;
                 }
+
                 if (path === '/api/academics/grading-scale') {
-                    sendJson(200, gradingRules);
-                    return;
+                    if (req.method === 'GET') {
+                        sendJson(200, gradingRules);
+                        return;
+                    }
+                    if (req.method === 'POST') {
+                        readBody(body => {
+                            const newRule = { id: `rule-${Date.now()}`, ...body };
+                            gradingRules.push(newRule);
+                            sendJson(201, newRule);
+                        });
+                        return;
+                    }
                 }
+                if (path.startsWith('/api/academics/grading-scale/')) {
+                    const ruleId = path.replace('/api/academics/grading-scale/', '');
+                    if (req.method === 'PATCH' || req.method === 'PUT') {
+                        readBody(body => {
+                            const idx = gradingRules.findIndex(r => r.id === ruleId);
+                            if (idx >= 0) {
+                                gradingRules[idx] = { ...gradingRules[idx], ...body };
+                                sendJson(200, gradingRules[idx]);
+                            } else {
+                                sendJson(404, { error: 'Rule not found' });
+                            }
+                        });
+                        return;
+                    }
+                    if (req.method === 'DELETE') {
+                        gradingRules = gradingRules.filter(r => r.id !== ruleId);
+                        sendJson(200, { success: true });
+                        return;
+                    }
+                }
+
                 if (path === '/api/academics/fee-structure') {
-                    sendJson(200, feeStructure);
-                    return;
+                    if (req.method === 'GET') {
+                        sendJson(200, feeStructure);
+                        return;
+                    }
+                    if (req.method === 'POST') {
+                        readBody(body => {
+                            const newItem = { id: `fee-${Date.now()}`, ...body };
+                            feeStructure.push(newItem);
+                            sendJson(201, newItem);
+                        });
+                        return;
+                    }
+                }
+                if (path.startsWith('/api/academics/fee-structure/')) {
+                    const feeId = path.replace('/api/academics/fee-structure/', '');
+                    if (req.method === 'PATCH' || req.method === 'PUT') {
+                        readBody(body => {
+                            const idx = feeStructure.findIndex(f => f.id === feeId);
+                            if (idx >= 0) {
+                                feeStructure[idx] = { ...feeStructure[idx], ...body };
+                                sendJson(200, feeStructure[idx]);
+                            } else {
+                                sendJson(404, { error: 'Fee item not found' });
+                            }
+                        });
+                        return;
+                    }
+                    if (req.method === 'DELETE') {
+                        feeStructure = feeStructure.filter(f => f.id !== feeId);
+                        sendJson(200, { success: true });
+                        return;
+                    }
                 }
 
                 // Communications
@@ -763,7 +1057,10 @@ export function viteApiPlugin(options?: { disabled?: boolean }): Plugin {
                         });
                         return;
                     }
-                    sendJson(200, schools);
+                    sendJson(200, schools.map(s => ({
+                        ...s,
+                        schoolCode: (s.schoolCode && s.schoolCode !== 'PENDING-VERIFICATION') ? s.schoolCode : (s.name || 'SCH').substring(0, 3).toUpperCase()
+                    })));
                     return;
                 }
                 if (path === '/api/super-admin/invoices') {
@@ -971,21 +1268,41 @@ export function viteApiPlugin(options?: { disabled?: boolean }): Plugin {
                     readBody(body => {
                         const sch = schools.find(s => s.id === schoolId);
                         if (sch) {
+                            if (!sch.schoolCode || sch.schoolCode === 'PENDING-VERIFICATION') {
+                                sch.schoolCode = (sch.name || 'SCH').substring(0, 3).toUpperCase();
+                            }
+                            const inv = saasInvoices.find(i => i.schoolId === schoolId && i.status !== 'PAID');
+                            const targetPlan = body.plan || (sch as any).pendingUpgradePlan || inv?.plan || (sch.plan !== SubscriptionPlan.FREE ? sch.plan : SubscriptionPlan.PREMIUM);
+                            sch.plan = targetPlan;
+
+                            const cycle = (sch as any).billingCycle || inv?.billingCycle || sch.billingCycle || 'MONTHLY';
+                            sch.billingCycle = cycle;
+
                             const planAnnual = sch.plan === SubscriptionPlan.PREMIUM ? (pricing?.premiumAnnualPrice || 60000) : (pricing?.basicAnnualPrice || 30000);
                             const planMonthly = sch.plan === SubscriptionPlan.PREMIUM ? (pricing?.premiumMonthlyPrice || 6000) : (pricing?.basicMonthlyPrice || 3000);
-                            const baseAmount = sch.billingCycle === 'ANNUALLY' ? planAnnual : planMonthly;
-                            const totalAmount = baseAmount + Math.round(baseAmount * 0.16);
-                            const txnRef = body.transactionRef || `WIRE-NCBA-${Date.now().toString().slice(-6)}`;
+                            const baseAmount = cycle === 'ANNUALLY' ? planAnnual : planMonthly;
+                            const totalAmount = inv?.amount || (baseAmount + Math.round(baseAmount * 0.16));
+                            const txnRef = body.transactionRef || inv?.invoiceNumber || `WIRE-NCBA-${Date.now().toString().slice(-6)}`;
                             const paymentDate = new Date().toISOString().split('T')[0];
-                            const provisionedDays = sch.billingCycle === 'ANNUALLY' ? 365 : 30;
+                            const provisionedDays = cycle === 'ANNUALLY' ? 365 : 30;
 
                             sch.subscriptionStatus = SubscriptionStatus.ACTIVE;
                             sch.endDate = new Date(Date.now() + provisionedDays * 86400000).toISOString().split('T')[0];
                             sch.remindersCount = 0;
                             sch.lastPaymentDate = paymentDate;
                             sch.lastPaymentAmount = totalAmount;
+                            delete (sch as any).pendingUpgradePlan;
 
-                            const inv = saasInvoices.find(i => i.schoolId === schoolId && i.status !== 'PAID');
+                            if (schoolInfo && schoolInfo.id === sch.id) {
+                                schoolInfo.plan = targetPlan;
+                                schoolInfo.subscriptionStatus = SubscriptionStatus.ACTIVE;
+                                schoolInfo.billingCycle = cycle;
+                                schoolInfo.endDate = sch.endDate;
+                                if (!schoolInfo.schoolCode || schoolInfo.schoolCode === 'PENDING-VERIFICATION') {
+                                    schoolInfo.schoolCode = sch.schoolCode;
+                                }
+                            }
+
                             if (inv) {
                                 inv.status = 'PAID';
                                 inv.paidDate = paymentDate;
@@ -1018,7 +1335,7 @@ export function viteApiPlugin(options?: { disabled?: boolean }): Plugin {
                                 id: `log-${Date.now()}`,
                                 studentId: sch.id,
                                 type: CommunicationType.Email,
-                                message: `[${activationSubject}] Congratulations! Your subscription for ${sch.name} has been verified and manually activated by the Super Administrator. Login URL: /login | Username: ${sch.email} | Initial Password: ${initialPassword} | Plan: ${sch.plan} | Valid Until: ${sch.endDate}`,
+                                message: `[${activationSubject}] Congratulations! Your subscription for ${sch.name} has been verified and manually activated by the Super Administrator. Plan: ${sch.plan} | Valid Until: ${sch.endDate} | Billing: ${sch.billingCycle}`,
                                 date: new Date().toISOString(),
                                 sentBy: 'Super Administrator',
                                 recipient: sch.email,
@@ -1032,6 +1349,86 @@ export function viteApiPlugin(options?: { disabled?: boolean }): Plugin {
                                 school: sch, 
                                 receipt: newReceipt, 
                                 credentials: { email: sch.email, password: initialPassword } 
+                            });
+                        } else {
+                            sendJson(404, { error: 'School not found' });
+                        }
+                    });
+                    return;
+                }
+                if (path === '/api/super-admin/payments/initiate' && req.method === 'POST') {
+                    readBody(body => {
+                        const schoolId = body.schoolId || schoolInfo?.id;
+                        let sch = schools.find(s => s.id === schoolId || (body.email && s.email === body.email));
+                        if (!sch && schoolInfo) {
+                            sch = schoolInfo as any;
+                            if (!schools.find(s => s.id === sch.id)) {
+                                schools.unshift(sch);
+                            }
+                        }
+                        if (sch) {
+                            const requestedPlan = body.plan || SubscriptionPlan.PREMIUM;
+                            const requestedCycle = body.billingCycle || sch.billingCycle || 'MONTHLY';
+                            if (!sch.schoolCode || sch.schoolCode === 'PENDING-VERIFICATION') {
+                                sch.schoolCode = (sch.name || 'SCH').substring(0, 3).toUpperCase();
+                            }
+
+                            sch.subscriptionStatus = SubscriptionStatus.PENDING_APPROVAL;
+                            (sch as any).pendingUpgradePlan = requestedPlan;
+                            (sch as any).paymentMethod = body.method || 'WIRE';
+                            (sch as any).billingCycle = requestedCycle;
+
+                            const txnRef = body.transactionCode || `WIRE-NCBA-${Date.now().toString().slice(-6)}`;
+                            sch.invoiceNumber = txnRef;
+
+                            if (schoolInfo && schoolInfo.id === sch.id) {
+                                schoolInfo.subscriptionStatus = SubscriptionStatus.PENDING_APPROVAL;
+                                (schoolInfo as any).pendingUpgradePlan = requestedPlan;
+                                (schoolInfo as any).paymentMethod = body.method || 'WIRE';
+                                (schoolInfo as any).invoiceNumber = txnRef;
+                                if (!schoolInfo.schoolCode || schoolInfo.schoolCode === 'PENDING-VERIFICATION') {
+                                    schoolInfo.schoolCode = sch.schoolCode;
+                                }
+                            }
+
+                            const newInv = {
+                                id: `inv-saas-${Date.now()}`,
+                                invoiceNumber: txnRef,
+                                schoolId: sch.id,
+                                schoolName: sch.name,
+                                schoolCode: sch.schoolCode,
+                                recipientEmail: sch.email,
+                                recipientPhone: sch.phone,
+                                plan: requestedPlan,
+                                billingCycle: requestedCycle,
+                                amount: Number(body.amount) || 5800,
+                                currency: 'KES',
+                                issueDate: new Date().toISOString().split('T')[0],
+                                dueDate: new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0],
+                                status: 'UNPAID',
+                                paymentMethod: 'Bank Wire',
+                                notes: `Proforma Invoice for ${requestedPlan} subscription (${requestedCycle}). Super Admin wire transfer verification required.`
+                            };
+                            saasInvoices = [newInv as any, ...saasInvoices];
+
+                            communicationLogs.unshift({
+                                id: `log-${Date.now()}`,
+                                studentId: sch.id,
+                                type: CommunicationType.Email,
+                                message: `[Proforma Invoice ${txnRef}] Order received for ${requestedPlan} plan (${requestedCycle}). Bank Wire Transfer awaiting Super Administrator verification.`,
+                                date: new Date().toISOString(),
+                                sentBy: 'System Billing Engine',
+                                recipient: sch.email,
+                                channel: 'Email',
+                                status: 'Delivered',
+                                timestamp: new Date().toISOString()
+                            });
+
+                            sendJson(200, {
+                                success: true,
+                                message: 'Wire transfer order recorded. Super Administrator verification pending.',
+                                invoice: newInv,
+                                school: sch
                             });
                         } else {
                             sendJson(404, { error: 'School not found' });

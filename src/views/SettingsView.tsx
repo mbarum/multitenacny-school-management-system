@@ -28,13 +28,15 @@ import {
     ExternalLink,
     AlertCircle,
     HardDriveDownload,
-    Image as ImageIcon
+    Image as ImageIcon,
+    Clock,
+    FileText
 } from 'lucide-react';
 import Modal from '../components/common/Modal';
 import UpgradeModal from '../components/common/UpgradeModal';
 import DataExportBackupView from '../components/admin/DataExportBackupView';
 import type { SchoolInfo, User, FeeItem, SchoolClass, DarajaSettings, GradingRule } from '../types';
-import { GradingSystem, Role, Currency, SubscriptionPlan, CbetScore } from '../types';
+import { GradingSystem, Role, Currency, SubscriptionPlan, SubscriptionStatus, CbetScore } from '../types';
 import { useData } from '../contexts/DataContext';
 import * as api from '../services/api';
 import Spinner from '../components/common/Spinner';
@@ -651,6 +653,47 @@ const SettingsView: React.FC = () => {
                             </button>
                         );
                     })}
+                </div>
+            )}
+
+            {/* Subscription Wire Transfer Status Banner */}
+            {(localSchoolInfo?.subscriptionStatus === SubscriptionStatus.PENDING_APPROVAL || (localSchoolInfo?.subscriptionStatus as any) === 'PENDING-VERIFICATION') && (
+                <div id="banner-wire-pending-verification" className="bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 rounded-2xl p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-xs">
+                    <div className="flex items-start gap-3.5">
+                        <div className="p-2.5 bg-amber-500/10 text-amber-600 rounded-xl mt-0.5">
+                            <Clock className="w-5 h-5 animate-pulse" />
+                        </div>
+                        <div>
+                            <div className="flex items-center gap-2">
+                                <h4 className="text-sm font-bold text-amber-900 dark:text-amber-200">
+                                    Subscription Wire Transfer: Pending Verification
+                                </h4>
+                                <span className="px-2 py-0.5 rounded text-[10px] font-extrabold bg-amber-200 text-amber-900 uppercase">
+                                    Awaiting Approval
+                                </span>
+                            </div>
+                            <p className="text-xs text-amber-800/80 dark:text-amber-300/70 mt-1 leading-relaxed max-w-3xl">
+                                Your bank wire transfer payment is currently being reviewed by the Super Administrator. Once payment is verified, your institutional license will be activated immediately with full plan entitlements.
+                            </p>
+                            <div className="flex flex-wrap items-center gap-3 mt-2 text-[11px] font-semibold text-amber-900 dark:text-amber-300">
+                                <span className="font-mono bg-amber-100 dark:bg-amber-900/60 px-2 py-0.5 rounded">
+                                    Invoice Ref: {localSchoolInfo.invoiceNumber || 'WIRE-PENDING'}
+                                </span>
+                                <span>•</span>
+                                <span>Registered Email: {localSchoolInfo.email}</span>
+                                <span>•</span>
+                                <span>Current Plan: {localSchoolInfo.plan} ({localSchoolInfo.billingCycle || 'MONTHLY'})</span>
+                            </div>
+                        </div>
+                    </div>
+                    <button
+                        id="btn-view-wire-details"
+                        onClick={() => setIsUpgradeModalOpen(true)}
+                        className="px-4 py-2.5 bg-amber-600 hover:bg-amber-500 text-white rounded-xl text-xs font-bold whitespace-nowrap shadow-xs transition-all flex items-center gap-1.5"
+                    >
+                        <FileText className="w-3.5 h-3.5" />
+                        <span>Wire Details & Proforma</span>
+                    </button>
                 </div>
             )}
 

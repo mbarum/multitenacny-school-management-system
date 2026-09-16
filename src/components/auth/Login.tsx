@@ -6,7 +6,7 @@ import Modal from '../common/Modal';
 import { sendPasswordResetEmail } from '../../services/emailService';
 import * as api from '../../services/api';
 import { validateEmail } from '../../utils/validation';
-import { ShieldCheck, ShieldAlert, KeyRound, UserCheck, AlertTriangle, LogOut, ArrowRight, Database } from 'lucide-react';
+import { ShieldCheck, ShieldAlert, KeyRound, UserCheck, AlertTriangle, LogOut, ArrowRight } from 'lucide-react';
 import { Role } from '../../types';
 
 const Login: React.FC = () => {
@@ -277,16 +277,6 @@ const Login: React.FC = () => {
                                             </svg>
                                             : 'Sign In'}
                                     </button>
-                                </div>
-
-                                {/* Security Verification Notice */}
-                                <div className="mt-6 pt-5 border-t border-slate-200">
-                                    <div className="flex items-center gap-2 p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-600">
-                                        <Database className="w-4 h-4 text-emerald-600 shrink-0" />
-                                        <span>
-                                            <strong className="text-slate-800 font-semibold">MySQL Secure Authentication:</strong> Passwords are encrypted with bcrypt. Mock access and fallback accounts are disabled.
-                                        </span>
-                                    </div>
                                 </div>
                             </form>
                         )}
