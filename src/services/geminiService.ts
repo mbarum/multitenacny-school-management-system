@@ -1,5 +1,6 @@
 
 import type { Expense, Transaction } from '../types';
+import { getAuthToken } from './api';
 
 /**
  * Generates a financial summary by calling a secure backend endpoint.
@@ -8,11 +9,12 @@ import type { Expense, Transaction } from '../types';
  */
 export const generateFinancialSummary = async (): Promise<string> => {
   try {
+    const token = getAuthToken();
     const response = await fetch('/api/ai/financial-summary', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
       },
       body: JSON.stringify({}), // No data payload needed
     });

@@ -223,6 +223,28 @@ const StaffAndPayrollView: React.FC = () => {
         return [];
     }, [p9RawResponse]);
 
+    // Safe error message unwrapper preventing [object Object]
+    const formatErrorMessage = (err: any): string => {
+        if (!err) return 'Server error';
+        if (typeof err === 'string') return err;
+        if (typeof err.message === 'string' && err.message !== '[object Object]') return err.message;
+        if (Array.isArray(err.message)) {
+            return err.message.map((m: any) => typeof m === 'string' ? m : (m?.message || JSON.stringify(m))).join(', ');
+        }
+        if (typeof err.error === 'string') return err.error;
+        if (typeof err.data?.message === 'string') return err.data.message;
+        if (typeof err.response?.data?.message === 'string') return err.response.data.message;
+        if (Array.isArray(err.response?.data?.message)) {
+            return err.response.data.message.join(', ');
+        }
+        try {
+            const json = JSON.stringify(err);
+            return json !== '{}' ? json : 'Server error occurred.';
+        } catch {
+            return 'Server error occurred.';
+        }
+    };
+
     // --- Mutations ---
 
     const addStaffMutation = useMutation({
@@ -234,7 +256,8 @@ const StaffAndPayrollView: React.FC = () => {
         },
         onError: (err: any) => {
             console.error('Failed to add staff member:', err);
-            addNotification(`Failed to save staff member: ${err?.message || 'Server error'}`, 'error');
+            const msg = formatErrorMessage(err);
+            addNotification(`Failed to save staff member: ${msg}`, 'error');
         }
     });
 
@@ -247,7 +270,8 @@ const StaffAndPayrollView: React.FC = () => {
         },
         onError: (err: any) => {
             console.error('Failed to update staff member:', err);
-            addNotification(`Failed to update staff member: ${err?.message || 'Server error'}`, 'error');
+            const msg = formatErrorMessage(err);
+            addNotification(`Failed to update staff member: ${msg}`, 'error');
         }
     });
     
@@ -321,15 +345,46 @@ const StaffAndPayrollView: React.FC = () => {
         setStaffFormData((prev:any) => ({ ...prev, [name]: name === 'salary' ? parseFloat(value) || 0 : value }));
     };
 
-    const handleSaveStaff = (e: React.FormEvent) => {
+    const handleSaveStaff = async (e: React.FormEvent) => {
         e.preventDefault();
-        const payload = { ...staffFormData, photoUrl: staffPhotoUrl };
+        let finalPhoto = staffPhotoUrl;
+
+        // If photo is still a data URL, ensure it is persisted to the server's media folder first
+        if (finalPhoto && finalPhoto.startsWith('data:image/')) {
+            try {
+                const uploadRes = await api.uploadStaffPhoto({ dataUrl: finalPhoto, folder: 'staff' });
+                if (uploadRes?.url && !uploadRes.url.includes('undefined')) {
+                    finalPhoto = uploadRes.url;
+                    setStaffPhotoUrl(finalPhoto);
+                }
+            } catch (uploadErr) {
+                console.warn('Media upload fallback before saving staff', uploadErr);
+            }
+        }
+
+        const rawSalary = staffFormData.salary;
+        const cleanSalary = typeof rawSalary === 'number' ? rawSalary : (parseFloat(rawSalary) || 0);
+        const cleanJoinDate = (staffFormData.joinDate || '').split('T')[0] || new Date().toISOString().split('T')[0];
+
+        const cleanPayload: any = {
+            name: staffFormData.name?.trim() || '',
+            email: (staffFormData.email || '').trim().toLowerCase(),
+            userRole: staffFormData.userRole || Role.Teacher,
+            role: staffFormData.role?.trim() || '',
+            salary: cleanSalary,
+            joinDate: cleanJoinDate,
+            photoUrl: finalPhoto,
+            bankName: staffFormData.bankName || '',
+            accountNumber: staffFormData.accountNumber || '',
+            kraPin: staffFormData.kraPin || '',
+            nssfNumber: staffFormData.nssfNumber || '',
+            shaNumber: staffFormData.shaNumber || ''
+        };
+
         if (editingStaff) {
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            const { id, userId, schoolId, user, ...rest } = payload;
-            updateStaffMutation.mutate({ id: editingStaff.id, data: rest });
+            updateStaffMutation.mutate({ id: editingStaff.id, data: cleanPayload });
         } else {
-            addStaffMutation.mutate(payload);
+            addStaffMutation.mutate(cleanPayload);
         }
     };
     
@@ -338,20 +393,36 @@ const StaffAndPayrollView: React.FC = () => {
             try {
                 // Resize staff photo to 400x400 WebP for minimal VPS disk footprint
                 const optimized = await optimizeImage(e.target.files[0], { preset: 'avatar', maxWidth: 400, maxHeight: 400 });
-                const formData = new FormData();
-                formData.append('file', optimized.file);
-                formData.append('dataUrl', optimized.dataUrl);
+                // Immediate preview so UI feels snappy
+                setStaffPhotoUrl(optimized.dataUrl);
 
-                api.uploadStaffPhoto(formData).then(res => { 
-                    const finalUrl = res?.url && !res.url.includes('undefined') ? res.url : optimized.dataUrl;
-                    setStaffPhotoUrl(finalUrl);
-                    addNotification(`Staff photo resized (${optimized.formattedStats}) and uploaded!`, 'success');
-                }).catch(() => {
-                    setStaffPhotoUrl(optimized.dataUrl);
-                    addNotification(`Staff photo resized (${optimized.formattedStats}) and saved locally.`, 'info');
-                });
+                // Upload to media folder
+                try {
+                    const res = await api.uploadStaffPhoto({ dataUrl: optimized.dataUrl, folder: 'staff' });
+                    if (res?.url && !res.url.includes('undefined')) {
+                        setStaffPhotoUrl(res.url);
+                        addNotification(`Staff photo saved to media folder (${optimized.formattedStats})`, 'success');
+                        return;
+                    }
+                } catch {
+                    // Fallback to FormData
+                    try {
+                        const formData = new FormData();
+                        formData.append('file', optimized.file);
+                        formData.append('dataUrl', optimized.dataUrl);
+                        const fdRes = await api.uploadStaffPhoto(formData);
+                        if (fdRes?.url && !fdRes.url.includes('undefined')) {
+                            setStaffPhotoUrl(fdRes.url);
+                            addNotification(`Staff photo saved to media folder (${optimized.formattedStats})`, 'success');
+                            return;
+                        }
+                    } catch {
+                        // Keep optimized.dataUrl preview
+                    }
+                }
+                addNotification(`Staff photo resized (${optimized.formattedStats}) and ready to save.`, 'info');
             } catch (err: any) {
-                addNotification('Failed to optimize photo: ' + (err?.message || 'Error processing file'), 'error');
+                addNotification('Failed to process photo: ' + (err?.message || 'Error processing file'), 'error');
             }
         }
     };

@@ -364,7 +364,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
 
                 const response = await api.registerSchool(payload);
                 if (response.token) {
-                    localStorage.setItem('authToken', response.token);
+                    api.setAuthToken(response.token);
                 }
 
                 // Send Proforma Invoice & Instructions to subscriber email
@@ -435,7 +435,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
 
                 const response = await api.registerSchool(payload);
                 if (response.token) {
-                    localStorage.setItem('authToken', response.token);
+                    api.setAuthToken(response.token);
                 }
 
                 // Immediately dispatch payment receipt to subscriber email
@@ -487,7 +487,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
 
                 const response = await api.registerSchool(payload);
                 if (response.token) {
-                    localStorage.setItem('authToken', response.token);
+                    api.setAuthToken(response.token);
                 }
 
                 // Dispatch payment receipt to subscriber email

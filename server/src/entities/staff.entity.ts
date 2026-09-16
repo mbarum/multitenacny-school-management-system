@@ -29,7 +29,7 @@ export class Staff extends BaseEntity {
   @Column()
   role!: string;
 
-  @Column({ nullable: true })
+  @Column({ nullable: true, type: 'text' })
   photoUrl!: string;
 
   @Column('decimal', { precision: 12, scale: 2, default: 0, transformer: new ColumnNumericTransformer() })

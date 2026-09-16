@@ -290,9 +290,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         try { await api.logout(); } catch (error) { console.error("Logout failed:", error); }
         setCurrentUser(null);
         setSchoolInfo(null);
-        localStorage.removeItem('authToken');
-        localStorage.removeItem('currentUser');
-        localStorage.removeItem('saaslink_last_activity');
+        api.clearAuthToken();
         queryClient.clear();
         navigate('/login');
     }, [navigate, queryClient]);
@@ -348,6 +346,15 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 const rates = await api.getExchangeRates().catch(() => EXCHANGE_RATES);
                 setExchangeRates(rates);
 
+                // Check tab session token. If the tab was closed and reopened, session is empty (user is signed out).
+                const token = api.getAuthToken();
+                if (!token) {
+                    const publicInfo = await api.getPublicSchoolInfo().catch(() => null);
+                    setSchoolInfo(publicInfo);
+                    setCurrentUser(null);
+                    return;
+                }
+
                 const user = await api.getAuthenticatedUser().catch(() => null);
                 if (user && user.id) {
                     setCurrentUser(user);
@@ -355,6 +362,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 } else {
                     const publicInfo = await api.getPublicSchoolInfo().catch(() => null);
                     setSchoolInfo(publicInfo);
+                    setCurrentUser(null);
                 }
             } catch (error) {
                  console.error("Session check failed", error);
@@ -368,8 +376,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const handleLogin = useCallback(async (user: User, token?: string) => {
         if (user && user.id) {
             const sessionToken = token || (user as any).token || user.id;
-            localStorage.setItem('authToken', sessionToken);
-            localStorage.setItem('saaslink_last_activity', Date.now().toString());
+            api.setAuthToken(sessionToken);
+            sessionStorage.setItem('saaslink_last_activity', Date.now().toString());
             setCurrentUser(user);
             setIsLoading(true);
             await loadCoreSettings(user);

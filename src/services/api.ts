@@ -633,6 +633,10 @@ const handleLocalFallback = (endpoint: string, options: RequestInit): any => {
         }
         return store.staff;
     }
+    if (cleanEndpoint === '/staff/upload-photo' && method === 'POST') {
+        const url = (body as any)?.dataUrl || (body as any)?.photoUrl || '/public/uploads/staff/staff_avatar.webp';
+        return { url };
+    }
     if (cleanEndpoint.startsWith('/staff/')) {
         const staffId = cleanEndpoint.replace('/staff/', '');
         if (method === 'PATCH' || method === 'PUT') {
@@ -1551,9 +1555,79 @@ const DISABLE_MOCK_FALLBACK = (import.meta as any).env?.VITE_ENABLE_MOCK_FALLBAC
     ? false 
     : true;
 
+/**
+ * Tab-Scoped Session Management
+ * Ensures closing the tab signs the user out immediately.
+ * sessionStorage is uniquely bounded to the browser tab lifecycle and automatically discarded on tab close.
+ */
+export const getAuthToken = (): string | null => {
+    try {
+        const token = sessionStorage.getItem('authToken');
+        if (token && token !== 'null' && token !== 'undefined') {
+            return token;
+        }
+        return null;
+    } catch {
+        return null;
+    }
+};
+
+export const setAuthToken = (token: string): void => {
+    try {
+        if (token) {
+            sessionStorage.setItem('authToken', token);
+        } else {
+            sessionStorage.removeItem('authToken');
+        }
+        // Purge persistent localStorage tokens to enforce tab-closure logout
+        localStorage.removeItem('authToken');
+    } catch {
+        // ignore
+    }
+};
+
+export const clearAuthToken = (): void => {
+    try {
+        sessionStorage.removeItem('authToken');
+        sessionStorage.removeItem('currentUser');
+        sessionStorage.removeItem('saaslink_last_activity');
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('currentUser');
+        localStorage.removeItem('saaslink_last_activity');
+    } catch {
+        // ignore
+    }
+};
+
+/**
+ * Robust API Error Message Parser
+ * Formats any nested error object into a clean human-readable string, preventing [object Object] errors.
+ */
+const parseApiErrorMessage = (errorData: any, statusText: string, status: number, endpoint: string): string => {
+    if (!errorData) return statusText || `API error (${status}) on ${endpoint}`;
+    if (typeof errorData === 'string') return errorData;
+    if (typeof errorData.message === 'string') return errorData.message;
+    if (Array.isArray(errorData.message)) {
+        return errorData.message.map((m: any) => typeof m === 'string' ? m : (m?.message || JSON.stringify(m))).join(', ');
+    }
+    if (typeof errorData.error === 'string') return errorData.error;
+    if (errorData.error && typeof errorData.error.message === 'string') return errorData.error.message;
+    if (typeof errorData.message === 'object' && errorData.message !== null) {
+        if (typeof errorData.message.message === 'string') return errorData.message.message;
+        try { return JSON.stringify(errorData.message); } catch { /* ignore */ }
+    }
+    if (typeof errorData.error === 'object' && errorData.error !== null) {
+        try { return JSON.stringify(errorData.error); } catch { /* ignore */ }
+    }
+    if (Array.isArray(errorData.errors)) {
+        return errorData.errors.map((e: any) => typeof e === 'string' ? e : (e?.message || JSON.stringify(e))).join(', ');
+    }
+    return statusText || `API error (${status}) on ${endpoint}`;
+};
+
 // Generic API fetch wrapper for JSON responses with automatic resilient fallback
 const apiFetch = async (endpoint: string, options: RequestInit = {}) => {
-    const token = localStorage.getItem('authToken');
+    const token = getAuthToken();
     const headers = new Headers(options.headers);
     if (!(options.body instanceof FormData)) {
         headers.set('Content-Type', 'application/json');
@@ -1566,8 +1640,7 @@ const apiFetch = async (endpoint: string, options: RequestInit = {}) => {
         const response = await fetch(url, { ...options, headers });
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({ message: response.statusText }));
-            const rawMsg = errorData?.message || response.statusText;
-            const errorMessage = Array.isArray(rawMsg) ? rawMsg.join(', ') : (rawMsg || `API error (${response.status}) on ${endpoint}`);
+            const errorMessage = parseApiErrorMessage(errorData, response.statusText, response.status, endpoint);
             // Auth endpoints and all errors in strict mode must throw the real error to the caller
             if (DISABLE_MOCK_FALLBACK || endpoint.startsWith('/auth') || response.status >= 400) {
                 throw new Error(errorMessage);
@@ -1591,7 +1664,7 @@ const apiFetch = async (endpoint: string, options: RequestInit = {}) => {
 
 // Specialized fetch for binary data (e.g. CSV exports)
 const apiFetchBlob = async (endpoint: string, options: RequestInit = {}) => {
-    const token = localStorage.getItem('authToken');
+    const token = getAuthToken();
     const headers = new Headers(options.headers);
     if (token) {
         headers.set('Authorization', `Bearer ${token}`);
@@ -1606,16 +1679,22 @@ const apiFetchBlob = async (endpoint: string, options: RequestInit = {}) => {
 
 // --- Auth ---
 export const login = (credentials: {email: string, password: string}): Promise<{user: User, token: string}> => apiFetch('/auth/login', { method: 'POST', body: JSON.stringify(credentials) });
-export const logout = (): Promise<void> => apiFetch('/auth/logout', { method: 'POST' });
+export const logout = async (): Promise<void> => {
+    try {
+        await apiFetch('/auth/logout', { method: 'POST' });
+    } finally {
+        clearAuthToken();
+    }
+};
 export const getAuthenticatedUser = async (): Promise<User | null> => {
-    const token = localStorage.getItem('authToken');
-    if (!token || token === 'null' || token === 'undefined') {
+    const token = getAuthToken();
+    if (!token) {
         return null;
     }
     try {
         return await apiFetch('/auth/me');
     } catch (err) {
-        localStorage.removeItem('authToken');
+        clearAuthToken();
         return null;
     }
 };
@@ -1661,7 +1740,15 @@ export const exportExpenses = (params: any = {}): Promise<Blob> => apiFetchBlob(
 export const getStaff = (): Promise<Staff[]> => apiFetch('/staff');
 export const createStaff = (data: NewStaff): Promise<Staff> => apiFetch('/staff', { method: 'POST', body: JSON.stringify(data) });
 export const updateStaff = (id: string, data: Partial<Staff>): Promise<Staff> => apiFetch(`/staff/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
-export const uploadStaffPhoto = (formData: FormData): Promise<{url: string}> => apiFetch('/staff/upload-photo', { method: 'POST', body: formData });
+export const uploadStaffPhoto = (body: FormData | { dataUrl: string; folder?: string }): Promise<{url: string}> => {
+    if (body instanceof FormData) {
+        return apiFetch('/staff/upload-photo', { method: 'POST', body });
+    }
+    return apiFetch('/staff/upload-photo', { method: 'POST', body: JSON.stringify(body) });
+};
+export const uploadMedia = (dataUrl: string, folder = 'media'): Promise<{url: string; filename?: string}> => {
+    return apiFetch('/media/upload', { method: 'POST', body: JSON.stringify({ dataUrl, folder }) });
+};
 
 // --- Payroll ---
 export const getPayrollItems = (): Promise<PayrollItem[]> => apiFetch('/payroll/payroll-items');

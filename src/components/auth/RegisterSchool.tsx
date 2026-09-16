@@ -74,7 +74,7 @@ const CheckoutForm: React.FC<{
             });
 
             if (response.token) {
-                localStorage.setItem('authToken', response.token);
+                api.setAuthToken(response.token);
             }
 
             // Immediately dispatch payment receipt to subscriber email
@@ -239,7 +239,7 @@ const RegisterSchool: React.FC = () => {
 
                 const response = await api.registerSchool(payload);
                 if (response.token) {
-                    localStorage.setItem('authToken', response.token);
+                    api.setAuthToken(response.token);
                 }
 
                 // Dispatch official wire transfer proforma invoice email to subscriber
@@ -287,7 +287,7 @@ const RegisterSchool: React.FC = () => {
 
                 const response = await api.registerSchool(payload);
                 if (response.token) {
-                    localStorage.setItem('authToken', response.token);
+                    api.setAuthToken(response.token);
                 }
 
                 // Immediately dispatch payment receipt to subscriber email
@@ -319,7 +319,7 @@ const RegisterSchool: React.FC = () => {
                     paymentMethod: 'FREE'
                 });
                 if (response.token) {
-                    localStorage.setItem('authToken', response.token);
+                    api.setAuthToken(response.token);
                 }
                 setPaymentStatus('success');
                 addNotification("Free institutional instance provisioned!", "success");

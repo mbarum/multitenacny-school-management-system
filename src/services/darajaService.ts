@@ -1,3 +1,5 @@
+import { getAuthToken } from './api';
+
 export interface StkPushSuccessResponse {
     MerchantRequestID: string;
     CheckoutRequestID: string;
@@ -44,11 +46,12 @@ export const initiateSTKPush = async (
     // Determine the correct endpoint based on payment context
     const endpoint = type === 'SUBSCRIPTION' ? '/api/super-admin/payments/stk-push' : '/api/mpesa/stk-push';
 
+    const token = getAuthToken();
     const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         },
         body: JSON.stringify({
             amount: Math.round(amount),

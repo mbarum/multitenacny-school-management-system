@@ -1,4 +1,6 @@
 import type { Plugin } from 'vite';
+import fs from 'fs';
+import path from 'path';
 import {
     initialSchoolInfo, initialPricing, initialUsers, initialStudents,
     initialClasses, initialSubjects, initialAssignments, initialTimetable,
@@ -11,7 +13,73 @@ import {
     initialEdTechArticles
 } from '../data/mockData';
 import { EXCHANGE_RATES } from '../utils/currency';
-import { SubscriptionPlan, SubscriptionStatus, CommunicationType } from '../types';
+import { SubscriptionPlan, SubscriptionStatus, CommunicationType, Role, User } from '../types';
+
+const MEDIA_BASE_DIR = path.join(process.cwd(), 'public', 'uploads');
+
+// Ensure upload subdirectories exist for media
+function ensureUploadDirs() {
+    const subdirs = ['staff', 'students', 'users', 'logos', 'receipts', 'documents', 'media'];
+    subdirs.forEach(sub => {
+        const p = path.join(MEDIA_BASE_DIR, sub);
+        if (!fs.existsSync(p)) {
+            try {
+                fs.mkdirSync(p, { recursive: true });
+            } catch (err) {
+                console.warn(`Could not create directory ${p}`, err);
+            }
+        }
+    });
+}
+ensureUploadDirs();
+
+function saveUploadedMedia(category: string, dataUrlOrBuffer: string | Buffer, originalFilename?: string): string {
+    try {
+        ensureUploadDirs();
+        const targetDir = path.join(MEDIA_BASE_DIR, category);
+        if (!fs.existsSync(targetDir)) {
+            fs.mkdirSync(targetDir, { recursive: true });
+        }
+
+        let buffer: Buffer;
+        let ext = 'webp';
+
+        if (typeof dataUrlOrBuffer === 'string') {
+            if (dataUrlOrBuffer.startsWith('data:image/')) {
+                const match = dataUrlOrBuffer.match(/^data:image\/([a-zA-Z0-9+.-]+);base64,(.+)$/);
+                if (match) {
+                    ext = match[1] === 'jpeg' ? 'jpg' : match[1];
+                    buffer = Buffer.from(match[2], 'base64');
+                } else {
+                    return dataUrlOrBuffer;
+                }
+            } else if (dataUrlOrBuffer.startsWith('/public/uploads/') || dataUrlOrBuffer.startsWith('http')) {
+                return dataUrlOrBuffer;
+            } else {
+                buffer = Buffer.from(dataUrlOrBuffer, 'base64');
+            }
+        } else if (Buffer.isBuffer(dataUrlOrBuffer)) {
+            buffer = dataUrlOrBuffer;
+            if (originalFilename) {
+                const parsedExt = path.extname(originalFilename).replace(/^\./, '').toLowerCase();
+                if (parsedExt) ext = parsedExt;
+            }
+        } else {
+            return `/public/uploads/${category}/default.png`;
+        }
+
+        const safeFilename = `${category}_${Date.now()}_${Math.random().toString(36).substring(2, 8)}.${ext}`;
+        const filePath = path.join(targetDir, safeFilename);
+        fs.writeFileSync(filePath, buffer);
+        
+        return `/public/uploads/${category}/${safeFilename}`;
+    } catch (err) {
+        console.error(`Failed to save media upload for ${category}:`, err);
+        return typeof dataUrlOrBuffer === 'string' && dataUrlOrBuffer.startsWith('http') 
+            ? dataUrlOrBuffer 
+            : `/public/uploads/${category}/fallback.png`;
+    }
+}
 
 export function viteApiPlugin(options?: { disabled?: boolean }): Plugin {
     // In-memory data store for dev server API
@@ -56,10 +124,17 @@ export function viteApiPlugin(options?: { disabled?: boolean }): Plugin {
                 const url = req.url || '';
 
                 if (!url.startsWith('/api')) {
-                    if (url.startsWith('/public/uploads/') || url.startsWith('/uploads/')) {
-                        const localPath = path.join(process.cwd(), url.replace(/^\//, ''));
-                        const serverLocalPath = path.join(process.cwd(), 'server', url.replace(/^\//, ''));
-                        const fsPath = fs.existsSync(localPath) ? localPath : (fs.existsSync(serverLocalPath) ? serverLocalPath : null);
+                    if (url.startsWith('/public/uploads/') || url.startsWith('/uploads/') || url.startsWith('/media/')) {
+                        let cleanUrl = url.split('?')[0];
+                        if (cleanUrl.startsWith('/uploads/')) {
+                            cleanUrl = '/public' + cleanUrl;
+                        } else if (cleanUrl.startsWith('/media/')) {
+                            cleanUrl = '/public/uploads/media/' + cleanUrl.replace(/^\/media\/?/, '');
+                        }
+                        const localPath = path.join(process.cwd(), cleanUrl.replace(/^\//, ''));
+                        const serverLocalPath = path.join(process.cwd(), 'server', cleanUrl.replace(/^\//, ''));
+                        const fsPath = (fs.existsSync(localPath) && !fs.statSync(localPath).isDirectory()) ? localPath : 
+                                       ((fs.existsSync(serverLocalPath) && !fs.statSync(serverLocalPath).isDirectory()) ? serverLocalPath : null);
                         if (fsPath) {
                             const ext = path.extname(fsPath).toLowerCase();
                             const mimeMap: Record<string, string> = {
@@ -67,9 +142,15 @@ export function viteApiPlugin(options?: { disabled?: boolean }): Plugin {
                                 '.jpg': 'image/jpeg',
                                 '.jpeg': 'image/jpeg',
                                 '.webp': 'image/webp',
-                                '.gif': 'image/gif'
+                                '.gif': 'image/gif',
+                                '.svg': 'image/svg+xml',
+                                '.pdf': 'application/pdf',
+                                '.csv': 'text/csv'
                             };
-                            res.writeHead(200, { 'Content-Type': mimeMap[ext] || 'image/jpeg' });
+                            res.writeHead(200, {
+                                'Content-Type': mimeMap[ext] || 'application/octet-stream',
+                                'Cache-Control': 'public, max-age=86400'
+                            });
                             return fs.createReadStream(fsPath).pipe(res);
                         }
                     }
@@ -85,12 +166,16 @@ export function viteApiPlugin(options?: { disabled?: boolean }): Plugin {
                             callback(data ? JSON.parse(data) : {});
                         } catch {
                             // Support multipart boundary extraction of dataUrl
+                            const result: any = {};
                             const dataUrlMatch = data.match(/name="dataUrl"[\r\n\s]+(data:image\/[^\r\n]+)/);
                             if (dataUrlMatch && dataUrlMatch[1]) {
-                                callback({ dataUrl: dataUrlMatch[1].trim() });
-                            } else {
-                                callback({});
+                                result.dataUrl = dataUrlMatch[1].trim();
                             }
+                            const filenameMatch = data.match(/filename="([^"]+)"/);
+                            if (filenameMatch) {
+                                result.filename = filenameMatch[1];
+                            }
+                            callback(result);
                         }
                     });
                 };
@@ -423,8 +508,59 @@ export function viteApiPlugin(options?: { disabled?: boolean }): Plugin {
                 if (path === '/api/students/upload-photo') {
                     if (req.method === 'POST') {
                         readBody(body => {
-                            const photoUrl = body?.dataUrl || body?.url || 'https://images.unsplash.com/photo-1544717305-2782549b5136?auto=format&fit=crop&q=80&w=120';
-                            sendJson(200, { url: photoUrl });
+                            const raw = body?.dataUrl || body?.profileImage || body?.url;
+                            let url = '';
+                            if (raw && raw.startsWith('data:image/')) {
+                                url = saveUploadedMedia('students', raw);
+                            } else if (raw && (raw.startsWith('/public/uploads/') || raw.startsWith('http'))) {
+                                url = raw;
+                            } else {
+                                url = 'https://images.unsplash.com/photo-1544717305-2782549b5136?auto=format&fit=crop&q=80&w=120';
+                            }
+                            sendJson(200, { url });
+                        });
+                        return;
+                    }
+                }
+
+                // Generic Media / Document Upload
+                if (path === '/api/upload' || path === '/api/media/upload') {
+                    if (req.method === 'POST') {
+                        readBody(body => {
+                            const raw = body?.dataUrl || body?.file || body?.url;
+                            const url = raw && raw.startsWith('data:image/') 
+                                ? saveUploadedMedia('media', raw, body?.filename) 
+                                : (raw || '/public/uploads/media/file.png');
+                            sendJson(200, { url });
+                        });
+                        return;
+                    }
+                }
+
+                // Users Photo / Avatar Upload
+                if (path === '/api/users/upload-photo' || path === '/api/users/upload-avatar') {
+                    if (req.method === 'POST') {
+                        readBody(body => {
+                            const raw = body?.dataUrl || body?.avatarUrl || body?.url;
+                            const url = raw && raw.startsWith('data:image/') 
+                                ? saveUploadedMedia('users', raw) 
+                                : (raw || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=120');
+                            sendJson(200, { url });
+                        });
+                        return;
+                    }
+                }
+
+                // Settings Logo Upload
+                if (path === '/api/settings/upload-logo') {
+                    if (req.method === 'POST') {
+                        readBody(body => {
+                            const raw = body?.dataUrl || body?.logoUrl || body?.url;
+                            const logoUrl = raw && raw.startsWith('data:image/') 
+                                ? saveUploadedMedia('logos', raw) 
+                                : (raw || schoolInfo.logoUrl || '/public/uploads/logos/default_logo.png');
+                            schoolInfo.logoUrl = logoUrl;
+                            sendJson(200, { logoUrl });
                         });
                         return;
                     }
@@ -538,6 +674,25 @@ export function viteApiPlugin(options?: { disabled?: boolean }): Plugin {
                     }
                 }
 
+                // Staff Photo Upload
+                if (path === '/api/staff/upload-photo') {
+                    if (req.method === 'POST') {
+                        readBody(body => {
+                            const raw = body?.dataUrl || body?.photoUrl || body?.url;
+                            let url = '';
+                            if (raw && raw.startsWith('data:image/')) {
+                                url = saveUploadedMedia('staff', raw);
+                            } else if (raw && (raw.startsWith('/public/uploads/') || raw.startsWith('http'))) {
+                                url = raw;
+                            } else {
+                                url = 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=120';
+                            }
+                            sendJson(200, { url });
+                        });
+                        return;
+                    }
+                }
+
                 // Staff
                 if (path === '/api/staff') {
                     if (req.method === 'GET') {
@@ -551,10 +706,18 @@ export function viteApiPlugin(options?: { disabled?: boolean }): Plugin {
                             const rawPassword = (body.password || '').trim() || 'password123';
                             const userRole = body.userRole || Role.Teacher;
 
+                            let photoUrl = body.photoUrl;
+                            if (photoUrl && photoUrl.startsWith('data:image/')) {
+                                photoUrl = saveUploadedMedia('staff', photoUrl);
+                            }
+                            if (!photoUrl) {
+                                photoUrl = 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=120';
+                            }
+
                             const newStaff = {
                                 id: newStaffId,
-                                photoUrl: body.photoUrl || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=120',
-                                ...body
+                                ...body,
+                                photoUrl
                             };
                             staff.push(newStaff);
 
@@ -566,6 +729,7 @@ export function viteApiPlugin(options?: { disabled?: boolean }): Plugin {
                                         ...users[existingUserIndex],
                                         name: body.name || users[existingUserIndex].name,
                                         role: userRole,
+                                        avatarUrl: photoUrl,
                                         password: rawPassword,
                                         status: 'Active'
                                     };
@@ -576,7 +740,7 @@ export function viteApiPlugin(options?: { disabled?: boolean }): Plugin {
                                         email: staffEmail,
                                         password: rawPassword,
                                         role: userRole,
-                                        avatarUrl: newStaff.photoUrl,
+                                        avatarUrl: photoUrl,
                                         status: 'Active',
                                         schoolId: schoolInfo.id || 'school-1'
                                     };
@@ -592,8 +756,18 @@ export function viteApiPlugin(options?: { disabled?: boolean }): Plugin {
 
                 if (path.startsWith('/api/staff/')) {
                     const staffId = path.replace('/api/staff/', '');
+                    // Skip if upload-photo
+                    if (staffId === 'upload-photo') {
+                        return;
+                    }
                     if (req.method === 'PATCH' || req.method === 'PUT') {
                         readBody(body => {
+                            let photoUrl = body.photoUrl;
+                            if (photoUrl && photoUrl.startsWith('data:image/')) {
+                                photoUrl = saveUploadedMedia('staff', photoUrl);
+                                body.photoUrl = photoUrl;
+                            }
+
                             const idx = staff.findIndex(s => s.id === staffId);
                             if (idx >= 0) {
                                 staff[idx] = { ...staff[idx], ...body };
@@ -605,13 +779,34 @@ export function viteApiPlugin(options?: { disabled?: boolean }): Plugin {
                                         users[uIdx] = {
                                             ...users[uIdx],
                                             name: staff[idx].name || users[uIdx].name,
-                                            role: body.userRole || users[uIdx].role
+                                            role: body.userRole || users[uIdx].role,
+                                            ...(photoUrl ? { avatarUrl: photoUrl } : {})
                                         };
                                     }
                                 }
                                 sendJson(200, staff[idx]);
                             } else {
-                                sendJson(404, { error: 'Staff member not found' });
+                                // Fallback: look up by email or upsert
+                                const staffEmail = (body.email || '').toLowerCase().trim();
+                                const byEmailIdx = staffEmail ? staff.findIndex(s => (s.email || '').toLowerCase() === staffEmail) : -1;
+                                if (byEmailIdx >= 0) {
+                                    staff[byEmailIdx] = { ...staff[byEmailIdx], ...body, ...(photoUrl ? { photoUrl } : {}) };
+                                    sendJson(200, staff[byEmailIdx]);
+                                } else {
+                                    const createdStaff = {
+                                        id: staffId,
+                                        name: body.name || 'Staff Member',
+                                        email: body.email || '',
+                                        role: body.role || 'Senior Teacher',
+                                        userRole: body.userRole || Role.Teacher,
+                                        salary: body.salary || 50000,
+                                        joinDate: body.joinDate || new Date().toISOString().split('T')[0],
+                                        ...body,
+                                        photoUrl: photoUrl || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=120'
+                                    };
+                                    staff.push(createdStaff);
+                                    sendJson(200, createdStaff);
+                                }
                             }
                         });
                         return;
