@@ -71,6 +71,10 @@ import { TenancyModule } from './tenancy/tenancy.module';
     BullModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => {
+        const retryStrategy = (times: number) => {
+          return Math.min(times * 1000, 10000);
+        };
+
         const redisUrl = configService.get<string>('REDIS_URL');
         if (redisUrl) {
           try {
@@ -81,6 +85,9 @@ import { TenancyModule } from './tenancy/tenancy.module';
                 port: Number(parsed.port || 6379),
                 password: parsed.password || undefined,
                 username: parsed.username || undefined,
+                maxRetriesPerRequest: null,
+                enableReadyCheck: false,
+                retryStrategy,
               }
             };
           } catch {
@@ -92,6 +99,9 @@ import { TenancyModule } from './tenancy/tenancy.module';
             host: configService.get<string>('REDIS_HOST', 'localhost'),
             port: Number(configService.get<number | string>('REDIS_PORT', 6379)),
             password: configService.get<string>('REDIS_PASSWORD') || undefined,
+            maxRetriesPerRequest: null,
+            enableReadyCheck: false,
+            retryStrategy,
           },
         };
       },

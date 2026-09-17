@@ -127,4 +127,9 @@ async function bootstrap() {
   logger.log(`Saaslink Backend successfully listening on port ${port} in ${process.env.NODE_ENV || 'development'} mode`);
 }
 
-bootstrap();
+bootstrap().catch((err) => {
+  console.error('❌ [FATAL BOOTSTRAP ERROR] Failed to start Saaslink Backend:');
+  console.error(err);
+  process.exit(1);
+});
+
