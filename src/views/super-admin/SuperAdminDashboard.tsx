@@ -488,9 +488,9 @@ export const SuperAdminDashboard: React.FC = () => {
     }
 
     return (
-        <div className="p-6 md:p-10 max-w-7xl mx-auto space-y-8 animate-fadeIn">
+        <div className="p-3 sm:p-6 md:p-10 w-full max-w-7xl mx-auto space-y-6 sm:space-y-8 animate-fadeIn overflow-x-hidden">
             {/* 1. Header & Quick Actions */}
-            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 p-8 rounded-3xl text-white shadow-2xl border border-slate-700/50">
+            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 sm:gap-6 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 p-5 sm:p-8 rounded-2xl sm:rounded-3xl text-white shadow-2xl border border-slate-700/50 w-full">
                 <div>
                     <div className="flex items-center gap-3">
                         <span className="p-2.5 bg-emerald-500/20 text-emerald-400 rounded-xl border border-emerald-500/30">
@@ -507,7 +507,7 @@ export const SuperAdminDashboard: React.FC = () => {
                     </div>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-3">
+                <div className="flex flex-wrap items-center gap-2 sm:gap-3 w-full lg:w-auto">
                     {/* Run Lifecycle Sweep Button */}
                     <button
                         onClick={() => lifecycleSweepMutation.mutate()}
@@ -562,7 +562,7 @@ export const SuperAdminDashboard: React.FC = () => {
             </div>
 
             {/* 2. Automated Lifecycle Policy Notice Card */}
-            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 text-xs text-slate-600">
+            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 sm:gap-4 text-xs text-slate-600 w-full">
                 <div className="flex items-center gap-3">
                     <div className="p-2 bg-primary-100 text-primary-700 rounded-xl">
                         <Clock className="w-4 h-4" />
@@ -709,7 +709,7 @@ export const SuperAdminDashboard: React.FC = () => {
 
             {/* TAB 1: SUBSCRIBERS DIRECTORY & CONTROLS */}
             {activeTab === 'schools' && (
-                <div className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
+                <div className="bg-white rounded-2xl sm:rounded-3xl shadow-sm border border-slate-200 overflow-hidden w-full">
                     {/* Controls Bar */}
                     <div className="p-6 border-b border-slate-100 flex flex-col md:flex-row items-center justify-between gap-4 bg-slate-50/50">
                         <div className="flex items-center gap-3 w-full md:w-auto">
@@ -968,7 +968,7 @@ export const SuperAdminDashboard: React.FC = () => {
 
             {/* TAB 2: SAAS INVOICES (A4 PRINTABLE & DOWNLOADABLE) */}
             {activeTab === 'invoices' && (
-                <div className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden space-y-4">
+                <div className="bg-white rounded-2xl sm:rounded-3xl shadow-sm border border-slate-200 overflow-hidden space-y-4 w-full">
                     <div className="p-6 border-b border-slate-100 flex flex-col md:flex-row items-center justify-between gap-4 bg-slate-50/50">
                         <div className="flex items-center gap-3">
                             <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Status:</span>
@@ -1092,7 +1092,7 @@ export const SuperAdminDashboard: React.FC = () => {
 
             {/* TAB 3: OFFICIAL PAYMENT RECEIPTS (A4 PRINTABLE & DOWNLOADABLE) */}
             {activeTab === 'receipts' && (
-                <div className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden space-y-4">
+                <div className="bg-white rounded-2xl sm:rounded-3xl shadow-sm border border-slate-200 overflow-hidden space-y-4 w-full">
                     <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
                         <div>
                             <h3 className="text-sm font-bold uppercase tracking-wider text-slate-800">

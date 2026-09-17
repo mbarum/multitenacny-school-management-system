@@ -423,10 +423,10 @@ const ExpensesView: React.FC = () => {
                         <PieChart className="w-4 h-4 text-amber-500" />
                     </div>
                     <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white truncate">
-                        {metrics.topCategory}
+                        {formatCurrency(metrics.topCategoryAmount)}
                     </div>
-                    <div className="text-[11px] font-medium text-slate-500 dark:text-slate-400 mt-1">
-                        Disbursed: {formatCurrency(metrics.topCategoryAmount)}
+                    <div className="text-[11px] font-medium text-slate-500 dark:text-slate-400 mt-1 truncate">
+                        Category: {metrics.topCategory}
                     </div>
                 </div>
 
