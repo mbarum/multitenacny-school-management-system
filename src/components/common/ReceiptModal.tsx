@@ -10,6 +10,8 @@ import {
 import FinancialDocumentView from './FinancialDocumentView';
 import { Download, Printer, FileText, CheckCircle2 } from 'lucide-react';
 
+import { printElement } from '../../utils/printUtility';
+
 interface ReceiptModalProps {
     isOpen: boolean;
     onClose: () => void;
@@ -79,7 +81,9 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({
     };
 
     const handlePrint = () => {
-        window.print();
+        printElement('printable-financial-document', {
+            title: `${financialDoc?.school?.name || 'School'} - ${isReceipt ? 'Receipt' : 'Invoice'} ${financialDoc?.documentNumber || ''}`
+        });
     };
 
     return (

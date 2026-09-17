@@ -468,6 +468,26 @@ export function viteApiPlugin(options?: { disabled?: boolean }): Plugin {
                         ];
                     }
 
+                    const totalInvoiced = transactions
+                        .filter(t => t.type === 'Invoice' || t.type === 'ManualDebit')
+                        .reduce((sum, t) => sum + t.amount, 0);
+
+                    // Compute expected fee based on curriculum fee structure and active students
+                    let expectedFromStructure = 0;
+                    students.forEach(s => {
+                        if (s.classId) {
+                            feeStructure.forEach(item => {
+                                const cf = item.classSpecificFees?.find(f => f.classId === s.classId);
+                                if (cf && cf.amount) {
+                                    expectedFromStructure += cf.amount;
+                                }
+                            });
+                        }
+                    });
+                    const totalExpectedFee = expectedFromStructure > 0 
+                        ? expectedFromStructure 
+                        : (totalInvoiced > 0 ? totalInvoiced : totalRevenue + feesOverdue);
+
                     sendJson(200, {
                         totalStudents: students.length,
                         totalStaff: staff.length,
@@ -475,6 +495,9 @@ export function viteApiPlugin(options?: { disabled?: boolean }): Plugin {
                         totalExpenses,
                         totalProfit,
                         feesOverdue,
+                        totalExpectedFee,
+                        totalInvoiced,
+                        feeCollectionRate: totalExpectedFee > 0 ? Math.min(100, Math.round((totalRevenue / totalExpectedFee) * 100)) : 100,
                         netIncome: totalProfit,
                         attendanceRate: 94.5,
                         monthlyData,

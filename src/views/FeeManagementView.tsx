@@ -19,24 +19,31 @@ import {
     ArrowDownLeft, 
     FileSpreadsheet, 
     FileText,
+    Printer,
     Building, 
     Wallet, 
     ChevronRight, 
+    ChevronDown,
+    ChevronUp,
     ShieldCheck, 
     Sparkles, 
     RefreshCw,
     UserCheck,
     Coins,
-    HelpCircle
+    HelpCircle,
+    Layers,
+    PieChart
 } from 'lucide-react';
 import Modal from '../components/common/Modal';
 import Pagination from '../components/common/Pagination';
 import { initiateSTKPush } from '../services/darajaService';
 import type { Transaction, NewTransaction, Student } from '../types';
-import { PaymentMethod, TransactionType } from '../types';
+import { PaymentMethod, TransactionType, StudentStatus } from '../types';
 import { useData } from '../contexts/DataContext';
 import GenerateInvoicesModal from '../components/common/GenerateInvoicesModal';
 import ReceiptModal from '../components/common/ReceiptModal';
+import FeeLedgerPrintModal from '../components/common/FeeLedgerPrintModal';
+import StatementModal from '../components/common/StatementModal';
 import * as api from '../services/api';
 import Skeleton from '../components/common/Skeleton';
 import Spinner from '../components/common/Spinner';
@@ -78,6 +85,9 @@ const FeeManagementView: React.FC = () => {
     const [isRecordModalOpen, setIsRecordModalOpen] = useState(false);
     const [isGenerateInvoicesModalOpen, setIsGenerateInvoicesModalOpen] = useState(false);
     const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
+    const [isLedgerPrintModalOpen, setIsLedgerPrintModalOpen] = useState(false);
+    const [isStatementModalOpen, setIsStatementModalOpen] = useState(false);
+    const [selectedStudentForStatement, setSelectedStudentForStatement] = useState<Student | null>(null);
     const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
     const [isPaying, setIsPaying] = useState(false);
     const [entryMode, setEntryMode] = useState<TransactionType>(TransactionType.Payment);
@@ -103,12 +113,23 @@ const FeeManagementView: React.FC = () => {
     });
 
     const isMpesaConfigured = Boolean(darajaSettings?.consumerKey && darajaSettings?.paybillNumber);
+    const [showClassBreakdown, setShowClassBreakdown] = useState(false);
 
     // --- Queries ---
 
     const { data: students = [] } = useQuery({
         queryKey: ['students-list'],
         queryFn: () => api.getStudents({ limit: 2000 }).then(res => Array.isArray(res) ? res : res.data || [])
+    });
+
+    const { data: feeStructure = [] } = useQuery({
+        queryKey: ['fee-structure'],
+        queryFn: () => api.getFeeStructure().then(res => Array.isArray(res) ? res : [])
+    });
+
+    const { data: classes = [] } = useQuery({
+        queryKey: ['classes'],
+        queryFn: () => api.getClasses().then(res => Array.isArray(res) ? res : [])
     });
 
     const getDateRange = () => {
@@ -196,19 +217,80 @@ const FeeManagementView: React.FC = () => {
 
         // Calculate student total outstanding arrears from students list
         const totalArrears = students.reduce((acc: number, s: any) => acc + Math.max(0, s.balance || 0), 0);
-        const collectionEfficiency = totalInvoiced > 0 
-            ? Math.min(100, Math.round((totalCollections / totalInvoiced) * 100)) 
-            : (totalCollections > 0 ? 100 : 0);
+
+        // Calculate expected fee projection from curriculum fee structure per class & enrolled scholars
+        let feeStructureExpected = 0;
+        const classMap: Record<string, { className: string; count: number; feePerStudent: number; totalExpected: number }> = {};
+        
+        classes.forEach((c: any) => {
+            let classFeeSum = 0;
+            feeStructure.forEach((item: any) => {
+                const cf = item.classSpecificFees?.find((f: any) => f.classId === c.id);
+                if (cf && cf.amount) {
+                    classFeeSum += Number(cf.amount);
+                }
+            });
+            classMap[c.id] = {
+                className: c.name,
+                count: 0,
+                feePerStudent: classFeeSum,
+                totalExpected: 0
+            };
+        });
+
+        students.forEach((s: any) => {
+            if (s.status !== StudentStatus.Inactive && s.status !== StudentStatus.Graduated && s.classId) {
+                if (!classMap[s.classId]) {
+                    const matchedClass = classes.find((c: any) => c.id === s.classId);
+                    classMap[s.classId] = {
+                        className: matchedClass?.name || 'Class ' + s.classId,
+                        count: 0,
+                        feePerStudent: 0,
+                        totalExpected: 0
+                    };
+                }
+                classMap[s.classId].count += 1;
+                
+                let studentFee = 0;
+                feeStructure.forEach((item: any) => {
+                    const cf = item.classSpecificFees?.find((f: any) => f.classId === s.classId);
+                    if (cf && cf.amount) {
+                        studentFee += Number(cf.amount);
+                    }
+                });
+                classMap[s.classId].totalExpected += studentFee;
+                feeStructureExpected += studentFee;
+            }
+        });
+
+        const classBreakdown = Object.entries(classMap).map(([classId, info]) => ({
+            classId,
+            className: info.className,
+            enrolledCount: info.count,
+            feePerStudent: info.feePerStudent,
+            totalExpected: info.totalExpected
+        }));
+
+        const totalExpectedFee = feeStructureExpected > 0 
+            ? feeStructureExpected 
+            : (totalInvoiced > 0 ? totalInvoiced : totalCollections + totalArrears);
+
+        const collectionEfficiency = totalExpectedFee > 0 
+            ? Math.min(100, Math.round((totalCollections / totalExpectedFee) * 100)) 
+            : (totalInvoiced > 0 ? Math.min(100, Math.round((totalCollections / totalInvoiced) * 100)) : 100);
 
         return {
             totalCollections,
             totalInvoiced,
             totalArrears,
+            totalExpectedFee,
+            feeStructureExpected,
+            classBreakdown,
             mpesaCollections,
             collectionEfficiency,
             entryCount: pool.length
         };
-    }, [allTransactions, rawTransactions, students]);
+    }, [allTransactions, rawTransactions, students, feeStructure, classes]);
 
     // --- Mutations ---
 
@@ -400,6 +482,16 @@ const FeeManagementView: React.FC = () => {
                     </button>
 
                     <button 
+                        id="btn-print-ledger-modal"
+                        onClick={() => setIsLedgerPrintModalOpen(true)}
+                        className="inline-flex items-center px-3.5 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xs hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+                        title="Print Certified Institutional Ledger"
+                    >
+                        <Printer className="w-3.5 h-3.5 mr-1.5 text-slate-700 dark:text-slate-300" />
+                        Print Ledger
+                    </button>
+
+                    <button 
                         id="btn-open-bulk-bill"
                         onClick={() => setIsGenerateInvoicesModalOpen(true)}
                         className="inline-flex items-center px-3.5 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xs hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
@@ -420,7 +512,24 @@ const FeeManagementView: React.FC = () => {
             </div>
 
             {/* Strategic KPI Metric Strip */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
+                {/* Total Expected Fees Card */}
+                <div className="col-span-2 sm:col-span-1 bg-gradient-to-br from-blue-50/90 to-indigo-50/50 dark:from-slate-800/90 dark:to-blue-950/20 p-4 sm:p-5 rounded-2xl border border-blue-200/80 dark:border-blue-900/50 shadow-xs">
+                    <div className="flex items-center justify-between text-blue-700 dark:text-blue-400 mb-2">
+                        <span className="text-[11px] font-bold uppercase tracking-wider">Total Expected Fees</span>
+                        <Receipt className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                    </div>
+                    <div className="text-2xl sm:text-3xl font-black text-blue-900 dark:text-blue-100">
+                        {formatCurrency(metrics.totalExpectedFee)}
+                    </div>
+                    <div className="text-[11px] font-medium text-blue-700 dark:text-blue-300 mt-1 flex items-center justify-between">
+                        <span>{students.length} Enrolled Scholars</span>
+                        <span className="px-1.5 py-0.5 rounded-md bg-blue-200/60 dark:bg-blue-900/60 text-[10px] font-bold">
+                            {metrics.collectionEfficiency}% Collected
+                        </span>
+                    </div>
+                </div>
+
                 <div className="bg-white dark:bg-slate-800/80 p-4 sm:p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs">
                     <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 mb-2">
                         <span className="text-[11px] font-bold uppercase tracking-wider">Total Collections</span>
@@ -432,19 +541,6 @@ const FeeManagementView: React.FC = () => {
                     <div className="text-[11px] font-medium text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-1.5">
                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
                         <span>M-Pesa: {formatCurrency(metrics.mpesaCollections)}</span>
-                    </div>
-                </div>
-
-                <div className="bg-white dark:bg-slate-800/80 p-4 sm:p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs">
-                    <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 mb-2">
-                        <span className="text-[11px] font-bold uppercase tracking-wider">Tuition Billed</span>
-                        <ArrowUpRight className="w-4 h-4 text-blue-500" />
-                    </div>
-                    <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white">
-                        {formatCurrency(metrics.totalInvoiced)}
-                    </div>
-                    <div className="text-[11px] font-medium text-slate-500 dark:text-slate-400 mt-1">
-                        Cumulative invoices & charges
                     </div>
                 </div>
 
@@ -463,6 +559,19 @@ const FeeManagementView: React.FC = () => {
 
                 <div className="bg-white dark:bg-slate-800/80 p-4 sm:p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs">
                     <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 mb-2">
+                        <span className="text-[11px] font-bold uppercase tracking-wider">Tuition Invoiced</span>
+                        <ArrowUpRight className="w-4 h-4 text-slate-500" />
+                    </div>
+                    <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white">
+                        {formatCurrency(metrics.totalInvoiced)}
+                    </div>
+                    <div className="text-[11px] font-medium text-slate-500 dark:text-slate-400 mt-1">
+                        Cumulative invoices billed
+                    </div>
+                </div>
+
+                <div className="bg-white dark:bg-slate-800/80 p-4 sm:p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs">
+                    <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 mb-2">
                         <span className="text-[11px] font-bold uppercase tracking-wider">M-Pesa Gateway</span>
                         <Smartphone className="w-4 h-4 text-emerald-600" />
                     </div>
@@ -476,6 +585,123 @@ const FeeManagementView: React.FC = () => {
                         {isMpesaConfigured ? 'Direct STK Push Ready' : 'Configure in Settings'}
                     </div>
                 </div>
+            </div>
+
+            {/* Expected Fee Progress & Class Breakdown Strip */}
+            <div className="bg-white dark:bg-slate-800/90 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-4 sm:p-5 space-y-4">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                    <div>
+                        <div className="flex items-center gap-2">
+                            <span className="p-1.5 bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 rounded-lg">
+                                <PieChart className="w-4 h-4" />
+                            </span>
+                            <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                                Institutional Fee Expectation & Collection Pulse
+                            </h3>
+                        </div>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                            Total Expected Revenue: <strong className="text-slate-800 dark:text-slate-200">{formatCurrency(metrics.totalExpectedFee)}</strong> • Collected: <strong className="text-emerald-600 dark:text-emerald-400">{formatCurrency(metrics.totalCollections)} ({metrics.collectionEfficiency}%)</strong> • Outstanding Arrears: <strong className="text-red-600 dark:text-red-400">{formatCurrency(metrics.totalArrears)}</strong>
+                        </p>
+                    </div>
+
+                    <button
+                        type="button"
+                        onClick={() => setShowClassBreakdown(!showClassBreakdown)}
+                        className="inline-flex items-center px-3 py-1.5 text-xs font-semibold text-primary-700 dark:text-primary-300 bg-primary-50 dark:bg-primary-950/50 hover:bg-primary-100 dark:hover:bg-primary-900/50 rounded-xl transition-colors border border-primary-200/80 dark:border-primary-800"
+                    >
+                        <Layers className="w-3.5 h-3.5 mr-1.5" />
+                        {showClassBreakdown ? 'Hide Class Breakdown' : 'View Class-by-Class Expected Fees'}
+                        {showClassBreakdown ? <ChevronUp className="w-3.5 h-3.5 ml-1.5" /> : <ChevronDown className="w-3.5 h-3.5 ml-1.5" />}
+                    </button>
+                </div>
+
+                {/* Progress Bar */}
+                <div className="space-y-1.5">
+                    <div className="w-full h-3.5 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden flex shadow-inner">
+                        <div 
+                            className="bg-emerald-500 h-full transition-all duration-500" 
+                            style={{ width: `${Math.min(100, metrics.collectionEfficiency)}%` }}
+                            title={`Collected: ${formatCurrency(metrics.totalCollections)} (${metrics.collectionEfficiency}%)`}
+                        />
+                        <div 
+                            className="bg-red-400/80 h-full transition-all duration-500" 
+                            style={{ width: `${Math.min(100 - Math.min(100, metrics.collectionEfficiency), metrics.totalExpectedFee > 0 ? (metrics.totalArrears / metrics.totalExpectedFee) * 100 : 0)}%` }}
+                            title={`Outstanding: ${formatCurrency(metrics.totalArrears)}`}
+                        />
+                    </div>
+                    <div className="flex justify-between items-center text-[11px] text-slate-500 dark:text-slate-400 font-medium px-1">
+                        <span className="flex items-center gap-1.5">
+                            <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                            <span>Collected: <strong>{formatCurrency(metrics.totalCollections)}</strong></span>
+                        </span>
+                        <span className="flex items-center gap-1.5">
+                            <span className="w-2 h-2 rounded-full bg-red-400"></span>
+                            <span>Arrears: <strong>{formatCurrency(metrics.totalArrears)}</strong></span>
+                        </span>
+                        <span className="flex items-center gap-1.5">
+                            <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+                            <span>Target: <strong>{formatCurrency(metrics.totalExpectedFee)}</strong></span>
+                        </span>
+                    </div>
+                </div>
+
+                {/* Collapsible Class-by-Class Breakdown */}
+                {showClassBreakdown && (
+                    <div className="pt-3 border-t border-slate-100 dark:border-slate-700/80 animate-in fade-in duration-200">
+                        <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider mb-2.5">
+                            Class-by-Class Projected Fee Revenue
+                        </h4>
+                        <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700">
+                            <table className="w-full text-left text-xs">
+                                <thead className="bg-slate-50 dark:bg-slate-800/90 text-slate-500 dark:text-slate-400 uppercase font-semibold border-b border-slate-200 dark:border-slate-700">
+                                    <tr>
+                                        <th className="px-4 py-2.5">Class / Stream</th>
+                                        <th className="px-4 py-2.5 text-center">Active Scholars</th>
+                                        <th className="px-4 py-2.5 text-right">Fee Per Scholar</th>
+                                        <th className="px-4 py-2.5 text-right">Total Expected Revenue</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100 dark:divide-slate-700/60 bg-white dark:bg-slate-850">
+                                    {metrics.classBreakdown.map((item) => (
+                                        <tr key={item.classId} className="hover:bg-slate-50/80 dark:hover:bg-slate-700/30">
+                                            <td className="px-4 py-2 font-bold text-slate-800 dark:text-slate-200">
+                                                {item.className}
+                                            </td>
+                                            <td className="px-4 py-2 text-center text-slate-600 dark:text-slate-300">
+                                                {item.enrolledCount} scholars
+                                            </td>
+                                            <td className="px-4 py-2 text-right font-medium text-slate-600 dark:text-slate-300">
+                                                {formatCurrency(item.feePerStudent)}
+                                            </td>
+                                            <td className="px-4 py-2 text-right font-bold text-blue-600 dark:text-blue-400">
+                                                {formatCurrency(item.totalExpected)}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                    {metrics.classBreakdown.length === 0 && (
+                                        <tr>
+                                            <td colSpan={4} className="px-4 py-4 text-center text-slate-400">
+                                                No class fee projections available. Configure fees in Fee Structure.
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                                <tfoot className="bg-slate-50 dark:bg-slate-800 font-bold border-t border-slate-200 dark:border-slate-700">
+                                    <tr>
+                                        <td className="px-4 py-2.5 text-slate-900 dark:text-white">Institutional Total</td>
+                                        <td className="px-4 py-2.5 text-center text-slate-900 dark:text-white">
+                                            {students.length} scholars
+                                        </td>
+                                        <td className="px-4 py-2.5 text-right text-slate-500">-</td>
+                                        <td className="px-4 py-2.5 text-right text-blue-600 dark:text-blue-400">
+                                            {formatCurrency(metrics.totalExpectedFee)}
+                                        </td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+                )}
             </div>
 
             {/* Smart Filter & Search Control Center */}
@@ -663,6 +889,26 @@ const FeeManagementView: React.FC = () => {
                                                         <Receipt className="w-3 h-3" />
                                                         {isInvoice ? 'Invoice' : 'Receipt'}
                                                     </button>
+                                                    {t.studentId && (
+                                                        <button 
+                                                            id={`btn-statement-${t.id}`}
+                                                            onClick={() => {
+                                                                const s = students.find((st: any) => st.id === t.studentId) || {
+                                                                    id: t.studentId,
+                                                                    name: t.studentName || 'Scholar',
+                                                                    admissionNumber: t.studentAdmissionNumber || 'ADM',
+                                                                    class: t.studentClass || 'N/A'
+                                                                } as Student;
+                                                                setSelectedStudentForStatement(s);
+                                                                setIsStatementModalOpen(true);
+                                                            }}
+                                                            className="px-2.5 py-1 text-xs font-semibold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition-colors flex items-center gap-1"
+                                                            title="Print Scholar Statement of Account"
+                                                        >
+                                                            <FileText className="w-3 h-3 text-slate-500" />
+                                                            <span>Statement</span>
+                                                        </button>
+                                                    )}
                                                     <button 
                                                         id={`btn-edit-transaction-${t.id}`}
                                                         onClick={() => openEditModal(t)}
@@ -905,6 +1151,26 @@ const FeeManagementView: React.FC = () => {
                 isOpen={isReceiptModalOpen} 
                 onClose={() => setIsReceiptModalOpen(false)} 
                 transaction={selectedTransaction} 
+            />
+
+            <FeeLedgerPrintModal
+                isOpen={isLedgerPrintModalOpen}
+                onClose={() => setIsLedgerPrintModalOpen(false)}
+                transactions={allTransactions.length > 0 ? allTransactions : rawTransactions}
+                schoolInfo={schoolInfo}
+                title="Institutional Fee Collection Ledger"
+            />
+
+            <StatementModal
+                isOpen={isStatementModalOpen}
+                onClose={() => {
+                    setIsStatementModalOpen(false);
+                    setSelectedStudentForStatement(null);
+                }}
+                student={selectedStudentForStatement}
+                transactions={allTransactions.filter((t: any) => t.studentId === selectedStudentForStatement?.id)}
+                schoolInfo={schoolInfo}
+                darajaSettings={darajaSettings}
             />
         </div>
     );

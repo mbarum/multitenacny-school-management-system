@@ -6,13 +6,16 @@
   @media print {
     @page {
       size: A4;
-      margin: 10mm;
+      margin: 8mm 10mm;
     }
     
-    html, body {
-      background: white !important;
+    html, body, html.dark, html.dark body {
+      background: #ffffff !important;
+      background-color: #ffffff !important;
+      color: #0f172a !important;
       height: auto !important;
       overflow: visible !important;
+      font-family: 'Inter', system-ui, -apple-system, sans-serif !important;
     }
 
     /* Force background colors and images in print */
@@ -20,20 +23,37 @@
       -webkit-print-color-adjust: exact !important;
       print-color-adjust: exact !important;
       color-adjust: exact !important;
+      box-shadow: none !important;
+      text-shadow: none !important;
     }
 
-    .no-print {
+    /* Hide background dashboard chrome, overlays, backdrops, navbars, and buttons */
+    .no-print, 
+    aside, 
+    nav, 
+    header:not(.print-header), 
+    footer:not(.print-footer), 
+    .no-print-backdrop,
+    [role="dialog"] > div:first-child:not([role="document"]) {
       display: none !important;
     }
 
+    /* Neutralize modal overlays in direct browser print */
+    .fixed.inset-0 {
+      position: static !important;
+      background: none !important;
+      backdrop-filter: none !important;
+      padding: 0 !important;
+    }
+
     /* Ensure scrollable containers expand to full height for printer */
-    .custom-scrollbar {
+    .custom-scrollbar, .overflow-y-auto, .overflow-x-auto {
       overflow: visible !important;
       height: auto !important;
       max-height: none !important;
     }
 
-    .printable-area {
+    .printable-area, #printable-statement-document, #printable-financial-document, #printable-fee-ledger {
       width: 100% !important;
       max-width: 100% !important;
       margin: 0 !important;
@@ -42,15 +62,16 @@
       border: none !important;
       display: block !important;
       position: static !important;
+      background: #ffffff !important;
     }
 
     /* Prevent breaking in the middle of tables or signatures */
-    tr, .signature-block, table, img {
+    tr, .signature-block, table, img, .break-inside-avoid {
       page-break-inside: avoid !important;
       break-inside: avoid !important;
     }
 
-    h1, h2, h3 {
+    h1, h2, h3, h4 {
       page-break-after: avoid !important;
       break-after: avoid !important;
     }

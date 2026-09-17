@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import type { FinancialDocument } from '../../utils/invoiceReceiptGenerator';
 import html2canvas from 'html2canvas';
+import { printElement } from '../../utils/printUtility';
 
 interface FinancialDocumentViewProps {
     document: FinancialDocument;
@@ -130,7 +131,9 @@ export const FinancialDocumentView: React.FC<FinancialDocumentViewProps> = ({
                         <button
                             id="btn-doc-print-native"
                             type="button"
-                            onClick={onPrint || (() => window.print())}
+                            onClick={onPrint || (() => printElement('printable-financial-document', {
+                                title: `${doc.school.name || 'School'} - ${isReceipt ? 'Receipt' : 'Invoice'} ${doc.documentNumber || ''}`
+                            }))}
                             className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-white text-slate-900 hover:bg-slate-100 rounded-xl text-xs font-bold transition-all shadow-sm active:scale-95"
                             title="Print formatted A4 sheet"
                         >

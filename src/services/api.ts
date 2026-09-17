@@ -1710,7 +1710,12 @@ export const createStudent = (data: NewStudent): Promise<Student> => apiFetch('/
 export const updateStudent = (id: string, data: Partial<Student>): Promise<Student> => apiFetch(`/students/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
 export const deleteStudent = (id: string): Promise<void> => apiFetch(`/students/${id}`, { method: 'DELETE' });
 export const updateMultipleStudents = (updates: any[]): Promise<Student[]> => apiFetch('/students/batch-update', { method: 'POST', body: JSON.stringify(updates) });
-export const uploadStudentPhoto = (formData: FormData): Promise<{url: string}> => apiFetch('/students/upload-photo', { method: 'POST', body: formData });
+export const uploadStudentPhoto = (body: FormData | { dataUrl: string }): Promise<{url: string}> => {
+    if (body instanceof FormData) {
+        return apiFetch('/students/upload-photo', { method: 'POST', body });
+    }
+    return apiFetch('/students/upload-photo', { method: 'POST', body: JSON.stringify(body) });
+};
 
 // --- Users ---
 export const getUsers = (): Promise<User[]> => apiFetch('/users');
@@ -1718,8 +1723,18 @@ export const createUser = (data: NewUser): Promise<User> => apiFetch('/users', {
 export const updateUser = (id: string, data: Partial<User>): Promise<User> => apiFetch(`/users/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
 export const deleteUser = (id: string): Promise<void> => apiFetch(`/users/${id}`, { method: 'DELETE' });
 export const updateUserProfile = (data: Partial<User>): Promise<User> => apiFetch('/users/profile', { method: 'PATCH', body: JSON.stringify(data) });
-export const uploadUserAvatar = (formData: FormData): Promise<{avatarUrl: string}> => apiFetch('/users/upload-avatar', { method: 'POST', body: formData });
-export const adminUploadUserPhoto = (formData: FormData): Promise<{url: string}> => apiFetch('/users/upload-photo', { method: 'POST', body: formData });
+export const uploadUserAvatar = (body: FormData | { dataUrl: string }): Promise<{avatarUrl: string}> => {
+    if (body instanceof FormData) {
+        return apiFetch('/users/upload-avatar', { method: 'POST', body });
+    }
+    return apiFetch('/users/upload-avatar', { method: 'POST', body: JSON.stringify(body) });
+};
+export const adminUploadUserPhoto = (body: FormData | { dataUrl: string }): Promise<{url: string}> => {
+    if (body instanceof FormData) {
+        return apiFetch('/users/upload-photo', { method: 'POST', body });
+    }
+    return apiFetch('/users/upload-photo', { method: 'POST', body: JSON.stringify(body) });
+};
 
 // --- Transactions ---
 export const getTransactions = (params: any = {}): Promise<any> => apiFetch(`/transactions?${new URLSearchParams(cleanParams(params)).toString()}`);

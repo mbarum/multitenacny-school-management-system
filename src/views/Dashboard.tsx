@@ -36,7 +36,7 @@ const Dashboard: React.FC = () => {
 
     return (
         <div className="p-4 sm:p-6 space-y-6">
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
                 <StatCard 
                     title="Active Students" 
                     value={stats?.totalStudents?.toLocaleString() || '0'} 
@@ -45,11 +45,27 @@ const Dashboard: React.FC = () => {
                     onClick={() => navigate('/students')}
                 />
                 <StatCard 
-                    title="Total Revenue" 
+                    title="Expected Fees" 
+                    value={stats?.totalExpectedFee ? formatCurrency(stats.totalExpectedFee) : formatCurrency(stats?.totalRevenue || 0)} 
+                    loading={isLoading}
+                    colorClass="bg-blue-100 text-blue-700"
+                    icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z" /></svg>} 
+                    onClick={() => navigate('/fees')}
+                />
+                <StatCard 
+                    title="Fees Collected" 
                     value={stats?.totalRevenue ? formatCurrency(stats.totalRevenue) : formatCurrency(0)} 
                     loading={isLoading}
                     colorClass="bg-green-100 text-green-700"
                     icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v.01" /></svg>} 
+                    onClick={() => navigate('/fees')}
+                />
+                <StatCard 
+                    title="Fees Overdue" 
+                    value={stats?.feesOverdue ? formatCurrency(stats.feesOverdue) : formatCurrency(0)} 
+                    loading={isLoading}
+                    colorClass="bg-yellow-100 text-yellow-700"
+                    icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>} 
                     onClick={() => navigate('/fees')}
                 />
                 <StatCard 
@@ -59,14 +75,6 @@ const Dashboard: React.FC = () => {
                     colorClass="bg-red-100 text-red-700"
                     icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" /></svg>} 
                     onClick={() => navigate('/expenses')}
-                />
-                <StatCard 
-                    title="Fees Overdue" 
-                    value={stats?.feesOverdue ? formatCurrency(stats.feesOverdue) : formatCurrency(0)} 
-                    loading={isLoading}
-                    colorClass="bg-yellow-100 text-yellow-700"
-                    icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>} 
-                    onClick={() => navigate('/fees')}
                 />
                 <StatCard 
                     title="Net Profit" 

@@ -493,6 +493,7 @@ const StudentsView: React.FC = () => {
     };
     const [newStudent, setNewStudent] = useState<any>(initialStudentState);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const directCameraInputRef = useRef<HTMLInputElement>(null);
 
     // Queries
     const { data: classes = [] } = useQuery({ 
@@ -1152,7 +1153,7 @@ const StudentsView: React.FC = () => {
                             <p className="text-[11px] text-slate-500 dark:text-slate-400">
                                 Attach official ID portrait via file upload or live camera viewfinder.
                             </p>
-                            <div className="flex items-center gap-2 pt-1">
+                            <div className="flex flex-wrap items-center gap-2 pt-1">
                                 <input 
                                     type="file" 
                                     accept="image/*" 
@@ -1168,13 +1169,30 @@ const StudentsView: React.FC = () => {
                                     <Upload className="w-3.5 h-3.5 mr-1 inline" />
                                     Upload Photo
                                 </button>
+                                <input 
+                                    type="file" 
+                                    accept="image/*" 
+                                    capture="user" 
+                                    ref={directCameraInputRef} 
+                                    onChange={handlePhotoUpload} 
+                                    className="hidden" 
+                                />
+                                <button 
+                                    type="button" 
+                                    onClick={() => directCameraInputRef.current?.click()} 
+                                    className="px-3 py-1.5 bg-slate-700 hover:bg-slate-800 text-white rounded-xl text-xs font-semibold transition-colors shadow-2xs flex items-center gap-1"
+                                    title="Snap portrait directly with device camera shutter"
+                                >
+                                    <Camera className="w-3.5 h-3.5" />
+                                    Device Camera
+                                </button>
                                 <button 
                                     type="button" 
                                     onClick={() => setIsCaptureModalOpen(true)} 
-                                    className="px-3 py-1.5 bg-primary-50 dark:bg-primary-950/60 text-primary-700 dark:text-primary-300 border border-primary-200 dark:border-primary-800 rounded-xl text-xs font-semibold hover:bg-primary-100 dark:hover:bg-primary-900/60 transition-colors shadow-2xs"
+                                    className="px-3 py-1.5 bg-primary-50 dark:bg-primary-950/60 text-primary-700 dark:text-primary-300 border border-primary-200 dark:border-primary-800 rounded-xl text-xs font-semibold hover:bg-primary-100 dark:hover:bg-primary-900/60 transition-colors shadow-2xs flex items-center gap-1"
                                 >
-                                    <Camera className="w-3.5 h-3.5 mr-1 inline" />
-                                    Take Webcam Photo
+                                    <Camera className="w-3.5 h-3.5" />
+                                    Webcam Viewfinder
                                 </button>
                             </div>
                         </div>
@@ -1330,8 +1348,18 @@ const StudentsView: React.FC = () => {
             <WebcamCaptureModal 
                 isOpen={isCaptureModalOpen} 
                 onClose={() => setIsCaptureModalOpen(false)} 
-                onCapture={url => {
+                onCapture={async url => {
                     setNewStudent((prev: any) => ({ ...prev, profileImage: url }));
+                    try {
+                        const uploadRes = await api.uploadStudentPhoto({ dataUrl: url });
+                        if (uploadRes?.url && !uploadRes.url.includes('undefined')) {
+                            setNewStudent((prev: any) => ({ ...prev, profileImage: uploadRes.url }));
+                            addNotification('Passport portrait captured and saved to media folder.', 'success');
+                            return;
+                        }
+                    } catch (err) {
+                        console.warn('Media upload fallback before student enrollment', err);
+                    }
                     addNotification('Passport portrait captured successfully!', 'success');
                 }} 
             />
