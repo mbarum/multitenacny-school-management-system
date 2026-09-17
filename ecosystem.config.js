@@ -1,13 +1,9 @@
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const fs = require('fs');
+const path = require('path');
 
 /**
- * Parses a .env file and extracts key-value pairs into a clean dictionary.
- * Does not depend on external packages so PM2 can always load it reliably.
+ * Robust zero-dependency .env parser for PM2.
+ * Safely parses KEY=VAL definitions and strips quotes.
  */
 function parseEnvFile(filePath) {
   const env = {};
@@ -19,10 +15,8 @@ function parseEnvFile(filePath) {
 
     for (const rawLine of lines) {
       const line = rawLine.trim();
-      // Skip comments and empty lines
       if (!line || line.startsWith('#')) continue;
 
-      // Strip 'export ' prefix if present
       const cleanLine = line.startsWith('export ') ? line.slice(7).trim() : line;
       const eqIdx = cleanLine.indexOf('=');
       if (eqIdx === -1) continue;
@@ -30,7 +24,6 @@ function parseEnvFile(filePath) {
       const key = cleanLine.slice(0, eqIdx).trim();
       let val = cleanLine.slice(eqIdx + 1).trim();
 
-      // Strip matching outer quotes
       if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
         val = val.slice(1, -1);
       }
@@ -40,18 +33,18 @@ function parseEnvFile(filePath) {
       }
     }
   } catch (err) {
-    console.warn(`[PM2 ecosystem] Warning: Failed to read env file at ${filePath}:`, err.message);
+    console.warn(`[PM2 ecosystem] Warning: Failed reading ${filePath}:`, err.message);
   }
 
   return env;
 }
 
-// Search order for backend environment files
+// Locate server directory and environment files
 const serverDir = path.resolve(__dirname, 'server');
 const serverEnv = path.resolve(serverDir, '.env');
 const rootEnv = path.resolve(__dirname, '.env');
 
-// Merge environment: server/.env takes precedence, falling back to root .env
+// Merge: server/.env takes precedence over root .env
 const loadedEnv = {
   ...parseEnvFile(rootEnv),
   ...parseEnvFile(serverEnv),
@@ -59,7 +52,7 @@ const loadedEnv = {
 
 const activeEnvFile = fs.existsSync(serverEnv) ? serverEnv : fs.existsSync(rootEnv) ? rootEnv : undefined;
 
-export default {
+module.exports = {
   apps: [
     {
       name: 'saaslink-emis',
