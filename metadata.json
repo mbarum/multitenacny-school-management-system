@@ -1,6 +1,6 @@
 {
   "name": "Saaslink School Management System Multitenancy",
-  "description": "Comprehensive school management and accounting system by SaasLink Technologies Ltd supporting CBC and traditional 8-4-4 learning, automated M-Pesa fee reconciliation, and KNEC CBA reporting.",
+  "description": "Comprehensive multi-tenant school management and accounting system by SaasLink Technologies Ltd supporting competency-based and numerical grading, automated fee reconciliation, and student information systems.",
   "requestFramePermissions": [
     "camera"
   ],

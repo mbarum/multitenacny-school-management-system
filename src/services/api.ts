@@ -1845,6 +1845,8 @@ export const testQueueWorker = (): Promise<{ success: boolean; jobId: string; me
 export const retryFailedQueueJobs = (): Promise<{ success: boolean; retriedCount: number }> => apiFetch('/super-admin/health/retry-failed-jobs', { method: 'POST' });
 export const getPlatformPricing = (): Promise<PlatformPricing> => apiFetch('/settings/public/pricing');
 export const updatePlatformPricing = (data: Partial<PlatformPricing>) => apiFetch('/super-admin/pricing', { method: 'PUT', body: JSON.stringify(data) });
+export const testSuperAdminStkPush = (data: { phone: string; amount: number; paybill?: string }): Promise<any> => apiFetch('/super-admin/test-stk-push', { method: 'POST', body: JSON.stringify(data) });
+export const cardSubscriptionCheckout = (data: { schoolId: string; plan: string; billingCycle: string; amount: number; cardDetails: any }): Promise<any> => apiFetch('/super-admin/payments/card-checkout', { method: 'POST', body: JSON.stringify(data) });
 export const updateSchoolSubscription = (schoolId: string, payload: any) => apiFetch(`/super-admin/schools/${schoolId}/subscription`, { method: 'PATCH', body: JSON.stringify(payload) });
 export const getSubscriptionPayments = () => apiFetch('/super-admin/payments');
 export const recordManualSubscriptionPayment = (data: any) => apiFetch('/super-admin/payments/manual', { method: 'POST', body: JSON.stringify(data) });

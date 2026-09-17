@@ -137,7 +137,7 @@ const Pricing: React.FC<PricingProps> = ({ onSelectPlan }) => {
                         Predictable Termly & Annual Investment
                     </h2>
                     <p className="mt-4 text-base sm:text-lg text-slate-600">
-                        Zero hidden implementation fees, zero hardware purchases. Every plan includes comprehensive onboarding, data import assistance, and compliance under the Kenya Data Protection Act 2019.
+                        Zero hidden implementation fees, zero hardware purchases. Every plan includes comprehensive onboarding, data import assistance, and enterprise data privacy compliance.
                     </p>
                 </div>
 

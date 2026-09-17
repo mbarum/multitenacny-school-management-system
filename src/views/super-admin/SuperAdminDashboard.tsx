@@ -51,7 +51,14 @@ import {
     HelpCircle,
     Sparkles,
     Newspaper,
-    Wifi
+    Wifi,
+    Key,
+    EyeOff,
+    ShieldCheck,
+    Copy,
+    Check,
+    Smartphone,
+    Zap
 } from 'lucide-react';
 
 export const SuperAdminDashboard: React.FC = () => {
@@ -100,6 +107,19 @@ export const SuperAdminDashboard: React.FC = () => {
 
     const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
     const [pricingForm, setPricingForm] = useState<Partial<PlatformPricing>>({});
+
+    // Payment integrations testing & UI states
+    const [stkTestPhone, setStkTestPhone] = useState('254712345678');
+    const [stkTestAmount, setStkTestAmount] = useState(10);
+    const [isTestingStk, setIsTestingStk] = useState(false);
+    const [stkTestResult, setStkTestResult] = useState<any>(null);
+
+    const [showStripeSecret, setShowStripeSecret] = useState(false);
+    const [showMpesaSecret, setShowMpesaSecret] = useState(false);
+    const [showMpesaPasskey, setShowMpesaPasskey] = useState(false);
+    const [isTestingStripe, setIsTestingStripe] = useState(false);
+    const [stripeTestResult, setStripeTestResult] = useState<any>(null);
+    const [copiedWebhook, setCopiedWebhook] = useState(false);
 
     const [isHealthModalOpen, setIsHealthModalOpen] = useState(false);
     const [activationSuccessModal, setActivationSuccessModal] = useState<{
@@ -391,9 +411,65 @@ export const SuperAdminDashboard: React.FC = () => {
         setIsExtendModalOpen(true);
     };
 
-    const handleOpenPricing = () => {
-        if (stats?.pricing) setPricingForm(stats.pricing);
+    const handleOpenPricing = async () => {
+        try {
+            const latest = await api.getPlatformPricing();
+            if (latest) {
+                setPricingForm(latest);
+            } else if (stats?.pricing) {
+                setPricingForm(stats.pricing);
+            }
+        } catch {
+            if (stats?.pricing) setPricingForm(stats.pricing);
+        }
+        setStkTestResult(null);
+        setStripeTestResult(null);
         setIsConfigModalOpen(true);
+    };
+
+    const handleRunStkTest = async () => {
+        setIsTestingStk(true);
+        setStkTestResult(null);
+        try {
+            const res = await api.testSuperAdminStkPush({
+                phone: stkTestPhone,
+                amount: Number(stkTestAmount) || 10
+            });
+            setStkTestResult(res);
+            addNotification(res.message || 'M-Pesa STK Push test prompt dispatched.', 'success');
+        } catch (err: any) {
+            setStkTestResult({ success: false, error: err.message || 'Failed to dispatch STK push test' });
+            addNotification(err.message || 'STK Push test failed.', 'error');
+        } finally {
+            setIsTestingStk(false);
+        }
+    };
+
+    const handleRunStripeTest = async () => {
+        setIsTestingStripe(true);
+        setStripeTestResult(null);
+        try {
+            const targetSchool = schools[0];
+            if (!targetSchool) {
+                throw new Error("No institution found to perform test card checkout.");
+            }
+            const res = await api.cardSubscriptionCheckout({
+                schoolId: targetSchool.id,
+                plan: SubscriptionPlan.BASIC,
+                billingCycle: 'MONTHLY',
+                amount: 3480,
+                cardDetails: { last4: '4242', name: 'Stripe Self-Checkout Test Admin' }
+            });
+            setStripeTestResult(res);
+            queryClient.invalidateQueries({ queryKey: ['platform-stats'] });
+            queryClient.invalidateQueries({ queryKey: ['super-receipts'] });
+            addNotification('Stripe self-checkout handshake verified! Official test receipt created.', 'success');
+        } catch (err: any) {
+            setStripeTestResult({ success: false, error: err.message || 'Stripe test failed' });
+            addNotification(err.message || 'Stripe card test failed.', 'error');
+        } finally {
+            setIsTestingStripe(false);
+        }
     };
 
     if (statsLoading && schoolsLoading) {
@@ -507,6 +583,7 @@ export const SuperAdminDashboard: React.FC = () => {
                 <StatCard
                     title="Realized Platform Revenue"
                     value={formatCurrency(stats?.totalRevenue ?? 0, 'KES')}
+                    subtitle={stats ? `M-Pesa: ${formatCurrency(stats.mpesaRevenue ?? 0, 'KES')} • Card: ${formatCurrency(stats.cardRevenue ?? 0, 'KES')} • Wire: ${formatCurrency(stats.wireRevenue ?? 0, 'KES')}` : undefined}
                     icon={<DollarSign className="w-5 h-5 text-emerald-600" />}
                     onClick={() => setActiveTab('revenue')}
                     isSelected={activeTab === 'revenue'}
@@ -1095,6 +1172,81 @@ export const SuperAdminDashboard: React.FC = () => {
             {/* TAB 4: REVENUE ANALYTICS & LIFECYCLE AUDIT */}
             {activeTab === 'revenue' && (
                 <div className="space-y-8">
+                    {/* Live Realized Revenue by Channel Grid */}
+                    <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-xs space-y-4">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-4">
+                            <div>
+                                <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                                    Realized Platform Fees & Inflows (Live Database Ledger)
+                                </h3>
+                                <p className="text-xs text-slate-500">
+                                    Total realized subscription fees aggregated directly from live verified platform receipts.
+                                </p>
+                            </div>
+                            <span className="text-xs font-mono font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200 w-fit">
+                                Live Inflow Ledger Connected
+                            </span>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                            <div className="p-4 rounded-2xl bg-emerald-50/70 border border-emerald-200/80 space-y-1">
+                                <span className="text-[11px] font-black uppercase tracking-wider text-emerald-800">Total Realized Revenue</span>
+                                <p className="text-xl font-black text-emerald-950 font-mono">
+                                    {formatCurrency(stats?.totalRevenue ?? 0, 'KES')}
+                                </p>
+                                <p className="text-[11px] text-emerald-700 font-medium">
+                                    {safeReceipts.length} verified platform receipts
+                                </p>
+                            </div>
+
+                            <div className="p-4 rounded-2xl bg-white border border-slate-200 space-y-1">
+                                <span className="text-[11px] font-black uppercase tracking-wider text-slate-600 flex items-center justify-between">
+                                    <span>M-Pesa C2B / STK</span>
+                                    <span className="text-emerald-600 font-bold text-[10px]">
+                                        {stats?.totalRevenue ? Math.round(((stats?.mpesaRevenue ?? 0) / stats.totalRevenue) * 100) : 0}%
+                                    </span>
+                                </span>
+                                <p className="text-lg font-black text-slate-900 font-mono">
+                                    {formatCurrency(stats?.mpesaRevenue ?? 0, 'KES')}
+                                </p>
+                                <p className="text-[11px] text-slate-500">
+                                    Safaricom Daraja Push & Paybill
+                                </p>
+                            </div>
+
+                            <div className="p-4 rounded-2xl bg-white border border-slate-200 space-y-1">
+                                <span className="text-[11px] font-black uppercase tracking-wider text-slate-600 flex items-center justify-between">
+                                    <span>Stripe Card Checkout</span>
+                                    <span className="text-indigo-600 font-bold text-[10px]">
+                                        {stats?.totalRevenue ? Math.round(((stats?.cardRevenue ?? 0) / stats.totalRevenue) * 100) : 0}%
+                                    </span>
+                                </span>
+                                <p className="text-lg font-black text-slate-900 font-mono">
+                                    {formatCurrency(stats?.cardRevenue ?? 0, 'KES')}
+                                </p>
+                                <p className="text-[11px] text-slate-500">
+                                    Self-checkout card subscriptions
+                                </p>
+                            </div>
+
+                            <div className="p-4 rounded-2xl bg-white border border-slate-200 space-y-1">
+                                <span className="text-[11px] font-black uppercase tracking-wider text-slate-600 flex items-center justify-between">
+                                    <span>Direct Bank Wire</span>
+                                    <span className="text-blue-600 font-bold text-[10px]">
+                                        {stats?.totalRevenue ? Math.round(((stats?.wireRevenue ?? 0) / stats.totalRevenue) * 100) : 0}%
+                                    </span>
+                                </span>
+                                <p className="text-lg font-black text-slate-900 font-mono">
+                                    {formatCurrency(stats?.wireRevenue ?? 0, 'KES')}
+                                </p>
+                                <p className="text-[11px] text-slate-500">
+                                    NCBA Bank Settlement Remittances
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
                     {/* Revenue Snapshot Cards */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <StatCard
@@ -1627,7 +1779,7 @@ export const SuperAdminDashboard: React.FC = () => {
                 isOpen={isConfigModalOpen}
                 onClose={() => setIsConfigModalOpen(false)}
                 title="Platform Pricing & Payment Gateway Parameters"
-                size="lg"
+                size="3xl"
             >
                 <form
                     onSubmit={(e) => {
@@ -1636,139 +1788,429 @@ export const SuperAdminDashboard: React.FC = () => {
                     }}
                     className="space-y-6"
                 >
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-4">
-                            <h4 className="font-bold text-slate-800 text-xs uppercase tracking-wider">Basic Plan Rates</h4>
-                            <div>
-                                <label className="block text-xs text-slate-500 font-semibold mb-1">Monthly (KES)</label>
-                                <input
-                                    type="number"
-                                    value={pricingForm.basicMonthlyPrice || 3000}
-                                    onChange={(e) => setPricingForm(p => ({ ...p, basicMonthlyPrice: Number(e.target.value) }))}
-                                    className="w-full p-2.5 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-800"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-xs text-slate-500 font-semibold mb-1">Annual (KES)</label>
-                                <input
-                                    type="number"
-                                    value={pricingForm.basicAnnualPrice || 30000}
-                                    onChange={(e) => setPricingForm(p => ({ ...p, basicAnnualPrice: Number(e.target.value) }))}
-                                    className="w-full p-2.5 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-800"
-                                />
+                    {/* SECTION 1: Subscription Tier Rates */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
+                            <h4 className="font-bold text-slate-800 text-xs uppercase tracking-wider flex items-center gap-1.5">
+                                <Sparkles className="w-3.5 h-3.5 text-primary-600" />
+                                Basic Plan Rates
+                            </h4>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block text-[11px] text-slate-500 font-semibold mb-1">Monthly (KES)</label>
+                                    <input
+                                        type="number"
+                                        value={pricingForm.basicMonthlyPrice || 3000}
+                                        onChange={(e) => setPricingForm(p => ({ ...p, basicMonthlyPrice: Number(e.target.value) }))}
+                                        className="w-full p-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-800"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-[11px] text-slate-500 font-semibold mb-1">Annual (KES)</label>
+                                    <input
+                                        type="number"
+                                        value={pricingForm.basicAnnualPrice || 30000}
+                                        onChange={(e) => setPricingForm(p => ({ ...p, basicAnnualPrice: Number(e.target.value) }))}
+                                        className="w-full p-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-800"
+                                    />
+                                </div>
                             </div>
                         </div>
 
-                        <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-4">
-                            <h4 className="font-bold text-slate-800 text-xs uppercase tracking-wider">Premium Plan Rates</h4>
-                            <div>
-                                <label className="block text-xs text-slate-500 font-semibold mb-1">Monthly (KES)</label>
-                                <input
-                                    type="number"
-                                    value={pricingForm.premiumMonthlyPrice || 6000}
-                                    onChange={(e) => setPricingForm(p => ({ ...p, premiumMonthlyPrice: Number(e.target.value) }))}
-                                    className="w-full p-2.5 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-800"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-xs text-slate-500 font-semibold mb-1">Annual (KES)</label>
-                                <input
-                                    type="number"
-                                    value={pricingForm.premiumAnnualPrice || 60000}
-                                    onChange={(e) => setPricingForm(p => ({ ...p, premiumAnnualPrice: Number(e.target.value) }))}
-                                    className="w-full p-2.5 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-800"
-                                />
+                        <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
+                            <h4 className="font-bold text-slate-800 text-xs uppercase tracking-wider flex items-center gap-1.5">
+                                <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                                Premium Plan Rates
+                            </h4>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block text-[11px] text-slate-500 font-semibold mb-1">Monthly (KES)</label>
+                                    <input
+                                        type="number"
+                                        value={pricingForm.premiumMonthlyPrice || 6000}
+                                        onChange={(e) => setPricingForm(p => ({ ...p, premiumMonthlyPrice: Number(e.target.value) }))}
+                                        className="w-full p-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-800"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-[11px] text-slate-500 font-semibold mb-1">Annual (KES)</label>
+                                    <input
+                                        type="number"
+                                        value={pricingForm.premiumAnnualPrice || 60000}
+                                        onChange={(e) => setPricingForm(p => ({ ...p, premiumAnnualPrice: Number(e.target.value) }))}
+                                        className="w-full p-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-800"
+                                    />
+                                </div>
                             </div>
                         </div>
                     </div>
 
-                    <div className="p-4 bg-white border border-slate-200 rounded-2xl space-y-4">
-                        <h4 className="font-bold text-slate-800 text-xs uppercase tracking-wider flex items-center gap-2">
-                            <CreditCard className="w-4 h-4 text-emerald-600" />
-                            M-Pesa C2B Paybill
-                        </h4>
-                        <div className="grid grid-cols-2 gap-4">
+                    {/* SECTION 2: Safaricom M-Pesa C2B Paybill & STK Push Integration */}
+                    <div className="p-5 bg-white border border-emerald-200 rounded-2xl space-y-4 shadow-xs">
+                        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                            <h4 className="font-bold text-slate-900 text-xs uppercase tracking-wider flex items-center gap-2">
+                                <div className="p-1.5 rounded-lg bg-emerald-50 text-emerald-700">
+                                    <Smartphone className="w-4 h-4" />
+                                </div>
+                                M-Pesa C2B Paybill & STK Push Integration
+                            </h4>
+                            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-800">
+                                Daraja API Ready
+                            </span>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                             <div>
-                                <label className="block text-xs text-slate-500 font-semibold mb-1">Paybill Number</label>
+                                <label className="block text-[11px] text-slate-500 font-semibold mb-1">C2B Paybill / Business Shortcode</label>
                                 <input
                                     type="text"
                                     value={pricingForm.mpesaPaybill || '522522'}
                                     onChange={(e) => setPricingForm(p => ({ ...p, mpesaPaybill: e.target.value }))}
-                                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800"
+                                    placeholder="e.g. 522522 or 174379"
+                                    className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono font-bold text-slate-800"
                                 />
                             </div>
                             <div>
-                                <label className="block text-xs text-slate-500 font-semibold mb-1">Environment</label>
+                                <label className="block text-[11px] text-slate-500 font-semibold mb-1">Environment</label>
                                 <select
                                     value={pricingForm.mpesaEnvironment || 'sandbox'}
                                     onChange={(e: any) => setPricingForm(p => ({ ...p, mpesaEnvironment: e.target.value }))}
-                                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 uppercase"
+                                    className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 uppercase"
                                 >
-                                    <option value="sandbox">Sandbox</option>
-                                    <option value="production">Production</option>
+                                    <option value="sandbox">Sandbox (Open Daraja Testing)</option>
+                                    <option value="production">Production (Live Safaricom Gateway)</option>
                                 </select>
                             </div>
+                            <div>
+                                <label className="block text-[11px] text-slate-500 font-semibold mb-1">Daraja Consumer Key</label>
+                                <input
+                                    type="text"
+                                    value={pricingForm.mpesaConsumerKey || ''}
+                                    onChange={(e) => setPricingForm(p => ({ ...p, mpesaConsumerKey: e.target.value }))}
+                                    placeholder="e.g. lqAkj782y1hBsh..."
+                                    className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono text-slate-800"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                                <div className="flex items-center justify-between mb-1">
+                                    <label className="text-[11px] text-slate-500 font-semibold">Daraja Consumer Secret</label>
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowMpesaSecret(s => !s)}
+                                        className="text-[10px] text-primary-600 hover:text-primary-800 font-bold flex items-center gap-1"
+                                    >
+                                        {showMpesaSecret ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                                        {showMpesaSecret ? 'Hide' : 'Show'}
+                                    </button>
+                                </div>
+                                <input
+                                    type={showMpesaSecret ? 'text' : 'password'}
+                                    value={pricingForm.mpesaConsumerSecret || ''}
+                                    onChange={(e) => setPricingForm(p => ({ ...p, mpesaConsumerSecret: e.target.value }))}
+                                    placeholder="Daraja consumer app secret"
+                                    className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono text-slate-800"
+                                />
+                            </div>
+                            <div>
+                                <div className="flex items-center justify-between mb-1">
+                                    <label className="text-[11px] text-slate-500 font-semibold">Lipa Na M-Pesa Online Passkey</label>
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowMpesaPasskey(s => !s)}
+                                        className="text-[10px] text-primary-600 hover:text-primary-800 font-bold flex items-center gap-1"
+                                    >
+                                        {showMpesaPasskey ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                                        {showMpesaPasskey ? 'Hide' : 'Show'}
+                                    </button>
+                                </div>
+                                <input
+                                    type={showMpesaPasskey ? 'text' : 'password'}
+                                    value={pricingForm.mpesaPasskey || ''}
+                                    onChange={(e) => setPricingForm(p => ({ ...p, mpesaPasskey: e.target.value }))}
+                                    placeholder="Passkey for STK Push initiation"
+                                    className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono text-slate-800"
+                                />
+                            </div>
+                        </div>
+
+                        {/* Interactive STK Push Testing Sandbox */}
+                        <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-2.5">
+                            <div className="flex items-center justify-between">
+                                <span className="text-[11px] font-black uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+                                    <Zap className="w-3.5 h-3.5 text-emerald-600" />
+                                    Test STK Push Handshake Simulation
+                                </span>
+                                <span className="text-[10px] text-slate-500">
+                                    Sends instant USSD prompt to phone
+                                </span>
+                            </div>
+
+                            <div className="flex flex-col sm:flex-row items-center gap-2">
+                                <div className="w-full sm:w-1/2">
+                                    <input
+                                        type="text"
+                                        value={stkTestPhone}
+                                        onChange={(e) => setStkTestPhone(e.target.value)}
+                                        placeholder="Phone e.g. 254712345678"
+                                        className="w-full p-2 bg-white border border-slate-200 rounded-xl text-xs font-mono text-slate-800"
+                                    />
+                                </div>
+                                <div className="w-full sm:w-1/4">
+                                    <input
+                                        type="number"
+                                        value={stkTestAmount}
+                                        onChange={(e) => setStkTestAmount(Number(e.target.value))}
+                                        placeholder="KES"
+                                        className="w-full p-2 bg-white border border-slate-200 rounded-xl text-xs font-mono text-slate-800"
+                                    />
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={handleRunStkTest}
+                                    disabled={isTestingStk}
+                                    className="w-full sm:w-1/4 px-3 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-xs transition-colors"
+                                >
+                                    {isTestingStk ? <Spinner /> : <Zap className="w-3.5 h-3.5" />}
+                                    {isTestingStk ? 'Sending...' : 'Trigger STK'}
+                                </button>
+                            </div>
+
+                            {stkTestResult && (
+                                <div className={`p-2.5 rounded-xl text-xs font-mono border ${
+                                    stkTestResult.success !== false
+                                        ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
+                                        : 'bg-rose-50 border-rose-200 text-rose-900'
+                                }`}>
+                                    <div className="flex items-center justify-between font-bold text-[11px] mb-1">
+                                        <span>Status: {stkTestResult.success !== false ? 'STK Handshake Dispatched' : 'Handshake Failed'}</span>
+                                        <span className="text-[10px] text-slate-500">{new Date().toLocaleTimeString()}</span>
+                                    </div>
+                                    <p className="text-[11px]">{stkTestResult.customerMessage || stkTestResult.message || stkTestResult.error}</p>
+                                    {stkTestResult.checkoutRequestId && (
+                                        <div className="mt-1 text-[10px] text-slate-600 flex gap-3">
+                                            <span>Checkout ID: <strong>{stkTestResult.checkoutRequestId}</strong></span>
+                                            <span>Merchant ID: <strong>{stkTestResult.merchantRequestId}</strong></span>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
                         </div>
                     </div>
 
+                    {/* SECTION 3: Stripe / Card Payment Integration (Self-Checkout Subscriptions) */}
+                    <div className="p-5 bg-white border border-indigo-200 rounded-2xl space-y-4 shadow-xs">
+                        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                            <div className="flex items-center gap-2">
+                                <div className="p-1.5 rounded-lg bg-indigo-50 text-indigo-700">
+                                    <CreditCard className="w-4 h-4" />
+                                </div>
+                                <div>
+                                    <h4 className="font-bold text-slate-900 text-xs uppercase tracking-wider">
+                                        Stripe & Card Payment Gateway
+                                    </h4>
+                                    <p className="text-[11px] text-slate-500">
+                                        Enables automated self-checkout subscriptions via Visa, Mastercard, and American Express.
+                                    </p>
+                                </div>
+                            </div>
+                            <label className="relative inline-flex items-center cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    checked={pricingForm.stripeEnabled ?? true}
+                                    onChange={(e) => setPricingForm(p => ({ ...p, stripeEnabled: e.target.checked }))}
+                                    className="sr-only peer"
+                                />
+                                <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600"></div>
+                                <span className="ml-2 text-xs font-bold text-slate-700">
+                                    {pricingForm.stripeEnabled ?? true ? 'Active' : 'Disabled'}
+                                </span>
+                            </label>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                            <div className="sm:col-span-2">
+                                <label className="block text-[11px] text-slate-500 font-semibold mb-1">Stripe Publishable Key</label>
+                                <input
+                                    type="text"
+                                    value={pricingForm.stripePublishableKey || ''}
+                                    onChange={(e) => setPricingForm(p => ({ ...p, stripePublishableKey: e.target.value }))}
+                                    placeholder="pk_test_51Pq9... or pk_live_..."
+                                    className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono text-slate-800"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-[11px] text-slate-500 font-semibold mb-1">Settlement Currency</label>
+                                <select
+                                    value={pricingForm.stripeCurrency || 'KES'}
+                                    onChange={(e: any) => setPricingForm(p => ({ ...p, stripeCurrency: e.target.value }))}
+                                    className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800"
+                                >
+                                    <option value="KES">KES (Kenyan Shillings)</option>
+                                    <option value="USD">USD (United States Dollars)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                                <div className="flex items-center justify-between mb-1">
+                                    <label className="text-[11px] text-slate-500 font-semibold">Stripe Secret Key</label>
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowStripeSecret(s => !s)}
+                                        className="text-[10px] text-primary-600 hover:text-primary-800 font-bold flex items-center gap-1"
+                                    >
+                                        {showStripeSecret ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                                        {showStripeSecret ? 'Hide' : 'Show'}
+                                    </button>
+                                </div>
+                                <input
+                                    type={showStripeSecret ? 'text' : 'password'}
+                                    value={pricingForm.stripeSecretKey || ''}
+                                    onChange={(e) => setPricingForm(p => ({ ...p, stripeSecretKey: e.target.value }))}
+                                    placeholder="sk_test_... or sk_live_..."
+                                    className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono text-slate-800"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-[11px] text-slate-500 font-semibold mb-1">Stripe Webhook Signing Secret</label>
+                                <input
+                                    type="password"
+                                    value={pricingForm.stripeWebhookSecret || ''}
+                                    onChange={(e) => setPricingForm(p => ({ ...p, stripeWebhookSecret: e.target.value }))}
+                                    placeholder="whsec_..."
+                                    className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono text-slate-800"
+                                />
+                            </div>
+                        </div>
+
+                        {/* Webhook Endpoint Display & Handshake Simulation */}
+                        <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-2.5">
+                            <div className="flex items-center justify-between">
+                                <span className="text-[11px] font-black uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+                                    <ShieldCheck className="w-3.5 h-3.5 text-indigo-600" />
+                                    Stripe Webhook Notification Endpoint
+                                </span>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        navigator.clipboard.writeText('https://emis.saaslink.tech/api/stripe/webhook');
+                                        setCopiedWebhook(true);
+                                        setTimeout(() => setCopiedWebhook(false), 2000);
+                                    }}
+                                    className="text-[10px] text-indigo-700 hover:text-indigo-900 font-bold flex items-center gap-1"
+                                >
+                                    {copiedWebhook ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
+                                    {copiedWebhook ? 'Copied' : 'Copy Endpoint'}
+                                </button>
+                            </div>
+
+                            <div className="p-2 bg-white border border-slate-200 rounded-lg text-xs font-mono text-slate-700 flex items-center justify-between overflow-x-auto">
+                                <span>https://emis.saaslink.tech/api/stripe/webhook</span>
+                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-2">POST</span>
+                            </div>
+
+                            <div className="flex items-center justify-between pt-1">
+                                <span className="text-[11px] text-slate-500">
+                                    Verify card billing handshake without entering live card details:
+                                </span>
+                                <button
+                                    type="button"
+                                    onClick={handleRunStripeTest}
+                                    disabled={isTestingStripe}
+                                    className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 transition-colors"
+                                >
+                                    {isTestingStripe ? <Spinner /> : <CreditCard className="w-3.5 h-3.5" />}
+                                    {isTestingStripe ? 'Testing...' : 'Test Card Handshake'}
+                                </button>
+                            </div>
+
+                            {stripeTestResult && (
+                                <div className={`p-2.5 rounded-xl text-xs font-mono border ${
+                                    stripeTestResult.success !== false
+                                        ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
+                                        : 'bg-rose-50 border-rose-200 text-rose-900'
+                                }`}>
+                                    <div className="flex items-center justify-between font-bold text-[11px] mb-1">
+                                        <span>Status: {stripeTestResult.success !== false ? 'Stripe Checkout Handshake Confirmed' : 'Test Failed'}</span>
+                                        <span className="text-[10px] text-slate-500">{new Date().toLocaleTimeString()}</span>
+                                    </div>
+                                    <p className="text-[11px]">{stripeTestResult.message || stripeTestResult.error}</p>
+                                    {stripeTestResult.receipt && (
+                                        <div className="mt-1 text-[10px] text-slate-600 flex gap-3">
+                                            <span>Receipt #: <strong>{stripeTestResult.receipt.receiptNumber}</strong></span>
+                                            <span>Amount: <strong>KES {stripeTestResult.receipt.amount?.toLocaleString()}</strong></span>
+                                            <span>Method: <strong>{stripeTestResult.receipt.paymentMethod}</strong></span>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* SECTION 4: Wire Transfer Settlement Details */}
                     <div className="p-4 bg-white border border-slate-200 rounded-2xl space-y-4">
                         <h4 className="font-bold text-slate-800 text-xs uppercase tracking-wider flex items-center gap-2">
                             <Building2 className="w-4 h-4 text-blue-600" />
                             Official Wire Transfer Bank Settlement Account Details
                         </h4>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                             <div>
-                                <label className="block text-xs text-slate-500 font-semibold mb-1">Beneficiary / Account Name</label>
+                                <label className="block text-[11px] text-slate-500 font-semibold mb-1">Beneficiary / Account Name</label>
                                 <input
                                     type="text"
                                     value={pricingForm.wireAccountName ?? 'SAASLINK TECHNOLOGIES LIMITED'}
                                     onChange={(e) => setPricingForm(p => ({ ...p, wireAccountName: e.target.value }))}
-                                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800"
+                                    className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800"
                                 />
                             </div>
                             <div>
-                                <label className="block text-xs text-slate-500 font-semibold mb-1">Bank Name</label>
+                                <label className="block text-[11px] text-slate-500 font-semibold mb-1">Bank Name</label>
                                 <input
                                     type="text"
                                     value={pricingForm.wireBankName ?? 'NCBA Bank Kenya PLC'}
                                     onChange={(e) => setPricingForm(p => ({ ...p, wireBankName: e.target.value }))}
-                                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800"
+                                    className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800"
                                 />
                             </div>
                             <div>
-                                <label className="block text-xs text-slate-500 font-semibold mb-1">Account Number</label>
+                                <label className="block text-[11px] text-slate-500 font-semibold mb-1">Account Number</label>
                                 <input
                                     type="text"
                                     value={pricingForm.wireAccountNumber ?? '8809220019'}
                                     onChange={(e) => setPricingForm(p => ({ ...p, wireAccountNumber: e.target.value }))}
-                                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800"
+                                    className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono font-bold text-slate-800"
                                 />
                             </div>
                             <div>
-                                <label className="block text-xs text-slate-500 font-semibold mb-1">Branch Name</label>
+                                <label className="block text-[11px] text-slate-500 font-semibold mb-1">Branch Name</label>
                                 <input
                                     type="text"
                                     value={pricingForm.wireBankBranch ?? 'Nairobi - Upperhill Branch'}
                                     onChange={(e) => setPricingForm(p => ({ ...p, wireBankBranch: e.target.value }))}
-                                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800"
+                                    className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800"
                                 />
                             </div>
                             <div>
-                                <label className="block text-xs text-slate-500 font-semibold mb-1">SWIFT / BIC Code</label>
+                                <label className="block text-[11px] text-slate-500 font-semibold mb-1">SWIFT / BIC Code</label>
                                 <input
                                     type="text"
                                     value={pricingForm.wireSwiftCode ?? 'CBAFKENX'}
                                     onChange={(e) => setPricingForm(p => ({ ...p, wireSwiftCode: e.target.value }))}
-                                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800"
+                                    className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono font-bold text-slate-800"
                                 />
                             </div>
                             <div>
-                                <label className="block text-xs text-slate-500 font-semibold mb-1">Payment Instructions</label>
+                                <label className="block text-[11px] text-slate-500 font-semibold mb-1">Payment Instructions</label>
                                 <input
                                     type="text"
                                     value={pricingForm.wirePaymentInstructions ?? 'Quote proforma reference in payment details'}
                                     onChange={(e) => setPricingForm(p => ({ ...p, wirePaymentInstructions: e.target.value }))}
-                                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800"
+                                    className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800"
                                 />
                             </div>
                         </div>
@@ -1785,9 +2227,9 @@ export const SuperAdminDashboard: React.FC = () => {
                         <button
                             type="submit"
                             disabled={updatePricingMutation.isPending}
-                            className="px-6 py-2.5 bg-slate-900 hover:bg-black text-white rounded-xl text-xs font-bold uppercase tracking-wider"
+                            className="px-6 py-2.5 bg-slate-900 hover:bg-black text-white rounded-xl text-xs font-bold uppercase tracking-wider shadow-sm transition-colors"
                         >
-                            {updatePricingMutation.isPending ? <Spinner /> : 'Save Pricing Parameters'}
+                            {updatePricingMutation.isPending ? <Spinner /> : 'Save Parameters & Gateway Keys'}
                         </button>
                     </div>
                 </form>

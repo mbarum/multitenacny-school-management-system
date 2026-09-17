@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useData } from '../../contexts/DataContext';
 import Modal from '../common/Modal';
-import { sendPasswordResetEmail } from '../../services/emailService';
+import { sendPasswordResetEmail, resetPasswordWithToken } from '../../services/emailService';
 import * as api from '../../services/api';
 import { validateEmail } from '../../utils/validation';
 import { ShieldCheck, ShieldAlert, KeyRound, UserCheck, AlertTriangle, LogOut, ArrowRight } from 'lucide-react';
@@ -22,7 +22,10 @@ const Login: React.FC = () => {
     const [sessionTimeoutNotice, setSessionTimeoutNotice] = useState<string | null>(null);
     
     const [isResetModalOpen, setIsResetModalOpen] = useState(false);
+    const [resetStep, setResetStep] = useState<'request' | 'verify'>('request');
     const [resetEmail, setResetEmail] = useState('');
+    const [verificationCode, setVerificationCode] = useState('');
+    const [newPassword, setNewPassword] = useState('');
     const [isSubmittingReset, setIsSubmittingReset] = useState(false);
 
     useEffect(() => {
@@ -88,14 +91,37 @@ const Login: React.FC = () => {
         e.preventDefault();
         setIsSubmittingReset(true);
         try {
-            await sendPasswordResetEmail(resetEmail);
-            addNotification("If an account with this email exists, a reset link will be sent.", 'info');
-        } catch (err) {
-            addNotification("Failed to send password reset email. Please try again later.", 'error');
+            const res = await sendPasswordResetEmail(resetEmail);
+            addNotification(res.message || "A verification code has been dispatched to your email.", 'info');
+            setResetStep('verify');
+        } catch (err: any) {
+            addNotification(err.message || "Failed to send password reset email. Please try again later.", 'error');
         } finally {
             setIsSubmittingReset(false);
+        }
+    };
+
+    const handleConfirmPasswordReset = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!verificationCode || !newPassword) {
+            addNotification("Please enter both the verification code and your new password.", 'error');
+            return;
+        }
+        setIsSubmittingReset(true);
+        try {
+            await resetPasswordWithToken(resetEmail, verificationCode, newPassword);
+            addNotification("Your password has been reset successfully! You can now log in.", 'success');
             setIsResetModalOpen(false);
+            setResetStep('request');
+            setPassword(newPassword);
+            setEmail(resetEmail);
             setResetEmail('');
+            setVerificationCode('');
+            setNewPassword('');
+        } catch (err: any) {
+            addNotification(err.message || "Failed to reset password. Please check your verification code.", 'error');
+        } finally {
+            setIsSubmittingReset(false);
         }
     };
 
@@ -338,27 +364,113 @@ const Login: React.FC = () => {
                 </Link>
             </div>
 
-            <Modal isOpen={isResetModalOpen} onClose={() => setIsResetModalOpen(false)} title="Reset Password">
-                <form onSubmit={handlePasswordReset} className="space-y-4">
-                    <p className="text-sm text-slate-600">Enter your email address and we will send you a link to reset your password.</p>
-                    <div>
-                        <label htmlFor="reset-email" className="block text-sm font-medium text-slate-700">Email Address</label>
-                        <input
-                            type="email"
-                            id="reset-email"
-                            value={resetEmail}
-                            onChange={(e) => setResetEmail(e.target.value)}
-                            required
-                            className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500"
-                            placeholder="you@example.com"
-                        />
-                    </div>
-                    <div className="flex justify-end pt-2">
-                        <button type="submit" disabled={isSubmittingReset} className="px-6 py-2 bg-primary-600 text-white font-semibold rounded-lg shadow-md hover:bg-primary-700 disabled:bg-slate-400">
-                            {isSubmittingReset ? 'Sending...' : 'Send Reset Link'}
-                        </button>
-                    </div>
-                </form>
+            <Modal 
+                isOpen={isResetModalOpen} 
+                onClose={() => {
+                    setIsResetModalOpen(false);
+                    setResetStep('request');
+                }} 
+                title={resetStep === 'request' ? "Reset Password" : "Enter Verification Code"}
+            >
+                {resetStep === 'request' ? (
+                    <form onSubmit={handlePasswordReset} className="space-y-4">
+                        <p className="text-sm text-slate-600">
+                            Enter your registered school portal email address. We will dispatch a 6-digit verification code to your email.
+                        </p>
+                        <div>
+                            <label htmlFor="reset-email" className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Email Address</label>
+                            <input
+                                type="email"
+                                id="reset-email"
+                                value={resetEmail}
+                                onChange={(e) => setResetEmail(e.target.value)}
+                                required
+                                className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-lg shadow-sm focus:ring-primary-500 focus:border-primary-500 text-sm"
+                                placeholder="e.g. administrator@saaslink.co.ke"
+                            />
+                        </div>
+                        <div className="flex justify-end gap-2 pt-2">
+                            <button
+                                type="button"
+                                onClick={() => setIsResetModalOpen(false)}
+                                className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg text-xs font-bold"
+                            >
+                                Cancel
+                            </button>
+                            <button 
+                                type="submit" 
+                                disabled={isSubmittingReset} 
+                                className="px-6 py-2 bg-primary-600 text-white font-bold rounded-lg shadow-md hover:bg-primary-700 disabled:bg-slate-400 text-xs"
+                            >
+                                {isSubmittingReset ? 'Dispatching Code...' : 'Send Verification Code'}
+                            </button>
+                        </div>
+                    </form>
+                ) : (
+                    <form onSubmit={handleConfirmPasswordReset} className="space-y-4">
+                        <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-xs text-blue-900">
+                            A verification code has been dispatched to <strong>{resetEmail}</strong> via our SMTP server. Enter the code and your new password below:
+                        </div>
+                        <div>
+                            <label htmlFor="verification-code" className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                                6-Digit Verification Code
+                            </label>
+                            <input
+                                type="text"
+                                id="verification-code"
+                                value={verificationCode}
+                                onChange={(e) => setVerificationCode(e.target.value)}
+                                required
+                                maxLength={8}
+                                className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-lg shadow-sm font-mono text-lg tracking-widest text-center focus:ring-primary-500 focus:border-primary-500"
+                                placeholder="123456"
+                            />
+                        </div>
+                        <div>
+                            <label htmlFor="new-password" className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                                New Password
+                            </label>
+                            <input
+                                type="password"
+                                id="new-password"
+                                value={newPassword}
+                                onChange={(e) => setNewPassword(e.target.value)}
+                                required
+                                minLength={6}
+                                className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-lg shadow-sm focus:ring-primary-500 focus:border-primary-500 text-sm"
+                                placeholder="Enter secure new password"
+                            />
+                        </div>
+                        <div className="flex justify-between items-center pt-2">
+                            <button
+                                type="button"
+                                onClick={() => setResetStep('request')}
+                                className="text-xs text-primary-600 hover:underline font-medium"
+                            >
+                                &larr; Back to email
+                            </button>
+                            <div className="flex gap-2">
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setIsResetModalOpen(false);
+                                        setResetStep('request');
+                                    }}
+                                    className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg text-xs font-bold"
+                                >
+                                    Cancel
+                                </button>
+                                <button 
+                                    type="submit" 
+                                    disabled={isSubmittingReset} 
+                                    className="px-6 py-2 bg-emerald-600 text-white font-bold rounded-lg shadow-md hover:bg-emerald-700 disabled:bg-slate-400 text-xs"
+                                >
+                                    {isSubmittingReset ? 'Updating...' : 'Set New Password'}
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                )}
             </Modal>
         </>
     );

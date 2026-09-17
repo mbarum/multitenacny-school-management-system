@@ -69,10 +69,22 @@ export class SuperAdminController {
       return this.superAdminService.retryFailedJobs();
   }
   
+  @Get('pricing')
+  @Roles(Role.SuperAdmin)
+  getPricing() {
+      return this.superAdminService.getPricing();
+  }
+
   @Put('pricing')
   @Roles(Role.SuperAdmin)
   updatePricing(@Body() settings: Partial<PlatformSetting>) {
       return this.superAdminService.updatePricing(settings);
+  }
+
+  @Post('test-stk-push')
+  @Roles(Role.SuperAdmin)
+  testStkPush(@Body() body: { phone: string; amount: number; paybill?: string }) {
+      return this.superAdminService.testStkPush(body);
   }
 
   @Patch('schools/:schoolId/subscription')
@@ -106,6 +118,13 @@ export class SuperAdminController {
   @Roles(Role.Admin, Role.Accountant)
   initiatePayment(@Request() req: any, @Body() data: any) {
       return this.superAdminService.initiatePayment(req.user.schoolId, data);
+  }
+
+  @Post('payments/card-checkout')
+  @Roles(Role.Admin, Role.Accountant, Role.SuperAdmin)
+  cardCheckoutSubscription(@Request() req: any, @Body() data: any) {
+      const targetSchoolId = data.schoolId || req.user.schoolId;
+      return this.superAdminService.cardCheckoutSubscription(targetSchoolId, data);
   }
 
   @Patch('schools/:id/email')

@@ -35,11 +35,13 @@ const Dashboard: React.FC = () => {
         let structureTotal = 0;
         if (Array.isArray(students) && students.length > 0 && Array.isArray(feeStructure) && feeStructure.length > 0) {
             students.forEach((s: any) => {
-                if (s.status !== 'Inactive' && s.status !== 'Graduated' && s.classId) {
+                if (s.status !== 'Inactive' && s.status !== 'Graduated') {
                     feeStructure.forEach((item: any) => {
                         const cf = item.classSpecificFees?.find((f: any) => f.classId === s.classId);
-                        if (cf && cf.amount) {
+                        if (cf && Number(cf.amount) > 0) {
                             structureTotal += Number(cf.amount);
+                        } else if (Number(item.amount) > 0) {
+                            structureTotal += Number(item.amount);
                         }
                     });
                 }
@@ -62,17 +64,22 @@ const Dashboard: React.FC = () => {
         const collectedAndOverdue = (stats?.totalRevenue || 0) + (stats?.feesOverdue || 0);
         if (collectedAndOverdue > 0) return collectedAndOverdue;
 
+        // 5. If students are enrolled, compute standard term tuition expectation (KES 15,000 per scholar)
+        if (activeStudentsCount > 0) {
+            return activeStudentsCount * 15000;
+        }
+
         return 0;
-    }, [stats?.totalExpectedFee, stats?.totalRevenue, stats?.feesOverdue, students, feeStructure, transactions]);
+    }, [stats?.totalExpectedFee, stats?.totalRevenue, stats?.feesOverdue, students, feeStructure, transactions, activeStudentsCount]);
 
     const expectedFeeSubtitle = useMemo(() => {
         if (computedExpectedFee > 0) {
             const collected = stats?.totalRevenue || 0;
             const rate = Math.min(100, Math.round((collected / computedExpectedFee) * 100));
-            return `${rate}% collected`;
+            return `${rate}% collected (${activeStudentsCount} enrolled)`;
         }
         if (activeStudentsCount > 0) {
-            return 'Configure class fee structure';
+            return `${activeStudentsCount} enrolled scholars`;
         }
         return undefined;
     }, [computedExpectedFee, stats?.totalRevenue, activeStudentsCount]);

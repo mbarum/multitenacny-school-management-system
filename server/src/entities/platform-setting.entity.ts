@@ -40,6 +40,31 @@ export class PlatformSetting extends BaseEntity {
   @Column({ default: '' })
   stripeWebhookSecret!: string;
 
+  @Column({ default: true })
+  stripeEnabled!: boolean;
+
+  @Column({ default: 'KES' })
+  stripeCurrency!: string;
+
   @Column({ default: 'sandbox' })
   mpesaEnvironment!: 'sandbox' | 'production';
+
+  // Bank Wire Details
+  @Column({ default: 'NCBA Bank Kenya PLC' })
+  wireBankName!: string;
+
+  @Column({ default: 'SAASLINK TECHNOLOGIES LIMITED' })
+  wireAccountName!: string;
+
+  @Column({ default: '8809220019' })
+  wireAccountNumber!: string;
+
+  @Column({ default: 'Nairobi - Upperhill Branch' })
+  wireBankBranch!: string;
+
+  @Column({ default: 'CBAFKENX' })
+  wireSwiftCode!: string;
+
+  @Column({ default: 'Quote proforma reference in payment details' })
+  wirePaymentInstructions!: string;
 }

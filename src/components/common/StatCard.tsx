@@ -23,15 +23,15 @@ const StatCard: React.FC<StatCardProps> = ({
     isSelected = false,
     subtitle
 }) => {
-    // Refined font sizing: clean, legible, and balanced across all viewports
+    // Refined font sizing: elegant, balanced, and avoids overly large figures
     const getValueFontSize = (val: string) => {
-        if (!val) return 'text-lg sm:text-xl';
+        if (!val) return 'text-base sm:text-lg';
         const str = String(val).trim();
-        if (str.length > 22) return 'text-xs sm:text-sm';
-        if (str.length > 17) return 'text-sm sm:text-base';
-        if (str.length > 13) return 'text-base sm:text-lg';
-        if (str.length > 9) return 'text-lg sm:text-xl';
-        return 'text-xl sm:text-2xl';
+        if (str.length > 22) return 'text-xs';
+        if (str.length > 16) return 'text-xs sm:text-sm';
+        if (str.length > 12) return 'text-sm sm:text-base';
+        if (str.length > 8) return 'text-base sm:text-lg';
+        return 'text-lg sm:text-xl';
     };
 
     return (

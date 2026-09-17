@@ -28,10 +28,26 @@ export const sendEmail = async (payload: { to: string | string[], subject: strin
 
 
 /**
+ * Submits verification code/token and new password to finalize reset.
+ */
+export const resetPasswordWithToken = async (email: string, codeOrToken: string, newPassword: string): Promise<{ success: boolean; message: string }> => {
+    const response = await fetch('/api/auth/reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, code: codeOrToken, newPassword })
+    });
+    const responseData = await response.json();
+    if (!response.ok) {
+        throw new Error(responseData.message || 'Failed to reset password.');
+    }
+    return responseData;
+};
+
+/**
  * Sends a password reset email via the backend.
  * @param email The recipient's email address.
  */
-export const sendPasswordResetEmail = async (email: string): Promise<{ success: boolean; message: string }> => {
+export const sendPasswordResetEmail = async (email: string): Promise<{ success: boolean; message: string; code?: string; token?: string }> => {
     const response = await fetch('/api/auth/request-password-reset', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

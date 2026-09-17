@@ -218,6 +218,7 @@ export interface Exam {
     date: string; // YYYY-MM-DD
     classId: string;
     type: ExamType;
+    term?: string;
 }
 
 export type NewExam = Omit<Exam, 'id'>;
@@ -288,6 +289,7 @@ export interface SchoolInfo {
     phone: string;
     email: string;
     logoUrl?: string;
+    motto?: string;
     schoolCode: string;
     gradingSystem: GradingSystem;
     currency?: string;
@@ -513,9 +515,11 @@ export interface PlatformPricing {
     premiumMonthlyPrice: number;
     premiumAnnualPrice: number;
     stripePublishableKey?: string;
-    mpesaPaybill?: string;
     stripeSecretKey?: string;
     stripeWebhookSecret?: string;
+    stripeEnabled?: boolean;
+    stripeCurrency?: 'KES' | 'USD';
+    mpesaPaybill?: string;
     mpesaPasskey?: string;
     mpesaConsumerKey?: string;
     mpesaConsumerSecret?: string;

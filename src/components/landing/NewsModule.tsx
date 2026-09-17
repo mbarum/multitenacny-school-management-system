@@ -84,10 +84,10 @@ export const NewsModule: React.FC = () => {
                         EdTech Insights & Learning Resources
                     </span>
                     <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
-                        EdTech News, CBC Guidelines & School Leadership
+                        EdTech Insights, Academic Frameworks & School Leadership
                     </h2>
                     <p className="mt-4 text-base sm:text-lg text-slate-600">
-                        Authoritative practical analysis on curriculum transitions, automated school accounting, and statutory data protection from the SaasLink Technologies Ltd editorial team. Enriched with instructional videos, downloadable PDF circulars, and visual infographics.
+                        Authoritative practical analysis on curriculum management, automated school accounting, and institutional data governance from the SaasLink Technologies Ltd editorial team. Enriched with instructional videos, downloadable guides, and visual infographics.
                     </p>
 
                     {/* Category Filter Pills */}

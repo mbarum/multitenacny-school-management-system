@@ -175,7 +175,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
         doc.setFontSize(10);
         doc.setFont('helvetica', 'normal');
         doc.setTextColor(148, 163, 184);
-        doc.text('Official Cloud Education Infrastructure Provider - Kenya', 15, 28);
+        doc.text('Enterprise Cloud Education Infrastructure Provider', 15, 28);
         doc.text('KRA PIN: P051928471Z | support@saaslink.com | +254 720 935 895', 15, 34);
 
         doc.setFontSize(18);
@@ -1237,7 +1237,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
                                         <Link to="/privacy" target="_blank" className="font-bold text-indigo-600 hover:underline">
                                             Data Privacy Agreement
                                         </Link>{' '}
-                                        pursuant to the Kenya Data Protection Act 2019.
+                                        and data protection terms.
                                     </span>
                                 </label>
                             </div>

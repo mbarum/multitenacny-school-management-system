@@ -26,10 +26,10 @@ export const DualCurriculumShowcase: React.FC = () => {
                         {t('curriculum.badge', 'Dual-Curriculum Standard & K-12 Regional Support')}
                     </span>
                     <h2 className="text-2xl sm:text-4xl font-extrabold text-slate-900 tracking-tight leading-tight">
-                        {t('curriculum.title', 'Unified for Competency-Based (CBE) & Traditional 8-4-4 Systems')}
+                        {t('curriculum.title', 'Unified for Competency-Based & Traditional Numerical Systems')}
                     </h2>
                     <p className="mt-4 text-sm sm:text-base text-slate-600 leading-relaxed">
-                        {t('curriculum.desc', 'Institutions across East Africa and beyond face the demanding reality of managing formative Competency-Based levels alongside traditional numeric 8-4-4 classes from Primary through High School. SaasLink delivers dedicated, certified grading engines for both pathways under one unified platform.')}
+                        {t('curriculum.desc', 'Institutions face the demanding reality of managing formative Competency-Based assessments alongside traditional numerical grading systems from Primary through High School. SaasLink delivers dedicated, versatile evaluation engines for both pathways under one unified platform.')}
                     </p>
                 </div>
 
@@ -113,7 +113,7 @@ export const DualCurriculumShowcase: React.FC = () => {
                                 <span className="text-xs font-bold uppercase tracking-wider text-primary-700 bg-primary-50 px-3 py-1.5 rounded-full border border-primary-200/70 shadow-2xs">
                                     {t('curriculum.traditional.tag', 'Primary to High School Examination Streams')}
                                 </span>
-                                <span className="text-xs font-semibold text-primary-600 bg-primary-50/50 px-2.5 py-1 rounded-lg border border-primary-100">8-4-4 Standard</span>
+                                <span className="text-xs font-semibold text-primary-600 bg-primary-50/50 px-2.5 py-1 rounded-lg border border-primary-100">Standard & Numerical</span>
                             </div>
 
                             <div className="flex items-start gap-4 mb-5">
@@ -122,7 +122,7 @@ export const DualCurriculumShowcase: React.FC = () => {
                                 </div>
                                 <div>
                                     <h3 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
-                                        {t('curriculum.traditional.title', 'Traditional 8-4-4 & Numeric Examination System')}
+                                        {t('curriculum.traditional.title', 'Traditional Numerical & Examination System')}
                                     </h3>
                                     <p className="text-xs font-bold text-primary-700 mt-1 flex items-center gap-1.5">
                                         <TrendingUp className="w-3.5 h-3.5 text-primary-600" />
@@ -169,7 +169,7 @@ export const DualCurriculumShowcase: React.FC = () => {
                         </div>
 
                         <div className="mt-8 pt-6 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
-                            <span>Certified for Ministry Inspections</span>
+                            <span>Audit-Ready Academic Records</span>
                             <span className="font-bold text-primary-700 flex items-center gap-1.5">
                                 <ShieldCheck className="w-4 h-4 text-primary-600 stroke-[2.5]" />
                                 One-Click PDF/Excel Export

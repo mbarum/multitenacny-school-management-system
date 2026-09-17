@@ -42,17 +42,18 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, size = 
                 
                 @media print {
                     .fixed { position: static !important; }
-                    .no-print-backdrop { background: none !important; backdrop-filter: none !important; padding: 0 !important; }
+                    .no-print-backdrop { background: transparent !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; padding: 0 !important; margin: 0 !important; }
                     .animate-modal-mobile, .animate-modal-desktop { animation: none !important; transform: none !important; }
                     .rounded-t-[2.5rem], .rounded-[2.5rem] { border-radius: 0 !important; }
                     .h-[92vh], .max-h-[90vh] { height: auto !important; max-height: none !important; }
                     .shadow-[0_32px_64px_-12px_rgba(0,0,0,0.3)] { shadow: none !important; box-shadow: none !important; }
                     .overflow-hidden { overflow: visible !important; }
+                    .no-print { display: none !important; }
                 }
                 `}
             </style>
             <div 
-                className={`bg-white rounded-t-[2.5rem] sm:rounded-[2.5rem] shadow-[0_32px_64px_-12px_rgba(0,0,0,0.3)] w-full ${sizeClasses[size]} h-[92vh] sm:h-auto sm:max-h-[90vh] flex flex-col animate-modal-mobile sm:animate-modal-desktop overflow-hidden border border-slate-100 print:border-none print:shadow-none print:w-full`}
+                className={`bg-white rounded-t-[2.5rem] sm:rounded-[2.5rem] shadow-[0_32px_64px_-12px_rgba(0,0,0,0.3)] w-full ${sizeClasses[size]} h-[92vh] sm:h-auto sm:max-h-[90vh] flex flex-col animate-modal-mobile sm:animate-modal-desktop overflow-hidden border border-slate-100 print:border-none print:shadow-none print:w-full print:max-w-none print:bg-transparent print:p-0 print:m-0`}
                 onClick={e => e.stopPropagation()}
             >
                 {/* Fixed Header */}

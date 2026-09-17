@@ -137,6 +137,24 @@ const runSeed = async () => {
             });
             await subRepo.save(subscription);
             console.log('Created Subscription: Active Premium Plan');
+
+            const subPaymentRepo = AppDataSource.getRepository(SubscriptionPayment);
+            let existingPayment = await subPaymentRepo.findOne({ where: { school: { id: school.id } } });
+            if (!existingPayment) {
+                existingPayment = subPaymentRepo.create({
+                    school,
+                    schoolId: school.id,
+                    amount: 50000,
+                    paymentMethod: 'MPESA',
+                    transactionCode: 'QKA82910XZ',
+                    targetPlan: SubscriptionPlan.PREMIUM,
+                    paymentDate: new Date().toISOString().split('T')[0],
+                    status: SubscriptionPaymentStatus.APPLIED,
+                    gatewayResponse: JSON.stringify({ receipt: 'QKA82910XZ', channel: 'M-PESA Paybill 522522' })
+                });
+                await subPaymentRepo.save(existingPayment);
+                console.log('Created Seed Subscription Payment: KES 50,000 (M-PESA Applied)');
+            }
         }
 
         // 4. Create School Admin Users

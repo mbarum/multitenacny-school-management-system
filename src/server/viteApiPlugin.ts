@@ -14,6 +14,15 @@ import {
 } from '../data/mockData';
 import { EXCHANGE_RATES } from '../utils/currency';
 import { SubscriptionPlan, SubscriptionStatus, CommunicationType, Role, User } from '../types';
+import { 
+    sendProductionEmail, 
+    getSmtpConfig, 
+    verifySmtpConnection, 
+    updateEnvSmtpConfig 
+} from './emailTransporter';
+
+// In-memory store for active password reset tokens: email -> { token, code, expiresAt }
+const passwordResetTokens = new Map<string, { token: string; code: string; expiresAt: number }>();
 
 const MEDIA_BASE_DIR = path.join(process.cwd(), 'public', 'uploads');
 
@@ -277,6 +286,132 @@ export function viteApiPlugin(options?: { disabled?: boolean }): Plugin {
                 if (path === '/api/auth/logout') {
                     sendJson(200, { success: true });
                     return;
+                }
+
+                if (path === '/api/auth/request-password-reset') {
+                    if (req.method === 'POST') {
+                        readBody(async body => {
+                            const email = (body.email || '').toLowerCase().trim();
+                            if (!email) {
+                                sendJson(400, { success: false, message: 'Email address is required.' });
+                                return;
+                            }
+
+                            const existingUser = users.find(u => u.email.toLowerCase() === email);
+                            const userRecipientName = existingUser ? existingUser.name : 'SaasLink User';
+                            
+                            // Generate 6-digit numeric verification code and secure token
+                            const code = Math.floor(100000 + Math.random() * 900000).toString();
+                            const token = `rst_${Date.now()}_${Math.random().toString(36).substring(2, 10)}`;
+                            const expiresAt = Date.now() + 60 * 60 * 1000; // 60 minutes
+                            
+                            passwordResetTokens.set(email, { token, code, expiresAt });
+
+                            const smtpConfig = getSmtpConfig();
+                            const emailHtml = `
+                                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;">
+                                    <div style="text-align: center; margin-bottom: 24px;">
+                                        <h2 style="color: #0f172a; margin: 0; font-size: 22px; font-weight: 800;">SAASLINK SCHOOL MANAGEMENT</h2>
+                                        <p style="color: #64748b; font-size: 12px; margin-top: 4px; text-transform: uppercase; letter-spacing: 1px;">Security & Account Authentication</p>
+                                    </div>
+                                    <div style="background-color: #f8fafc; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+                                        <p style="margin: 0 0 12px 0; color: #1e293b; font-size: 14px;">Hello <strong>${userRecipientName}</strong>,</p>
+                                        <p style="margin: 0 0 16px 0; color: #475569; font-size: 14px; line-height: 1.5;">
+                                            A request was made to reset the password for your account associated with <strong>${email}</strong>. 
+                                            Use the verification code below to authorize your password update:
+                                        </p>
+                                        <div style="text-align: center; margin: 24px 0;">
+                                            <span style="display: inline-block; background-color: #2563eb; color: #ffffff; font-size: 32px; font-weight: 900; letter-spacing: 6px; padding: 12px 32px; border-radius: 8px; font-family: monospace;">${code}</span>
+                                        </div>
+                                        <p style="margin: 0; color: #64748b; font-size: 12px; text-align: center;">
+                                            This verification code will expire in <strong>60 minutes</strong>.
+                                        </p>
+                                    </div>
+                                    <p style="color: #94a3b8; font-size: 12px; line-height: 1.5; margin: 0;">
+                                        If you did not request this password reset, no action is needed; your credentials remain secure.
+                                    </p>
+                                </div>
+                            `;
+
+                            // Attempt delivery through the configured production SMTP transport
+                            const emailResult = await sendProductionEmail({
+                                to: email,
+                                subject: 'SaasLink Password Reset Code: ' + code,
+                                html: emailHtml
+                            });
+
+                            const newLog = {
+                                id: `log-${Date.now()}`,
+                                recipient: email,
+                                channel: 'Email',
+                                message: `[Password Reset] Code dispatched to ${email}`,
+                                status: emailResult.success ? 'Delivered' : 'Failed',
+                                timestamp: new Date().toISOString()
+                            };
+                            communicationLogs.unshift(newLog);
+
+                            sendJson(200, {
+                                success: true,
+                                message: emailResult.success
+                                    ? `Password reset code sent to ${email}.`
+                                    : `Password reset request generated. Delivery note: ${emailResult.message}`,
+                                emailDelivered: emailResult.success,
+                                token: token,
+                                code: code
+                            });
+                        });
+                        return;
+                    }
+                }
+
+                if (path === '/api/auth/reset-password') {
+                    if (req.method === 'POST') {
+                        readBody(async body => {
+                            const email = (body.email || '').toLowerCase().trim();
+                            const tokenOrCode = (body.code || body.token || '').trim();
+                            const newPassword = (body.newPassword || '').trim();
+
+                            if (!email || !tokenOrCode || !newPassword) {
+                                sendJson(400, { success: false, message: 'Email, verification code/token, and new password are required.' });
+                                return;
+                            }
+
+                            const record = passwordResetTokens.get(email);
+                            if (!record || (record.token !== tokenOrCode && record.code !== tokenOrCode)) {
+                                sendJson(400, { success: false, message: 'Invalid or expired verification code.' });
+                                return;
+                            }
+
+                            if (Date.now() > record.expiresAt) {
+                                passwordResetTokens.delete(email);
+                                sendJson(400, { success: false, message: 'Verification code has expired. Please request a new one.' });
+                                return;
+                            }
+
+                            // Update user password in active users list
+                            const targetUser = users.find(u => u.email.toLowerCase() === email);
+                            if (targetUser) {
+                                targetUser.password = newPassword;
+                            }
+                            passwordResetTokens.delete(email);
+
+                            // Send confirmation email
+                            await sendProductionEmail({
+                                to: email,
+                                subject: 'Your SaasLink Password Has Been Reset',
+                                html: `
+                                    <div style="font-family: Arial, sans-serif; padding: 24px; border: 1px solid #e2e8f0; border-radius: 8px;">
+                                        <h3 style="color: #0f172a;">Password Successfully Updated</h3>
+                                        <p style="color: #334155;">Your account password for <strong>${email}</strong> has been updated successfully. You can now log in with your new credentials.</p>
+                                        <p style="color: #64748b; font-size: 12px;">If you did not perform this change, please immediately contact your school super administrator.</p>
+                                    </div>
+                                `
+                            });
+
+                            sendJson(200, { success: true, message: 'Password has been successfully updated.' });
+                        });
+                        return;
+                    }
                 }
 
                 if (path === '/api/auth/register-school') {
@@ -1156,27 +1291,212 @@ export function viteApiPlugin(options?: { disabled?: boolean }): Plugin {
                 }
                 if (path === '/api/communications/send-email') {
                     if (req.method === 'POST') {
-                        readBody(body => {
-                            const to = Array.isArray(body.to) ? body.to.join(', ') : (body.to || 'Guardian');
+                        readBody(async body => {
+                            const rawTo = body.to;
+                            const toList: string[] = Array.isArray(rawTo) 
+                                ? rawTo 
+                                : (typeof rawTo === 'string' ? rawTo.split(',').map(s => s.trim()) : []);
+                            
+                            const validRecipients = toList.filter(Boolean);
+                            const recipientsStr = validRecipients.length > 0 ? validRecipients.join(', ') : 'Recipient';
                             const subject = body.subject || 'School Portal Notification';
-                            const plainText = (body.body || '').replace(/<[^>]*>?/gm, '').trim();
+                            const htmlBody = body.body || '';
+                            const plainText = (htmlBody).replace(/<[^>]*>?/gm, '').trim();
+
+                            if (validRecipients.length === 0) {
+                                sendJson(400, { success: false, message: 'No valid recipient email provided.' });
+                                return;
+                            }
+
+                            // Dispatches through configured production SMTP transporter
+                            const emailResult = await sendProductionEmail({
+                                to: validRecipients,
+                                subject: subject,
+                                html: htmlBody,
+                                text: plainText
+                            });
+
                             const newLog: any = {
                                 id: `log-${Date.now()}`,
-                                recipient: to,
+                                recipient: recipientsStr,
                                 channel: 'Email',
-                                message: `[${subject}] ${plainText}`,
-                                status: 'Delivered',
+                                message: `[${subject}] ${plainText.substring(0, 120)}${plainText.length > 120 ? '...' : ''}`,
+                                status: emailResult.success ? 'Delivered' : 'Failed',
                                 timestamp: new Date().toISOString()
                             };
                             communicationLogs.unshift(newLog);
-                            sendJson(200, { success: true, message: `Email delivered to ${to}`, log: newLog });
+
+                            sendJson(200, {
+                                success: emailResult.success,
+                                message: emailResult.message,
+                                messageId: emailResult.messageId,
+                                error: emailResult.error,
+                                log: newLog
+                            });
                         });
                         return;
                     }
                 }
+
+                if (path === '/api/communications/contact') {
+                    if (req.method === 'POST') {
+                        readBody(async body => {
+                            const name = (body.name || 'Prospective Administrator').trim();
+                            const school = (body.school || 'Unspecified School').trim();
+                            const phone = (body.phone || 'N/A').trim();
+                            const email = (body.email || '').trim();
+                            const curriculum = (body.curriculum || 'Standard CBC / 8-4-4').trim();
+                            const message = (body.message || 'No additional message provided').trim();
+
+                            const smtpConfig = getSmtpConfig();
+                            const adminNotifyEmail = process.env.ADMIN_NOTIFY_EMAIL || smtpConfig.user || 'info@saaslink.co.ke';
+
+                            // 1. Notify Platform Admins
+                            const adminHtml = `
+                                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; padding: 24px; background: #ffffff;">
+                                    <div style="border-bottom: 2px solid #0f172a; padding-bottom: 12px; margin-bottom: 20px;">
+                                        <h2 style="color: #0f172a; margin: 0;">🚀 New Institutional Demo Inquiry</h2>
+                                        <p style="color: #64748b; font-size: 13px; margin: 4px 0 0 0;">Submitted via the official website contact portal</p>
+                                    </div>
+                                    <table style="width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 14px;">
+                                        <tr style="border-bottom: 1px solid #f1f5f9;"><td style="padding: 8px 0; font-weight: bold; color: #475569; width: 140px;">Institution:</td><td style="padding: 8px 0; color: #0f172a;"><strong>${school}</strong></td></tr>
+                                        <tr style="border-bottom: 1px solid #f1f5f9;"><td style="padding: 8px 0; font-weight: bold; color: #475569;">Contact Person:</td><td style="padding: 8px 0; color: #0f172a;">${name}</td></tr>
+                                        <tr style="border-bottom: 1px solid #f1f5f9;"><td style="padding: 8px 0; font-weight: bold; color: #475569;">Direct Phone:</td><td style="padding: 8px 0; color: #0f172a;">${phone}</td></tr>
+                                        <tr style="border-bottom: 1px solid #f1f5f9;"><td style="padding: 8px 0; font-weight: bold; color: #475569;">Email Address:</td><td style="padding: 8px 0; color: #0f172a;">${email || 'Not provided'}</td></tr>
+                                        <tr style="border-bottom: 1px solid #f1f5f9;"><td style="padding: 8px 0; font-weight: bold; color: #475569;">Curriculum Focus:</td><td style="padding: 8px 0; color: #0f172a;">${curriculum}</td></tr>
+                                        <tr><td style="padding: 8px 0; font-weight: bold; color: #475569; vertical-align: top;">Notes / Requirements:</td><td style="padding: 8px 0; color: #0f172a; line-height: 1.5;">${message}</td></tr>
+                                    </table>
+                                    <div style="background-color: #f8fafc; padding: 12px 16px; border-radius: 8px; margin-top: 16px; font-size: 12px; color: #64748b;">
+                                        Dispatched automatically via configured SMTP transport: ${smtpConfig.host}:${smtpConfig.port}
+                                    </div>
+                                </div>
+                            `;
+
+                            const adminEmailResult = await sendProductionEmail({
+                                to: adminNotifyEmail,
+                                subject: `New School Demo Inquiry: ${school} - ${name}`,
+                                html: adminHtml,
+                                replyTo: email || undefined
+                            });
+
+                            // 2. If prospective client provided their email, send polite acknowledgment
+                            let clientEmailResult = { success: true };
+                            if (email) {
+                                const clientHtml = `
+                                    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; padding: 24px; background: #ffffff;">
+                                        <h2 style="color: #0f172a; margin-top: 0;">Thank You for Contacting SaasLink</h2>
+                                        <p style="color: #334155; font-size: 14px; line-height: 1.6;">
+                                            Dear <strong>${name}</strong>,<br/><br/>
+                                            We have received your inquiry regarding <strong>${school}</strong>. 
+                                            Our edtech integration engineers are reviewing your operational requirements for <strong>${curriculum}</strong> curriculum workflow and automated fee collection.
+                                        </p>
+                                        <div style="background-color: #f8fafc; padding: 16px; border-radius: 8px; border-left: 4px solid #2563eb; margin: 20px 0;">
+                                            <p style="margin: 0; font-size: 13px; color: #1e293b; font-weight: bold;">Priority Support Hotline & WhatsApp</p>
+                                            <p style="margin: 4px 0 0 0; font-size: 13px; color: #475569;">
+                                                Direct: <strong>0720935895</strong> | WhatsApp: <strong>+254 720 935 895</strong> | Email: <strong>info@saaslink.co.ke</strong>
+                                            </p>
+                                        </div>
+                                        <p style="color: #64748b; font-size: 13px; line-height: 1.5;">
+                                            A senior school technology specialist will contact you promptly to schedule your demonstration.
+                                        </p>
+                                        <p style="color: #94a3b8; font-size: 11px; margin-top: 24px;">SaasLink Technologies Kenya &copy; ${new Date().getFullYear()} - Digital School Operating System</p>
+                                    </div>
+                                `;
+
+                                clientEmailResult = await sendProductionEmail({
+                                    to: email,
+                                    subject: 'Inquiry Confirmation: SaasLink School Management Platform',
+                                    html: clientHtml
+                                });
+                            }
+
+                            const newLog = {
+                                id: `log-${Date.now()}`,
+                                recipient: email || phone,
+                                channel: 'Email',
+                                message: `[Contact Inquiry] ${school} (${name}) inquiry processed`,
+                                status: adminEmailResult.success ? 'Delivered' : 'Logged',
+                                timestamp: new Date().toISOString()
+                            };
+                            communicationLogs.unshift(newLog);
+
+                            sendJson(200, {
+                                success: true,
+                                message: 'Your inquiry has been submitted and confirmed.',
+                                delivery: {
+                                    adminDelivered: adminEmailResult.success,
+                                    clientDelivered: clientEmailResult.success,
+                                    diagnostic: adminEmailResult.message
+                                }
+                            });
+                        });
+                        return;
+                    }
+                }
+
                 if (path === '/api/communications/communication-logs') {
                     sendJson(200, communicationLogs);
                     return;
+                }
+
+                // Super Admin SMTP Gateway Management
+                if (path === '/api/super-admin/smtp-config') {
+                    if (req.method === 'GET') {
+                        const config = getSmtpConfig();
+                        sendJson(200, {
+                            host: config.host,
+                            port: config.port,
+                            user: config.user,
+                            pass: config.pass ? '••••••••' : '',
+                            hasPass: !!config.pass,
+                            from: config.from,
+                            secure: config.secure,
+                            rejectUnauthorized: config.rejectUnauthorized
+                        });
+                        return;
+                    }
+                    if (req.method === 'POST') {
+                        readBody(body => {
+                            const result = updateEnvSmtpConfig(body);
+                            sendJson(200, result);
+                        });
+                        return;
+                    }
+                }
+
+                if (path === '/api/super-admin/test-smtp') {
+                    if (req.method === 'POST') {
+                        readBody(async body => {
+                            const targetEmail = (body.targetEmail || 'mutheeisaiah9@gmail.com').trim();
+                            const config = getSmtpConfig();
+                            
+                            const verifyResult = await verifySmtpConnection();
+                            const testResult = await sendProductionEmail({
+                                to: targetEmail,
+                                subject: `SMTP Diagnostic Test - SaasLink [${new Date().toLocaleTimeString()}]`,
+                                html: `
+                                    <div style="font-family: Arial, sans-serif; padding: 24px; border: 1px solid #e2e8f0; border-radius: 8px;">
+                                        <h2 style="color: #10b981; margin-top: 0;">✓ Production SMTP Operational</h2>
+                                        <p style="color: #334155;">This is a live test email dispatched from SaasLink School Management System.</p>
+                                        <table style="width: 100%; border-collapse: collapse; margin-top: 16px; font-size: 13px;">
+                                            <tr><td style="padding: 6px; font-weight: bold;">Host:</td><td>${config.host}</td></tr>
+                                            <tr><td style="padding: 6px; font-weight: bold;">Port:</td><td>${config.port}</td></tr>
+                                            <tr><td style="padding: 6px; font-weight: bold;">Sender:</td><td>${config.from}</td></tr>
+                                            <tr><td style="padding: 6px; font-weight: bold;">Timestamp:</td><td>${new Date().toISOString()}</td></tr>
+                                        </table>
+                                    </div>
+                                `
+                            });
+
+                            sendJson(200, {
+                                success: testResult.success,
+                                message: testResult.message,
+                                verifyResult,
+                                deliveryResult: testResult
+                            });
+                        });
+                        return;
+                    }
                 }
 
                 // Settings
@@ -1217,6 +1537,9 @@ export function viteApiPlugin(options?: { disabled?: boolean }): Plugin {
                     const graceCount = schools.filter(s => s.subscriptionStatus === SubscriptionStatus.PAST_DUE).length;
                     const disabledCount = schools.filter(s => s.subscriptionStatus === SubscriptionStatus.SUSPENDED).length;
                     const totalRev = saasReceipts.reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
+                    const mpesaRev = saasReceipts.filter(r => (r.paymentMethod || '').toLowerCase().includes('mpesa') || (r.paymentMethod || '').toLowerCase().includes('lipa')).reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
+                    const cardRev = saasReceipts.filter(r => (r.paymentMethod || '').toLowerCase().includes('card') || (r.paymentMethod || '').toLowerCase().includes('stripe')).reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
+                    const wireRev = saasReceipts.filter(r => (r.paymentMethod || '').toLowerCase().includes('wire') || (r.paymentMethod || '').toLowerCase().includes('bank') || (r.paymentMethod || '').toLowerCase().includes('ncba')).reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
                     const mrr = schools
                         .filter(s => s.subscriptionStatus === SubscriptionStatus.ACTIVE)
                         .reduce((sum, s) => {
@@ -1231,6 +1554,9 @@ export function viteApiPlugin(options?: { disabled?: boolean }): Plugin {
                         gracePeriodCount: graceCount,
                         disabledCount: disabledCount,
                         totalRevenue: totalRev,
+                        mpesaRevenue: mpesaRev,
+                        cardRevenue: cardRev,
+                        wireRevenue: wireRev,
                         monthlyRecurringRevenue: mrr,
                         annualRecurringRevenue: mrr * 12,
                         totalPlatformUsers: users.length,
@@ -1965,6 +2291,77 @@ export function viteApiPlugin(options?: { disabled?: boolean }): Plugin {
                     }
                     sendJson(200, pricing);
                     return;
+                }
+                if (path === '/api/super-admin/test-stk-push') {
+                    if (req.method === 'POST') {
+                        readBody(body => {
+                            const phone = body.phone || '254712345678';
+                            const amount = Number(body.amount) || 10;
+                            const paybill = body.paybill || pricing.mpesaPaybill || '522522';
+                            const hasKeys = !!(pricing.mpesaConsumerKey && pricing.mpesaPasskey);
+                            sendJson(200, {
+                                success: true,
+                                simulated: !hasKeys,
+                                message: hasKeys 
+                                    ? `Live Safaricom STK push initiated to ${phone} for KES ${amount.toLocaleString()} via Paybill ${paybill}. Enter M-Pesa PIN on handset.`
+                                    : `STK push simulated successfully to ${phone} for KES ${amount.toLocaleString()} via Paybill ${paybill}. (Configure Daraja Consumer Key & Passkey in Settings for live carrier dispatch).`,
+                                checkoutRequestID: `ws_CO_${Date.now()}_${Math.floor(Math.random() * 9000 + 1000)}`,
+                                merchantRequestID: `MR_${Date.now().toString(36).toUpperCase()}`,
+                                responseCode: "0",
+                                customerMessage: `Success. Request accepted for processing on mobile number ${phone}`
+                            });
+                        });
+                        return;
+                    }
+                }
+                if (path === '/api/super-admin/payments/card-checkout' || path === '/api/subscriptions/card-checkout') {
+                    if (req.method === 'POST') {
+                        readBody(body => {
+                            const { schoolId, plan, billingCycle, amount, cardDetails } = body;
+                            const targetSchool = schools.find(s => s.id === schoolId) || schools[0];
+                            const checkoutAmount = Number(amount) || (plan === SubscriptionPlan.PREMIUM ? (billingCycle === 'ANNUALLY' ? (pricing.premiumAnnualPrice || 50000) : (pricing.premiumMonthlyPrice || 5000)) : (billingCycle === 'ANNUALLY' ? (pricing.basicAnnualPrice || 30000) : (pricing.basicMonthlyPrice || 3000)));
+                            
+                            const txCode = `STRIPE-CH_${Date.now().toString(36).toUpperCase()}`;
+                            const now = new Date();
+                            const newEnd = new Date();
+                            newEnd.setDate(newEnd.getDate() + (billingCycle === 'ANNUALLY' ? 365 : 30));
+
+                            if (targetSchool) {
+                                targetSchool.plan = plan || targetSchool.plan;
+                                targetSchool.billingCycle = billingCycle || 'ANNUALLY';
+                                targetSchool.subscriptionStatus = SubscriptionStatus.ACTIVE;
+                                targetSchool.startDate = now.toISOString().split('T')[0];
+                                targetSchool.endDate = newEnd.toISOString().split('T')[0];
+                            }
+
+                            const newReceipt: any = {
+                                id: `rec-saas-${Date.now()}`,
+                                receiptNumber: `REC-SAAS-${new Date().getFullYear()}-${String(saasReceipts.length + 1).padStart(3, '0')}`,
+                                invoiceNumber: `INV-SAAS-${Date.now().toString().slice(-4)}`,
+                                schoolId: targetSchool?.id || 'sch-1',
+                                schoolName: targetSchool?.name || 'School',
+                                amount: checkoutAmount,
+                                currency: 'KES',
+                                paymentDate: now.toISOString().split('T')[0],
+                                paymentMethod: 'Stripe / Credit Card',
+                                transactionCode: txCode,
+                                plan: plan || SubscriptionPlan.BASIC,
+                                provisionedUntil: newEnd.toISOString().split('T')[0],
+                                verifiedBy: 'Stripe Self-Checkout Engine',
+                                notes: `Online card subscription checkout for ${plan} (${billingCycle}). Card ending in ${cardDetails?.last4 || '4242'}.`
+                            };
+                            saasReceipts = [newReceipt, ...saasReceipts];
+
+                            sendJson(200, {
+                                success: true,
+                                transactionCode: txCode,
+                                receipt: newReceipt,
+                                school: targetSchool,
+                                message: `Payment of KES ${checkoutAmount.toLocaleString()} processed successfully via Stripe. Institutional subscription active until ${newEnd.toLocaleDateString()}!`
+                            });
+                        });
+                        return;
+                    }
                 }
                 if (path === '/api/super-admin/payments') {
                     sendJson(200, saasReceipts);

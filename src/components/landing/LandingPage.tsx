@@ -7,13 +7,14 @@ import DualCurriculumShowcase from './DualCurriculumShowcase';
 import NewsModule from './NewsModule';
 import ContactModule from './ContactModule';
 import LanguageSelector from './LanguageSelector';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { SubscriptionPlan } from '../../types';
 
 interface LandingPageProps {
     onNavigate: (path: string, state?: any) => void;
 }
 
-// Cookie Consent Banner (Compliant with Kenya Data Protection Act 2019)
+// Cookie Consent Banner (Enterprise Data Privacy Compliant)
 const CookieBanner: React.FC = () => {
     const [visible, setVisible] = useState(false);
 
@@ -38,7 +39,7 @@ const CookieBanner: React.FC = () => {
         >
             <div className="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4 text-xs sm:text-sm">
                 <div className="text-slate-300 max-w-4xl leading-relaxed">
-                    <strong className="text-white">SaasLink Technologies Ltd Notice:</strong> We use functional and analytical cookies to safeguard session integrity, streamline M-Pesa payment callbacks, and personalize your administrative experience. Review our{' '}
+                    <strong className="text-white">SaasLink Technologies Ltd Notice:</strong> We use functional and analytical cookies to safeguard session integrity, streamline payment callbacks, and personalize your administrative experience. Review our{' '}
                     <Link to="/cookies" className="text-primary-400 font-semibold hover:underline">
                         Cookies Policy
                     </Link>{' '}
@@ -86,28 +87,29 @@ const WhatsAppFAB: React.FC = () => (
 // Structured FAQ Data
 const faqs = [
     {
-        question: "Does SaasLink accommodate both CBC (Competency-Based) and Traditional 8-4-4 learning?",
-        answer: "Yes. SaasLink was engineered specifically for the Kenyan curriculum transition. Our hybrid academic engine lets schools run CBC formative assessments (EE, ME, AE, BE rubrics across sub-strands) for Pre-Primary and Primary/Junior Secondary cohorts, while concurrently running traditional percentage-based marks, mean grades (A to E), and rankings for 8-4-4 candidate classes on the same platform."
+        question: "Does SaasLink accommodate both Competency-Based and Traditional numerical grading?",
+        answer: "Yes. SaasLink features an adaptive dual-curriculum academic engine. Our platform empowers schools to evaluate formative competency-based assessments (rubrics, sub-strands, and learning values) alongside traditional numerical marks, mean grades, and cohort rankings under one unified institution management system."
     },
     {
-        question: "How does the direct M-Pesa integration prevent school fee leakage?",
-        answer: "We connect directly to the automated M-Pesa gateway. When a parent pays via your school Paybill or Till with the student admission number as reference, an encrypted webhook callback is delivered within 800 milliseconds. The student ledger is credited instantly, an automated SMS receipt is dispatched to the parent, and the Bursar sees the live transaction. Zero manual receipt books, zero fake bank deposit slips."
+        question: "How does automated mobile money and direct payment reconciliation prevent fee leakage?",
+        answer: "SaasLink integrates with automated payment gateways and mobile payment channels. When a parent pays with the student admission number as reference, an encrypted webhook credits the ledger in real time, generates an official receipt, and alerts the parent via SMS. This eliminates manual receipt book reconciliation and counterfeit payment slips."
     },
     {
-        question: "What legal agreements govern our school's data on SaasLink?",
-        answer: "All institutional data is strictly protected under the Kenya Data Protection Act 2019. SaasLink Technologies Ltd serves as your designated Data Processor, governed by our comprehensive Terms of Service and Data Processing Agreement. Subscribing schools maintain sole ownership of their records, which are encrypted at rest (AES-256) and backed up daily."
+        question: "What legal agreements and security measures govern our school's data?",
+        answer: "All institutional data is protected by enterprise-grade security protocols and strict data processing agreements. SaasLink Technologies Ltd operates as your designated Data Processor. Subscribing institutions maintain complete ownership of their records, which are isolated per tenant, encrypted at rest (AES-256) and in transit, and backed up continuously."
     },
     {
         question: "Can we migrate our existing student marks and fee records from Excel?",
-        answer: "Yes. Every subscription includes dedicated technical onboarding. Our deployment engineers format and import your historical student bio-data, parent phone registries, and pending fee arrears from standard Excel or CSV sheets within 24 hours, at zero extra charge."
+        answer: "Yes. Every subscription includes dedicated technical onboarding. Our deployment engineers format and import your historical student bio-data, parent registries, and pending fee balances from standard Excel or CSV sheets within 24 hours, at zero extra charge."
     },
     {
-        question: "What happens if our school needs emergency technical assistance during exam or closing week?",
-        answer: "We maintain a dedicated Kenyan technical support desk reachable directly via phone hotline at 0720935895 and WhatsApp (+254 720 935 895). Priority response is guaranteed within 15 minutes during academic reporting periods."
+        question: "What technical support is provided during intensive examination or term-closing periods?",
+        answer: "We maintain dedicated multi-channel technical support reachable directly via phone hotline (+254 720 935 895) and WhatsApp desk. Priority response is guaranteed during academic reporting periods."
     }
 ];
 
 export const LandingPage: React.FC<LandingPageProps> = ({ onNavigate }) => {
+    const { t } = useLanguage();
     const [scrolled, setScrolled] = useState(false);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(0);
@@ -172,7 +174,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onNavigate }) => {
                 "@id": "https://saaslink.co.ke/#website",
                 "url": "https://saaslink.co.ke",
                 "name": "SaasLink Technologies Ltd",
-                "description": "Premier Kenyan school ERP cloud platform for CBC rubrics, 8-4-4 grades, M-Pesa automated accounting, and student attendance.",
+                "description": "Comprehensive cloud school ERP platform for competency rubrics, numerical grades, automated accounting, and student attendance.",
                 "publisher": {
                     "@id": "https://saaslink.co.ke/#organization"
                 }
@@ -183,34 +185,34 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onNavigate }) => {
                 "mainEntity": [
                     {
                         "@type": "Question",
-                        "name": "How does SaasLink automate school fee collection with M-Pesa?",
+                        "name": "How does SaasLink automate school fee collection?",
                         "acceptedAnswer": {
                             "@type": "Answer",
-                            "text": "SaasLink connects directly to your school Paybill or Till via automated M-Pesa C2B APIs. When a parent pays using the student admission number as account reference, the system instantly matches the payment, sends an SMS receipt to the parent, updates the student ledger, and eliminates manual reconciliation."
+                            "text": "SaasLink connects directly to payment gateways and mobile money services. When a parent pays using the student admission number as account reference, the system instantly matches the payment, sends an automated receipt, updates the student ledger, and eliminates manual reconciliation."
                         }
                     },
                     {
                         "@type": "Question",
-                        "name": "Does SaasLink support the Kenyan Competency-Based Curriculum (CBC) and KNEC CBA?",
+                        "name": "Does SaasLink support both Competency-Based and Numerical grading?",
                         "acceptedAnswer": {
                             "@type": "Answer",
-                            "text": "Yes. SaasLink includes native digital rubrics for Exceeding Expectations (EE), Meeting Expectations (ME), Approaching Expectations (AE), and Below Expectations (BE) across all strands and sub-strands, with one-click export files formatted precisely for KNEC portal uploads."
+                            "text": "Yes. SaasLink includes native digital rubrics for formative assessments across core competencies and learning strands, while seamlessly supporting traditional percentage-based marks, mean grades, and cohort broadsheets."
                         }
                     },
                     {
                         "@type": "Question",
-                        "name": "Can a school manage both CBC Junior School and traditional 8-4-4 streams together?",
+                        "name": "Can a school manage multiple curriculum pathways together?",
                         "acceptedAnswer": {
                             "@type": "Answer",
-                            "text": "Yes. SaasLink features concurrent dual-curriculum engine architecture allowing institutions to run standard numerical grading for 8-4-4 classes alongside formative competency rubrics for CBC classes under one unified database."
+                            "text": "Yes. SaasLink features concurrent multi-curriculum engine architecture allowing institutions to run standard numerical grading alongside formative competency rubrics under one unified database."
                         }
                     },
                     {
                         "@type": "Question",
-                        "name": "Is school and learner data protected under the Kenya Data Protection Act 2019?",
+                        "name": "How is institutional and student data protected?",
                         "acceptedAnswer": {
                             "@type": "Answer",
-                            "text": "Yes. SaasLink enforces strict multi-tenant data isolation, AES-256 encrypted backups, role-based access control, and complete audit logging compliant with the Office of the Data Protection Commissioner (ODPC) guidelines."
+                            "text": "SaasLink enforces strict multi-tenant data isolation, AES-256 encrypted backups, role-based access control, and complete audit logging compliant with established data protection governance."
                         }
                     }
                 ]
@@ -221,12 +223,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onNavigate }) => {
     return (
         <div className="min-h-screen w-full overflow-x-hidden bg-white text-slate-900 font-sans selection:bg-primary-500 selection:text-white">
             <Helmet>
-                <title>SaasLink Technologies Ltd | School Management System for Kenyan Schools</title>
-                <meta name="description" content="SaasLink is the premier school management cloud platform for Kenyan schools. Seamlessly manage CBC formative rubrics, traditional 8-4-4 marks, automated M-Pesa fee reconciliation, and parent SMS. Call 0720935895." />
-                <meta name="keywords" content="CBC school system Kenya, Competency Based Curriculum software, KNEC CBA report cards, M-Pesa school fees automation, 8-4-4 school management system, SaasLink Technologies Ltd" />
+                <title>SaasLink Technologies Ltd | Cloud School Management System</title>
+                <meta name="description" content="SaasLink is the enterprise cloud school management platform. Seamlessly manage competency-based rubrics, traditional numerical exams, automated fee reconciliation, and parent communication." />
+                <meta name="keywords" content="school management system, competency based curriculum software, student report cards, school fee automation, school ERP, SaasLink Technologies Ltd" />
                 <link rel="canonical" href="https://saaslink.co.ke" />
-                <meta property="og:title" content="SaasLink School Management Cloud | CBC & Traditional Learning Suite" />
-                <meta property="og:description" content="Automate school fee collection with M-Pesa, grade CBC and traditional streams concurrently, and generate instant report cards." />
+                <meta property="og:title" content="SaasLink School Management Cloud | Complete Institutional Operating System" />
+                <meta property="og:description" content="Automate school fee collection, evaluate competency and numerical streams concurrently, and generate instant institutional report cards." />
                 <script type="application/ld+json">
                     {JSON.stringify(structuredData)}
                 </script>
@@ -245,7 +247,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onNavigate }) => {
                         </a>
                         <span className="text-slate-600">&bull;</span>
                         <a 
-                            href="https://wa.me/254720935895?text=Hello%20SaasLink%20Technologies%2C%20I%20would%20like%20to%20inquire%20about%20the%20School%20Management%20System."
+                            href="https://wa.me/254720935895?text=Hello%20SaasLink%20Technologies%2C%20I%20would%20like%20to%20inquire%20about%20the%20School%20Management%20System." 
                             target="_blank" 
                             rel="noopener noreferrer" 
                             className="font-semibold text-emerald-400 hover:text-emerald-300"
@@ -255,7 +257,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onNavigate }) => {
                     </div>
                     <div className="flex items-center gap-3">
                         <span className="text-[11px] text-slate-400 hidden md:inline">
-                            Proprietor: <strong>SaasLink Technologies Ltd</strong> (Kenya DPA 2019 Certified)
+                            Proprietor: <strong>SaasLink Technologies Ltd</strong> &bull; Enterprise Cloud Infrastructure
                         </span>
                         <LanguageSelector variant="dark" />
                     </div>
@@ -283,11 +285,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onNavigate }) => {
 
                     {/* Desktop Navigation Links */}
                     <nav className="hidden lg:flex items-center gap-8 text-sm font-semibold text-slate-700">
-                        <a href="#curriculum" className="hover:text-primary-600 transition-colors">CBC & 8-4-4</a>
-                        <a href="#features" className="hover:text-primary-600 transition-colors">Capabilities</a>
-                        <a href="#pricing" className="hover:text-primary-600 transition-colors">Subscription Plans</a>
-                        <a href="#news" className="hover:text-primary-600 transition-colors">EdTech News</a>
-                        <a href="#contact" className="hover:text-primary-600 transition-colors">Contact</a>
+                        <a href="#curriculum" className="hover:text-primary-600 transition-colors">{t('nav.curriculum', 'CBC & 8-4-4')}</a>
+                        <a href="#features" className="hover:text-primary-600 transition-colors">{t('nav.features', 'Capabilities')}</a>
+                        <a href="#pricing" className="hover:text-primary-600 transition-colors">{t('nav.pricing', 'Subscription Plans')}</a>
+                        <a href="#news" className="hover:text-primary-600 transition-colors">{t('nav.news', 'EdTech News')}</a>
+                        <a href="#contact" className="hover:text-primary-600 transition-colors">{t('nav.contact', 'Contact')}</a>
                     </nav>
 
                     {/* Action Buttons (Desktop & Mobile) */}
@@ -387,7 +389,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onNavigate }) => {
                                 <svg className="w-4 h-4 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>
                                     <path strokeLinecap="round" strokeLinejoin="round" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
                                 </svg>
-                                <span>Portal Login</span>
+                                <span>{t('nav.login', 'Portal Login')}</span>
                             </Link>
                             <button
                                 onClick={() => openSubscription(SubscriptionPlan.BASIC)}
@@ -406,20 +408,20 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onNavigate }) => {
                     {/* Badge */}
                     <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold tracking-wide mb-6 shadow-sm">
                         <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                        <span>Official Operating Cloud for Kenyan Educational Institutions</span>
+                        <span>{t('hero.badge', 'Unified Cloud Operating System for Educational Institutions')}</span>
                     </div>
 
                     {/* Headline */}
                     <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black text-slate-900 tracking-tight leading-[1.15] mb-6">
-                        The Cloud School Operating System for{' '}
+                        {t('hero.title.pre', 'The Cloud School Operating System for')}{' '}
                         <span className="text-primary-600">
-                            CBC & Traditional Learning
+                            {t('hero.title.highlight', 'CBC & Traditional Learning')}
                         </span>.
                     </h1>
 
                     {/* Subhead */}
                     <p className="text-base sm:text-xl text-slate-600 leading-relaxed max-w-3xl mx-auto mb-10">
-                        Designed for Kenyan Primary, Junior Secondary, and High Schools. Seamlessly unify KICD-compliant Competency-Based formative rubrics, 8-4-4 numeric examinations, automated M-Pesa fee reconciliation, and instant parent SMS. Managed by <strong>SaasLink Technologies Ltd</strong>.
+                        {t('hero.description', 'Designed for Primary, Junior Secondary, and High Schools. Seamlessly unify Competency-Based formative rubrics, traditional numerical examinations, automated fee reconciliation, and instant parent communication. Managed by SaasLink Technologies Ltd.')}
                     </p>
 
                     {/* Mobile-Friendly CTAs */}
@@ -429,7 +431,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onNavigate }) => {
                             id="hero-btn-subscribe"
                             className="w-full sm:w-auto px-8 py-4 bg-primary-600 hover:bg-primary-700 text-white rounded-2xl text-base font-bold shadow-xl shadow-primary-600/30 hover:scale-[1.02] transition-all flex items-center justify-center gap-2"
                         >
-                            <span>Subscribe Your School Now</span>
+                            <span>{t('hero.btn.subscribe', 'Subscribe Your School Now')}</span>
                             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
                             </svg>
@@ -442,7 +444,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onNavigate }) => {
                             <svg className="w-5 h-5 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
                             </svg>
-                            <span>Call 0720935895</span>
+                            <span>{t('hero.btn.call', 'Call 0720935895')}</span>
                         </a>
                     </div>
 
@@ -450,26 +452,26 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onNavigate }) => {
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6 pt-6 border-t border-slate-200/80 text-left">
                         <div className="p-4 bg-white rounded-2xl border border-slate-200 shadow-sm">
                             <div className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">450+</div>
-                            <div className="text-xs sm:text-sm font-semibold text-slate-600 mt-1">Schools Enrolled</div>
-                            <div className="text-[11px] text-slate-400">Across 38 Kenyan Counties</div>
+                            <div className="text-xs sm:text-sm font-semibold text-slate-600 mt-1">{t('metrics.schools', 'Institutions Empowered')}</div>
+                            <div className="text-[11px] text-slate-400">{t('metrics.schools.sub', 'Primary, Secondary & Academies')}</div>
                         </div>
 
                         <div className="p-4 bg-white rounded-2xl border border-slate-200 shadow-sm">
-                            <div className="text-2xl sm:text-3xl font-black text-emerald-600 tracking-tight">800ms</div>
-                            <div className="text-xs sm:text-sm font-semibold text-slate-600 mt-1">M-Pesa Auto-Match</div>
-                            <div className="text-[11px] text-slate-400">Zero manual receipting</div>
+                            <div className="text-2xl sm:text-3xl font-black text-emerald-600 tracking-tight">&lt; 1s</div>
+                            <div className="text-xs sm:text-sm font-semibold text-slate-600 mt-1">{t('metrics.reconciliation', 'Fee Auto-Match')}</div>
+                            <div className="text-[11px] text-slate-400">{t('metrics.reconciliation.sub', 'Automated ledger reconciliation')}</div>
                         </div>
 
                         <div className="p-4 bg-white rounded-2xl border border-slate-200 shadow-sm">
                             <div className="text-2xl sm:text-3xl font-black text-primary-600 tracking-tight">100%</div>
-                            <div className="text-xs sm:text-sm font-semibold text-slate-600 mt-1">KICD / KNEC CBA</div>
-                            <div className="text-[11px] text-slate-400">Pre-Primary to Form 4</div>
+                            <div className="text-xs sm:text-sm font-semibold text-slate-600 mt-1">{t('metrics.curriculum', 'Dual-Curriculum Ready')}</div>
+                            <div className="text-[11px] text-slate-400">{t('metrics.curriculum.sub', 'Competency & numerical streams')}</div>
                         </div>
 
                         <div className="p-4 bg-white rounded-2xl border border-slate-200 shadow-sm">
-                            <div className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">DPA 2019</div>
-                            <div className="text-xs sm:text-sm font-semibold text-slate-600 mt-1">Data Sovereignty</div>
-                            <div className="text-[11px] text-slate-400">Republic of Kenya Certified</div>
+                            <div className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">AES-256</div>
+                            <div className="text-xs sm:text-sm font-semibold text-slate-600 mt-1">{t('metrics.currencies', 'Data Sovereignty')}</div>
+                            <div className="text-[11px] text-slate-400">{t('metrics.currencies.sub', 'Encrypted cloud multi-tenancy')}</div>
                         </div>
                     </div>
                 </div>
@@ -483,13 +485,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onNavigate }) => {
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="text-center max-w-3xl mx-auto mb-12 sm:mb-16">
                         <span className="inline-block px-3 py-1 bg-primary-100 text-primary-800 text-xs font-bold rounded-full uppercase tracking-wider mb-3">
-                            Complete Administrative Suite
+                            {t('features.badge', 'Complete Administrative Suite')}
                         </span>
                         <h2 className="text-2xl sm:text-4xl font-extrabold text-slate-900 tracking-tight leading-tight">
-                            Engineered for Institutional Rigor & Zero Fraud
+                            {t('features.title', 'Engineered for Institutional Rigor & Zero Fraud')}
                         </h2>
                         <p className="mt-4 text-sm sm:text-base text-slate-600 leading-relaxed">
-                            Every module addresses the everyday challenges of Kenyan School Directors, Principals, and Bursars—eliminating paper logbooks, lost fee payments, and manual report card compilation.
+                            Every module addresses the everyday challenges of School Directors, Principals, and Bursars—eliminating paper logbooks, unrecorded fee payments, and manual report card compilation.
                         </p>
                     </div>
 
@@ -501,9 +503,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onNavigate }) => {
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                 </svg>
                             </div>
-                            <h3 className="text-xl font-bold text-slate-900 mb-3">Direct M-Pesa Hook</h3>
+                            <h3 className="text-xl font-bold text-slate-900 mb-3">Automated Fee & Payment Reconciliation</h3>
                             <p className="text-sm text-slate-600 leading-relaxed">
-                                Link your institutional Paybill or Till number directly. When parents pay using the student's admission number, our webhook credits the ledger within 800 milliseconds and sends an immediate SMS receipt. Eliminates teller slips and prevents financial leakage.
+                                Link your institutional payment channels, paybills, or bank accounts directly. When parents pay using the student's admission number, our webhook credits the ledger within seconds and dispatches an immediate SMS receipt. Eliminates teller queues and prevents financial leakage.
                             </p>
                         </div>
 
@@ -514,9 +516,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onNavigate }) => {
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                 </svg>
                             </div>
-                            <h3 className="text-xl font-bold text-slate-900 mb-3">KNEC-Ready Academic Portfolios</h3>
+                            <h3 className="text-xl font-bold text-slate-900 mb-3">Comprehensive Academic Portfolios</h3>
                             <p className="text-sm text-slate-600 leading-relaxed">
-                                Generate formative CBC rubrics (EE/ME/AE/BE) across strands and sub-strands, ready for KNEC CBA export. Concurrently compile 8-4-4 subject rankings, mean grade curves, and terminal broadsheets stamped with secure QR verification.
+                                Generate formative competency rubrics (EE/ME/AE/BE) across strands and sub-strands, alongside numerical subject rankings, mean grade curves, and terminal broadsheets stamped with secure QR verification.
                             </p>
                         </div>
 
@@ -540,9 +542,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onNavigate }) => {
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                                 </svg>
                             </div>
-                            <h3 className="text-xl font-bold text-slate-900 mb-3">Sovereign Cloud & Kenya DPA 2019</h3>
+                            <h3 className="text-xl font-bold text-slate-900 mb-3">Enterprise Cloud Security & Privacy</h3>
                             <p className="text-sm text-slate-600 leading-relaxed">
-                                Role-based permissions guarantee that teachers only access their assigned streams while bursars manage finance. Backed by bank-grade encryption at rest and in transit, daily automated backups, and full regulatory compliance under Kenya's Data Protection Act.
+                                Role-based permissions guarantee that teachers only access their assigned streams while bursars manage finance. Backed by bank-grade encryption at rest and in transit, daily automated backups, and stringent data protection governance.
                             </p>
                         </div>
                     </div>
@@ -611,7 +613,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onNavigate }) => {
                         Modernize Your Institution's Operations Today
                     </h2>
                     <p className="text-sm sm:text-base text-slate-300 max-w-2xl mx-auto leading-relaxed">
-                        Join over 450 schools across Kenya benefiting from zero fee leakage, automated CBC rubrics, and sovereign cloud security with <strong>SaasLink Technologies Ltd</strong>.
+                        Join hundreds of institutions benefiting from zero fee leakage, versatile academic rubrics, and enterprise cloud reliability with <strong>SaasLink Technologies Ltd</strong>.
                     </p>
                     <div className="flex flex-col sm:flex-row items-center justify-center gap-3.5 sm:gap-4 pt-4">
                         <button
@@ -645,10 +647,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onNavigate }) => {
                                 <span className="font-black text-xl text-slate-900 tracking-tight">SaasLink Technologies Ltd</span>
                             </div>
                             <p className="text-xs sm:text-sm text-slate-600 leading-relaxed max-w-md">
-                                SaasLink Technologies Ltd is the registered proprietor, developer, and cloud operator of the SaasLink School Management System. Engineered in Nairobi, Kenya, in strict compliance with the Kenya Data Protection Act 2019 and Ministry of Education curriculum guidelines.
+                                SaasLink Technologies Ltd is the registered proprietor, developer, and cloud operator of the SaasLink School Management System. Engineered to deliver enterprise reliability, multi-curriculum academic support, and strict data privacy compliance for modern institutions.
                             </p>
                             <div className="text-xs text-slate-500 space-y-1 pt-1">
-                                <div><strong>Head Office:</strong> Westlands Commercial Center, Nairobi, Kenya</div>
+                                <div><strong>Head Office:</strong> Westlands Commercial Center, Nairobi</div>
                                 <div><strong>Direct Telephone:</strong> 0720935895 / +254 720 935 895</div>
                                 <div><strong>WhatsApp Desk:</strong> +254 720 935 895</div>
                                 <div><strong>Email:</strong> info@saaslink.co.ke &bull; support@saaslink.co.ke</div>
@@ -659,9 +661,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onNavigate }) => {
                         <div>
                             <h4 className="text-xs font-bold uppercase tracking-wider text-slate-900 mb-3">Capabilities</h4>
                             <ul className="space-y-2 text-xs text-slate-600">
-                                <li><a href="#curriculum" className="hover:text-primary-600">CBC Formative Rubrics</a></li>
-                                <li><a href="#curriculum" className="hover:text-primary-600">8-4-4 Numeric Examinations</a></li>
-                                <li><a href="#features" className="hover:text-primary-600">M-Pesa Fee Hook</a></li>
+                                <li><a href="#curriculum" className="hover:text-primary-600">Competency Rubrics</a></li>
+                                <li><a href="#curriculum" className="hover:text-primary-600">Numerical Examinations</a></li>
+                                <li><a href="#features" className="hover:text-primary-600">Automated Fee Reconciliation</a></li>
                                 <li><a href="#features" className="hover:text-primary-600">Parent Communications Portal</a></li>
                                 <li><a href="#pricing" className="hover:text-primary-600">Subscription Plans</a></li>
                                 <li><a href="#contact" className="hover:text-primary-600">Support & Inquiries</a></li>
@@ -687,7 +689,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onNavigate }) => {
                                         Cookies Policy
                                     </Link>
                                 </li>
-                                <li><a href="#news" className="hover:text-primary-600">Kenya DPA 2019 Compliance</a></li>
+                                <li><a href="#news" className="hover:text-primary-600">Data Governance Standards</a></li>
                                 <li><a href="#contact" className="hover:text-primary-600">Support Desk (0720935895)</a></li>
                             </ul>
                         </div>

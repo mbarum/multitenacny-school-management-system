@@ -28,11 +28,18 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ isOpen, onClose }) => {
     const { schoolInfo, formatCurrency, addNotification, refreshSchoolInfo } = useData();
     const [pricing, setPricing] = useState<PlatformPricing | null>(null);
     const [isProcessing, setIsProcessing] = useState(false);
-    const [paymentMethod, setPaymentMethod] = useState<'MPESA' | 'WIRE'>('WIRE');
+    const [paymentMethod, setPaymentMethod] = useState<'MPESA' | 'WIRE' | 'CARD'>('CARD');
     const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlan>(SubscriptionPlan.PREMIUM);
     const [billingCycle, setBillingCycle] = useState<'MONTHLY' | 'ANNUALLY'>('ANNUALLY');
     const [orderSubmitted, setOrderSubmitted] = useState(false);
     const [lastOrderRef, setLastOrderRef] = useState<string>('');
+    const [stkPhone, setStkPhone] = useState<string>('');
+    const [cardDetails, setCardDetails] = useState({
+        number: '',
+        exp: '',
+        cvc: '',
+        name: ''
+    });
 
     const upgradeRef = useMemo(() => {
         if (!schoolInfo) return '';
@@ -45,8 +52,14 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ isOpen, onClose }) => {
         if (isOpen) {
             api.getPlatformPricing().then(setPricing).catch(() => {});
             setOrderSubmitted(false);
+            if (schoolInfo?.phone) {
+                setStkPhone(schoolInfo.phone);
+            }
+            if (schoolInfo?.name) {
+                setCardDetails(prev => ({ ...prev, name: (schoolInfo as any).adminName || schoolInfo.name }));
+            }
         }
-    }, [isOpen]);
+    }, [isOpen, schoolInfo]);
 
     if (!schoolInfo) return null;
 
@@ -177,12 +190,46 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ isOpen, onClose }) => {
     const handleUpgrade = async () => {
         setIsProcessing(true);
         try {
-            if (paymentMethod === 'MPESA') {
-                addNotification("Requesting STK Push...", "info");
-                const ref = `UPG_${selectedPlan.substring(0, 3)}_${Date.now().toString().slice(-6)}`;
-                await initiateSTKPush(totalWithVat, schoolInfo.phone || '', ref, 'SUBSCRIPTION');
-                addNotification("M-Pesa payment request dispatched to your mobile phone.", "success");
+            if (paymentMethod === 'CARD') {
+                const cleanedCard = cardDetails.number.replace(/\s+/g, '');
+                if (!cleanedCard || cleanedCard.length < 12) {
+                    addNotification("Please enter a valid 16-digit card number.", "error");
+                    setIsProcessing(false);
+                    return;
+                }
+                if (!cardDetails.exp || !cardDetails.cvc) {
+                    addNotification("Please provide card expiry date (MM/YY) and CVC.", "error");
+                    setIsProcessing(false);
+                    return;
+                }
+                addNotification("Authorizing self-checkout card payment with Stripe...", "info");
+                const res = await api.cardSubscriptionCheckout({
+                    schoolId: schoolInfo.id,
+                    plan: selectedPlan,
+                    billingCycle,
+                    amount: totalWithVat,
+                    cardDetails: {
+                        last4: cleanedCard.slice(-4),
+                        name: cardDetails.name || schoolInfo.name
+                    }
+                });
+                await refreshSchoolInfo();
+                addNotification(res.message || "Stripe card checkout completed! Subscription unlocked immediately.", "success");
                 onClose();
+                return;
+            } else if (paymentMethod === 'MPESA') {
+                const targetPhone = stkPhone || schoolInfo.phone || '254712345678';
+                if (!targetPhone || targetPhone.length < 9) {
+                    addNotification("Please enter a valid Safaricom mobile number.", "error");
+                    setIsProcessing(false);
+                    return;
+                }
+                addNotification("Requesting Safaricom STK Push...", "info");
+                const ref = `UPG_${selectedPlan.substring(0, 3)}_${Date.now().toString().slice(-6)}`;
+                await initiateSTKPush(totalWithVat, targetPhone, ref, 'SUBSCRIPTION');
+                addNotification(`M-Pesa STK push dispatched to ${targetPhone}. Enter your PIN on handset.`, "success");
+                onClose();
+                return;
             } else {
                 await api.initiateSubscriptionPayment({
                     schoolId: schoolInfo.id,
@@ -472,39 +519,162 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ isOpen, onClose }) => {
                         </div>
 
                         {/* Payment Method Selector */}
-                        <div className="space-y-2">
+                        <div className="space-y-3">
                             <label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider block">
                                 Select Payment Method
                             </label>
-                            <div className="grid grid-cols-2 gap-3">
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                                 <button 
                                     type="button"
-                                    onClick={() => setPaymentMethod('WIRE')}
-                                    className={`p-4 rounded-xl border-2 transition-all flex flex-col items-center justify-center gap-2 ${
-                                        paymentMethod === 'WIRE' 
-                                            ? 'border-slate-900 bg-slate-50 dark:border-primary-500 dark:bg-slate-800 shadow-sm' 
-                                            : 'border-slate-200 dark:border-slate-800 opacity-60 hover:opacity-100'
+                                    onClick={() => setPaymentMethod('CARD')}
+                                    className={`p-3.5 rounded-xl border-2 transition-all flex flex-col items-center justify-center gap-1.5 ${
+                                        paymentMethod === 'CARD' 
+                                            ? 'border-indigo-600 bg-indigo-50/50 dark:border-indigo-500 dark:bg-indigo-950/30 shadow-sm' 
+                                            : 'border-slate-200 dark:border-slate-800 opacity-70 hover:opacity-100'
                                     }`}
                                 >
-                                    <Building2 className="w-5 h-5 text-slate-900 dark:text-primary-400" />
-                                    <span className="text-xs font-bold">Bank Wire Transfer</span>
-                                    <span className="text-[10px] text-slate-400">Proforma & Manual Verify</span>
+                                    <CreditCard className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+                                    <span className="text-xs font-bold text-slate-900 dark:text-white">Credit / Debit Card</span>
+                                    <span className="text-[10px] text-slate-400">Instant Self-Checkout</span>
                                 </button>
 
                                 <button 
                                     type="button"
                                     onClick={() => setPaymentMethod('MPESA')}
-                                    className={`p-4 rounded-xl border-2 transition-all flex flex-col items-center justify-center gap-2 ${
+                                    className={`p-3.5 rounded-xl border-2 transition-all flex flex-col items-center justify-center gap-1.5 ${
                                         paymentMethod === 'MPESA' 
-                                            ? 'border-emerald-600 bg-emerald-50/40 dark:border-emerald-500 dark:bg-slate-800 shadow-sm' 
-                                            : 'border-slate-200 dark:border-slate-800 opacity-60 hover:opacity-100'
+                                            ? 'border-emerald-600 bg-emerald-50/50 dark:border-emerald-500 dark:bg-emerald-950/30 shadow-sm' 
+                                            : 'border-slate-200 dark:border-slate-800 opacity-70 hover:opacity-100'
                                     }`}
                                 >
                                     <CreditCard className="w-5 h-5 text-emerald-600" />
-                                    <span className="text-xs font-bold">Lipa Na M-Pesa</span>
-                                    <span className="text-[10px] text-slate-400">Instant STK Push</span>
+                                    <span className="text-xs font-bold text-slate-900 dark:text-white">Lipa Na M-Pesa</span>
+                                    <span className="text-[10px] text-slate-400">Direct STK Push</span>
+                                </button>
+
+                                <button 
+                                    type="button"
+                                    onClick={() => setPaymentMethod('WIRE')}
+                                    className={`p-3.5 rounded-xl border-2 transition-all flex flex-col items-center justify-center gap-1.5 ${
+                                        paymentMethod === 'WIRE' 
+                                            ? 'border-slate-900 bg-slate-50 dark:border-primary-500 dark:bg-slate-800 shadow-sm' 
+                                            : 'border-slate-200 dark:border-slate-800 opacity-70 hover:opacity-100'
+                                    }`}
+                                >
+                                    <Building2 className="w-5 h-5 text-slate-900 dark:text-primary-400" />
+                                    <span className="text-xs font-bold text-slate-900 dark:text-white">Bank Wire Transfer</span>
+                                    <span className="text-[10px] text-slate-400">Proforma PDF & Wire</span>
                                 </button>
                             </div>
+
+                            {/* Dynamic Payment Method Forms */}
+                            {paymentMethod === 'CARD' && (
+                                <div className="p-4 bg-slate-50 dark:bg-slate-900/60 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-3">
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                                            <ShieldCheck className="w-4 h-4 text-indigo-600" />
+                                            Stripe Encrypted Card Checkout
+                                        </span>
+                                        <span className="text-[10px] bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 font-bold px-2 py-0.5 rounded">
+                                            Instant Activation
+                                        </span>
+                                    </div>
+                                    <div className="space-y-2.5">
+                                        <div>
+                                            <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
+                                                Card Number
+                                            </label>
+                                            <input
+                                                type="text"
+                                                placeholder="4242 •••• •••• 4242"
+                                                value={cardDetails.number}
+                                                onChange={(e) => setCardDetails(c => ({ ...c, number: e.target.value }))}
+                                                className="w-full p-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-mono font-bold text-slate-800 dark:text-white placeholder:text-slate-400"
+                                            />
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <div>
+                                                <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
+                                                    Expiration (MM/YY)
+                                                </label>
+                                                <input
+                                                    type="text"
+                                                    placeholder="12/28"
+                                                    maxLength={5}
+                                                    value={cardDetails.exp}
+                                                    onChange={(e) => setCardDetails(c => ({ ...c, exp: e.target.value }))}
+                                                    className="w-full p-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-mono font-bold text-slate-800 dark:text-white placeholder:text-slate-400"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
+                                                    CVC Security Code
+                                                </label>
+                                                <input
+                                                    type="password"
+                                                    placeholder="•••"
+                                                    maxLength={4}
+                                                    value={cardDetails.cvc}
+                                                    onChange={(e) => setCardDetails(c => ({ ...c, cvc: e.target.value }))}
+                                                    className="w-full p-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-mono font-bold text-slate-800 dark:text-white placeholder:text-slate-400"
+                                                />
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
+                                                Cardholder / Institutional Name
+                                            </label>
+                                            <input
+                                                type="text"
+                                                placeholder="e.g. Bursar / Principal Name"
+                                                value={cardDetails.name}
+                                                onChange={(e) => setCardDetails(c => ({ ...c, name: e.target.value }))}
+                                                className="w-full p-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-800 dark:text-white placeholder:text-slate-400"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {paymentMethod === 'MPESA' && (
+                                <div className="p-4 bg-emerald-50/40 dark:bg-emerald-950/20 rounded-2xl border border-emerald-200 dark:border-emerald-800/40 space-y-2.5">
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                                            <Sparkles className="w-4 h-4 text-emerald-600" />
+                                            Safaricom Daraja STK Push
+                                        </span>
+                                        <span className="text-[10px] text-emerald-700 dark:text-emerald-300 font-bold bg-emerald-100 dark:bg-emerald-900/40 px-2 py-0.5 rounded">
+                                            Paybill: {pricing?.mpesaPaybill || '522522'}
+                                        </span>
+                                    </div>
+                                    <div>
+                                        <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
+                                            Target Mobile Number (for STK Prompt)
+                                        </label>
+                                        <input
+                                            type="tel"
+                                            placeholder="254712345678"
+                                            value={stkPhone}
+                                            onChange={(e) => setStkPhone(e.target.value)}
+                                            className="w-full p-2.5 bg-white dark:bg-slate-800 border border-emerald-200 dark:border-emerald-700 rounded-xl text-xs font-mono font-bold text-slate-800 dark:text-white"
+                                        />
+                                        <p className="text-[10px] text-slate-500 mt-1">
+                                            A notification will pop up on this phone prompting for the M-Pesa PIN to complete payment of <strong>{formatCurrency(totalWithVat)}</strong>.
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
+
+                            {paymentMethod === 'WIRE' && (
+                                <div className="p-4 bg-slate-50 dark:bg-slate-900/60 rounded-2xl border border-slate-200 dark:border-slate-800 text-xs space-y-1">
+                                    <p className="font-bold text-slate-800 dark:text-slate-200">
+                                        Manual Bank Remittance to {bankName}
+                                    </p>
+                                    <p className="text-slate-500">
+                                        Submitting this order generates an official Proforma Invoice PDF. Once payment is transferred, the Super Administrator reconciles and approves your subscription.
+                                    </p>
+                                </div>
+                            )}
                         </div>
 
                         {/* Summary & Submit */}
@@ -527,13 +697,18 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ isOpen, onClose }) => {
                             <button 
                                 onClick={handleUpgrade}
                                 disabled={isProcessing}
-                                className="w-full py-3.5 bg-slate-900 hover:bg-black dark:bg-primary-600 dark:hover:bg-primary-500 text-white rounded-xl font-bold text-sm tracking-wide shadow-md transition-all flex justify-center items-center gap-2 active:scale-95 disabled:bg-slate-400 mt-2"
+                                className="w-full py-3.5 bg-slate-900 hover:bg-black dark:bg-primary-600 dark:hover:bg-primary-500 text-white rounded-xl font-bold text-sm tracking-wide shadow-md transition-all flex justify-center items-center gap-2 active:scale-95 disabled:bg-slate-400 mt-2 cursor-pointer"
                             >
                                 {isProcessing ? (
                                     <Spinner />
+                                ) : paymentMethod === 'CARD' ? (
+                                    <>
+                                        <span>Pay with Card (Instant Unlock)</span>
+                                        <ArrowRight className="w-4 h-4" />
+                                    </>
                                 ) : paymentMethod === 'MPESA' ? (
                                     <>
-                                        <span>Pay via M-Pesa STK Push</span>
+                                        <span>Dispatch M-Pesa STK Push Prompt</span>
                                         <ArrowRight className="w-4 h-4" />
                                     </>
                                 ) : (
@@ -544,7 +719,11 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ isOpen, onClose }) => {
                                 )}
                             </button>
                             <p className="text-center text-[10px] text-slate-400">
-                                Wire orders receive a download proforma invoice and are activated upon financial verification.
+                                {paymentMethod === 'CARD' 
+                                    ? 'Card payments are authorized instantly via Stripe with 256-bit encryption.' 
+                                    : paymentMethod === 'MPESA' 
+                                        ? 'Prompt will be dispatched to your phone. Ensure phone screen is unlocked.' 
+                                        : 'Wire orders receive a download proforma invoice and are activated upon financial verification.'}
                             </p>
                         </div>
                     </div>

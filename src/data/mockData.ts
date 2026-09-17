@@ -45,8 +45,15 @@ export const initialPricing: PlatformPricing = {
     basicAnnualPrice: 30000,
     premiumMonthlyPrice: 5000,
     premiumAnnualPrice: 50000,
-    stripePublishableKey: 'pk_test_sample',
     mpesaPaybill: '522522',
+    mpesaEnvironment: 'sandbox',
+    mpesaConsumerKey: '',
+    mpesaConsumerSecret: '',
+    mpesaPasskey: '',
+    stripePublishableKey: 'pk_test_51Psample_SaasLinkCloud',
+    stripeSecretKey: 'sk_test_51Psample_SaasLinkSecret',
+    stripeWebhookSecret: 'whsec_saaslink_sample_webhook',
+    stripeEnabled: true,
     wireBankName: 'NCBA Bank Kenya PLC',
     wireAccountName: 'SaasLink Technologies Ltd - Cloud Operations',
     wireAccountNumber: '1004928371',
@@ -996,6 +1003,22 @@ export const initialSaasReceipts: SaasReceipt[] = [
         plan: SubscriptionPlan.BASIC,
         provisionedUntil: new Date(Date.now() + 110 * 86400000).toISOString().split('T')[0],
         verifiedBy: 'Platform Super Administrator'
+    },
+    {
+        id: 'rec-saas-3',
+        receiptNumber: 'REC-SAAS-2025-003',
+        invoiceId: 'inv-saas-3',
+        invoiceNumber: 'INV-SAAS-2025-003',
+        schoolId: 'school-2',
+        schoolName: 'Westlands High School',
+        amount: 50000,
+        currency: 'KES',
+        paymentDate: '2025-02-01',
+        paymentMethod: 'Stripe / Credit Card',
+        transactionCode: 'STRIPE_CH_9948271',
+        plan: SubscriptionPlan.PREMIUM,
+        provisionedUntil: new Date(Date.now() + 300 * 86400000).toISOString().split('T')[0],
+        verifiedBy: 'Stripe Self-Checkout Engine'
     }
 ];
 

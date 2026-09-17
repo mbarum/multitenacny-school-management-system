@@ -9,14 +9,39 @@ export const ContactModule: React.FC = () => {
     const [message, setMessage] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isSuccess, setIsSuccess] = useState(false);
+    const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsSubmitting(true);
-        setTimeout(() => {
+        setErrorMessage(null);
+
+        try {
+            const res = await fetch('/api/communications/contact', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    name,
+                    school,
+                    phone,
+                    email,
+                    curriculum,
+                    message
+                })
+            });
+
+            const data = await res.json().catch(() => ({}));
+            if (res.ok && data.success) {
+                setIsSuccess(true);
+            } else {
+                setErrorMessage(data.message || 'Unable to submit inquiry. Please try again or reach out via WhatsApp.');
+            }
+        } catch (err: any) {
+            console.error('Contact submission error:', err);
+            setErrorMessage('Network connection error while transmitting your inquiry. Please call our hotline directly at 0720935895.');
+        } finally {
             setIsSubmitting(false);
-            setIsSuccess(true);
-        }, 700);
+        }
     };
 
     return (
@@ -33,7 +58,7 @@ export const ContactModule: React.FC = () => {
                                 Talk Directly With Our School Systems Team
                             </h2>
                             <p className="mt-3 text-slate-600 text-sm sm:text-base leading-relaxed">
-                                Whether you're transitioning to Junior Secondary CBC, automating your M-Pesa fee collection, or seeking a complete cloud migration, SaasLink Technologies Ltd is here to guide your school leadership.
+                                Whether you're modernizing academic assessment tracking, automating student fee reconciliation, or seeking a complete cloud migration, SaasLink Technologies Ltd is here to guide your school leadership.
                             </p>
                         </div>
 
@@ -129,6 +154,11 @@ export const ContactModule: React.FC = () => {
                             </div>
                         ) : (
                             <form onSubmit={handleSubmit} className="space-y-4">
+                                {errorMessage && (
+                                    <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-800 font-medium">
+                                        {errorMessage}
+                                    </div>
+                                )}
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <div>
                                         <label className="block text-xs font-bold text-slate-700 mb-1">Your Full Name *</label>
@@ -186,10 +216,10 @@ export const ContactModule: React.FC = () => {
                                         onChange={(e) => setCurriculum(e.target.value)}
                                         className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500"
                                     >
-                                        <option value="Dual CBC & Traditional">Dual CBC & Traditional (Primary & Secondary)</option>
-                                        <option value="CBC Only">CBC Only (Pre-Primary & Primary)</option>
-                                        <option value="Traditional 8-4-4">Traditional 8-4-4 / KCSE</option>
-                                        <option value="International IGCSE">International / British IGCSE</option>
+                                        <option value="Dual CBC & Traditional">Dual Competency-Based & Traditional Numerical</option>
+                                        <option value="CBC Only">Competency-Based Curriculum (CBC)</option>
+                                        <option value="Traditional Numerical">Traditional Numerical Grading</option>
+                                        <option value="International IGCSE">International Curriculum (IGCSE / Cambridge / IB)</option>
                                     </select>
                                 </div>
 
@@ -197,7 +227,7 @@ export const ContactModule: React.FC = () => {
                                     <label className="block text-xs font-bold text-slate-700 mb-1">Special Requirements or Questions</label>
                                     <textarea
                                         rows={3}
-                                        placeholder="Tell us about your student numbers, M-Pesa paybill setup, or timetable needs..."
+                                        placeholder="Tell us about your student enrolment, payment reconciliation preferences, or timetable needs..."
                                         value={message}
                                         onChange={(e) => setMessage(e.target.value)}
                                         className="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
