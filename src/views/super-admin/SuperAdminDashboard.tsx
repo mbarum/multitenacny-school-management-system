@@ -421,10 +421,10 @@ export const SuperAdminDashboard: React.FC = () => {
                             <ShieldAlert className="w-6 h-6" />
                         </span>
                         <div>
-                            <h1 className="text-2xl md:text-3xl font-black tracking-tight text-white">
+                            <h1 className="text-xl md:text-2xl font-bold tracking-tight text-white">
                                 Super Administrator Command
                             </h1>
-                            <p className="text-slate-400 text-xs font-semibold uppercase tracking-widest mt-0.5">
+                            <p className="text-slate-400 text-xs font-medium uppercase tracking-widest mt-0.5">
                                 End-to-End Subscription Governance & Revenue Tracking
                             </p>
                         </div>
@@ -507,7 +507,7 @@ export const SuperAdminDashboard: React.FC = () => {
                 <StatCard
                     title="Realized Platform Revenue"
                     value={formatCurrency(stats?.totalRevenue ?? 0, 'KES')}
-                    icon={<DollarSign className="w-6 h-6 text-emerald-600" />}
+                    icon={<DollarSign className="w-5 h-5 text-emerald-600" />}
                     onClick={() => setActiveTab('revenue')}
                     isSelected={activeTab === 'revenue'}
                 />
@@ -515,7 +515,7 @@ export const SuperAdminDashboard: React.FC = () => {
                 <StatCard
                     title="Active Subscriptions"
                     value={`${stats?.activeSubscriptions ?? safeSchools.filter(s => s.subscriptionStatus === SubscriptionStatus.ACTIVE).length} / ${safeSchools.length}`}
-                    icon={<CheckCircle2 className="w-6 h-6 text-green-600" />}
+                    icon={<CheckCircle2 className="w-5 h-5 text-green-600" />}
                     onClick={() => { setActiveTab('schools'); setSchoolFilter('active'); }}
                     isSelected={activeTab === 'schools' && schoolFilter === 'active'}
                 />
@@ -523,7 +523,7 @@ export const SuperAdminDashboard: React.FC = () => {
                 <StatCard
                     title="In Grace Period"
                     value={`${stats?.gracePeriodCount ?? safeSchools.filter(s => s.subscriptionStatus === SubscriptionStatus.PAST_DUE).length} Schools`}
-                    icon={<AlertTriangle className="w-6 h-6 text-amber-600" />}
+                    icon={<AlertTriangle className="w-5 h-5 text-amber-600" />}
                     colorClass="bg-amber-50 text-amber-700"
                     onClick={() => { setActiveTab('schools'); setSchoolFilter('grace'); }}
                     isSelected={activeTab === 'schools' && schoolFilter === 'grace'}
@@ -532,7 +532,7 @@ export const SuperAdminDashboard: React.FC = () => {
                 <StatCard
                     title="Accounts Disabled"
                     value={`${stats?.disabledCount ?? safeSchools.filter(s => s.subscriptionStatus === SubscriptionStatus.SUSPENDED).length} Locked`}
-                    icon={<Lock className="w-6 h-6 text-rose-600" />}
+                    icon={<Lock className="w-5 h-5 text-rose-600" />}
                     colorClass="bg-rose-50 text-rose-700"
                     onClick={() => { setActiveTab('schools'); setSchoolFilter('suspended'); }}
                     isSelected={activeTab === 'schools' && schoolFilter === 'suspended'}
@@ -541,7 +541,7 @@ export const SuperAdminDashboard: React.FC = () => {
                 <StatCard
                     title="Active Users Online"
                     value={`${healthData?.onlineUsersSummary?.totalOnline ?? (healthData?.onlineUsersList?.length || 0)} Connected`}
-                    icon={<Wifi className="w-6 h-6 text-indigo-600" />}
+                    icon={<Wifi className="w-5 h-5 text-indigo-600" />}
                     colorClass="bg-indigo-50 text-indigo-700"
                     onClick={() => setActiveTab('system-pulse')}
                     isSelected={activeTab === 'system-pulse'}
@@ -1566,20 +1566,20 @@ export const SuperAdminDashboard: React.FC = () => {
                     <div className="space-y-6">
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                             <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200">
-                                <div className="text-[10px] font-black uppercase text-slate-400">Schools Scanned</div>
-                                <div className="text-xl font-black text-slate-900 mt-1">{lastSweepResult.totalScanned}</div>
+                                <div className="text-[10px] font-bold uppercase text-slate-500 tracking-wider">Schools Scanned</div>
+                                <div className="text-lg font-bold text-slate-900 mt-1">{lastSweepResult.totalScanned}</div>
                             </div>
                             <div className="p-4 bg-emerald-50 rounded-2xl border border-emerald-200">
-                                <div className="text-[10px] font-black uppercase text-emerald-600">Active & Good</div>
-                                <div className="text-xl font-black text-emerald-700 mt-1">{lastSweepResult.activeCount}</div>
+                                <div className="text-[10px] font-bold uppercase text-emerald-700 tracking-wider">Active & Good</div>
+                                <div className="text-lg font-bold text-emerald-700 mt-1">{lastSweepResult.activeCount}</div>
                             </div>
                             <div className="p-4 bg-amber-50 rounded-2xl border border-amber-200">
-                                <div className="text-[10px] font-black uppercase text-amber-600">Reminders Sent</div>
-                                <div className="text-xl font-black text-amber-700 mt-1">{lastSweepResult.remindersSent}</div>
+                                <div className="text-[10px] font-bold uppercase text-amber-700 tracking-wider">Reminders Sent</div>
+                                <div className="text-lg font-bold text-amber-700 mt-1">{lastSweepResult.remindersSent}</div>
                             </div>
                             <div className="p-4 bg-rose-50 rounded-2xl border border-rose-200">
-                                <div className="text-[10px] font-black uppercase text-rose-600">Accounts Locked</div>
-                                <div className="text-xl font-black text-rose-700 mt-1">{lastSweepResult.disabledCount}</div>
+                                <div className="text-[10px] font-bold uppercase text-rose-700 tracking-wider">Accounts Locked</div>
+                                <div className="text-lg font-bold text-rose-700 mt-1">{lastSweepResult.disabledCount}</div>
                             </div>
                         </div>
 

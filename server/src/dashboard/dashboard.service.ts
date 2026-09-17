@@ -6,6 +6,7 @@ import { Student, StudentStatus } from '../entities/student.entity';
 import { Transaction, TransactionType } from '../entities/transaction.entity';
 import { Expense } from '../entities/expense.entity';
 import { MonthlyFinancial } from '../entities/monthly-financial.entity';
+import { ClassFee } from '../entities/class-fee.entity';
 
 @Injectable()
 export class DashboardService {
@@ -14,6 +15,7 @@ export class DashboardService {
     @InjectRepository(Transaction) private transactionRepo: Repository<Transaction>,
     @InjectRepository(Expense) private expenseRepo: Repository<Expense>,
     @InjectRepository(MonthlyFinancial) private monthlyFinancialRepo: Repository<MonthlyFinancial>,
+    @InjectRepository(ClassFee) private classFeeRepo: Repository<ClassFee>,
   ) {}
 
   async getDashboardStats(schoolId: string) {
@@ -24,6 +26,9 @@ export class DashboardService {
             totalExpenses: 0,
             totalProfit: 0,
             feesOverdue: 0,
+            totalExpectedFee: 0,
+            totalInvoiced: 0,
+            feeCollectionRate: 100,
             monthlyData: [],
             expenseDistribution: []
         };
@@ -63,10 +68,43 @@ export class DashboardService {
             .getRawOne();
         const feesOverdue = Math.max(0, parseFloat(agingResult?.balance) || 0);
 
-        // 5. Monthly Trend
+        // 5. Total Invoiced from transactions
+        const invoiceResult = await this.transactionRepo
+            .createQueryBuilder('t')
+            .select('SUM(t.amount)', 'total')
+            .where("t.type IN ('Invoice', 'ManualDebit')")
+            .andWhere('t.schoolId = :schoolId', { schoolId })
+            .getRawOne();
+        const totalInvoiced = parseFloat(invoiceResult?.total) || 0;
+
+        // 6. Expected Fees from Curriculum Class Fee Structure for Active Students
+        let expectedFromStructure = 0;
+        try {
+            const structureResult = await this.studentRepo
+                .createQueryBuilder('s')
+                .innerJoin(ClassFee, 'cf', 'cf.classId = s.classId')
+                .select('SUM(cf.amount)', 'total')
+                .where('s.status = :status', { status: StudentStatus.Active })
+                .andWhere('s.schoolId = :schoolId', { schoolId })
+                .getRawOne();
+            expectedFromStructure = parseFloat(structureResult?.total) || 0;
+        } catch {
+            expectedFromStructure = 0;
+        }
+
+        // Determine definitive Total Expected Fee
+        const totalExpectedFee = expectedFromStructure > 0
+            ? expectedFromStructure
+            : (totalInvoiced > 0 ? totalInvoiced : (totalRevenue + feesOverdue));
+
+        const feeCollectionRate = totalExpectedFee > 0
+            ? Math.min(100, Math.round((totalRevenue / totalExpectedFee) * 100))
+            : (totalInvoiced > 0 ? Math.min(100, Math.round((totalRevenue / totalInvoiced) * 100)) : 100);
+
+        // 7. Monthly Trend
         const monthlyData = await this.getMonthlyFinancials(schoolId);
 
-        // 6. Distribution Analysis
+        // 8. Distribution Analysis
         const expenseDistribution = await this.getExpenseDistribution(schoolId);
 
         return {
@@ -75,6 +113,9 @@ export class DashboardService {
             totalExpenses,
             totalProfit: totalRevenue - totalExpenses,
             feesOverdue,
+            totalExpectedFee,
+            totalInvoiced,
+            feeCollectionRate,
             monthlyData,
             expenseDistribution
         };
