@@ -13,7 +13,7 @@ module.exports = {
       max_memory_restart: '500M'
     },
     {
-      name: 'saaslink-backend',
+      name: 'saaslink-emis',
       script: 'dist/main.js',
       cwd: './server',
       env: {

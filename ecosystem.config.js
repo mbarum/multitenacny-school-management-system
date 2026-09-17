@@ -1,7 +1,7 @@
 module.exports = {
   apps: [
     {
-      name: 'saaslink-backend',
+      name: 'saaslink-emis',
       cwd: './server',
       script: 'dist/main.js',
       instances: 'max',
