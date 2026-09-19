@@ -9,7 +9,7 @@ import {
     Expense, FeeItem, Grade, GradingRule, Payroll, PayrollEntry, PayrollItem, ReportShareLog, 
     SchoolEvent, TimetableEntry, Transaction, SchoolSetting, GradingSystem, DarajaSetting,
     School, Subscription, SubscriptionPlan, SubscriptionStatus,
-    Book, LibraryTransaction, PlatformSetting, SubscriptionPayment, MonthlyFinancial, AuditLog
+    Book, LibraryTransaction, PlatformSetting, SubscriptionPayment, SubscriptionPaymentStatus, MonthlyFinancial, AuditLog
 } from '../entities/all-entities';
 
 loadEnvConfig();

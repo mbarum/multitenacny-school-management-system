@@ -25,9 +25,21 @@ const Pricing: React.FC<PricingProps> = ({ onSelectPlan }) => {
         const fetchPricing = async () => {
             try {
                 const data = await api.getPlatformPricing();
-                setPricing(data);
+                if (data) {
+                    setPricing(data);
+                }
             } catch (error) {
-                console.error("Failed to load pricing", error);
+                console.warn("Pricing service unavailable, using platform defaults", error);
+                setPricing({
+                    id: 1 as any,
+                    basicMonthlyPrice: 3000,
+                    basicAnnualPrice: 30000,
+                    premiumMonthlyPrice: 5000,
+                    premiumAnnualPrice: 50000,
+                    stripeEnabled: true,
+                    stripeCurrency: 'KES',
+                    mpesaEnvironment: 'sandbox',
+                });
             } finally {
                 setLoading(false);
             }
@@ -36,13 +48,18 @@ const Pricing: React.FC<PricingProps> = ({ onSelectPlan }) => {
     }, []);
 
     const getPrice = (plan: SubscriptionPlan) => {
-        if (!pricing) return 0;
+        const activePricing = pricing || {
+            basicMonthlyPrice: 3000,
+            basicAnnualPrice: 30000,
+            premiumMonthlyPrice: 5000,
+            premiumAnnualPrice: 50000,
+        };
         let basePrice = 0;
         if (plan === SubscriptionPlan.BASIC) {
-            basePrice = billing === 'MONTHLY' ? pricing.basicMonthlyPrice : pricing.basicAnnualPrice;
+            basePrice = billing === 'MONTHLY' ? activePricing.basicMonthlyPrice : activePricing.basicAnnualPrice;
         }
         if (plan === SubscriptionPlan.PREMIUM) {
-            basePrice = billing === 'MONTHLY' ? pricing.premiumMonthlyPrice : pricing.premiumAnnualPrice;
+            basePrice = billing === 'MONTHLY' ? activePricing.premiumMonthlyPrice : activePricing.premiumAnnualPrice;
         }
         return convertCurrency(basePrice, currency);
     };

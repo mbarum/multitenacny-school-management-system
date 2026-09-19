@@ -70,42 +70,14 @@ import { TenancyModule } from './tenancy/tenancy.module';
     }),
     BullModule.forRootAsync({
       imports: [ConfigModule],
-      useFactory: async (configService: ConfigService) => {
-        const retryStrategy = (times: number) => {
-          return Math.min(times * 1000, 10000);
-        };
-
-        const redisUrl = configService.get<string>('REDIS_URL');
-        if (redisUrl) {
-          try {
-            const parsed = new URL(redisUrl);
-            return {
-              connection: {
-                host: parsed.hostname,
-                port: Number(parsed.port || 6379),
-                password: parsed.password || undefined,
-                username: parsed.username || undefined,
-                maxRetriesPerRequest: null,
-                enableReadyCheck: false,
-                retryStrategy,
-              }
-            };
-          } catch {
-            // Fall through to host/port
-          }
-        }
-        return {
-          connection: {
-            host: configService.get<string>('REDIS_HOST', 'localhost'),
-            port: Number(configService.get<number | string>('REDIS_PORT', 6379)),
-            password: configService.get<string>('REDIS_PASSWORD') || undefined,
-            maxRetriesPerRequest: null,
-            enableReadyCheck: false,
-            retryStrategy,
-          },
-        };
-      },
       inject: [ConfigService],
+      useFactory: (config: ConfigService) => ({
+        connection: {
+          host: config.get<string>('REDIS_HOST', '127.0.0.1'),
+          port: config.get<number>('REDIS_PORT', 6379),
+          password: config.get<string>('REDIS_PASSWORD') || undefined,
+        },
+      }),
     }),
     ServeStaticModule.forRoot({
       rootPath: join((process as any).cwd(), '..', 'dist'),

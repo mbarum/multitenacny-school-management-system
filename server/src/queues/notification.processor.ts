@@ -5,7 +5,12 @@ import { Logger } from '@nestjs/common';
 import * as nodemailer from 'nodemailer';
 import { ConfigService } from '@nestjs/config';
 
-@Processor('notifications')
+@Processor('notifications', {
+  connection: {
+    host: process.env.REDIS_HOST || '127.0.0.1',
+    port: Number(process.env.REDIS_PORT) || 6379,
+  },
+})
 export class NotificationProcessor extends WorkerHost {
   private readonly logger = new Logger(NotificationProcessor.name);
   private transporter: nodemailer.Transporter;
@@ -15,6 +20,8 @@ export class NotificationProcessor extends WorkerHost {
     const port = this.configService.get<number>('SMTP_PORT', 587);
     const secure = port === 465; // Use SSL for 465, STARTTLS for others (like 587)
 
+    const rejectUnauthorized = String(this.configService.get('SMTP_REJECT_UNAUTHORIZED', 'false')).toLowerCase() === 'true';
+
     this.transporter = nodemailer.createTransport({
       host: this.configService.get<string>('SMTP_HOST'),
       port,
@@ -23,9 +30,9 @@ export class NotificationProcessor extends WorkerHost {
         user: this.configService.get<string>('SMTP_USER'),
         pass: this.configService.get<string>('SMTP_PASS'),
       },
-      // If port is not 465, we might need to explicitly allow STARTTLS
-      tls: {
-        rejectUnauthorized: this.configService.get<string>('SMTP_REJECT_UNAUTHORIZED') !== 'false'
+      tls: { 
+        rejectUnauthorized,
+        checkServerIdentity: rejectUnauthorized ? undefined : () => undefined,
       }
     });
   }

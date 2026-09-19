@@ -25,8 +25,12 @@ export function loadEnvConfig(): { envPath: string | null; env: NodeJS.ProcessEn
       if (fs.existsSync(candidate) && fs.statSync(candidate).isFile()) {
         const rawContent = fs.readFileSync(candidate, 'utf-8');
         const parsed = dotenv.parse(rawContent);
+        const originalPort = process.env.PORT;
         // Force-override process.env with values directly from this file to ensure .env takes precedence over stale shell variables
         for (const [key, val] of Object.entries(parsed)) {
+          if (key === 'PORT' && originalPort) {
+            continue;
+          }
           process.env[key] = val;
         }
         parsedEnvObject = parsed;

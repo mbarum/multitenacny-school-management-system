@@ -20,7 +20,18 @@ const cleanParams = (params: Record<string, any>) => {
     return cleaned;
 };
 
-const API_BASE_URL = ((import.meta as any).env?.VITE_API_URL || '').replace(/\/+$/, '');
+const getApiBaseUrl = (): string => {
+    const configured = ((import.meta as any).env?.VITE_API_URL || '').replace(/\/+$/, '');
+    if (!configured) return '';
+    if (typeof window !== 'undefined' && window.location) {
+        if (configured.includes('localhost') || configured.includes('127.0.0.1')) {
+            return '';
+        }
+    }
+    return configured;
+};
+
+const API_BASE_URL = getApiBaseUrl();
 
 // Generic API fetch wrapper for JSON responses
 const apiFetch = async (endpoint: string, options: RequestInit = {}) => {

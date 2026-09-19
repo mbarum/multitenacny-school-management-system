@@ -16,7 +16,7 @@ const ParentLmsView: React.FC = () => {
     } = useData();
 
     // Determine active student
-    const activeStudentList = parentChildren.length > 0 ? parentChildren : (students.slice(0, 1) as Student[]);
+    const activeStudentList = parentChildren;
     const [selectedStudentId, setSelectedStudentId] = useState<string>(activeStudentList[0]?.id || '');
 
     const currentStudent = useMemo(() => {

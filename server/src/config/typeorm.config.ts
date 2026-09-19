@@ -46,18 +46,19 @@ export const typeOrmAsyncConfig: TypeOrmModuleAsyncOptions = {
     console.log(`🗄️   Target Database     : ${dbCreds.database}`);
     console.log('---------------------------------------------------------');
 
+    
     if (dbCreds.url) {
       return {
         type: 'mysql',
         url: dbCreds.url,
         entities: commonEntities,
         synchronize: shouldSynchronize,
-        logging: ['error', 'warn'],
+        logging: isProduction ? ['error', 'warn'] : ['error', 'warn'],
         autoLoadEntities: true,
         extra: poolConfig,
       };
     }
-    
+
     return {
       type: 'mysql',
       host: dbCreds.host,
@@ -66,10 +67,11 @@ export const typeOrmAsyncConfig: TypeOrmModuleAsyncOptions = {
       password: dbCreds.password,
       database: dbCreds.database,
       entities: commonEntities,
-      synchronize: shouldSynchronize, 
-      logging: ['error', 'warn'],
+      synchronize: shouldSynchronize,
+      logging: isProduction ? ['error', 'warn'] : ['error', 'warn'],
       autoLoadEntities: true,
       extra: poolConfig,
     };
+
   },
 };

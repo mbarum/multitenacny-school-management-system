@@ -13,7 +13,20 @@ const SubscriptionLocked: React.FC = () => {
     const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlan>(SubscriptionPlan.BASIC);
 
     useEffect(() => {
-        api.getPlatformPricing().then(setPricing).catch(console.error);
+        api.getPlatformPricing()
+            .then(setPricing)
+            .catch(err => {
+                console.warn('Pricing service unavailable, using platform defaults', err);
+                setPricing({
+                    id: 1 as any,
+                    basicMonthlyPrice: 3000,
+                    basicAnnualPrice: 30000,
+                    premiumMonthlyPrice: 5000,
+                    premiumAnnualPrice: 50000,
+                    stripeEnabled: true,
+                    stripeCurrency: 'KES',
+                });
+            });
         if (schoolInfo?.subscription?.plan) {
             setSelectedPlan(schoolInfo.subscription.plan);
         }

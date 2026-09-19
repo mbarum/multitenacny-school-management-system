@@ -1,0 +1,76 @@
+[32m[Nest] 2802  - [39m09/17/2026, 8:43:46 PM [32m    LOG[39m [38;5;3m[NestFactory] [39m[32mStarting Nest application...[39m
+[32m[Nest] 2802  - [39m09/17/2026, 8:43:46 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mTypeOrmModule dependencies initialized[39m[38;5;3m +45ms[39m
+[32m[Nest] 2802  - [39m09/17/2026, 8:43:46 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mPassportModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 2802  - [39m09/17/2026, 8:43:46 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mEventsModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 2802  - [39m09/17/2026, 8:43:46 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mConfigHostModule dependencies initialized[39m[38;5;3m +1ms[39m
+[32m[Nest] 2802  - [39m09/17/2026, 8:43:46 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mDiscoveryModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 2802  - [39m09/17/2026, 8:43:46 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mCacheModule dependencies initialized[39m[38;5;3m +1ms[39m
+[32m[Nest] 2802  - [39m09/17/2026, 8:43:46 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mServeStaticModule dependencies initialized[39m[38;5;3m +4ms[39m
+[32m[Nest] 2802  - [39m09/17/2026, 8:43:46 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mConfigModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 2802  - [39m09/17/2026, 8:43:46 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mConfigModule dependencies initialized[39m[38;5;3m +0ms[39m
+---------------------------------------------------------
+🔌  [NESTJS TYPEORM] Initializing Database Connection...
+📁  Active .env location: /app/applet/.env
+🌐  Target MySQL Host   : 127.0.0.1:3306
+👤  Connecting as User  : saaslink_user
+🔑  Password Configured : YES (26 chars)
+🗄️   Target Database     : saaslink_db
+---------------------------------------------------------
+🔌  [NESTJS TYPEORM] Initializing better-sqlite3 Database Connection...
+[32m[Nest] 2802  - [39m09/17/2026, 8:43:46 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mScheduleModule dependencies initialized[39m[38;5;3m +2ms[39m
+[32m[Nest] 2802  - [39m09/17/2026, 8:43:46 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mBullModule dependencies initialized[39m[38;5;3m +8ms[39m
+[32m[Nest] 2802  - [39m09/17/2026, 8:43:46 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mBullModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 2802  - [39m09/17/2026, 8:43:46 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mBullModule dependencies initialized[39m[38;5;3m +8ms[39m
+[32m[Nest] 2802  - [39m09/17/2026, 8:43:46 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mQueuesModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 2802  - [39m09/17/2026, 8:43:46 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mThrottlerModule dependencies initialized[39m[38;5;3m +1ms[39m
+[32m[Nest] 2802  - [39m09/17/2026, 8:43:46 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mJwtModule dependencies initialized[39m[38;5;3m +0ms[39m
+[31m[Nest] 2802  - [39m09/17/2026, 8:43:46 PM [31m  ERROR[39m [38;5;3m[TypeOrmModule] [39m[31mUnable to connect to the database. Retrying (1)...[39m
+DataTypeNotSupportedError: Data type "enum" in "Subscription.plan" is not supported by "better-sqlite3" database.
+    at /app/applet/server/node_modules/typeorm/metadata-builder/EntityMetadataValidator.js:89:27
+    at Array.forEach (<anonymous>)
+    at EntityMetadataValidator.validate (/app/applet/server/node_modules/typeorm/metadata-builder/EntityMetadataValidator.js:86:18)
+    at /app/applet/server/node_modules/typeorm/metadata-builder/EntityMetadataValidator.js:38:58
+    at Array.forEach (<anonymous>)
+    at EntityMetadataValidator.validateMany (/app/applet/server/node_modules/typeorm/metadata-builder/EntityMetadataValidator.js:38:25)
+    at DataSource.buildMetadatas (/app/applet/server/node_modules/typeorm/data-source/DataSource.js:493:33)
+    at async DataSource.initialize (/app/applet/server/node_modules/typeorm/data-source/DataSource.js:145:13)
+[31m[Nest] 2802  - [39m09/17/2026, 8:43:49 PM [31m  ERROR[39m [38;5;3m[TypeOrmModule] [39m[31mUnable to connect to the database. Retrying (2)...[39m
+DataTypeNotSupportedError: Data type "enum" in "Subscription.plan" is not supported by "better-sqlite3" database.
+    at /app/applet/server/node_modules/typeorm/metadata-builder/EntityMetadataValidator.js:89:27
+    at Array.forEach (<anonymous>)
+    at EntityMetadataValidator.validate (/app/applet/server/node_modules/typeorm/metadata-builder/EntityMetadataValidator.js:86:18)
+    at /app/applet/server/node_modules/typeorm/metadata-builder/EntityMetadataValidator.js:38:58
+    at Array.forEach (<anonymous>)
+    at EntityMetadataValidator.validateMany (/app/applet/server/node_modules/typeorm/metadata-builder/EntityMetadataValidator.js:38:25)
+    at DataSource.buildMetadatas (/app/applet/server/node_modules/typeorm/data-source/DataSource.js:493:33)
+    at async DataSource.initialize (/app/applet/server/node_modules/typeorm/data-source/DataSource.js:145:13)
+[31m[Nest] 2802  - [39m09/17/2026, 8:43:52 PM [31m  ERROR[39m [38;5;3m[TypeOrmModule] [39m[31mUnable to connect to the database. Retrying (3)...[39m
+DataTypeNotSupportedError: Data type "enum" in "Subscription.plan" is not supported by "better-sqlite3" database.
+    at /app/applet/server/node_modules/typeorm/metadata-builder/EntityMetadataValidator.js:89:27
+    at Array.forEach (<anonymous>)
+    at EntityMetadataValidator.validate (/app/applet/server/node_modules/typeorm/metadata-builder/EntityMetadataValidator.js:86:18)
+    at /app/applet/server/node_modules/typeorm/metadata-builder/EntityMetadataValidator.js:38:58
+    at Array.forEach (<anonymous>)
+    at EntityMetadataValidator.validateMany (/app/applet/server/node_modules/typeorm/metadata-builder/EntityMetadataValidator.js:38:25)
+    at DataSource.buildMetadatas (/app/applet/server/node_modules/typeorm/data-source/DataSource.js:493:33)
+    at async DataSource.initialize (/app/applet/server/node_modules/typeorm/data-source/DataSource.js:145:13)
+[31m[Nest] 2802  - [39m09/17/2026, 8:43:55 PM [31m  ERROR[39m [38;5;3m[TypeOrmModule] [39m[31mUnable to connect to the database. Retrying (4)...[39m
+DataTypeNotSupportedError: Data type "enum" in "Subscription.plan" is not supported by "better-sqlite3" database.
+    at /app/applet/server/node_modules/typeorm/metadata-builder/EntityMetadataValidator.js:89:27
+    at Array.forEach (<anonymous>)
+    at EntityMetadataValidator.validate (/app/applet/server/node_modules/typeorm/metadata-builder/EntityMetadataValidator.js:86:18)
+    at /app/applet/server/node_modules/typeorm/metadata-builder/EntityMetadataValidator.js:38:58
+    at Array.forEach (<anonymous>)
+    at EntityMetadataValidator.validateMany (/app/applet/server/node_modules/typeorm/metadata-builder/EntityMetadataValidator.js:38:25)
+    at DataSource.buildMetadatas (/app/applet/server/node_modules/typeorm/data-source/DataSource.js:493:33)
+    at async DataSource.initialize (/app/applet/server/node_modules/typeorm/data-source/DataSource.js:145:13)
+[31m[Nest] 2802  - [39m09/17/2026, 8:43:58 PM [31m  ERROR[39m [38;5;3m[TypeOrmModule] [39m[31mUnable to connect to the database. Retrying (5)...[39m
+DataTypeNotSupportedError: Data type "enum" in "Subscription.plan" is not supported by "better-sqlite3" database.
+    at /app/applet/server/node_modules/typeorm/metadata-builder/EntityMetadataValidator.js:89:27
+    at Array.forEach (<anonymous>)
+    at EntityMetadataValidator.validate (/app/applet/server/node_modules/typeorm/metadata-builder/EntityMetadataValidator.js:86:18)
+    at /app/applet/server/node_modules/typeorm/metadata-builder/EntityMetadataValidator.js:38:58
+    at Array.forEach (<anonymous>)
+    at EntityMetadataValidator.validateMany (/app/applet/server/node_modules/typeorm/metadata-builder/EntityMetadataValidator.js:38:25)
+    at DataSource.buildMetadatas (/app/applet/server/node_modules/typeorm/data-source/DataSource.js:493:33)
+    at async DataSource.initialize (/app/applet/server/node_modules/typeorm/data-source/DataSource.js:145:13)

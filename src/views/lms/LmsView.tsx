@@ -93,10 +93,7 @@ const LmsView: React.FC = () => {
     // Students in active assignment's class
     const studentsInAssignmentClass = useMemo(() => {
         if (!activeGradingAssignment) return [];
-        const classStudents = students.filter(s => s.classId === activeGradingAssignment.classId);
-        if (classStudents.length > 0) return classStudents;
-        // Fallback to sample roster if mock students don't match classId directly
-        return students.slice(0, 6);
+        return students.filter(s => s.classId === activeGradingAssignment.classId);
     }, [students, activeGradingAssignment]);
 
     // Summary Metrics

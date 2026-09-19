@@ -29,7 +29,12 @@ export class AllExceptionsFilter implements ExceptionFilter {
         exception instanceof Error ? exception.stack : '',
       );
     } else {
-        this.logger.warn(`Http Status: ${status} Error Message: ${JSON.stringify(message)} Path: ${request.originalUrl}`);
+        if (status === 401 && request.originalUrl?.includes('/health')) {
+            // Suppress aggressive polling 401 logs for health endpoints
+            this.logger.debug(`Http Status: ${status} Path: ${request.originalUrl}`);
+        } else {
+            this.logger.warn(`Http Status: ${status} Error Message: ${JSON.stringify(message)} Path: ${request.originalUrl}`);
+        }
     }
 
     // Sanitize response for production (hide internal server details)

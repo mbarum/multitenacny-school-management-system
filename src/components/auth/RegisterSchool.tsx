@@ -184,7 +184,20 @@ const RegisterSchool: React.FC = () => {
     const [paymentStatus, setPaymentStatus] = useState<'idle' | 'processing' | 'success' | 'manual_success'>('idle');
 
     useEffect(() => {
-        api.getPlatformPricing().then(setPricing).catch(console.error);
+        api.getPlatformPricing()
+            .then(setPricing)
+            .catch(err => {
+                console.warn('Pricing service unavailable, using platform defaults', err);
+                setPricing({
+                    id: 1 as any,
+                    basicMonthlyPrice: 3000,
+                    basicAnnualPrice: 30000,
+                    premiumMonthlyPrice: 5000,
+                    premiumAnnualPrice: 50000,
+                    stripeEnabled: true,
+                    stripeCurrency: 'KES',
+                });
+            });
     }, []);
 
     const calculatePricingDetails = () => {

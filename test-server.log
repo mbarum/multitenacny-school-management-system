@@ -1,0 +1,147 @@
+[32m[Nest] 2374  - [39m09/17/2026, 8:42:15 PM [32m    LOG[39m [38;5;3m[NestFactory] [39m[32mStarting Nest application...[39m
+[33m[Nest] 2374  - [39m09/17/2026, 8:42:15 PM [33m   WARN[39m [38;5;3m[ModuleTokenFactory] [39m[33mThe module "TypeOrmModule" is taking 11.79ms to serialize, this may be caused by larger objects statically assigned to the module. More details: https://github.com/nestjs/nest/issues/12738[39m[38;5;3m +17ms[39m
+[32m[Nest] 2374  - [39m09/17/2026, 8:42:15 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mTypeOrmModule dependencies initialized[39m[38;5;3m +39ms[39m
+[32m[Nest] 2374  - [39m09/17/2026, 8:42:15 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mPassportModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 2374  - [39m09/17/2026, 8:42:15 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mEventsModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 2374  - [39m09/17/2026, 8:42:15 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mConfigHostModule dependencies initialized[39m[38;5;3m +1ms[39m
+[32m[Nest] 2374  - [39m09/17/2026, 8:42:15 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mDiscoveryModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 2374  - [39m09/17/2026, 8:42:15 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mCacheModule dependencies initialized[39m[38;5;3m +1ms[39m
+[32m[Nest] 2374  - [39m09/17/2026, 8:42:15 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mServeStaticModule dependencies initialized[39m[38;5;3m +3ms[39m
+[32m[Nest] 2374  - [39m09/17/2026, 8:42:15 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mConfigModule dependencies initialized[39m[38;5;3m +1ms[39m
+[32m[Nest] 2374  - [39m09/17/2026, 8:42:15 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mConfigModule dependencies initialized[39m[38;5;3m +0ms[39m
+---------------------------------------------------------
+🔌  [NESTJS TYPEORM] Initializing Database Connection...
+📁  Active .env location: /app/applet/.env
+🌐  Target MySQL Host   : 127.0.0.1:3306
+👤  Connecting as User  : saaslink_user
+🔑  Password Configured : YES (26 chars)
+🗄️   Target Database     : saaslink_db
+---------------------------------------------------------
+🔌  [NESTJS TYPEORM] Initializing SQLite Database Connection (AI Studio Fallback)...
+[32m[Nest] 2374  - [39m09/17/2026, 8:42:15 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mScheduleModule dependencies initialized[39m[38;5;3m +3ms[39m
+[32m[Nest] 2374  - [39m09/17/2026, 8:42:15 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mBullModule dependencies initialized[39m[38;5;3m +8ms[39m
+[32m[Nest] 2374  - [39m09/17/2026, 8:42:15 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mBullModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 2374  - [39m09/17/2026, 8:42:15 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mBullModule dependencies initialized[39m[38;5;3m +11ms[39m
+[32m[Nest] 2374  - [39m09/17/2026, 8:42:15 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mQueuesModule dependencies initialized[39m[38;5;3m +0ms[39m
+[31m[Nest] 2374  - [39m09/17/2026, 8:42:15 PM [31m  ERROR[39m [38;5;3m[TypeOrmModule] [39m[31mUnable to connect to the database. Retrying (1)...[39m
+DriverPackageNotInstalledError: SQLite package has not been found installed. Please run "npm install sqlite3".
+    at SqliteDriver.loadDependencies (/app/applet/server/node_modules/typeorm/driver/sqlite/SqliteDriver.js:143:19)
+    at new SqliteDriver (/app/applet/server/node_modules/typeorm/driver/sqlite/SqliteDriver.js:25:14)
+    at DriverFactory.create (/app/applet/server/node_modules/typeorm/driver/DriverFactory.js:44:24)
+    at new DataSource (/app/applet/server/node_modules/typeorm/data-source/DataSource.js:57:59)
+    at createTypeormDataSource (/app/applet/server/node_modules/@nestjs/typeorm/dist/typeorm-core.module.js:164:23)
+    at /app/applet/server/node_modules/@nestjs/typeorm/dist/typeorm-core.module.js:180:36
+    at Observable._subscribe (/app/applet/server/node_modules/rxjs/dist/cjs/internal/observable/defer.js:8:31)
+    at Observable._trySubscribe (/app/applet/server/node_modules/rxjs/dist/cjs/internal/Observable.js:41:25)
+    at /app/applet/server/node_modules/rxjs/dist/cjs/internal/Observable.js:35:31
+    at Object.errorContext (/app/applet/server/node_modules/rxjs/dist/cjs/internal/util/errorContext.js:22:9)
+[32m[Nest] 2374  - [39m09/17/2026, 8:42:15 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mThrottlerModule dependencies initialized[39m[38;5;3m +2ms[39m
+[32m[Nest] 2374  - [39m09/17/2026, 8:42:15 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mJwtModule dependencies initialized[39m[38;5;3m +0ms[39m
+[31m[Nest] 2374  - [39m09/17/2026, 8:42:18 PM [31m  ERROR[39m [38;5;3m[TypeOrmModule] [39m[31mUnable to connect to the database. Retrying (2)...[39m
+DriverPackageNotInstalledError: SQLite package has not been found installed. Please run "npm install sqlite3".
+    at SqliteDriver.loadDependencies (/app/applet/server/node_modules/typeorm/driver/sqlite/SqliteDriver.js:143:19)
+    at new SqliteDriver (/app/applet/server/node_modules/typeorm/driver/sqlite/SqliteDriver.js:25:14)
+    at DriverFactory.create (/app/applet/server/node_modules/typeorm/driver/DriverFactory.js:44:24)
+    at new DataSource (/app/applet/server/node_modules/typeorm/data-source/DataSource.js:57:59)
+    at createTypeormDataSource (/app/applet/server/node_modules/@nestjs/typeorm/dist/typeorm-core.module.js:164:23)
+    at /app/applet/server/node_modules/@nestjs/typeorm/dist/typeorm-core.module.js:180:36
+    at Observable._subscribe (/app/applet/server/node_modules/rxjs/dist/cjs/internal/observable/defer.js:8:31)
+    at Observable._trySubscribe (/app/applet/server/node_modules/rxjs/dist/cjs/internal/Observable.js:41:25)
+    at /app/applet/server/node_modules/rxjs/dist/cjs/internal/Observable.js:35:31
+    at Object.errorContext (/app/applet/server/node_modules/rxjs/dist/cjs/internal/util/errorContext.js:22:9)
+[31m[Nest] 2374  - [39m09/17/2026, 8:42:21 PM [31m  ERROR[39m [38;5;3m[TypeOrmModule] [39m[31mUnable to connect to the database. Retrying (3)...[39m
+DriverPackageNotInstalledError: SQLite package has not been found installed. Please run "npm install sqlite3".
+    at SqliteDriver.loadDependencies (/app/applet/server/node_modules/typeorm/driver/sqlite/SqliteDriver.js:143:19)
+    at new SqliteDriver (/app/applet/server/node_modules/typeorm/driver/sqlite/SqliteDriver.js:25:14)
+    at DriverFactory.create (/app/applet/server/node_modules/typeorm/driver/DriverFactory.js:44:24)
+    at new DataSource (/app/applet/server/node_modules/typeorm/data-source/DataSource.js:57:59)
+    at createTypeormDataSource (/app/applet/server/node_modules/@nestjs/typeorm/dist/typeorm-core.module.js:164:23)
+    at /app/applet/server/node_modules/@nestjs/typeorm/dist/typeorm-core.module.js:180:36
+    at Observable._subscribe (/app/applet/server/node_modules/rxjs/dist/cjs/internal/observable/defer.js:8:31)
+    at Observable._trySubscribe (/app/applet/server/node_modules/rxjs/dist/cjs/internal/Observable.js:41:25)
+    at /app/applet/server/node_modules/rxjs/dist/cjs/internal/Observable.js:35:31
+    at Object.errorContext (/app/applet/server/node_modules/rxjs/dist/cjs/internal/util/errorContext.js:22:9)
+[31m[Nest] 2374  - [39m09/17/2026, 8:42:24 PM [31m  ERROR[39m [38;5;3m[TypeOrmModule] [39m[31mUnable to connect to the database. Retrying (4)...[39m
+DriverPackageNotInstalledError: SQLite package has not been found installed. Please run "npm install sqlite3".
+    at SqliteDriver.loadDependencies (/app/applet/server/node_modules/typeorm/driver/sqlite/SqliteDriver.js:143:19)
+    at new SqliteDriver (/app/applet/server/node_modules/typeorm/driver/sqlite/SqliteDriver.js:25:14)
+    at DriverFactory.create (/app/applet/server/node_modules/typeorm/driver/DriverFactory.js:44:24)
+    at new DataSource (/app/applet/server/node_modules/typeorm/data-source/DataSource.js:57:59)
+    at createTypeormDataSource (/app/applet/server/node_modules/@nestjs/typeorm/dist/typeorm-core.module.js:164:23)
+    at /app/applet/server/node_modules/@nestjs/typeorm/dist/typeorm-core.module.js:180:36
+    at Observable._subscribe (/app/applet/server/node_modules/rxjs/dist/cjs/internal/observable/defer.js:8:31)
+    at Observable._trySubscribe (/app/applet/server/node_modules/rxjs/dist/cjs/internal/Observable.js:41:25)
+    at /app/applet/server/node_modules/rxjs/dist/cjs/internal/Observable.js:35:31
+    at Object.errorContext (/app/applet/server/node_modules/rxjs/dist/cjs/internal/util/errorContext.js:22:9)
+[31m[Nest] 2374  - [39m09/17/2026, 8:42:27 PM [31m  ERROR[39m [38;5;3m[TypeOrmModule] [39m[31mUnable to connect to the database. Retrying (5)...[39m
+DriverPackageNotInstalledError: SQLite package has not been found installed. Please run "npm install sqlite3".
+    at SqliteDriver.loadDependencies (/app/applet/server/node_modules/typeorm/driver/sqlite/SqliteDriver.js:143:19)
+    at new SqliteDriver (/app/applet/server/node_modules/typeorm/driver/sqlite/SqliteDriver.js:25:14)
+    at DriverFactory.create (/app/applet/server/node_modules/typeorm/driver/DriverFactory.js:44:24)
+    at new DataSource (/app/applet/server/node_modules/typeorm/data-source/DataSource.js:57:59)
+    at createTypeormDataSource (/app/applet/server/node_modules/@nestjs/typeorm/dist/typeorm-core.module.js:164:23)
+    at /app/applet/server/node_modules/@nestjs/typeorm/dist/typeorm-core.module.js:180:36
+    at Observable._subscribe (/app/applet/server/node_modules/rxjs/dist/cjs/internal/observable/defer.js:8:31)
+    at Observable._trySubscribe (/app/applet/server/node_modules/rxjs/dist/cjs/internal/Observable.js:41:25)
+    at /app/applet/server/node_modules/rxjs/dist/cjs/internal/Observable.js:35:31
+    at Object.errorContext (/app/applet/server/node_modules/rxjs/dist/cjs/internal/util/errorContext.js:22:9)
+[31m[Nest] 2374  - [39m09/17/2026, 8:42:30 PM [31m  ERROR[39m [38;5;3m[TypeOrmModule] [39m[31mUnable to connect to the database. Retrying (6)...[39m
+DriverPackageNotInstalledError: SQLite package has not been found installed. Please run "npm install sqlite3".
+    at SqliteDriver.loadDependencies (/app/applet/server/node_modules/typeorm/driver/sqlite/SqliteDriver.js:143:19)
+    at new SqliteDriver (/app/applet/server/node_modules/typeorm/driver/sqlite/SqliteDriver.js:25:14)
+    at DriverFactory.create (/app/applet/server/node_modules/typeorm/driver/DriverFactory.js:44:24)
+    at new DataSource (/app/applet/server/node_modules/typeorm/data-source/DataSource.js:57:59)
+    at createTypeormDataSource (/app/applet/server/node_modules/@nestjs/typeorm/dist/typeorm-core.module.js:164:23)
+    at /app/applet/server/node_modules/@nestjs/typeorm/dist/typeorm-core.module.js:180:36
+    at Observable._subscribe (/app/applet/server/node_modules/rxjs/dist/cjs/internal/observable/defer.js:8:31)
+    at Observable._trySubscribe (/app/applet/server/node_modules/rxjs/dist/cjs/internal/Observable.js:41:25)
+    at /app/applet/server/node_modules/rxjs/dist/cjs/internal/Observable.js:35:31
+    at Object.errorContext (/app/applet/server/node_modules/rxjs/dist/cjs/internal/util/errorContext.js:22:9)
+[31m[Nest] 2374  - [39m09/17/2026, 8:42:33 PM [31m  ERROR[39m [38;5;3m[TypeOrmModule] [39m[31mUnable to connect to the database. Retrying (7)...[39m
+DriverPackageNotInstalledError: SQLite package has not been found installed. Please run "npm install sqlite3".
+    at SqliteDriver.loadDependencies (/app/applet/server/node_modules/typeorm/driver/sqlite/SqliteDriver.js:143:19)
+    at new SqliteDriver (/app/applet/server/node_modules/typeorm/driver/sqlite/SqliteDriver.js:25:14)
+    at DriverFactory.create (/app/applet/server/node_modules/typeorm/driver/DriverFactory.js:44:24)
+    at new DataSource (/app/applet/server/node_modules/typeorm/data-source/DataSource.js:57:59)
+    at createTypeormDataSource (/app/applet/server/node_modules/@nestjs/typeorm/dist/typeorm-core.module.js:164:23)
+    at /app/applet/server/node_modules/@nestjs/typeorm/dist/typeorm-core.module.js:180:36
+    at Observable._subscribe (/app/applet/server/node_modules/rxjs/dist/cjs/internal/observable/defer.js:8:31)
+    at Observable._trySubscribe (/app/applet/server/node_modules/rxjs/dist/cjs/internal/Observable.js:41:25)
+    at /app/applet/server/node_modules/rxjs/dist/cjs/internal/Observable.js:35:31
+    at Object.errorContext (/app/applet/server/node_modules/rxjs/dist/cjs/internal/util/errorContext.js:22:9)
+[31m[Nest] 2374  - [39m09/17/2026, 8:42:36 PM [31m  ERROR[39m [38;5;3m[TypeOrmModule] [39m[31mUnable to connect to the database. Retrying (8)...[39m
+DriverPackageNotInstalledError: SQLite package has not been found installed. Please run "npm install sqlite3".
+    at SqliteDriver.loadDependencies (/app/applet/server/node_modules/typeorm/driver/sqlite/SqliteDriver.js:143:19)
+    at new SqliteDriver (/app/applet/server/node_modules/typeorm/driver/sqlite/SqliteDriver.js:25:14)
+    at DriverFactory.create (/app/applet/server/node_modules/typeorm/driver/DriverFactory.js:44:24)
+    at new DataSource (/app/applet/server/node_modules/typeorm/data-source/DataSource.js:57:59)
+    at createTypeormDataSource (/app/applet/server/node_modules/@nestjs/typeorm/dist/typeorm-core.module.js:164:23)
+    at /app/applet/server/node_modules/@nestjs/typeorm/dist/typeorm-core.module.js:180:36
+    at Observable._subscribe (/app/applet/server/node_modules/rxjs/dist/cjs/internal/observable/defer.js:8:31)
+    at Observable._trySubscribe (/app/applet/server/node_modules/rxjs/dist/cjs/internal/Observable.js:41:25)
+    at /app/applet/server/node_modules/rxjs/dist/cjs/internal/Observable.js:35:31
+    at Object.errorContext (/app/applet/server/node_modules/rxjs/dist/cjs/internal/util/errorContext.js:22:9)
+[31m[Nest] 2374  - [39m09/17/2026, 8:42:39 PM [31m  ERROR[39m [38;5;3m[TypeOrmModule] [39m[31mUnable to connect to the database. Retrying (9)...[39m
+DriverPackageNotInstalledError: SQLite package has not been found installed. Please run "npm install sqlite3".
+    at SqliteDriver.loadDependencies (/app/applet/server/node_modules/typeorm/driver/sqlite/SqliteDriver.js:143:19)
+    at new SqliteDriver (/app/applet/server/node_modules/typeorm/driver/sqlite/SqliteDriver.js:25:14)
+    at DriverFactory.create (/app/applet/server/node_modules/typeorm/driver/DriverFactory.js:44:24)
+    at new DataSource (/app/applet/server/node_modules/typeorm/data-source/DataSource.js:57:59)
+    at createTypeormDataSource (/app/applet/server/node_modules/@nestjs/typeorm/dist/typeorm-core.module.js:164:23)
+    at /app/applet/server/node_modules/@nestjs/typeorm/dist/typeorm-core.module.js:180:36
+    at Observable._subscribe (/app/applet/server/node_modules/rxjs/dist/cjs/internal/observable/defer.js:8:31)
+    at Observable._trySubscribe (/app/applet/server/node_modules/rxjs/dist/cjs/internal/Observable.js:41:25)
+    at /app/applet/server/node_modules/rxjs/dist/cjs/internal/Observable.js:35:31
+    at Object.errorContext (/app/applet/server/node_modules/rxjs/dist/cjs/internal/util/errorContext.js:22:9)
+[31m[Nest] 2374  - [39m09/17/2026, 8:42:39 PM [31m  ERROR[39m [38;5;3m[ExceptionHandler] [39m[31mSQLite package has not been found installed. Please run "npm install sqlite3".[39m
+DriverPackageNotInstalledError: SQLite package has not been found installed. Please run "npm install sqlite3".
+    at SqliteDriver.loadDependencies (/app/applet/server/node_modules/typeorm/driver/sqlite/SqliteDriver.js:143:19)
+    at new SqliteDriver (/app/applet/server/node_modules/typeorm/driver/sqlite/SqliteDriver.js:25:14)
+    at DriverFactory.create (/app/applet/server/node_modules/typeorm/driver/DriverFactory.js:44:24)
+    at new DataSource (/app/applet/server/node_modules/typeorm/data-source/DataSource.js:57:59)
+    at createTypeormDataSource (/app/applet/server/node_modules/@nestjs/typeorm/dist/typeorm-core.module.js:164:23)
+    at /app/applet/server/node_modules/@nestjs/typeorm/dist/typeorm-core.module.js:180:36
+    at Observable._subscribe (/app/applet/server/node_modules/rxjs/dist/cjs/internal/observable/defer.js:8:31)
+    at Observable._trySubscribe (/app/applet/server/node_modules/rxjs/dist/cjs/internal/Observable.js:41:25)
+    at /app/applet/server/node_modules/rxjs/dist/cjs/internal/Observable.js:35:31
+    at Object.errorContext (/app/applet/server/node_modules/rxjs/dist/cjs/internal/util/errorContext.js:22:9)
