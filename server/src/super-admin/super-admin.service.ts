@@ -422,7 +422,7 @@ export class SuperAdminService {
         body.amount || 10,
         body.phone,
         `TEST_${Date.now().toString().slice(-4)}`,
-        'platform-test',
+        null,
         true
       );
       return { success: true, simulated: false, data: res, message: 'STK push successfully dispatched to mobile phone.' };
@@ -525,7 +525,7 @@ export class SuperAdminService {
     return this.paymentRepo.save(payment);
   }
 
-  async initiateStkPush(schoolId: string, body: { amount: number, phone: string, accountReference: string }) {
+  async initiateStkPush(schoolId: string | null, body: { amount: number, phone: string, accountReference: string }) {
       return this.transactionsService.initiateStkPush(body.amount, body.phone, body.accountReference, schoolId, true);
   }
 
@@ -828,5 +828,148 @@ export class SuperAdminService {
           systemUptime: '99.98%',
           pricing: platformPricing
       }; 
+  }
+
+  async getSaasReceipts() {
+    const payments = await this.paymentRepo.find({
+      relations: ['school', 'school.subscription'],
+      order: { createdAt: 'DESC' }
+    });
+
+    return payments.map(p => {
+      const school = p.school;
+      const sub = school?.subscription;
+      const receiptNo = `REC-SAAS-${p.transactionCode ? p.transactionCode.slice(-6).toUpperCase() : p.id.slice(0, 6).toUpperCase()}`;
+      const invNo = sub?.invoiceNumber || `INV-${p.id.slice(0, 6).toUpperCase()}`;
+      const isVerified = p.status === SubscriptionPaymentStatus.APPLIED || p.status === SubscriptionPaymentStatus.CONFIRMED;
+
+      return {
+        id: p.id,
+        receiptNumber: receiptNo,
+        invoiceId: invNo,
+        invoiceNumber: invNo,
+        schoolId: p.schoolId || school?.id || '',
+        schoolName: school?.name || 'Institutional Licensee',
+        amount: Number(p.amount),
+        currency: school?.currency || 'KES',
+        paymentDate: p.paymentDate || (p.createdAt ? new Date(p.createdAt).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]),
+        paymentMethod: p.paymentMethod || 'MPESA',
+        transactionCode: p.transactionCode || 'N/A',
+        plan: p.targetPlan || sub?.plan || SubscriptionPlan.BASIC,
+        provisionedUntil: sub?.endDate ? new Date(sub.endDate).toISOString() : new Date().toISOString(),
+        verifiedBy: isVerified ? (p.paymentMethod === 'MPESA' ? 'Automated Safaricom Daraja IPN' : 'Super Admin Finance Audit') : 'Pending Verification'
+      };
+    });
+  }
+
+  async getSaasInvoices() {
+    const schools = await this.schoolRepo.find({
+      relations: ['subscription']
+    });
+    const payments = await this.paymentRepo.find({
+      order: { createdAt: 'DESC' }
+    });
+
+    const invoices: any[] = [];
+    for (const school of schools) {
+      const sub = school.subscription;
+      if (!sub) continue;
+
+      const schoolPayments = payments.filter(p => p.schoolId === school.id);
+      const latestPayment = schoolPayments[0];
+      const isPaid = sub.status === SubscriptionStatus.ACTIVE || (latestPayment && (latestPayment.status === SubscriptionPaymentStatus.APPLIED || latestPayment.status === SubscriptionPaymentStatus.CONFIRMED));
+
+      const invNumber = sub.invoiceNumber || `INV-${school.name.substring(0, 3).toUpperCase()}-${school.id.slice(0, 4).toUpperCase()}`;
+      const annual = sub.billingCycle === 'ANNUALLY';
+      const amount = latestPayment ? Number(latestPayment.amount) : (sub.plan === SubscriptionPlan.PREMIUM ? (annual ? 50000 : 5000) : (annual ? 30000 : 3000));
+
+      invoices.push({
+        id: school.id,
+        invoiceNumber: invNumber,
+        schoolId: school.id,
+        schoolName: school.name,
+        contactEmail: school.email,
+        amount,
+        currency: school.currency || 'KES',
+        dueDate: sub.endDate ? new Date(sub.endDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+        status: isPaid ? 'PAID' : (sub.status === SubscriptionStatus.EXPIRED ? 'OVERDUE' : 'ISSUED'),
+        plan: sub.plan,
+        billingCycle: sub.billingCycle,
+        createdDate: sub.startDate ? new Date(sub.startDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+        paidDate: isPaid ? (latestPayment?.paymentDate || new Date().toISOString().split('T')[0]) : undefined,
+        transactionRef: latestPayment?.transactionCode,
+        paymentMethod: latestPayment?.paymentMethod || (sub.status === SubscriptionStatus.PENDING_APPROVAL ? 'WIRE' : 'MPESA'),
+        notes: `Subscription License for ${school.name}`
+      });
+    }
+
+    return invoices;
+  }
+
+  async createSaasInvoice(body: any) {
+    const school = await this.schoolRepo.findOne({
+      where: { id: body.schoolId },
+      relations: ['subscription']
+    });
+    if (!school) throw new NotFoundException('School not found');
+
+    const invNumber = body.invoiceNumber || `INV-${school.name.substring(0, 3).toUpperCase()}-${Date.now().toString().slice(-4)}`;
+    if (school.subscription) {
+      school.subscription.invoiceNumber = invNumber;
+      await this.subRepo.save(school.subscription);
+    }
+    return {
+      id: school.id,
+      invoiceNumber: invNumber,
+      schoolId: school.id,
+      schoolName: school.name,
+      amount: body.amount || 30000,
+      currency: school.currency || 'KES',
+      status: 'ISSUED',
+      dueDate: body.dueDate || new Date().toISOString().split('T')[0]
+    };
+  }
+
+  async updateSaasInvoiceStatus(id: string, body: { status: 'PAID' | 'CANCELLED' | 'ISSUED'; paidDate?: string; transactionRef?: string; paymentMethod?: string }) {
+    const school = await this.schoolRepo.findOne({
+      where: { id },
+      relations: ['subscription', 'users']
+    });
+    if (!school) throw new NotFoundException('School not found');
+
+    if (body.status === 'PAID') {
+      const sub = school.subscription;
+      const ref = body.transactionRef || `MANUAL-${Date.now().toString().slice(-6)}`;
+      const method = body.paymentMethod || 'WIRE';
+      const amount = (sub?.plan === SubscriptionPlan.PREMIUM) ? 50000 : 30000;
+
+      let payment = await this.paymentRepo.findOne({ where: { schoolId: school.id, transactionCode: ref } });
+      if (!payment) {
+        payment = this.paymentRepo.create({
+          schoolId: school.id,
+          amount,
+          transactionCode: ref,
+          paymentDate: body.paidDate || new Date().toISOString().split('T')[0],
+          paymentMethod: method,
+          targetPlan: sub?.plan || SubscriptionPlan.BASIC,
+          status: SubscriptionPaymentStatus.APPLIED,
+          gatewayResponse: JSON.stringify({ verifiedBy: 'Super Admin UI reconciliation', at: new Date().toISOString() })
+        });
+      } else {
+        payment.status = SubscriptionPaymentStatus.APPLIED;
+        payment.paymentMethod = method;
+      }
+      await this.paymentRepo.save(payment);
+
+      if (sub) {
+        const now = new Date();
+        const newEnd = new Date(now);
+        newEnd.setMonth(newEnd.getMonth() + (sub.billingCycle === 'ANNUALLY' ? 12 : 1));
+        sub.status = SubscriptionStatus.ACTIVE;
+        sub.endDate = newEnd;
+        await this.subRepo.save(sub);
+      }
+    }
+    return { success: true, message: `Invoice status updated to ${body.status}` };
   }
 }

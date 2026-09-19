@@ -9,6 +9,7 @@ import { Repository, EntityManager } from 'typeorm';
 import { School } from '../entities/school.entity';
 import { User, Role } from '../entities/user.entity';
 import { Subscription, SubscriptionPlan, SubscriptionStatus } from '../entities/subscription.entity';
+import { SubscriptionPayment, SubscriptionPaymentStatus } from '../entities/subscription-payment.entity';
 import { PlatformSetting } from '../entities/platform-setting.entity';
 import { CommunicationsService } from '../communications/communications.service';
 import Stripe from 'stripe';
@@ -115,16 +116,61 @@ export class AuthService {
                 endDate.setDate(endDate.getDate() + (baseDto.billingCycle === 'ANNUALLY' ? 365 : 30));
             }
 
-            // 3. Create Subscription
+            // 3. Create Subscription & Link Payment Record
+            const txRef = dto.transactionRef;
+            let existingPayment: SubscriptionPayment | null = null;
+            if (txRef) {
+                existingPayment = await manager.findOne(SubscriptionPayment, {
+                    where: { transactionCode: txRef }
+                });
+            }
+
+            let effectiveStatus = status;
+            let effectiveEndDate = endDate;
+
+            // If M-Pesa or Card payment was already confirmed/applied
+            if (existingPayment && (existingPayment.status === SubscriptionPaymentStatus.CONFIRMED || existingPayment.status === SubscriptionPaymentStatus.APPLIED)) {
+                effectiveStatus = SubscriptionStatus.ACTIVE;
+                effectiveEndDate = new Date();
+                effectiveEndDate.setDate(effectiveEndDate.getDate() + (baseDto.billingCycle === 'ANNUALLY' ? 365 : 30));
+            }
+
             const subscription = manager.create(Subscription, {
                 school: savedSchool,
                 plan: baseDto.plan || SubscriptionPlan.FREE,
-                status,
+                status: effectiveStatus,
                 invoiceNumber: isManual ? invoiceNumber : undefined,
                 startDate,
-                endDate
+                endDate: effectiveEndDate
             });
             await manager.save(subscription);
+
+            // Record or link real subscription payment
+            if (baseDto.plan !== SubscriptionPlan.FREE) {
+                const amountVal = Number(baseDto.amount) || (baseDto.plan === SubscriptionPlan.PREMIUM ? 5000 : 3000);
+                if (existingPayment) {
+                    existingPayment.school = savedSchool;
+                    existingPayment.schoolId = savedSchool.id;
+                    existingPayment.targetPlan = baseDto.plan || SubscriptionPlan.BASIC;
+                    if (existingPayment.status === SubscriptionPaymentStatus.CONFIRMED) {
+                        existingPayment.status = SubscriptionPaymentStatus.APPLIED;
+                    }
+                    await manager.save(existingPayment);
+                } else if (txRef || paymentMethod) {
+                    const newPayment = manager.create(SubscriptionPayment, {
+                        school: savedSchool,
+                        schoolId: savedSchool.id,
+                        amount: amountVal,
+                        transactionCode: txRef || (isManual ? (invoiceNumber || `WIRE-${Date.now().toString().slice(-6)}`) : `PAY-${Date.now().toString().slice(-6)}`),
+                        paymentDate: new Date().toISOString().split('T')[0],
+                        paymentMethod: paymentMethod || 'MPESA',
+                        targetPlan: baseDto.plan || SubscriptionPlan.BASIC,
+                        status: paymentMethod === 'CARD' ? SubscriptionPaymentStatus.APPLIED : SubscriptionPaymentStatus.PENDING,
+                        gatewayResponse: JSON.stringify({ registeredAt: new Date().toISOString(), paymentIntentId })
+                    });
+                    await manager.save(newPayment);
+                }
+            }
 
             // 4. Create Admin User
             const salt = await bcrypt.genSalt();

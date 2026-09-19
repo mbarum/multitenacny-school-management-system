@@ -123,21 +123,46 @@ export class TransactionsService {
     }
   }
 
-  async initiateStkPush(amount: number, phone: string, ref: string, schoolId: string, isSubscription = false) {
-      let credentials;
-      let shortCode;
-      let passkey;
+  async initiateStkPush(amount: number, phone: string, ref: string, schoolId?: string | null, isSubscription = false) {
+      let credentials: { consumerKey: string; consumerSecret: string } | null = null;
+      let shortCode = '';
+      let passkey = '';
       let environment: 'sandbox' | 'production' = 'sandbox';
-      const callbackUrl = `${process.env.APP_URL || 'http://localhost:3000'}/api/mpesa/callback`;
+      let customCallbackUrl: string | undefined;
+
+      // Normalize Kenyan phone number: 254XXXXXXXXX
+      let cleanPhone = (phone || '').replace(/\D/g, '');
+      if (cleanPhone.startsWith('0')) {
+          cleanPhone = '254' + cleanPhone.slice(1);
+      } else if (cleanPhone.startsWith('254')) {
+          // already formatted
+      } else if (cleanPhone.length === 9) {
+          cleanPhone = '254' + cleanPhone;
+      }
+
+      if (cleanPhone.length !== 12 || !cleanPhone.startsWith('254')) {
+          throw new BadRequestException(`Invalid M-Pesa phone number: "${phone}". Please enter a valid number (e.g. 0712345678 or 254712345678).`);
+      }
 
       if (isSubscription) {
           const platform = await this.platformRepo.findOne({ where: {} });
-          if (!platform || !platform.mpesaConsumerKey) throw new BadRequestException('Platform M-Pesa is not configured.');
-          credentials = { consumerKey: platform.mpesaConsumerKey, consumerSecret: platform.mpesaConsumerSecret };
-          shortCode = platform.mpesaPaybill;
-          passkey = platform.mpesaPasskey;
-          environment = platform.mpesaEnvironment || 'sandbox';
+          const consumerKey = platform?.mpesaConsumerKey || process.env.MPESA_CONSUMER_KEY;
+          const consumerSecret = platform?.mpesaConsumerSecret || process.env.MPESA_CONSUMER_SECRET;
+          const paybill = platform?.mpesaPaybill || platform?.mpesaShortcode || process.env.MPESA_PAYBILL || process.env.MPESA_SHORTCODE;
+          const pk = platform?.mpesaPasskey || process.env.MPESA_PASSKEY;
+          const env = (platform?.mpesaEnvironment || process.env.MPESA_ENVIRONMENT || 'sandbox') as 'sandbox' | 'production';
+          customCallbackUrl = platform?.mpesaCallbackUrl;
+
+          if (!consumerKey || !consumerSecret || !paybill || !pk) {
+              this.logger.warn('[M-Pesa STK] Incomplete M-Pesa platform credentials in SuperAdmin settings or .env');
+              throw new BadRequestException('Platform M-Pesa is not configured. Please enter Consumer Key, Consumer Secret, Paybill, and Passkey in Super Admin Platform Settings.');
+          }
+          credentials = { consumerKey, consumerSecret };
+          shortCode = paybill;
+          passkey = pk;
+          environment = env;
       } else {
+          if (!schoolId) throw new BadRequestException('School ID is required for school fee M-Pesa payments.');
           const daraja = await this.darajaRepo.findOne({ where: { schoolId: schoolId as any } });
           if (!daraja || !daraja.consumerKey) throw new BadRequestException('M-Pesa is not configured for this school.');
           credentials = { consumerKey: daraja.consumerKey, consumerSecret: daraja.consumerSecret };
@@ -146,21 +171,27 @@ export class TransactionsService {
           environment = daraja.environment || 'sandbox';
       }
 
+      const callbackUrl = (customCallbackUrl && customCallbackUrl.trim() !== '')
+          ? customCallbackUrl.trim()
+          : `${process.env.APP_URL || 'https://emis.saaslink.tech'}/api/mpesa/callback`;
+
       const token = await this.getAccessToken(credentials, environment);
       const timestamp = new Date().toISOString().replace(/[-:T]/g, '').split('.')[0];
       const password = Buffer.from(`${shortCode}${passkey}${timestamp}`).toString('base64');
+
+      const sanitizedRef = (ref || 'SAASLINK').replace(/[^a-zA-Z0-9_-]/g, '').substring(0, 12);
 
       const payload = {
           BusinessShortCode: shortCode,
           Password: password,
           Timestamp: timestamp,
           TransactionType: "CustomerPayBillOnline",
-          Amount: Math.round(amount),
-          PartyA: phone,
+          Amount: Math.max(1, Math.round(amount)),
+          PartyA: cleanPhone,
           PartyB: shortCode,
-          PhoneNumber: phone,
+          PhoneNumber: cleanPhone,
           CallBackURL: callbackUrl,
-          AccountReference: ref.substring(0, 12),
+          AccountReference: sanitizedRef,
           TransactionDesc: isSubscription ? "Saaslink License" : "School Fee Payment"
       };
 
@@ -168,14 +199,18 @@ export class TransactionsService {
           ? 'https://api.safaricom.co.ke/mpesa/stkpush/v1/processrequest'
           : 'https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest';
 
+      this.logger.log(`[Daraja] Dispatching STK push to ${cleanPhone} for KES ${payload.Amount} (${environment})`);
+
       try {
           const response = await axios.post(stkUrl, payload, {
-              headers: { Authorization: `Bearer ${token}` }
+              headers: { Authorization: `Bearer ${token}` },
+              timeout: 25000
           });
           
           if (isSubscription) {
+              const safeSchoolId = (schoolId && schoolId !== 'platform-test' && schoolId.length === 36) ? schoolId : null;
               await this.subPaymentRepo.save({
-                  schoolId,
+                  schoolId: safeSchoolId,
                   amount,
                   transactionCode: ref,
                   paymentDate: new Date().toISOString().split('T')[0],
@@ -187,8 +222,9 @@ export class TransactionsService {
 
           return response.data;
       } catch (error: any) {
-          this.logger.error(`[Daraja] STK Push Error (${environment}): ${error.response?.data?.errorMessage || error.message}`);
-          throw new BadRequestException(error.response?.data?.errorMessage || 'M-Pesa STK Push failed.');
+          const errorMsg = error.response?.data?.errorMessage || error.response?.data?.ResponseDescription || error.message;
+          this.logger.error(`[Daraja] STK Push Error (${environment}): ${errorMsg}`);
+          throw new BadRequestException(errorMsg || 'M-Pesa STK Push failed.');
       }
   }
 
@@ -199,9 +235,9 @@ export class TransactionsService {
     const { MerchantRequestID, CheckoutRequestID, ResultCode, ResultDesc, CallbackMetadata } = Body.stkCallback;
 
     if (ResultCode === 0) {
-        const metadata = CallbackMetadata.Item;
-        const amount = metadata.find(i => i.Name === 'Amount')?.Value;
-        const mpesaCode = metadata.find(i => i.Name === 'MpesaReceiptNumber')?.Value;
+        const metadata = CallbackMetadata?.Item || [];
+        const amount = metadata.find((i: any) => i.Name === 'Amount')?.Value;
+        const mpesaCode = metadata.find((i: any) => i.Name === 'MpesaReceiptNumber')?.Value;
         
         this.logger.log(`[Daraja] Payment Success: ${mpesaCode} for KES ${amount}`);
 
@@ -217,7 +253,7 @@ export class TransactionsService {
             await this.processSubscriptionPayment(subPayment, mpesaCode, amount);
         }
     } else {
-        this.logger.warn(`[Daraja] Payment Failed: ${ResultDesc}`);
+        this.logger.warn(`[Daraja] Payment Failed or Cancelled: ${ResultDesc}`);
     }
 
     return { ResultCode: 0, ResultDesc: "Accepted" };
@@ -228,11 +264,12 @@ export class TransactionsService {
 
       await this.entityManager.transaction(async manager => {
           payment.status = SubscriptionPaymentStatus.CONFIRMED;
-          payment.transactionCode = mpesaCode;
+          payment.transactionCode = mpesaCode || payment.transactionCode;
+          if (amount) payment.amount = Number(amount);
           await manager.save(payment);
 
           const school = payment.school;
-          const subscription = school.subscription;
+          const subscription = school?.subscription;
 
           if (subscription) {
               const now = new Date();
@@ -247,7 +284,7 @@ export class TransactionsService {
 
               await manager.update(Subscription, subscription.id, {
                   status: SubscriptionStatus.ACTIVE,
-                  plan: payment.targetPlan, 
+                  plan: payment.targetPlan || subscription.plan, 
                   endDate: newEndDate,
                   updatedAt: new Date()
               });
@@ -255,13 +292,13 @@ export class TransactionsService {
               payment.status = SubscriptionPaymentStatus.APPLIED;
               await manager.save(payment);
 
-              const admin = school.users.find(u => u.role === 'Admin');
+              const admin = school.users?.find(u => u.role === 'Admin');
               if (admin) {
                   await this.communicationsService.sendEmail(
                       admin.email,
-                      'Institutional Access Restored - Saaslink',
-                      `<h1>Verification Complete</h1><p>The M-Pesa payment <strong>${mpesaCode}</strong> for <strong>${school.name}</strong> has been confirmed. Your portal is now active until ${newEndDate.toLocaleDateString()}.</p>`
-                  );
+                      'Subscription Activated via M-Pesa',
+                      `<h1>Payment Verified!</h1><p>Your M-Pesa payment <strong>${mpesaCode}</strong> of KES ${amount} has been confirmed. Your portal for <strong>${school.name}</strong> is active until ${newEndDate.toDateString()}.</p>`
+                  ).catch(e => this.logger.error(`Failed to send M-Pesa receipt email: ${e.message}`));
               }
           }
       });

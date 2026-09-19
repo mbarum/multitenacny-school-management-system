@@ -46,6 +46,25 @@ export class RegisterSchoolDto {
 
   @IsString()
   @IsOptional()
+  schoolCode?: string;
+
+  @IsString()
+  @IsOptional()
+  transactionRef?: string;
+
+  @IsString()
+  @IsOptional()
+  paymentIntentId?: string;
+
+  @IsOptional()
+  amount?: number | string;
+
+  @IsString()
+  @IsOptional()
+  mpesaPhone?: string;
+
+  @IsString()
+  @IsOptional()
   curriculumType?: string;
 
   @IsOptional()

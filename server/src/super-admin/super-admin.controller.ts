@@ -4,6 +4,7 @@ import { Roles } from '../auth/roles.decorator';
 import { Role } from '../entities/user.entity';
 import { SubscriptionStatus, SubscriptionPlan } from '../entities/subscription.entity';
 import { PlatformSetting } from '../entities/platform-setting.entity';
+import { Public } from '../auth/public.decorator';
 
 @Controller('super-admin')
 export class SuperAdminController {
@@ -102,16 +103,41 @@ export class SuperAdminController {
       return this.superAdminService.getSubscriptionPayments();
   }
 
+  @Get('receipts')
+  @Roles(Role.SuperAdmin)
+  getSaasReceipts() {
+      return this.superAdminService.getSaasReceipts();
+  }
+
+  @Get('invoices')
+  @Roles(Role.SuperAdmin)
+  getSaasInvoices() {
+      return this.superAdminService.getSaasInvoices();
+  }
+
+  @Post('invoices')
+  @Roles(Role.SuperAdmin)
+  createSaasInvoice(@Body() body: any) {
+      return this.superAdminService.createSaasInvoice(body);
+  }
+
+  @Patch('invoices/:id/status')
+  @Roles(Role.SuperAdmin)
+  updateSaasInvoiceStatus(@Param('id') id: string, @Body() body: any) {
+      return this.superAdminService.updateSaasInvoiceStatus(id, body);
+  }
+
   @Post('payments/manual')
   @Roles(Role.SuperAdmin)
   recordManualPayment(@Body() body: { schoolId: string, amount: number, transactionCode: string, date: string, method: string }) {
       return this.superAdminService.recordManualPayment(body.schoolId, body);
   }
 
+  @Public()
   @Post('payments/stk-push')
-  @Roles(Role.Admin, Role.Accountant)
-  initiateStkPush(@Request() req: any, @Body() body: { amount: number, phone: string, accountReference: string }) {
-      return this.superAdminService.initiateStkPush(req.user.schoolId, body);
+  initiateStkPush(@Request() req: any, @Body() body: { amount: number, phone: string, accountReference: string, schoolId?: string, type?: string }) {
+      const effectiveSchoolId = req.user?.schoolId || body.schoolId || null;
+      return this.superAdminService.initiateStkPush(effectiveSchoolId, body);
   }
 
   @Post('payments/initiate')

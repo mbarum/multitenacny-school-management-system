@@ -15,12 +15,12 @@ export enum SubscriptionPaymentStatus {
 @Entity('subscription_payments')
 export class SubscriptionPayment extends BaseEntity {
   @Index()
-  @Column({ type: 'uuid' })
-  schoolId!: string;
+  @Column({ type: 'varchar', length: 36, nullable: true })
+  schoolId?: string | null;
 
-  @ManyToOne(() => School, { onDelete: 'CASCADE' })
+  @ManyToOne(() => School, { onDelete: 'SET NULL', nullable: true })
   @JoinColumn({ name: 'schoolId' })
-  school!: School;
+  school?: School | null;
 
   @Column('decimal', { precision: 12, scale: 2, default: 0, transformer: new ColumnNumericTransformer() })
   amount!: number;

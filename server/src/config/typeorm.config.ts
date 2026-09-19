@@ -6,7 +6,7 @@ import {
     Announcement, AttendanceRecord, ClassFee, CommunicationLog, Exam, Expense, FeeItem, Grade, 
     GradingRule, Payroll, PayrollEntry, PayrollItem, ReportShareLog, SchoolEvent, TimetableEntry, 
     Transaction, SchoolSetting, DarajaSetting, Book, LibraryTransaction, School, Subscription, PlatformSetting,
-    SubscriptionPayment, MonthlyFinancial
+    SubscriptionPayment, MonthlyFinancial, EdTechArticle
 } from '../entities/all-entities';
 
 export const typeOrmAsyncConfig: TypeOrmModuleAsyncOptions = {
@@ -26,7 +26,7 @@ export const typeOrmAsyncConfig: TypeOrmModuleAsyncOptions = {
       Announcement, AttendanceRecord, ClassFee, CommunicationLog, Exam, Expense, FeeItem, Grade, 
       GradingRule, Payroll, PayrollEntry, PayrollItem, ReportShareLog, SchoolEvent, TimetableEntry, 
       Transaction, SchoolSetting, DarajaSetting, Book, LibraryTransaction, School, Subscription, PlatformSetting,
-      SubscriptionPayment, MonthlyFinancial
+      SubscriptionPayment, MonthlyFinancial, EdTechArticle
     ];
 
     const poolConfig = {

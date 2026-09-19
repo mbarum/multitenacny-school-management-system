@@ -6,7 +6,7 @@ import {
     Announcement, AttendanceRecord, ClassFee, CommunicationLog, Exam, Expense, FeeItem, Grade, 
     GradingRule, Payroll, PayrollEntry, PayrollItem, ReportShareLog, SchoolEvent, TimetableEntry, 
     Transaction, SchoolSetting, DarajaSetting, Book, LibraryTransaction, School, Subscription, PlatformSetting,
-    SubscriptionPayment, MonthlyFinancial, AuditLog
+    SubscriptionPayment, MonthlyFinancial, AuditLog, EdTechArticle
 } from '../entities/all-entities';
 
 loadEnvConfig();
@@ -24,7 +24,7 @@ export default new DataSource({
     Announcement, AttendanceRecord, ClassFee, CommunicationLog, Exam, Expense, FeeItem, Grade, 
     GradingRule, Payroll, PayrollEntry, PayrollItem, ReportShareLog, SchoolEvent, TimetableEntry, 
     Transaction, SchoolSetting, DarajaSetting, Book, LibraryTransaction, School, Subscription, PlatformSetting,
-    SubscriptionPayment, MonthlyFinancial, AuditLog
+    SubscriptionPayment, MonthlyFinancial, AuditLog, EdTechArticle
   ],
   migrations: [join(process.cwd(), 'src/migrations/*.{ts,js}')],
   synchronize: false, 

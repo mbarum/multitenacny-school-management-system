@@ -5,7 +5,16 @@ import { Public } from './auth/public.decorator';
 export class AppController {
   @Public()
   @Get()
-  getHealth(): { status: string } {
+  getRoot(): { status: string } {
     return { status: 'Saaslink Backend is running!' };
+  }
+
+  @Public()
+  @Get('health')
+  getHealth(): { status: string; timestamp: string } {
+    return {
+      status: 'ok',
+      timestamp: new Date().toISOString(),
+    };
   }
 }

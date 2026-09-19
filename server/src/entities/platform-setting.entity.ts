@@ -22,6 +22,9 @@ export class PlatformSetting extends BaseEntity {
   mpesaPaybill!: string;
 
   @Column({ default: '' })
+  mpesaShortcode!: string;
+
+  @Column({ default: '' })
   mpesaConsumerKey!: string;
 
   @Column({ default: '' })
@@ -29,6 +32,9 @@ export class PlatformSetting extends BaseEntity {
 
   @Column({ default: '' })
   mpesaPasskey!: string;
+
+  @Column({ default: '' })
+  mpesaCallbackUrl!: string;
 
   // Stripe Integration
   @Column({ default: '' })

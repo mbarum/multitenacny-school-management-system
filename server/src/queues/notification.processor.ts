@@ -62,15 +62,19 @@ export class NotificationProcessor extends WorkerHost {
 
   private async handleSendEmail(data: { to: string | string[], subject: string, html: string }) {
     try {
+      const smtpFrom = this.configService.get<string>('SMTP_FROM');
+      const smtpUser = this.configService.get<string>('SMTP_USER');
+      const fromAddress = smtpFrom || (smtpUser ? `"Saaslink" <${smtpUser}>` : '"Saaslink" <no-reply@saaslink.tech>');
+
       await this.transporter.sendMail({
-        from: this.configService.get<string>('SMTP_FROM', '"Saaslink" <no-reply@saaslink.com>'),
+        from: fromAddress,
         to: data.to,
         subject: data.subject,
         html: data.html,
       });
-      this.logger.log(`Email sent to ${data.to}`);
-    } catch (error) {
-      this.logger.error(`Failed to send email to ${data.to}`, error);
+      this.logger.log(`Email successfully dispatched to ${data.to} from ${fromAddress}`);
+    } catch (error: any) {
+      this.logger.error(`Failed to send email to ${data.to}: ${error.message}`, error.stack);
       throw error; // Let BullMQ retry
     }
   }

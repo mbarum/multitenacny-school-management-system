@@ -1936,6 +1936,19 @@ export const SuperAdminDashboard: React.FC = () => {
                             </div>
                         </div>
 
+                        <div>
+                            <label className="block text-[11px] text-slate-500 font-semibold mb-1">
+                                Daraja Callback / Webhook URL (Defaults to <code className="text-primary-700 bg-primary-50 px-1 py-0.5 rounded">https://emis.saaslink.tech/api/mpesa/callback</code>)
+                            </label>
+                            <input
+                                type="text"
+                                value={pricingForm.mpesaCallbackUrl || ''}
+                                onChange={(e) => setPricingForm(p => ({ ...p, mpesaCallbackUrl: e.target.value }))}
+                                placeholder="https://emis.saaslink.tech/api/mpesa/callback"
+                                className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono text-slate-800"
+                            />
+                        </div>
+
                         {/* Interactive STK Push Testing Sandbox */}
                         <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-2.5">
                             <div className="flex items-center justify-between">

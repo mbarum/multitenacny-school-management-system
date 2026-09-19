@@ -9,7 +9,7 @@ import {
     Expense, FeeItem, Grade, GradingRule, Payroll, PayrollEntry, PayrollItem, ReportShareLog, 
     SchoolEvent, TimetableEntry, Transaction, SchoolSetting, DarajaSetting,
     School, Subscription, Book, LibraryTransaction, PlatformSetting,
-    SubscriptionPayment, MonthlyFinancial, AuditLog
+    SubscriptionPayment, MonthlyFinancial, AuditLog, EdTechArticle
 } from '../entities/all-entities';
 
 loadEnvConfig();
@@ -59,7 +59,7 @@ const dataSourceOptions: DataSourceOptions = {
         Announcement, AttendanceRecord, ClassFee, CommunicationLog, Exam, Expense, FeeItem, Grade, 
         GradingRule, Payroll, PayrollEntry, PayrollItem, ReportShareLog, SchoolEvent, TimetableEntry, 
         Transaction, SchoolSetting, DarajaSetting, Book, LibraryTransaction, School, Subscription, PlatformSetting,
-        SubscriptionPayment, MonthlyFinancial, AuditLog
+        SubscriptionPayment, MonthlyFinancial, AuditLog, EdTechArticle
     ],
     synchronize: true,
     dropSchema: false,

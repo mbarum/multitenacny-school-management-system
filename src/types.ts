@@ -520,9 +520,11 @@ export interface PlatformPricing {
     stripeEnabled?: boolean;
     stripeCurrency?: 'KES' | 'USD';
     mpesaPaybill?: string;
+    mpesaShortcode?: string;
     mpesaPasskey?: string;
     mpesaConsumerKey?: string;
     mpesaConsumerSecret?: string;
+    mpesaCallbackUrl?: string;
     mpesaEnvironment?: 'sandbox' | 'production';
     // Super Admin Wire Transfer Details:
     wireBankName?: string;

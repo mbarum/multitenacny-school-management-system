@@ -21,6 +21,7 @@ import { EventsModule } from './events/events.module';
 import { LibraryModule } from './library/library.module';
 import { TasksModule } from './tasks/tasks.module';
 import { SuperAdminModule } from './super-admin/super-admin.module';
+import { EdTechNewsModule } from './edtech-news/edtech-news.module';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { RolesGuard } from './auth/roles.guard';
@@ -103,6 +104,7 @@ import { TenancyModule } from './tenancy/tenancy.module';
     TasksModule,
     SuperAdminModule,
     QueuesModule,
+    EdTechNewsModule,
   ],
   controllers: [AppController],
   providers: [
