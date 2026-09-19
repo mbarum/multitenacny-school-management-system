@@ -20,7 +20,18 @@ export class NotificationProcessor extends WorkerHost {
     const port = this.configService.get<number>('SMTP_PORT', 587);
     const secure = port === 465; // Use SSL for 465, STARTTLS for others (like 587)
 
-    const rejectUnauthorized = String(this.configService.get('SMTP_REJECT_UNAUTHORIZED', 'false')).toLowerCase() === 'true';
+    const rejectUnauthorizedRaw = this.configService.get('SMTP_REJECT_UNAUTHORIZED');
+    const rejectUnauthorized = rejectUnauthorizedRaw !== undefined
+      ? String(rejectUnauthorizedRaw).toLowerCase() === 'true'
+      : true;
+
+    const tlsOptions: Record<string, any> = {
+      rejectUnauthorized,
+    };
+
+    if (!rejectUnauthorized) {
+      tlsOptions.checkServerIdentity = () => undefined;
+    }
 
     this.transporter = nodemailer.createTransport({
       host: this.configService.get<string>('SMTP_HOST'),
@@ -30,10 +41,7 @@ export class NotificationProcessor extends WorkerHost {
         user: this.configService.get<string>('SMTP_USER'),
         pass: this.configService.get<string>('SMTP_PASS'),
       },
-      tls: { 
-        rejectUnauthorized,
-        checkServerIdentity: rejectUnauthorized ? undefined : () => undefined,
-      }
+      tls: tlsOptions,
     });
   }
 
