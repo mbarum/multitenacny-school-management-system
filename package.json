@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.0.0",
   "scripts": {
-    "dev": "./scripts/ensure-services.sh && concurrently \"PORT=3001 node server/dist/main\" \"vite\"",
+    "dev": "bash ./scripts/ensure-services.sh && concurrently \"PORT=3001 node server/dist/main\" \"vite\"",
     "lint": "tsc",
     "build": "tsc && vite build",
     "preview": "vite preview",

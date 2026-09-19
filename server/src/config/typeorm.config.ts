@@ -44,13 +44,30 @@ export const typeOrmAsyncConfig: TypeOrmModuleAsyncOptions = {
     console.log(`👤  Connecting as User  : ${dbCreds.username}`);
     console.log(`🔑  Password Configured : ${dbCreds.password ? 'YES (' + dbCreds.password.length + ' chars)' : 'NO'}`);
     console.log(`🗄️   Target Database     : ${dbCreds.database}`);
+    if (dbCreds.socketPath) {
+      console.log(`🔌  UNIX Socket Path    : ${dbCreds.socketPath}`);
+    }
     console.log('---------------------------------------------------------');
 
-    
     if (dbCreds.url) {
       return {
         type: 'mysql',
         url: dbCreds.url,
+        entities: commonEntities,
+        synchronize: shouldSynchronize,
+        logging: isProduction ? ['error', 'warn'] : ['error', 'warn'],
+        autoLoadEntities: true,
+        extra: poolConfig,
+      };
+    }
+
+    if (dbCreds.socketPath) {
+      return {
+        type: 'mysql',
+        socketPath: dbCreds.socketPath,
+        username: dbCreds.username,
+        password: dbCreds.password,
+        database: dbCreds.database,
         entities: commonEntities,
         synchronize: shouldSynchronize,
         logging: isProduction ? ['error', 'warn'] : ['error', 'warn'],

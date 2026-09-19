@@ -58,6 +58,7 @@ export interface ResolvedDbConfig {
   username: string;
   password?: string;
   database: string;
+  socketPath?: string;
   url?: string;
   envFileUsed: string | null;
   detectedKeys: string[];
@@ -66,19 +67,29 @@ export interface ResolvedDbConfig {
 function cleanVal(v: string | undefined): string | undefined {
   if (v === undefined || v === null) return undefined;
   let s = String(v).trim();
-  // Strip enclosing quotes if any
+  // Strip enclosing quotes only if strictly wrapped in matching quotes
   if ((s.startsWith('"') && s.endsWith('"')) || (s.startsWith("'") && s.endsWith("'"))) {
     s = s.slice(1, -1);
   }
-  return s.trim();
+  return s;
 }
 
 export function getDatabaseCredentials(): ResolvedDbConfig {
   const { envPath, parsed } = loadEnvConfig();
 
-  // Helper to read key with direct file fallback if shell environment is desynced
-  const getVal = (key: string): string | undefined => {
-    return cleanVal(process.env[key] || parsed[key]);
+  // If active .env was loaded from disk, its parsed entries are the absolute source of truth
+  const getRawVal = (key: string): string | undefined => {
+    if (parsed && parsed[key] !== undefined && parsed[key] !== '') {
+      return parsed[key];
+    }
+    if (process.env[key] !== undefined && process.env[key] !== '') {
+      return process.env[key];
+    }
+    return undefined;
+  };
+
+  const getCleanVal = (key: string): string | undefined => {
+    return cleanVal(getRawVal(key));
   };
 
   const detectedKeys: string[] = [];
@@ -89,7 +100,7 @@ export function getDatabaseCredentials(): ResolvedDbConfig {
   };
 
   // Check DATABASE_URL or MYSQL_URL
-  const rawUrl = getVal('DATABASE_URL') || getVal('MYSQL_URL');
+  const rawUrl = getCleanVal('DATABASE_URL') || getCleanVal('MYSQL_URL');
   recordKey('DATABASE_URL', rawUrl);
 
   if (rawUrl) {
@@ -97,7 +108,7 @@ export function getDatabaseCredentials(): ResolvedDbConfig {
       const parsedUrl = new URL(rawUrl);
       const urlUser = decodeURIComponent(parsedUrl.username || 'root');
       const urlPass = decodeURIComponent(parsedUrl.password || '');
-      const urlDb = parsedUrl.pathname ? parsedUrl.pathname.replace(/^\//, '') : 'saaslink_db';
+      const urlDb = parsedUrl.pathname ? parsedUrl.pathname.replace(/^\//, '') : 'emis';
 
       return {
         host: parsedUrl.hostname || '127.0.0.1',
@@ -114,51 +125,59 @@ export function getDatabaseCredentials(): ResolvedDbConfig {
     }
   }
 
-  // Detect Host
-  const host = getVal('MYSQL_HOST') || getVal('DB_HOST') || '127.0.0.1';
-  recordKey('MYSQL_HOST', getVal('MYSQL_HOST'));
-  recordKey('DB_HOST', getVal('DB_HOST'));
+  // Detect Host: support both DB_HOST and MYSQL_HOST, prioritizing the active .env definition
+  const host = getCleanVal('DB_HOST') || getCleanVal('MYSQL_HOST') || '127.0.0.1';
+  recordKey('DB_HOST', getCleanVal('DB_HOST'));
+  recordKey('MYSQL_HOST', getCleanVal('MYSQL_HOST'));
 
   // Detect Port
-  const rawPort = getVal('MYSQL_PORT') || getVal('DB_PORT') || '3306';
+  const rawPort = getCleanVal('DB_PORT') || getCleanVal('MYSQL_PORT') || '3306';
   const port = parseInt(rawPort, 10) || 3306;
-  recordKey('MYSQL_PORT', getVal('MYSQL_PORT'));
+  recordKey('DB_PORT', getCleanVal('DB_PORT'));
+  recordKey('MYSQL_PORT', getCleanVal('MYSQL_PORT'));
 
-  // Detect Username (check all common variants)
+  // Detect Username
   const username =
-    getVal('MYSQL_USER') ||
-    getVal('DB_USER') ||
-    getVal('DB_USERNAME') ||
-    getVal('MYSQL_USERNAME') ||
+    getCleanVal('DB_USER') ||
+    getCleanVal('DB_USERNAME') ||
+    getCleanVal('MYSQL_USER') ||
+    getCleanVal('MYSQL_USERNAME') ||
     'root';
-  recordKey('MYSQL_USER', getVal('MYSQL_USER'));
-  recordKey('DB_USER', getVal('DB_USER'));
+  recordKey('DB_USER', getCleanVal('DB_USER'));
+  recordKey('MYSQL_USER', getCleanVal('MYSQL_USER'));
 
-  // Detect Password (check all common variants, explicitly allowing empty string if set)
+  // Detect Password: Keep raw characters intact (no trimming or quote-stripping that might mutate password)
   let password = '';
-  if (getVal('MYSQL_PASSWORD') !== undefined) {
-    password = getVal('MYSQL_PASSWORD')!;
-    recordKey('MYSQL_PASSWORD', '[set]');
-  } else if (getVal('DB_PASSWORD') !== undefined) {
-    password = getVal('DB_PASSWORD')!;
+  if (getRawVal('DB_PASSWORD') !== undefined) {
+    password = getRawVal('DB_PASSWORD')!;
     recordKey('DB_PASSWORD', '[set]');
-  } else if (getVal('DB_PASS') !== undefined) {
-    password = getVal('DB_PASS')!;
+  } else if (getRawVal('MYSQL_PASSWORD') !== undefined) {
+    password = getRawVal('MYSQL_PASSWORD')!;
+    recordKey('MYSQL_PASSWORD', '[set]');
+  } else if (getRawVal('DB_PASS') !== undefined) {
+    password = getRawVal('DB_PASS')!;
     recordKey('DB_PASS', '[set]');
-  } else if (getVal('MYSQL_ROOT_PASSWORD') !== undefined) {
-    password = getVal('MYSQL_ROOT_PASSWORD')!;
+  } else if (getRawVal('MYSQL_ROOT_PASSWORD') !== undefined) {
+    password = getRawVal('MYSQL_ROOT_PASSWORD')!;
     recordKey('MYSQL_ROOT_PASSWORD', '[set]');
   }
 
   // Detect Database Name
   const database =
-    getVal('MYSQL_DATABASE') ||
-    getVal('DB_NAME') ||
-    getVal('DB_DATABASE') ||
-    getVal('MYSQL_DB') ||
-    'saaslink_db';
-  recordKey('MYSQL_DATABASE', getVal('MYSQL_DATABASE'));
-  recordKey('DB_NAME', getVal('DB_NAME'));
+    getCleanVal('DB_DATABASE') ||
+    getCleanVal('DB_NAME') ||
+    getCleanVal('MYSQL_DATABASE') ||
+    getCleanVal('MYSQL_DB') ||
+    'emis';
+  recordKey('DB_DATABASE', getCleanVal('DB_DATABASE'));
+  recordKey('MYSQL_DATABASE', getCleanVal('MYSQL_DATABASE'));
+
+  // Detect Socket Path if specified
+  const socketPath =
+    getCleanVal('DB_SOCKET') ||
+    getCleanVal('MYSQL_SOCKET') ||
+    getCleanVal('DB_SOCKET_PATH') ||
+    getCleanVal('MYSQL_SOCKET_PATH');
 
   return {
     host,
@@ -166,6 +185,7 @@ export function getDatabaseCredentials(): ResolvedDbConfig {
     username,
     password,
     database,
+    socketPath,
     envFileUsed: envPath,
     detectedKeys,
   };
